@@ -3,7 +3,7 @@
     gc = {
       automatic = true;
       dates = "Fri 03:00";
-      options = "--delete-older-than 30d";
+      options = "--delete-older-than 14d";
     };
 
     settings = {

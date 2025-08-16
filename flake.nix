@@ -1,13 +1,11 @@
 {
   outputs = { nixpkgs, ... }@flakeInputs: {
     nixosConfigurations = {
-      nixserver01 = nixpkgs.lib.nixosSystem {
+      loftserveren01 = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs = { inherit flakeInputs; };
         modules = [
           ./config
-          ./disko.nix
-          ./sops.nix
           {
             system.stateVersion = "25.05";
             networking.hostName = "loftserveren01";

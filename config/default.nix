@@ -1,10 +1,13 @@
-{ pkgs, lib, flakeInputs, ... }: {
+{ pkgs, ... }: {
   imports = [
+    ./disko.nix
+    ./hardware.nix
     ./localization.nix
     ./network.nix
     ./nixos.nix
     ./services.nix
-    ./systemd.nix
+    ./sops.nix
+    ./user.nix
   ];
 
   config = {
@@ -19,10 +22,16 @@
     # polkit
     security.polkit.enable = true;
 
-    # localization
+    # console
     console = { earlySetup = true; font = "${pkgs.terminus_font}/share/consolefonts/ter-i20b.psf.gz"; };
 
     # Diable root account
     users.users.root.hashedPassword = "!";
+
+    # Syslog limit + rotation
+    services.journald = {
+      rateLimitInterval = "10s"; rateLimitBurst = 20000;
+      extraConfig = ''MaxRetentionSec=90day'';
+    };
   };
 }
