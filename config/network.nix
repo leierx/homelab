@@ -1,4 +1,5 @@
-{ config, ... }: {
+{ config, lib, ... }:
+{
   networking.enableIPv6 = false; # all my homies use IPV4
   networking.dhcpcd.enable = false;
   networking.useDHCP = false;
@@ -7,24 +8,20 @@
   systemd.network = {
     enable = true;
     networks = {
+      "00-all" = {
+        matchConfig = {};
+        networkConfig.LinkLocalAddressing = "no"; # dont configure sysctl on a per-interface basis
+      };
       "10-eno1" = {
         matchConfig.Name = "eno1";
         address = [ "192.168.2.50/24" ];
-        networkConfig = {
-          Gateway = "192.168.2.1";
-          IPv6AcceptRA = "no";
-        };
+        networkConfig.Gateway = "192.168.2.1";
         linkConfig.RequiredForOnline  = "routable";
       };
       "20-wg0" = {
         matchConfig.Name = "wg0";
         address = [ "10.0.0.1/24" ];
-        networkConfig.IPv6AcceptRA = "no";
       };
-    };
-    links."10-eno1" = {
-      matchConfig.Name = "eno1";
-      linkConfig.MACAddressPolicy = "persistent";
     };
     netdevs."20-wg0" = {
       netdevConfig = { Kind = "wireguard"; Name = "wg0"; };
@@ -54,9 +51,9 @@
   # DNS
   services.resolved = {
     enable = true;
-    dnsOverTLS = "true"; # strict DoT
+    dnsovertls = "true"; # strict DoT
     dnssec = "true";
-    fallbackDns = []; # do not silently fall back
+    fallbackDns = lib.mkForce []; # do not silently fall back
   };
   networking.nameservers = [ "9.9.9.9#dns.quad9.net" "149.112.112.112#dns.quad9.net" ];
 

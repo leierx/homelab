@@ -1,4 +1,5 @@
-{ flakeInputs, ... }: {
+{ flakeInputs, ... }:
+{
   nix = {
     gc = {
       automatic = true;

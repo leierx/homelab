@@ -61,13 +61,15 @@ in {
       "pool0" = {
         type = "zpool";
         mode = "raidz2"; # 2-disk fault tolerance
-        rootFsOptions.canmount = "off";
-        mountpoint = "none";
+        rootFsOptions = {
+          canmount = "off";
+          mountpoint = "none";
+        };
         datasets = {
           tank = {
             type = "zfs_fs";
             options = {
-              mountpoint = "none"; # https://github.com/nix-community/disko/issues/581#issuecomment-2260602290
+              mountpoint = "/tank"; # https://github.com/nix-community/disko/issues/581#issuecomment-2260602290
               compression = "lz4"; # Enable compression for efficiency
               atime = "off"; # Disable access time updates
             };

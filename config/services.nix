@@ -1,4 +1,5 @@
-{ pkgs, ... }: {
+{ pkgs, ... }:
+{
   # SSH
   services.openssh = {
     enable = true;
@@ -10,12 +11,11 @@
     };
   };
 
-  # COCKPIT
-  services.cockpit = {
-    enable = true;
-    settings = { WebService = { AllowUnencrypted = false; }; };
-    packages = with pkgs; [ cockpit-machines ];
-  };
+  # COCKPIT - https://github.com/NixOS/nixpkgs/issues/287644
+  # services.cockpit = {
+  #   enable = true;
+  #   settings = { WebService = { AllowUnencrypted = false; }; };
+  # };
 
   # LIBVIRT
   virtualisation.libvirtd = {

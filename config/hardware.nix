@@ -4,6 +4,12 @@
   hardware.cpu.intel.updateMicrocode = true;
   powerManagement.cpuFreqGovernor = "performance";
 
+  # ZRAM to make oom killer happy
+  zramSwap = {
+    enable = true;
+    memoryPercent = 2;
+  };
+
   # Firmware
   hardware.enableRedistributableFirmware = true;
   services.fwupd.enable = true; # firmware updates when supported
@@ -15,6 +21,9 @@
 
   # Viritualization
   boot.kernelModules = [ "kvm-intel" ];
+
+  # FStrim for the nvme
+  services.fstrim.enable = true;
 
   # ZFS
   networking.hostId = lib.substring 0 8 (builtins.hashString "sha256" config.networking.hostName);
