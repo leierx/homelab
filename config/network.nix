@@ -8,15 +8,16 @@
   systemd.network = {
     enable = true;
     networks = {
-      "00-all" = {
-        matchConfig = {};
-        networkConfig.LinkLocalAddressing = "no"; # dont configure sysctl on a per-interface basis
-      };
       "10-eno1" = {
         matchConfig.Name = "eno1";
         address = [ "192.168.2.50/24" ];
         networkConfig.Gateway = "192.168.2.1";
         linkConfig.RequiredForOnline  = "routable";
+        DHCP = "no"; # all my homies use IPV4
+        networkConfig = {
+          IPv6AcceptRA = "no"; # all my homies use IPV4
+          LinkLocalAddressing = "no"; # all my homies use IPV4
+        };
       };
       "20-wg0" = {
         matchConfig.Name = "wg0";

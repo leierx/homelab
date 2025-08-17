@@ -56,7 +56,7 @@
   # privilege escalation - doas
   security.doas.enable = true;
   security.sudo.enable = false;
-  environment.interactiveShellInit = ''alias sudo="doas"'';
+  environment.systemPackages = with pkgs; [ doas-sudo-shim ];
   environment.etc."doas.conf".text = lib.mkForce ''
       permit nopass keepenv :wheel
       # "root" is allowed to do anything.

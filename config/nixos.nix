@@ -11,6 +11,7 @@
       auto-optimise-store = true;
       flake-registry = ""; # Disable global registry
       experimental-features = [ "nix-command" "flakes" ];
+      trusted-users = [ "@wheel" ];
     };
 
     # Thanks to: https://nixos-and-flakes.thiscute.world/best-practices/nix-path-and-flake-registry#custom-nix-path-and-flake-registry
