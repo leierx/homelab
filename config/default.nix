@@ -14,7 +14,7 @@
 
   config = {
     # Software
-    environment.systemPackages = with pkgs; [ sops wireguard-tools yq jq ];
+    environment.systemPackages = with pkgs; [ wireguard-tools jq ];
     programs.git.enable = true;
 
     # bootloader
@@ -31,9 +31,6 @@
     users.users.root.hashedPassword = "!";
 
     # Syslog limit + rotation
-    services.journald = {
-      rateLimitInterval = "10s"; rateLimitBurst = 20000;
-      extraConfig = ''MaxRetentionSec=90day'';
-    };
+    services.journald.extraConfig = ''MaxRetentionSec=90day'';
   };
 }

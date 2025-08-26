@@ -34,9 +34,7 @@
   home-manager.sharedModules = [
     ({
       programs.zsh = { enable = true;
-        shellAliases = {
-          FluxUpdate = "flux install --components source-controller,kustomize-controller,helm-controller --export > /home/leier/nixserver/kubernetes/base/flux-system/gotk-components.yaml";
-        };
+        shellAliases = {};
         oh-my-zsh.enable = true;
         oh-my-zsh.plugins = [ "git" "kubectl" "systemd" ];
         syntaxHighlighting.enable = true;
