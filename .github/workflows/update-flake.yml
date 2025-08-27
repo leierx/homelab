@@ -1,7 +1,6 @@
 name: flake bump
 
 on:
-  workflow_dispatch:
   schedule:
     - cron: "0 10 */2 * *" # 12:00 CEST
 
