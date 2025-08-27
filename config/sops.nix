@@ -6,6 +6,4 @@
   # secret declarations
   sops.secrets."wireGuard/private_key" = { owner = "systemd-network"; mode = "0400"; };
   sops.secrets."wireGuard/psk" = { owner = "systemd-network"; mode = "0400"; };
-  sops.secrets."ssh/id_ed25519_homelab_nixos" = { owner = "root"; mode = "0600"; };
-  sops.secrets."ssh/id_ed25519_homelab_nixos_pub" = { owner = "root"; mode = "0600"; };
 }
