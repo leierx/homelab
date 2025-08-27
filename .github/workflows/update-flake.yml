@@ -1,0 +1,36 @@
+name: flake bump
+
+on:
+  schedule:
+    - cron: "0 10 */2 * *" # 12:00 CEST
+
+permissions:
+  contents: write
+
+jobs:
+  bump-build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: allow-unfree = true
+
+      - name: update flake.lock (nixpkgs & nixpkgs-unstable)
+        run: |
+          nix flake update nixpkgs nixpkgs-unstable --no-registries --refresh
+          if git diff --quiet -- flake.lock; then exit 0; fi
+
+      - name: build system
+        run: nix build --refresh --no-link .#nixosConfigurations.loftserveren01.config.system.build.toplevel
+
+      - name: Commit & push
+        run: |
+          git add flake.lock
+          git -c user.name="${{ github.actor }}" \
+              -c user.email="${{ github.actor }}@users.noreply.github.com" \
+              commit -m "chore: bump flake.lock"
+          git push
+
