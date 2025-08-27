@@ -1,7 +1,7 @@
 { pkgs, ... }:
 {
   imports = [
-    ./automaticUpgrades.nix
+    ./auto-upgrade.nix
     ./disko.nix
     ./hardware.nix
     ./localization.nix

@@ -27,7 +27,7 @@
     description = "Reboot Scheduling.";
     wantedBy = [ "timers.target" ];
     timerConfig = {
-      OnCalendar = "monthly 02:30";
+      OnCalendar = "*-*-01 02:30:00";
       Unit = "reboot.target";
     };
   };
