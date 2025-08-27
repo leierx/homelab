@@ -5,7 +5,7 @@
         system = "x86_64-linux";
         specialArgs = { inherit flakeInputs; };
         modules = [
-          ./config
+          ./nixos
           {
             system.stateVersion = "25.05";
             networking.hostName = "loftserveren01";
