@@ -14,5 +14,19 @@
   "nix": {
     "enabled": true
   },
-  "packageRules": [ ]
+  "packageRules": [
+    {
+      "matchManagers": [ "nix" ],
+      "enabled": false
+    },
+    {
+      "matchManagers": [ "nix" ],
+      "matchDepNames": [
+        "nixpkgs",
+        "nixpkgs-unstable",
+        "home-manager"
+      ],
+      "enabled": true
+    }
+  ]
 }
