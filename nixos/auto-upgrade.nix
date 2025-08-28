@@ -19,7 +19,7 @@
     script = ''
       ${pkgs.nixos-rebuild}/bin/nixos-rebuild switch \
       --refresh \
-      --flake 'git+https://github.com/leierx/homelab-nixos.git?ref=main#loftserveren01'
+      --flake 'git+https://github.com/leierx/homelab.git?ref=main#loftserveren01'
     '';
   };
 
