@@ -1,6 +1,10 @@
 {
-  "extends": ["config:base"],
-  "enabledManagers": [ "nix" ],
+  "extends": [
+    "config:recommended"
+  ],
+  "enabledManagers": [
+    "nix"
+  ],
   "gitAuthor": "Renovate Bot <renovatebot@noreply.com>",
   "onboarding": false,
   "requireConfig": "required",
@@ -9,17 +13,31 @@
   "prHourlyLimit": 2,
   "prConcurrentLimit": 10,
   "dependencyDashboard": true,
-  "nix": { "enabled": true },
+  "nix": {
+    "enabled": true
+  },
   "packageRules": [
     {
-      "matchManagers": ["nix"],
-      "matchFileNames": ["^flake\\.nix$"],
+      "matchManagers": [
+        "nix"
+      ],
+      "matchFileNames": [
+        "^flake\\.nix$"
+      ],
       "enabled": false
     },
     {
-      "matchManagers": ["nix"],
-      "matchFileNames": ["^flake\\.nix$"],
-      "matchDepNames": ["nixpkgs", "nixpkgs-unstable", "home-manager"],
+      "matchManagers": [
+        "nix"
+      ],
+      "matchFileNames": [
+        "^flake\\.nix$"
+      ],
+      "matchDepNames": [
+        "nixpkgs",
+        "nixpkgs-unstable",
+        "home-manager"
+      ],
       "groupName": "nixpkgs",
       "enabled": true
     }
