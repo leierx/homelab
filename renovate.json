@@ -8,9 +8,23 @@
   "enabledManagers": [
     "nix"
   ],
+  "nix": { "enabled": true },
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": ["at any time"]
+    "schedule": ["at any time"],
+    "automerge": true,
+    "automergeStrategy": "merge-commit",
+    "ignoreTests": true
   },
-  "nix": { "enabled": true }
+  "packageRules": [
+    {
+      "matchManagers": ["nix"],
+      "enabled": false
+    },
+    {
+      "matchManagers": ["nix"],
+      "matchDepNames": ["nixpkgs", "nixpkgs-unstable", "home-manager"],
+      "groupName": "nixpkgs & home-manager"
+    }
+  ]
 }
