@@ -19,7 +19,7 @@
     {
       "matchManagers": ["nix"],
       "matchFileNames": ["^flake\\.nix$"],
-      "matchDepNames": ["nixpkgs", "nixpkgs-unstable"],
+      "matchDepNames": ["nixpkgs", "nixpkgs-unstable", "home-manager"],
       "groupName": "nixpkgs",
       "enabled": true
     }
