@@ -8,5 +8,9 @@
   "enabledManagers": [
     "nix"
   ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["at any time"]
+  },
   "nix": { "enabled": true }
 }
