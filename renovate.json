@@ -5,13 +5,11 @@
   "rebaseWhen": "behind-base-branch",
   "timezone": "Europe/Oslo",
   "dependencyDashboard": true,
+  "prHourlyLimit": 0,
   "extends": [ "config:recommended" ],
   "enabledManagers": [
     "nix"
   ],
-  "nix": {
-    "enabled": true
-  },
   "packageRules": [
     {
       "matchManagers": [ "nix" ],
