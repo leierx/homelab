@@ -12,10 +12,6 @@
   "packageRules": [
     {
       "matchManagers": [ "nix" ],
-      "enabled": false
-    },
-    {
-      "matchManagers": [ "nix" ],
       "matchDepNames": [
         "nixpkgs",
         "nixpkgs-unstable",
