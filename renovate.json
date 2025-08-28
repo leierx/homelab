@@ -7,30 +7,12 @@
   "prHourlyLimit": 2,
   "prConcurrentLimit": 10,
   "dependencyDashboard": true,
-  "extends": [
-    "config:recommended"
-  ],
+  "extends": [ "config:recommended" ],
   "enabledManagers": [
     "nix"
   ],
   "nix": {
     "enabled": true
   },
-  "packageRules": [
-    {
-      "matchManagers": [
-        "nix"
-      ],
-      "enabled": false
-    },
-    {
-      "matchManagers": [
-        "nix"
-      ],
-      "matchFileNames": [
-        "^flake\\.nix$"
-      ],
-      "enabled": true
-    }
-  ]
+  "packageRules": [ ]
 }
