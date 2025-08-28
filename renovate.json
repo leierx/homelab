@@ -1,10 +1,4 @@
 {
-  "extends": [
-    "config:recommended"
-  ],
-  "enabledManagers": [
-    "nix"
-  ],
   "gitAuthor": "Renovate Bot <renovatebot@noreply.com>",
   "onboarding": false,
   "requireConfig": "required",
@@ -13,6 +7,12 @@
   "prHourlyLimit": 2,
   "prConcurrentLimit": 10,
   "dependencyDashboard": true,
+  "extends": [
+    "config:recommended"
+  ],
+  "enabledManagers": [
+    "nix"
+  ],
   "nix": {
     "enabled": true
   },
@@ -20,9 +20,6 @@
     {
       "matchManagers": [
         "nix"
-      ],
-      "matchFileNames": [
-        "^flake\\.nix$"
       ],
       "enabled": false
     },
