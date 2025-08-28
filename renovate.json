@@ -4,8 +4,6 @@
   "requireConfig": "required",
   "rebaseWhen": "behind-base-branch",
   "timezone": "Europe/Oslo",
-  "prHourlyLimit": 2,
-  "prConcurrentLimit": 10,
   "dependencyDashboard": true,
   "extends": [ "config:recommended" ],
   "enabledManagers": [
