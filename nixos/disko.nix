@@ -78,5 +78,4 @@ in {
       };
     };
   };
-  boot.zfs.extraPools = [ "pool0" ];
 }

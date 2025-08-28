@@ -11,11 +11,9 @@
     };
   };
 
-  # COCKPIT - https://github.com/NixOS/nixpkgs/issues/287644
-  # services.cockpit = {
-  #   enable = true;
-  #   settings = { WebService = { AllowUnencrypted = false; }; };
-  # };
+  # NFS 4 K8S
+  services.nfs.server.enable = true;
+  services.nfs.server.exports = "/tank 192.168.122.0/24(rw,sync,no_root_squash,fsid=0)";
 
   # LIBVIRT
   virtualisation.libvirtd = {
