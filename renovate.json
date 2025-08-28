@@ -24,7 +24,8 @@
     {
       "matchManagers": ["nix"],
       "matchDepNames": ["nixpkgs", "nixpkgs-unstable", "home-manager"],
-      "groupName": "nixpkgs & home-manager"
+      "groupName": "nixpkgs & home-manager",
+      "enabled": true
     }
   ]
 }
