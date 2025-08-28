@@ -10,7 +10,6 @@
   "prConcurrentLimit": 10,
   "dependencyDashboard": true,
   "packageRules": [
-    { "enabled": false },
     { "matchManagers": ["nix"], "matchFileNames": ["^flake\\.nix$"], "matchDepNames": ["nixpkgs", "nixpkgs-unstable"], "enabled": true }
   ]
 }
