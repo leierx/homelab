@@ -1,7 +1,5 @@
 {
   "gitAuthor": "Renovate Bot <renovatebot@noreply.com>",
-  "onboarding": false,
-  "requireConfig": "required",
   "rebaseWhen": "behind-base-branch",
   "timezone": "Europe/Oslo",
   "dependencyDashboard": true,
@@ -10,9 +8,7 @@
   "enabledManagers": [
     "nix"
   ],
-  "nix": {
-    "enabled": true
-  },
+  "nix": { "enabled": true },
   "packageRules": [
     {
       "matchManagers": [ "nix" ],
