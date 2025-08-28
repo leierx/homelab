@@ -9,7 +9,23 @@
   "prHourlyLimit": 2,
   "prConcurrentLimit": 10,
   "dependencyDashboard": true,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true
+  },
+  "nix": { "enabled": true },
   "packageRules": [
-    { "matchManagers": ["nix"], "matchFileNames": ["^flake\\.nix$"], "matchDepNames": ["nixpkgs", "nixpkgs-unstable"], "enabled": true }
+    {
+      "matchManagers": ["nix"],
+      "matchFileNames": ["^flake\\.nix$"],
+      "enabled": false
+    },
+    {
+      "matchManagers": ["nix"],
+      "matchFileNames": ["^flake\\.nix$"],
+      "matchDepNames": ["nixpkgs", "nixpkgs-unstable"],
+      "groupName": "nixpkgs",
+      "enabled": true
+    }
   ]
 }
