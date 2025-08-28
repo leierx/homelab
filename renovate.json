@@ -10,6 +10,9 @@
   "enabledManagers": [
     "nix"
   ],
+  "nix": {
+    "enabled": true
+  },
   "packageRules": [
     {
       "matchManagers": [ "nix" ],
