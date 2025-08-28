@@ -9,10 +9,6 @@
   "prHourlyLimit": 2,
   "prConcurrentLimit": 10,
   "dependencyDashboard": true,
-  "lockFileMaintenance": {
-    "enabled": true,
-    "automerge": true
-  },
   "nix": { "enabled": true },
   "packageRules": [
     {
