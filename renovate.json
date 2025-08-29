@@ -3,7 +3,6 @@
   "rebaseWhen": "behind-base-branch",
   "timezone": "Europe/Oslo",
   "dependencyDashboard": true,
-  "prHourlyLimit": 0,
   "automerge": true,
   "automergeStrategy": "merge-commit",
   "ignoreTests": true,
@@ -12,16 +11,18 @@
     "nix"
   ],
   "nix": { "enabled": true },
-  "ignorePaths": ["installer/**"],
   "packageRules": [
+    { "matchManagers": [ "nix" ], "enabled": false },
     {
-      "matchManagers": ["nix"],
-      "matchDatasources": ["git-refs"],
-      "versioning": "git-refs"
+      "matchManagers": [ "nix" ],
+      "matchDepNames": [ "nixpkgs", "nixpkgs-unstable", "home-manager" ],
+      "matchFileNames": [ "^flake\\.nix$" ],
+      "enabled": true,
+      "groupName": "nixpkgs & home-manager"
     }
   ],
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": ["at any time"]
+    "schedule": [ "at any time" ]
   }
 }
