@@ -13,7 +13,7 @@
   ],
   "nix": {
     "enabled": true,
-    "managerFilePatterns": [ "/^flake\\.nix$/" ]
+    "managerFilePatterns": [ "^flake\\.nix$" ]
   },
   "lockFileMaintenance": {
     "enabled": true,
