@@ -15,10 +15,15 @@
     { "matchManagers": ["nix"], "enabled": false },
     {
       "matchManagers": ["nix"],
-      "matchFileNames": ["/^flake\\.nix$/", "/^flake\\.lock$/"],
+      "matchFileNames": ["/^flake\\.nix$/"],
       "matchDepNames": ["nixpkgs", "nixpkgs-unstable", "home-manager"],
       "groupName": "nixpkgs & home-manager",
       "enabled": true
+    },
+    {
+      "enabled": false,
+      "matchManagers": ["nix"],
+      "matchUpdateTypes": ["digest"]
     }
   ],
   "lockFileMaintenance": {
