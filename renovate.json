@@ -12,7 +12,7 @@
   ],
   "nix": { "enabled": true },
   "packageRules": [
-    { "matchManagers": [ "nix" ], "enabled": false },
+    { "matchManagers": [ "nix" ], "enabled": false, "matchFileNames": [ "^(?!flake\\.nix$).+" ] },
     {
       "matchManagers": [ "nix" ],
       "enabled": true,
