@@ -11,7 +11,10 @@
   "enabledManagers": [
     "nix"
   ],
-  "nix": { "enabled": true },
+  "nix": {
+    "enabled": true
+    "managerFilePatterns": [ "^flake\\.nix$/" ],
+  },
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["at any time"]
