@@ -6,7 +6,6 @@
   "automerge": true,
   "automergeStrategy": "merge-commit",
   "ignoreTests": true,
-  "rangeStrategy": "bump",
   "extends": ["config:recommended"],
   "enabledManagers": [
     "nix"
