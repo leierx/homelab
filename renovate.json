@@ -12,10 +12,7 @@
     "nix"
   ],
   "nix": { "enabled": true },
-  "packageRules": [
-    { "matchManagers": ["nix"], "enabled": false },
-    { "matchManagers": ["nix"], "matchFileNames": ["^flake\\.nix$"], "enabled": true }
-  ],
+  "ignorePaths": ["installer/**"],
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["at any time"]
