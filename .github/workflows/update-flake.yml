@@ -20,7 +20,7 @@ jobs:
 
       - name: update flake.lock (nixpkgs & nixpkgs-unstable)
         run: |
-          nix flake update nixpkgs nixpkgs-unstable --no-registries --refresh
+          nix flake update nixpkgs nixpkgs-unstable home-manager --no-registries --refresh
           if git diff --quiet -- flake.lock; then exit 0; fi
 
       - name: build system
