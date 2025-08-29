@@ -13,6 +13,13 @@
   ],
   "nix": { "enabled": true },
   "ignorePaths": ["installer/**"],
+  "packageRules": [
+    {
+      "matchManagers": ["nix"],
+      "matchDatasources": ["git-refs"],
+      "versioning": "git-refs"
+    }
+  ],
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["at any time"]
