@@ -19,11 +19,6 @@
       "matchFileNames": ["/^flake\\.nix$/"],
       "matchUpdateTypes": ["lockFileMaintenance"],
       "groupName": "nixpkgs & home-manager"
-    },
-    {
-      "enabled": false,
-      "matchManagers": ["nix"],
-      "matchUpdateTypes": ["digest"]
     }
   ],
   "lockFileMaintenance": {
