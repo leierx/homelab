@@ -6,25 +6,23 @@
   "automerge": true,
   "automergeStrategy": "merge-commit",
   "ignoreTests": true,
-  "extends": [ "config:recommended" ],
+  "extends": ["config:recommended"],
   "enabledManagers": [
     "nix"
   ],
-  "nix": {
-    "enabled": true,
-    "managerFilePatterns": [ "/^flake\\.nix$/" ]
-  },
+  "nix": { "enabled": true },
   "packageRules": [
-    { "matchManagers": [ "nix" ], "enabled": false },
+    { "matchManagers": ["nix"], "enabled": false },
     {
-      "matchManagers": [ "nix" ],
-      "enabled": true,
-      "matchDepNames": [ "nixpkgs", "nixpkgs-unstable", "home-manager" ],
-      "groupName": "nixpkgs & home-manager"
+      "matchManagers": ["nix"],
+      "matchFileNames": ["/^flake\\.nix$/"],
+      "matchDepNames": ["nixpkgs", "nixpkgs-unstable", "home-manager"],
+      "groupName": "nixpkgs & home-manager",
+      "enabled": true
     }
   ],
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": [ "at any time" ]
+    "schedule": ["at any time"]
   }
 }
