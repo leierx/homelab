@@ -7,23 +7,5 @@
   "automergeStrategy": "merge-commit",
   "ignoreTests": true,
   "extends": ["config:recommended"],
-  "enabledManagers": [
-    "nix"
-  ],
-  "nix": { "enabled": true },
-  "packageRules": [
-    { "matchManagers": ["nix"], "enabled": false },
-    {
-      "enabled": true,
-      "matchManagers": ["nix"],
-      "matchFileNames": ["/^flake\\.nix$/"],
-      "matchUpdateTypes": ["lockFileMaintenance"],
-      "postUpdateOptions": ["--update-input=nixpkgs-unstable"],
-      "groupName": "nixpkgs & home-manager"
-    }
-  ],
-  "lockFileMaintenance": {
-    "enabled": true,
-    "schedule": ["at any time"]
-  }
+  "enabledManagers": []
 }
