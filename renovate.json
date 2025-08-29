@@ -10,15 +10,13 @@
   "enabledManagers": [
     "nix"
   ],
-  "nix": {
-    "enabled": true,
-    "managerFilePatterns": [ "^flake\\.nix$" ]
-  },
+  "nix": { "enabled": true },
   "packageRules": [
     { "matchManagers": [ "nix" ], "enabled": false },
     {
       "matchManagers": [ "nix" ],
       "matchDepNames": [ "nixpkgs", "nixpkgs-unstable", "home-manager" ],
+      "matchFileNames": [ "^flake\\.nix$" ],
       "enabled": true,
       "groupName": "nixpkgs & home-manager"
     }
