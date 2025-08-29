@@ -14,11 +14,11 @@
   "packageRules": [
     { "matchManagers": ["nix"], "enabled": false },
     {
+      "enabled": true,
       "matchManagers": ["nix"],
       "matchFileNames": ["/^flake\\.nix$/"],
-      "matchDepNames": ["nixpkgs", "nixpkgs-unstable", "home-manager"],
-      "groupName": "nixpkgs & home-manager",
-      "enabled": true
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "groupName": "nixpkgs & home-manager"
     },
     {
       "enabled": false,
