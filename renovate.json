@@ -16,7 +16,6 @@
     {
       "matchManagers": [ "nix" ],
       "enabled": true,
-      "matchDepNames": [ "nixpkgs", "nixpkgs-unstable", "home-manager" ],
       "matchFileNames": [ "^flake\\.nix$" ],
       "groupName": "nixpkgs & home-manager"
     }
