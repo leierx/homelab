@@ -1,4 +1,4 @@
-{ pkgs, lib, config, ... }: {
+{ pkgs, ... }: {
   systemd.timers.nixos-auto-upgrade = {
     description = "nixos-auto-upgrade timer";
     wantedBy = [ "timers.target" ];
@@ -13,6 +13,7 @@
     description = "nixos-auto-upgrade service";
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
+    path = [ pkgs.git ];
     restartIfChanged = false;
     unitConfig.X-StopOnRemoval = false;
     serviceConfig.Type = "oneshot";

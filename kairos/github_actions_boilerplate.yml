@@ -1,0 +1,50 @@
+name: build-publish
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variant: [control-plane-prod, control-plane-test, worker-prod, worker-test]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute CalVer
+        id: ver
+        run: echo "version=v$(date -u +%Y.%m.%d).${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push image
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/kairos-alpine-homelab
+          VER: ${{ steps.ver.outputs.version }}
+          VAR: ${{ matrix.variant }}
+        run: |
+          set -e
+          docker build \
+            --build-arg OEM_VARIANT="${VAR}" \
+            --build-arg IMAGE_VERSION="${VER}" \
+            -t "$IMAGE:${VER}-${VAR}" .
+          docker push "$IMAGE:${VER}-${VAR}"
+
+          # Update the channel tag that nodes follow (safe promotion handle)
+          docker tag "$IMAGE:${VER}-${VAR}" "$IMAGE:${VAR}-stable"
+          docker push "$IMAGE:${VAR}-stable"
+
+      # (optional) surface the version in job summary
+      - run: echo "Published ${{ steps.ver.outputs.version }}" >> $GITHUB_STEP_SUMMARY
