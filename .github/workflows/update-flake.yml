@@ -3,7 +3,6 @@ name: flake bump
 on:
   schedule:
     - cron: "0 10 */2 * *" # 12:00 CEST
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -13,12 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
       - uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: allow-unfree = true
 
       - name: bump flake.lock
         id: bump
