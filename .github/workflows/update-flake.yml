@@ -3,6 +3,7 @@ name: flake bump
 on:
   schedule:
     - cron: "0 10 */2 * *" # 12:00 CEST
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -12,25 +13,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
-      - name: install Nix
-        uses: cachix/install-nix-action@v31
+      - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: allow-unfree = true
 
-      - name: update flake.lock (nixpkgs & nixpkgs-unstable)
+      - name: bump flake.lock
+        id: bump
         run: |
-          nix flake update nixpkgs nixpkgs-unstable home-manager --no-registries --refresh
-          if git diff --quiet -- flake.lock; then exit 0; fi
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          nix flake update nixpkgs nixpkgs-unstable home-manager --no-use-registries --refresh
+          git diff --quiet -- flake.lock && echo "changed=false" >>"$GITHUB_OUTPUT" || echo "changed=true" >>"$GITHUB_OUTPUT"
 
       - name: build system
-        run: nix build --refresh --no-link .#nixosConfigurations.loftserveren01.config.system.build.toplevel
+        if: steps.bump.outputs.changed == 'true'
+        run: nix build --refresh --no-link .#nixosConfigurations.loftserveren01
 
       - name: Commit & push
+        if: steps.bump.outputs.changed == 'true'
         run: |
           git add flake.lock
-          git -c user.name="github-actions" \
-              -c user.email="github-actions@noreply.github.com" \
-              commit -m "chore: bump flake.lock"
-          git push
+          git \
+            -c user.name="github-actions" \
+            -c user.email="github-actions@noreply.github.com" \
+            commit -m "chore: bump flake.lock"
+          git push origin HEAD:"$GITHUB_REF_NAME"
 
