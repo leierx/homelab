@@ -23,7 +23,7 @@ jobs:
 
       - name: build system
         if: steps.bump.outputs.changed == 'true'
-        run: nix build --refresh --no-link .#loftserveren01
+        run: nix build --refresh --no-link '.#nixosConfigurations.loftserveren01.config.system.build.toplevel'
 
       - name: Commit & push
         if: steps.bump.outputs.changed == 'true'
