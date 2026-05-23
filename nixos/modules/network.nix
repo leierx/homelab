@@ -12,11 +12,11 @@
         matchConfig.Name = "eno1";
         address = [ "192.168.2.50/24" ];
         networkConfig.Gateway = "192.168.2.1";
-        linkConfig.RequiredForOnline  = "routable";
-        DHCP = "no"; # all my homies use IPV4
+        linkConfig.RequiredForOnline = "routable";
+        DHCP = "no";
         networkConfig = {
           IPv6AcceptRA = "no"; # all my homies use IPV4
-          LinkLocalAddressing = "no"; # all my homies use IPV4
+          LinkLocalAddressing = "no";
         };
       };
       "20-wg0" = {
@@ -25,7 +25,10 @@
       };
     };
     netdevs."20-wg0" = {
-      netdevConfig = { Kind = "wireguard"; Name = "wg0"; };
+      netdevConfig = {
+        Kind = "wireguard";
+        Name = "wg0";
+      };
       wireguardConfig = {
         PrivateKeyFile = config.sops.secrets."wireGuard/private_key".path;
         ListenPort = 52820;
@@ -45,8 +48,11 @@
   networking.nat = {
     enable = true;
     externalInterface = "eno1";
-    internalInterfaces = [ "wg0" ];
-    internalIPs = [ "10.0.0.0/24" ];
+    internalInterfaces = [
+      "wg0"
+      "prod-net-virbr"
+      "test-net-virbr"
+    ];
   };
 
   # DNS
@@ -54,17 +60,20 @@
     enable = true;
     dnsovertls = "true"; # strict DoT
     dnssec = "true";
-    fallbackDns = lib.mkForce []; # do not silently fall back
+    fallbackDns = lib.mkForce [ ]; # do not silently fall back
   };
-  networking.nameservers = [ "9.9.9.9#dns.quad9.net" "149.112.112.112#dns.quad9.net" ];
+  networking.nameservers = [
+    "9.9.9.9#dns.quad9.net"
+    "149.112.112.112#dns.quad9.net"
+  ];
 
   # FIREWALL
   networking.firewall = {
     enable = true;
     checkReversePath = "loose"; # causes problems for wireguard
-    allowedTCPPorts = [];
+    allowedTCPPorts = [ ];
     interfaces.eno1 = {
-      allowedTCPPorts = [];
+      allowedTCPPorts = [ ];
       allowedUDPPorts = [
         52820 # wireguard port
       ];

@@ -1,4 +1,9 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 {
   # CPU
   hardware.cpu.intel.updateMicrocode = true;
@@ -7,7 +12,7 @@
   # ZRAM to make oom killer happy
   zramSwap = {
     enable = true;
-    memoryPercent = 2;
+    memoryPercent = 1;
   };
 
   # Firmware

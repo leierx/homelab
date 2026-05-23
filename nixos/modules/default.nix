@@ -14,23 +14,26 @@
 
   config = {
     # Software
-    environment.systemPackages = with pkgs; [ wireguard-tools jq ];
+    environment.systemPackages = with pkgs; [
+      wireguard-tools
+      jq
+    ];
     programs.git.enable = true;
 
     # bootloader
     boot.loader.systemd-boot.enable = true;
     boot.tmp.cleanOnBoot = true;
 
-    # polkit
-    security.polkit.enable = true;
-
     # console
-    console = { earlySetup = true; font = "${pkgs.terminus_font}/share/consolefonts/ter-i20b.psf.gz"; };
+    console = {
+      earlySetup = true;
+      font = "${pkgs.terminus_font}/share/consolefonts/ter-i20b.psf.gz";
+    };
 
     # Diable root account
     users.users.root.hashedPassword = "!";
 
     # Syslog limit + rotation
-    services.journald.extraConfig = ''MaxRetentionSec=90day'';
+    services.journald.extraConfig = "MaxRetentionSec=90day";
   };
 }
