@@ -1,22 +1,16 @@
 { lib, ... }:
 {
   options = {
-    modules.nixos = lib.mkOption {
-      type = lib.types.attrsOf lib.types.deferredModule;
+    modules = lib.mkOption {
+      type = lib.types.submodule {
+        freeformType = lib.types.attrsOf (lib.types.attrsOf lib.types.deferredModule);
+        options.nixosHosts = lib.mkOption {
+          type = lib.types.attrsOf lib.types.deferredModule;
+          default = { };
+          description = "Per-host NixOS module definitions";
+        };
+      };
       default = { };
-      description = "NixOS modules";
-    };
-
-    modules.homeManager = lib.mkOption {
-      type = lib.types.attrsOf lib.types.deferredModule;
-      default = { };
-      description = "Home Manager modules";
-    };
-
-    modules.nixosHosts = lib.mkOption {
-      type = lib.types.attrsOf lib.types.deferredModule;
-      default = { };
-      description = "Per-host NixOS module definitions";
     };
 
     nixosConfigurations = lib.mkOption {
