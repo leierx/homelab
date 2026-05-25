@@ -3,7 +3,7 @@
     inputs:
     (inputs.nixpkgs.lib.evalModules {
       specialArgs.inputs = inputs;
-      modules = [ (import ./nixos/import-tree.nix ./nixos/modules) ];
+      modules = [ (import ./nix/import-tree.nix ./nix/modules) ];
     }).config;
 
   inputs = {

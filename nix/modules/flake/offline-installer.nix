@@ -36,6 +36,8 @@ let
               "flakes"
             ];
 
+            boot.zfs.forceImportRoot = false; # will be the default in 26.05 - Silencing the warning.
+
             services.getty.autologinUser = lib.mkForce "root";
             networking.wireless.enable = lib.mkForce false;
 
