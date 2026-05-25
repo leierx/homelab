@@ -48,11 +48,7 @@
       networking.nat = {
         enable = true;
         externalInterface = "eno1";
-        internalInterfaces = [
-          "wg0"
-          "prod-net-virbr"
-          "test-net-virbr"
-        ];
+        internalInterfaces = [ "wg0" ];
       };
       # DNS
       services.resolved = {

@@ -8,6 +8,7 @@
         config.modules.bootloader
         config.modules.console
         config.modules.doas
+        config.modules.incus
         config.modules.locale
         config.modules.nixosConfig
         config.modules.sops
