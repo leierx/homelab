@@ -64,6 +64,7 @@
         "149.112.112.112#dns.quad9.net"
       ];
       # FIREWALL
+      networking.nftables.enable = true;
       networking.firewall = {
         enable = true;
         checkReversePath = "loose"; # causes problems for wireguard
