@@ -1,36 +1,16 @@
 {
   modules.autoUpgrade =
-    { pkgs, lib, ... }:
+    { config, ... }:
     {
-      systemd.timers.nixos-auto-upgrade = {
-        description = "nixos-auto-upgrade timer";
-        wantedBy = [ "timers.target" ];
-        timerConfig = {
-          OnCalendar = "Mon 01:00";
-          RandomizedDelaySec = "30m";
-          Persistent = true;
-        };
-      };
-
-      systemd.services.nixos-auto-upgrade = {
-        description = "nixos-auto-upgrade service";
-        after = [ "network-online.target" ];
-        wants = [ "network-online.target" ];
-        path = [ pkgs.git ];
-        restartIfChanged = false;
-        serviceConfig.Type = "oneshot";
-        script = ''
-          ${lib.getExe pkgs.nixos-rebuild} switch --refresh --flake \
-          'git+https://github.com/leierx/homelab.git?ref=main#loftserveren01'
-        '';
-      };
-
-      systemd.timers.nixos-scheduled-reboot = {
-        description = "Reboot Scheduling.";
-        wantedBy = [ "timers.target" ];
-        timerConfig = {
-          OnCalendar = "*-*-01 02:30:00";
-          Unit = "reboot.target";
+      system.autoUpgrade = {
+        enable = true;
+        flake = "git+https://github.com/leierx/homelab.git?ref=main#${config.networking.hostName}";
+        dates = "Fri 03:30";
+        randomizedDelaySec = "30min";
+        allowReboot = true;
+        rebootWindow = {
+          lower = "03:30";
+          upper = "05:00";
         };
       };
     };

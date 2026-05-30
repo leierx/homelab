@@ -6,13 +6,12 @@
       imports = [
         config.modules.autoUpgrade
         config.modules.bootloader
-        config.modules.console
         config.modules.doas
         config.modules.incus
+        config.modules.journald
         config.modules.locale
         config.modules.nixosConfig
         config.modules.sops
-        config.modules.syslog
         config.modules.user
       ];
 
@@ -39,6 +38,6 @@
         jq
       ];
 
-      system.stateVersion = "25.11";
+      system.stateVersion = "26.05";
     };
 }

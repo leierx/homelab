@@ -11,7 +11,7 @@
       hardware.cpu.intel.updateMicrocode = true;
       powerManagement.cpuFreqGovernor = "performance";
 
-      # ZRAM to make oom killer happy
+      # zram > swap
       zramSwap = {
         enable = true;
         memoryPercent = 2;
@@ -32,7 +32,6 @@
       # FStrim for the nvme
       services.fstrim.enable = true;
 
-      # ZFS
       # ZFS
       networking.hostId = lib.substring 0 8 (builtins.hashString "sha256" config.networking.hostName);
       boot.supportedFilesystems = [ "zfs" ];
