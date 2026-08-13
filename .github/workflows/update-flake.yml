@@ -3,6 +3,7 @@ name: flake bump
 on:
   schedule:
     - cron: "0 10 */2 * *" # 12:00 CEST
+  workflow_dispatch:
 
 permissions:
   contents: write
