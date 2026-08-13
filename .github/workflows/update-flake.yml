@@ -7,23 +7,32 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: flake-update
+  cancel-in-progress: false
+
 jobs:
   bump-build-push:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6
       - uses: cachix/install-nix-action@v31
 
       - name: bump flake.lock
         id: bump
         run: |
           git pull --rebase origin "$GITHUB_REF_NAME"
-          nix flake update nixpkgs nixpkgs-unstable home-manager --no-use-registries --refresh
+          nix flake update nixpkgs --no-use-registries --refresh
           git diff --quiet -- flake.lock && echo "changed=false" >>"$GITHUB_OUTPUT" || echo "changed=true" >>"$GITHUB_OUTPUT"
+
+      - name: check formatting
+        run: nix fmt -- --ci
 
       - name: build system
         if: steps.bump.outputs.changed == 'true'
-        run: nix build --refresh --no-link '.#nixosConfigurations.loftserveren01.config.system.build.toplevel'
+        run: |
+          nix flake check --all-systems
+          nix build --refresh --no-link '.#nixosConfigurations.loftserveren01.config.system.build.toplevel'
 
       - name: Commit & push
         if: steps.bump.outputs.changed == 'true'
@@ -34,4 +43,3 @@ jobs:
             -c user.email="github-actions@noreply.github.com" \
             commit -m "chore: bump flake.lock"
           git push origin HEAD:"$GITHUB_REF_NAME"
-

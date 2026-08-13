@@ -1,4 +1,0 @@
-install:
-  device: "auto"
-  auto: true
-  reboot: true
