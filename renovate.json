@@ -3,9 +3,14 @@
   "rebaseWhen": "behind-base-branch",
   "timezone": "Europe/Oslo",
   "dependencyDashboard": true,
-  "automerge": true,
-  "automergeStrategy": "merge-commit",
   "ignoreTests": true,
   "extends": ["config:recommended"],
-  "enabledManagers": []
+  "enabledManagers": ["terraform"],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true,
+      "automergeStrategy": "merge-commit"
+    }
+  ]
 }

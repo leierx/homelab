@@ -3,7 +3,7 @@
   modules.sops = {
     imports = [ inputs.sops.nixosModules.sops ];
     # sops
-    sops.defaultSopsFile = "${inputs.self}/secrets.yaml";
+    sops.defaultSopsFile = "${inputs.self}/nix/secrets.yaml";
     sops.age.keyFile = "/root/keys.txt";
     # secret declarations
     sops.secrets = {
