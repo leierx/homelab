@@ -101,7 +101,7 @@ resource "libvirt_network" "test" {
   }
 
   forward = {
-    mode = "nat"
+    mode = "route"
   }
 
   ips = [{
@@ -133,7 +133,7 @@ resource "libvirt_network" "prod" {
   }
 
   forward = {
-    mode = "nat"
+    mode = "route"
   }
 
   ips = [{
