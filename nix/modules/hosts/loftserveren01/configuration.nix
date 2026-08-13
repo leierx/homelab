@@ -7,7 +7,6 @@
         config.modules.autoUpgrade
         config.modules.bootloader
         config.modules.doas
-        config.modules.journald
         config.modules.libvirt
         config.modules.locale
         config.modules.nixosConfig
