@@ -53,6 +53,19 @@
           "virbr-prod"
         ];
       };
+      networking.nftables.tables.router = {
+        family = "ip";
+        content = ''
+          chain forward {
+            type filter hook forward priority filter - 10; policy accept;
+
+            iifname "wg0" oifname "virbr-test" ip daddr 192.168.100.0/24 accept
+            iifname "wg0" oifname "virbr-prod" ip daddr 192.168.101.0/24 accept
+            iifname "virbr-test" oifname "wg0" ip saddr 192.168.100.0/24 ct state established,related accept
+            iifname "virbr-prod" oifname "wg0" ip saddr 192.168.101.0/24 ct state established,related accept
+          }
+        '';
+      };
       # DNS
       services.resolved = {
         enable = true;
