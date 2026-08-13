@@ -1,6 +1,6 @@
 {
   modules.user =
-    { pkgs, ... }:
+    { config, pkgs, ... }:
     {
       users.defaultUserShell = pkgs.bashInteractive;
       users.extraGroups."leier".name = "leier";
@@ -39,5 +39,14 @@
       };
 
       programs.starship.enable = true;
+
+      # fuck home-manager :P
+      system.activationScripts.leierZshrc = ''
+        install -o leier -g users -m 644 \
+          ${pkgs.writeText "zshrc-extra" ''
+            export LIBVIRT_DEFAULT_URI=qemu:///system
+          ''} \
+          ${config.users.users."leier".home}/.zshrc
+      '';
     };
 }

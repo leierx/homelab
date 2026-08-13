@@ -1,49 +1,53 @@
 locals {
-  clusters = {
+  cluster_nodes = {
     test = {
-      network  = libvirt_network.test.id
-      gateway  = "192.168.100.1"
-      endpoint = "192.168.100.10"
-      nodes = {
-        controlplane = {
-          ip   = "192.168.100.11"
-          mac  = "52:54:00:10:00:11"
-          role = "controlplane"
-        }
-        worker-1 = {
-          ip   = "192.168.100.12"
-          mac  = "52:54:00:10:00:12"
-          role = "worker"
-        }
-        worker-2 = {
-          ip   = "192.168.100.13"
-          mac  = "52:54:00:10:00:13"
-          role = "worker"
-        }
+      controlplane = {
+        ip   = "192.168.100.11"
+        mac  = "52:54:00:10:00:11"
+        role = "controlplane"
+      }
+      worker-1 = {
+        ip   = "192.168.100.12"
+        mac  = "52:54:00:10:00:12"
+        role = "worker"
+      }
+      worker-2 = {
+        ip   = "192.168.100.13"
+        mac  = "52:54:00:10:00:13"
+        role = "worker"
       }
     }
-
     prod = {
-      network  = libvirt_network.prod.id
+      controlplane = {
+        ip   = "192.168.101.11"
+        mac  = "52:54:00:20:00:11"
+        role = "controlplane"
+      }
+      worker-1 = {
+        ip   = "192.168.101.12"
+        mac  = "52:54:00:20:00:12"
+        role = "worker"
+      }
+      worker-2 = {
+        ip   = "192.168.101.13"
+        mac  = "52:54:00:20:00:13"
+        role = "worker"
+      }
+    }
+  }
+
+  clusters = {
+    test = {
+      network  = "test"
+      gateway  = "192.168.100.1"
+      endpoint = "192.168.100.10"
+      nodes    = local.cluster_nodes.test
+    }
+    prod = {
+      network  = "prod"
       gateway  = "192.168.101.1"
       endpoint = "192.168.101.10"
-      nodes = {
-        controlplane = {
-          ip   = "192.168.101.11"
-          mac  = "52:54:00:20:00:11"
-          role = "controlplane"
-        }
-        worker-1 = {
-          ip   = "192.168.101.12"
-          mac  = "52:54:00:20:00:12"
-          role = "worker"
-        }
-        worker-2 = {
-          ip   = "192.168.101.13"
-          mac  = "52:54:00:20:00:13"
-          role = "worker"
-        }
-      }
+      nodes    = local.cluster_nodes.prod
     }
   }
 
@@ -90,33 +94,73 @@ locals {
 
 resource "libvirt_network" "test" {
   name      = "test"
-  mode      = "nat"
-  bridge    = "virbr-test"
-  addresses = ["192.168.100.0/24"]
   autostart = true
 
-  dhcp {
-    enabled = true
+  bridge = {
+    name = "virbr-test"
   }
+
+  forward = {
+    mode = "nat"
+  }
+
+  ips = [{
+    address = "192.168.100.1"
+    prefix  = 24
+
+    dhcp = {
+      ranges = [{
+        start = "192.168.100.2"
+        end   = "192.168.100.254"
+      }]
+
+      hosts = [
+        for node in values(local.cluster_nodes.test) : {
+          ip  = node.ip
+          mac = node.mac
+        }
+      ]
+    }
+  }]
 }
 
 resource "libvirt_network" "prod" {
   name      = "prod"
-  mode      = "nat"
-  bridge    = "virbr-prod"
-  addresses = ["192.168.101.0/24"]
   autostart = true
 
-  dhcp {
-    enabled = true
+  bridge = {
+    name = "virbr-prod"
   }
+
+  forward = {
+    mode = "nat"
+  }
+
+  ips = [{
+    address = "192.168.101.1"
+    prefix  = 24
+
+    dhcp = {
+      ranges = [{
+        start = "192.168.101.2"
+        end   = "192.168.101.254"
+      }]
+
+      hosts = [
+        for node in values(local.cluster_nodes.prod) : {
+          ip  = node.ip
+          mac = node.mac
+        }
+      ]
+    }
+  }]
 }
 
 resource "libvirt_pool" "default" {
   name = "default"
   type = "dir"
 
-  target {
+  target = {
     path = "/var/lib/libvirt/images"
   }
 }
@@ -124,52 +168,121 @@ resource "libvirt_pool" "default" {
 resource "libvirt_volume" "node" {
   for_each = local.nodes
 
-  name   = "${each.key}.qcow2"
-  pool   = libvirt_pool.default.name
-  size   = var.vm_disk_gib * 1024 * 1024 * 1024
-  format = "qcow2"
+  name          = "${each.key}.qcow2"
+  pool          = libvirt_pool.default.name
+  capacity      = var.vm_disk_gib * 1024 * 1024 * 1024
+  capacity_unit = "bytes"
+
+  target = {
+    format = {
+      type = "qcow2"
+    }
+  }
+}
+
+resource "libvirt_volume" "talos_iso" {
+  name = "talos-${var.talos_version}-amd64.iso"
+  pool = libvirt_pool.default.name
+
+  target = {
+    format = {
+      type = "iso"
+    }
+  }
+
+  create = {
+    content = {
+      url = local.talos_iso_url
+    }
+  }
 }
 
 resource "libvirt_domain" "node" {
   for_each = local.nodes
 
-  name      = each.key
-  type      = "kvm"
-  vcpu      = var.vm_vcpu
-  memory    = var.vm_memory_mib
-  running   = true
-  autostart = true
+  name        = each.key
+  type        = "kvm"
+  vcpu        = var.vm_vcpu
+  memory      = var.vm_memory_mib
+  memory_unit = "MiB"
+  running     = true
+  autostart   = true
 
-  cpu {
-    mode = "host-passthrough"
+  os = {
+    type = "hvm"
+    boot_devices = [
+      { dev = "cdrom" },
+      { dev = "hd" },
+    ]
   }
 
-  disk {
-    volume_id = libvirt_volume.node[each.key].id
+  cpu = {
+    mode = "host-passthrough"
   }
 
   # The installed disk is preferred after Talos installs itself. The ISO is
   # retained as a fallback for recovery and first boot.
-  disk {
-    url = local.talos_iso_url
-  }
+  devices = {
+    disks = [
+      {
+        device = "disk"
 
-  boot_device {
-    dev = ["hd", "cdrom"]
-  }
+        source = {
+          volume = {
+            pool   = libvirt_pool.default.name
+            volume = libvirt_volume.node[each.key].name
+          }
+        }
 
-  network_interface {
-    network_id     = each.value.network
-    mac            = each.value.mac
-    addresses      = [each.value.ip]
-    hostname       = each.key
-    wait_for_lease = true
-  }
+        target = {
+          dev = "vda"
+          bus = "virtio"
+        }
 
-  console {
-    type        = "pty"
-    target_type = "serial"
-    target_port = "0"
+      },
+      {
+        device = "cdrom"
+
+        source = {
+          volume = {
+            pool   = libvirt_pool.default.name
+            volume = libvirt_volume.talos_iso.name
+          }
+        }
+
+        target = {
+          dev = "sda"
+          bus = "sata"
+        }
+
+      }
+    ]
+
+    interfaces = [{
+      source = {
+        network = {
+          network = each.value.network
+        }
+      }
+
+      mac = {
+        address = each.value.mac
+      }
+
+      model = {
+        type = "virtio"
+      }
+
+      guest = {
+        dev = "eth0"
+      }
+
+      wait_for_ip = {
+        source  = "lease"
+        timeout = 300
+      }
+    }]
+
   }
 }
 

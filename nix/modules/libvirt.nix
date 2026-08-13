@@ -9,10 +9,10 @@
         onShutdown = "shutdown";
       };
 
-      # NFS
-      networking.firewall.interfaces = {
-        "virbr-test".allowedTCPPorts = [ 2049 ];
-        "virbr-prod".allowedTCPPorts = [ 2049 ];
-      };
+      # Trust libvirt guests while retaining libvirt's NAT internet access.
+      networking.firewall.trustedInterfaces = [
+        "virbr-test"
+        "virbr-prod"
+      ];
     };
 }
