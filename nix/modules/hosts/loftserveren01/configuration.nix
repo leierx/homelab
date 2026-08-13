@@ -39,6 +39,9 @@
       environment.systemPackages = with pkgs; [
         wireguard-tools
         jq
+        talosctl
+        kubectl
+        fluxcd
       ];
 
       system.stateVersion = "26.05";

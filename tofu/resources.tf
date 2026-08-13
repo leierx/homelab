@@ -283,6 +283,13 @@ resource "libvirt_domain" "node" {
       }
     }]
 
+    graphics = [{
+      vnc = {
+        auto_port = true
+        listen    = "127.0.0.1"
+      }
+    }]
+
   }
 }
 
