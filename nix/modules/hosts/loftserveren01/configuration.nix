@@ -42,6 +42,7 @@
         talosctl
         kubectl
         fluxcd
+        opentofu
       ];
 
       system.stateVersion = "26.05";
