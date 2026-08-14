@@ -40,13 +40,13 @@ locals {
     test = {
       network  = "test"
       gateway  = "192.168.100.1"
-      endpoint = "192.168.100.10"
+      endpoint = local.cluster_nodes.test.controlplane.ip
       nodes    = local.cluster_nodes.test
     }
     prod = {
       network  = "prod"
       gateway  = "192.168.101.1"
-      endpoint = "192.168.101.10"
+      endpoint = local.cluster_nodes.prod.controlplane.ip
       nodes    = local.cluster_nodes.prod
     }
   }
@@ -72,19 +72,10 @@ locals {
           image = "ghcr.io/siderolabs/installer:${var.talos_version}"
         }
         network = {
-          interfaces = [
-            merge(
-              {
-                interface = "eth0"
-                dhcp      = true
-              },
-              node.role == "controlplane" ? {
-                vip = {
-                  ip = node.cluster_endpoint
-                }
-              } : {}
-            )
-          ]
+          interfaces = [{
+            interface = "eth0"
+            dhcp      = true
+          }]
         }
       }
     })
