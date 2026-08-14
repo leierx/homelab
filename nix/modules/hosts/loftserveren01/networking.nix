@@ -25,23 +25,37 @@
             address = [ "10.0.0.1/24" ];
           };
         };
-        netdevs."20-wg0" = {
-          netdevConfig = {
-            Kind = "wireguard";
-            Name = "wg0";
+        netdevs = {
+          "10-virbr-test" = {
+            netdevConfig = {
+              Kind = "bridge";
+              Name = "virbr-test";
+            };
           };
-          wireguardConfig = {
-            PrivateKeyFile = config.sops.secrets."wireGuard/private_key".path;
-            ListenPort = 52820;
+          "11-virbr-prod" = {
+            netdevConfig = {
+              Kind = "bridge";
+              Name = "virbr-prod";
+            };
           };
-          wireguardPeers = [
-            {
-              PublicKey = "jqJmKNQ3wuiRAg8IaVGGW1apLypAMmbBfk5uz1ivtnA=";
-              PresharedKeyFile = config.sops.secrets."wireGuard/psk".path;
-              AllowedIPs = [ "10.0.0.2/32" ];
-              PersistentKeepalive = 25;
-            }
-          ];
+          "20-wg0" = {
+            netdevConfig = {
+              Kind = "wireguard";
+              Name = "wg0";
+            };
+            wireguardConfig = {
+              PrivateKeyFile = config.sops.secrets."wireGuard/private_key".path;
+              ListenPort = 52820;
+            };
+            wireguardPeers = [
+              {
+                PublicKey = "jqJmKNQ3wuiRAg8IaVGGW1apLypAMmbBfk5uz1ivtnA=";
+                PresharedKeyFile = config.sops.secrets."wireGuard/psk".path;
+                AllowedIPs = [ "10.0.0.2/32" ];
+                PersistentKeepalive = 25;
+              }
+            ];
+          };
         };
       };
       # NAT
@@ -52,19 +66,6 @@
           "virbr-test"
           "virbr-prod"
         ];
-      };
-      networking.nftables.tables.router = {
-        family = "ip";
-        content = ''
-          chain forward {
-            type filter hook forward priority filter - 10; policy accept;
-
-            iifname "wg0" oifname "virbr-test" ip daddr 192.168.100.0/24 accept
-            iifname "wg0" oifname "virbr-prod" ip daddr 192.168.101.0/24 accept
-            iifname "virbr-test" oifname "wg0" ip saddr 192.168.100.0/24 ct state established,related accept
-            iifname "virbr-prod" oifname "wg0" ip saddr 192.168.101.0/24 ct state established,related accept
-          }
-        '';
       };
       # DNS
       services.resolved = {
@@ -80,7 +81,34 @@
         "149.112.112.112#dns.quad9.net"
       ];
       # FIREWALL
-      networking.nftables.enable = true;
+      networking.nftables = {
+        enable = true;
+        tables.libvirt-open = {
+          family = "inet";
+          content = ''
+            chain forward {
+              # default policy -> drop
+              type filter hook forward priority filter; policy drop;
+
+              # Return traffic for any accepted flow
+              ct state established,related accept
+
+              # VMs on the same bridge can talk to each other
+              iifname "virbr-test" oifname "virbr-test" accept
+              iifname "virbr-prod" oifname "virbr-prod" accept
+
+              # VMs -> internet via the uplink (no cross-bridge leak)
+              iifname { "virbr-test", "virbr-prod" } oifname "eno1" accept
+
+              # WireGuard peers <-> VMs on either bridge
+              iifname "wg0" oifname { "virbr-test", "virbr-prod" } accept
+              iifname { "virbr-test", "virbr-prod" } oifname "wg0" accept
+
+              # test <-> prod intentionally omitted — dropped by default policy
+            }
+          '';
+        };
+      };
       networking.firewall = {
         enable = true;
         checkReversePath = "loose"; # causes problems for wireguard

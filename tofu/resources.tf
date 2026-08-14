@@ -72,7 +72,6 @@ locals {
           image = "ghcr.io/siderolabs/installer:${var.talos_version}"
         }
         network = {
-          hostname = node_name
           interfaces = [
             merge(
               {
@@ -101,7 +100,7 @@ resource "libvirt_network" "test" {
   }
 
   forward = {
-    mode = "route"
+    mode = "open"
   }
 
   ips = [{
@@ -133,7 +132,7 @@ resource "libvirt_network" "prod" {
   }
 
   forward = {
-    mode = "route"
+    mode = "open"
   }
 
   ips = [{
@@ -211,8 +210,8 @@ resource "libvirt_domain" "node" {
   os = {
     type = "hvm"
     boot_devices = [
-      { dev = "cdrom" },
       { dev = "hd" },
+      { dev = "cdrom" },
     ]
   }
 
@@ -338,7 +337,7 @@ resource "talos_machine_bootstrap" "cluster" {
   for_each = local.clusters
 
   node                 = each.value.nodes.controlplane.ip
-  endpoint             = each.value.endpoint
+  endpoint             = each.value.nodes.controlplane.ip
   client_configuration = talos_machine_secrets.cluster[each.key].client_configuration
 
   depends_on = [talos_machine_configuration_apply.node]
