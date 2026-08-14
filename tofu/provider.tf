@@ -12,7 +12,7 @@ terraform {
 }
 
 provider "libvirt" {
-  uri = "qemu+ssh://leier@10.0.0.1/system"
+  uri = "qemu:///system"
 }
 
 provider "talos" {}

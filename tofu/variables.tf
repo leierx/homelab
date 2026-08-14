@@ -1,5 +1,5 @@
 variable "talos_version" {
-  description = "Pinned Talos release used for the VM image and machine configuration."
+  description = "Pinned Talos release used for the installer ISO and machine configuration."
   type        = string
   default     = "v1.13.8"
 }

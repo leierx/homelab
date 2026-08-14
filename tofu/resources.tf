@@ -95,12 +95,8 @@ resource "libvirt_network" "test" {
   name      = "test"
   autostart = true
 
-  bridge = {
-    name = "virbr-test"
-  }
-
   forward = {
-    mode = "open"
+    mode = "nat"
   }
 
   ips = [{
@@ -127,12 +123,8 @@ resource "libvirt_network" "prod" {
   name      = "prod"
   autostart = true
 
-  bridge = {
-    name = "virbr-prod"
-  }
-
   forward = {
-    mode = "open"
+    mode = "nat"
   }
 
   ips = [{
@@ -177,6 +169,17 @@ resource "libvirt_volume" "node" {
       type = "qcow2"
     }
   }
+
+  # Libvirt volumes are immutable, but the provider reports changes to these
+  # fields as updates and then rejects the update. Node disks are intentionally
+  # create-only so reruns do not attempt to modify existing VM storage.
+  lifecycle {
+    ignore_changes = [
+      capacity,
+      capacity_unit,
+      target,
+    ]
+  }
 }
 
 resource "libvirt_volume" "talos_iso" {
@@ -219,8 +222,6 @@ resource "libvirt_domain" "node" {
     mode = "host-passthrough"
   }
 
-  # The installed disk is preferred after Talos installs itself. The ISO is
-  # retained as a fallback for recovery and first boot.
   devices = {
     disks = [
       {
@@ -237,7 +238,6 @@ resource "libvirt_domain" "node" {
           dev = "vda"
           bus = "virtio"
         }
-
       },
       {
         device = "cdrom"
@@ -253,7 +253,6 @@ resource "libvirt_domain" "node" {
           dev = "sda"
           bus = "sata"
         }
-
       }
     ]
 
@@ -283,12 +282,11 @@ resource "libvirt_domain" "node" {
     }]
 
     graphics = [{
-      vnc = {
+      spice = {
         auto_port = true
         listen    = "127.0.0.1"
       }
     }]
-
   }
 }
 

@@ -26,18 +26,6 @@
           };
         };
         netdevs = {
-          "10-virbr-test" = {
-            netdevConfig = {
-              Kind = "bridge";
-              Name = "virbr-test";
-            };
-          };
-          "11-virbr-prod" = {
-            netdevConfig = {
-              Kind = "bridge";
-              Name = "virbr-prod";
-            };
-          };
           "20-wg0" = {
             netdevConfig = {
               Kind = "wireguard";
@@ -58,15 +46,6 @@
           };
         };
       };
-      # NAT
-      networking.nat = {
-        enable = true;
-        externalInterface = "eno1";
-        internalInterfaces = [
-          "virbr-test"
-          "virbr-prod"
-        ];
-      };
       # DNS
       services.resolved = {
         enable = true;
@@ -81,34 +60,6 @@
         "149.112.112.112#dns.quad9.net"
       ];
       # FIREWALL
-      networking.nftables = {
-        enable = true;
-        tables.libvirt-open = {
-          family = "inet";
-          content = ''
-            chain forward {
-              # default policy -> drop
-              type filter hook forward priority filter; policy drop;
-
-              # Return traffic for any accepted flow
-              ct state established,related accept
-
-              # VMs on the same bridge can talk to each other
-              iifname "virbr-test" oifname "virbr-test" accept
-              iifname "virbr-prod" oifname "virbr-prod" accept
-
-              # VMs -> internet via the uplink (no cross-bridge leak)
-              iifname { "virbr-test", "virbr-prod" } oifname "eno1" accept
-
-              # WireGuard peers <-> VMs on either bridge
-              iifname "wg0" oifname { "virbr-test", "virbr-prod" } accept
-              iifname { "virbr-test", "virbr-prod" } oifname "wg0" accept
-
-              # test <-> prod intentionally omitted — dropped by default policy
-            }
-          '';
-        };
-      };
       networking.firewall = {
         enable = true;
         checkReversePath = "loose"; # causes problems for wireguard

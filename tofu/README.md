@@ -7,14 +7,17 @@ clusters:
 - `prod`: one control plane and two workers
 
 The Talos release is pinned in `variables.tf`. Change `talos_version` there
-when deliberately upgrading the clusters.
+when deliberately upgrading the clusters. Each node boots the matching Talos
+metal ISO and installs Talos to its local disk.
 
-Run this from the local machine while the `wg` interface is up. Libvirt is
-accessed over SSH, and the WireGuard link routes Talos traffic to the private
-guest networks:
+The `siderolabs/talos` provider handles machine configuration and cluster
+bootstrap. The `talosctl-linux-amd64` release asset is a client CLI, not a
+bootable VM image, so it is not attached to the domains.
+
+Run this directly on the libvirt host. The two networks are standard
+libvirt-managed NAT networks:
 
 ```sh
-ip route get 192.168.100.11 # should report: dev wg
 tofu -chdir=tofu init
 tofu -chdir=tofu plan
 tofu -chdir=tofu apply
@@ -24,8 +27,8 @@ The Talos and Kubernetes credentials are stored in OpenTofu state and exposed
 as sensitive outputs:
 
 ```sh
-tofu output -json kubeconfig
-tofu output -json talosconfig
+tofu -chdir=tofu output -json kubeconfig
+tofu -chdir=tofu output -json talosconfig
 ```
 
 Protect the state file. It contains the Talos cluster secrets and private
