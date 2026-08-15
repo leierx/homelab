@@ -165,22 +165,16 @@ resource "libvirt_domain" "node" {
       },
     ]
 
-    graphics = {
+    graphics = [{
       spice = {
         auto_port = "yes"
         listen = "127.0.0.1"
       }
-    }
+    }]
     video = { type = "virtio" }
 
     serials = [
       { type = "pty" },
-    ]
-    consoles = [
-      {
-        type = "pty"
-        target = { type = "serial" }
-      },
     ]
 
     channels = [
