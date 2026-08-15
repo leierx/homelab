@@ -1,21 +1,32 @@
-# Talos Clusters
+# Talos Virtual Machines
 
-This OpenTofu configuration manages two libvirt NAT networks and two Talos
-clusters:
+This OpenTofu configuration manages the libvirt infrastructure for two
+manually configured Talos environments:
 
-- `test`: one control plane and two workers
 - `prod`: one control plane and two workers
+- `test`: one control plane and two workers
 
-The Talos release is pinned in `variables.tf`. Change `talos_version` there
-when deliberately upgrading the clusters. Each node boots the matching Talos
-metal ISO and installs Talos to its local disk.
+OpenTofu manages only libvirt. It does not generate, apply, bootstrap, or
+store Talos configuration. Use `talosctl` manually after the guests are
+running.
 
-The `siderolabs/talos` provider handles machine configuration and cluster
-bootstrap. The `talosctl-linux-amd64` release asset is a client CLI, not a
-bootable VM image, so it is not attached to the domains.
+## Networking
 
-Run this directly on the libvirt host. The two networks are standard
-libvirt-managed NAT networks:
+Each environment is a libvirt-managed IPv4 NAT network. DHCP is enabled by
+the presence of the `ips.dhcp` object in `resources.tf`.
+
+Nodes use stable MAC addresses and DHCP reservations. Their reserved
+addresses are outside the dynamic pool, which gives Talos DHCP while keeping
+the node addresses predictable:
+
+- `prod`: `10.10.10.1/24`, dynamic pool `10.10.10.100-199`
+- `test`: `10.10.20.1/24`, dynamic pool `10.10.20.100-199`
+
+The networks use NAT for outbound connectivity through the libvirt host.
+
+## Usage
+
+Run this directly on the libvirt host:
 
 ```sh
 tofu -chdir=tofu init
@@ -23,13 +34,17 @@ tofu -chdir=tofu plan
 tofu -chdir=tofu apply
 ```
 
-The Talos and Kubernetes credentials are stored in OpenTofu state and exposed
-as sensitive outputs:
+After the guests are running, use the `cluster_layout` output to configure
+Talos manually with `talosctl`. The corresponding Talos machine configuration
+should enable DHCP on the first interface:
 
-```sh
-tofu -chdir=tofu output -json kubeconfig
-tofu -chdir=tofu output -json talosconfig
+```yaml
+machine:
+  network:
+    interfaces:
+      - interface: eth0
+        dhcp: true
 ```
 
-Protect the state file. It contains the Talos cluster secrets and private
-credentials needed to administer both clusters.
+Protect the OpenTofu state file. It contains the infrastructure state and
+the DHCP reservations for all nodes.

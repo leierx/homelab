@@ -1,51 +1,70 @@
 locals {
-  talos_schematic_id = "376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba"
-  talos_iso_url      = "https://factory.talos.dev/image/${local.talos_schematic_id}/${var.talos_version}/metal-amd64.iso"
+  talos_iso_url = "https://factory.talos.dev/image/${var.talos_schematic_id}/${var.talos_version}/metal-amd64.iso"
 
-  environments = {
+  # Each network has a fixed gateway and a separate dynamic DHCP pool.
+  # Node addresses are reserved below, outside the dynamic pool, so Talos
+  # can use DHCP while the node endpoints remain predictable.
+  networks = {
     prod = {
-      cidr       = "10.10.10.0/24"
-      bridge_ip  = "10.10.10.1"
+      bridge     = "virbr-prod"
+      gateway    = "10.10.10.1"
+      prefix     = 24
       dhcp_start = "10.10.10.100"
       dhcp_end   = "10.10.10.199"
-      mac_prefix = "52:54:00:aa:00"
     }
     test = {
-      cidr       = "10.10.20.0/24"
-      bridge_ip  = "10.10.20.1"
+      bridge     = "virbr-test"
+      gateway    = "10.10.20.1"
+      prefix     = 24
       dhcp_start = "10.10.20.100"
       dhcp_end   = "10.10.20.199"
-      mac_prefix = "52:54:00:bb:00"
     }
   }
 
-  nodes = merge([
-    for env_name, env in local.environments : {
-      "master-${env_name}01" = {
-        env  = env_name
-        role = "controlplane"
-        mac  = "${env.mac_prefix}:11"
-        ip   = cidrhost(env.cidr, 11)
-      }
-      "slave-${env_name}01" = {
-        env  = env_name
-        role = "worker"
-        mac  = "${env.mac_prefix}:21"
-        ip   = cidrhost(env.cidr, 21)
-      }
-      "slave-${env_name}02" = {
-        env  = env_name
-        role = "worker"
-        mac  = "${env.mac_prefix}:22"
-        ip   = cidrhost(env.cidr, 22)
-      }
+  nodes = {
+    "master-prod01" = {
+      network = "prod"
+      role    = "controlplane"
+      ip      = "10.10.10.11"
+      mac     = "52:54:00:aa:00:11"
     }
-  ]...)
+    "slave-prod01" = {
+      network = "prod"
+      role    = "worker"
+      ip      = "10.10.10.21"
+      mac     = "52:54:00:aa:00:21"
+    }
+    "slave-prod02" = {
+      network = "prod"
+      role    = "worker"
+      ip      = "10.10.10.22"
+      mac     = "52:54:00:aa:00:22"
+    }
+    "master-test01" = {
+      network = "test"
+      role    = "controlplane"
+      ip      = "10.10.20.11"
+      mac     = "52:54:00:bb:00:11"
+    }
+    "slave-test01" = {
+      network = "test"
+      role    = "worker"
+      ip      = "10.10.20.21"
+      mac     = "52:54:00:bb:00:21"
+    }
+    "slave-test02" = {
+      network = "test"
+      role    = "worker"
+      ip      = "10.10.20.22"
+      mac     = "52:54:00:bb:00:22"
+    }
+  }
 }
 
 resource "libvirt_pool" "default" {
   name = "default"
   type = "dir"
+
   target = {
     path = "/var/lib/libvirt/images"
   }
@@ -63,35 +82,42 @@ resource "libvirt_volume" "talos_iso" {
 }
 
 resource "libvirt_network" "env" {
-  for_each = local.environments
+  for_each = local.networks
 
   name      = each.key
   autostart = true
 
   bridge = {
-    name = "virbr-${each.key}"
+    name = each.value.bridge
   }
 
-  forward = { mode = "nat" }
+  forward = {
+    mode = "nat"
+  }
 
   ips = [
     {
-      address = each.value.bridge_ip
-      prefix  = tonumber(split("/", each.value.cidr)[1])
+      address = each.value.gateway
+      prefix  = each.value.prefix
 
+      # Presence of this object enables libvirt's dnsmasq DHCP service.
       dhcp = {
         ranges = [
-          { start = each.value.dhcp_start, end = each.value.dhcp_end },
+          {
+            start = each.value.dhcp_start
+            end   = each.value.dhcp_end
+          }
         ]
         hosts = [
-          for name, n in local.nodes : {
-            mac  = n.mac
-            ip   = n.ip
+          for name, node in local.nodes : {
+            mac  = node.mac
+            ip   = node.ip
             name = name
-          } if n.env == each.key
+          }
+          if node.network == each.key
         ]
       }
-    },
+    }
   ]
 }
 
@@ -104,7 +130,9 @@ resource "libvirt_volume" "node_root" {
   capacity_unit = "GiB"
 
   target = {
-    format = { type = "qcow2" }
+    format = {
+      type = "qcow2"
+    }
   }
 }
 
@@ -119,7 +147,9 @@ resource "libvirt_domain" "node" {
   running     = true
   autostart   = true
 
-  cpu = { mode = "host-passthrough" }
+  cpu = {
+    mode = "host-passthrough"
+  }
 
   os = {
     type         = "hvm"
@@ -141,7 +171,10 @@ resource "libvirt_domain" "node" {
             volume = libvirt_volume.node_root[each.key].name
           }
         }
-        target = { dev = "vda", bus = "virtio" }
+        target = {
+          dev = "vda"
+          bus = "virtio"
+        }
       },
       {
         device = "cdrom"
@@ -151,17 +184,25 @@ resource "libvirt_domain" "node" {
             volume = libvirt_volume.talos_iso.name
           }
         }
-        target = { dev = "sda", bus = "sata" }
+        target = {
+          dev = "sda"
+          bus = "sata"
+        }
       },
     ]
 
     interfaces = [
       {
-        mac   = { address = each.value.mac }
-        model = { type = "virtio" }
+        # The stable MAC is intentional: it identifies the DHCP reservation.
+        mac = {
+          address = each.value.mac
+        }
+        model = {
+          type = "virtio"
+        }
         source = {
           network = {
-            network = libvirt_network.env[each.value.env].name
+            network = libvirt_network.env[each.value.network].name
           }
         }
       },
@@ -175,28 +216,25 @@ resource "libvirt_domain" "node" {
         }
       },
     ]
-
-    channels = [
-      {
-        source = { unix = {} }
-        target = {
-          virt_io = { name = "org.qemu.guest_agent.0" }
-        }
-      },
-    ]
   }
 }
 
 output "cluster_layout" {
   value = {
-    for env_name in keys(local.environments) : env_name => {
+    for network_name in keys(local.networks) : network_name => {
       controlplane = [
-        for name, n in local.nodes : { name = name, ip = n.ip }
-        if n.env == env_name && n.role == "controlplane"
+        for name, node in local.nodes : {
+          name = name
+          ip   = node.ip
+        }
+        if node.network == network_name && node.role == "controlplane"
       ]
       workers = [
-        for name, n in local.nodes : { name = name, ip = n.ip }
-        if n.env == env_name && n.role == "worker"
+        for name, node in local.nodes : {
+          name = name
+          ip   = node.ip
+        }
+        if node.network == network_name && node.role == "worker"
       ]
     }
   }
