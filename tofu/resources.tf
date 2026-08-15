@@ -171,11 +171,6 @@ resource "libvirt_domain" "node" {
         listen = "127.0.0.1"
       }
     }]
-    video = { type = "virtio" }
-
-    serials = [
-      { type = "pty" },
-    ]
 
     channels = [
       {
