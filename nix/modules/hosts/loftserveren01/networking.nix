@@ -49,6 +49,8 @@
       # NAT
       networking.nat = {
         enable = true;
+        externalInterface = "eno1";
+        internalInterfaces = [ "wg0" ];
       };
       # DNS
       services.resolved = {
@@ -64,6 +66,7 @@
         "149.112.112.112#dns.quad9.net"
       ];
       # FIREWALL
+      networking.nftables.enable = true;
       networking.firewall = {
         enable = true;
         checkReversePath = "loose"; # causes problems for wireguard
@@ -74,10 +77,6 @@
             52820 # wireguard port
           ];
         };
-        trustedInterfaces = [
-          "virbr-test"
-          "virbr-prod"
-        ];
         interfaces.wg0.allowedTCPPorts = [ 22 ]; # ssh -> wireguard interface
       };
     };
