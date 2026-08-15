@@ -45,6 +45,12 @@ locals {
   ]...)
 }
 
+resource "libvirt_pool" "default" {
+  name = "default"
+  type = "dir"
+  target = { path = "/var/lib/libvirt/images" }
+}
+
 resource "libvirt_volume" "talos_iso" {
   name = "talos-${var.talos_version}-metal-amd64.iso"
   pool = "default"
