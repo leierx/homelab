@@ -48,12 +48,14 @@ locals {
 resource "libvirt_pool" "default" {
   name = "default"
   type = "dir"
-  target = { path = "/var/lib/libvirt/images" }
+  target = {
+    path = "/var/lib/libvirt/images"
+  }
 }
 
 resource "libvirt_volume" "talos_iso" {
   name = "talos-${var.talos_version}-metal-amd64.iso"
-  pool = "default"
+  pool = libvirt_pool.default.name
 
   create = {
     content = {
@@ -77,7 +79,6 @@ resource "libvirt_network" "env" {
       prefix = tonumber(split("/", each.value.cidr)[1])
 
       dhcp = {
-        enabled = true
         ranges = [
           { start = each.value.dhcp_start, end = each.value.dhcp_end },
         ]
@@ -93,12 +94,11 @@ resource "libvirt_network" "env" {
   ]
 }
 
-# Root disks (empty qcow2 that Talos will install itself onto)
 resource "libvirt_volume" "node_root" {
   for_each = local.nodes
 
   name = "${each.key}.qcow2"
-  pool = "default"
+  pool = libvirt_pool.default.name
   capacity = var.vm_disk_gib
   capacity_unit = "GiB"
 
@@ -132,7 +132,6 @@ resource "libvirt_domain" "node" {
 
   devices = {
     disks = [
-      # Root disk – Talos installs to /dev/vda here.
       {
         device = "disk"
         source = {
@@ -143,7 +142,6 @@ resource "libvirt_domain" "node" {
         }
         target = { dev = "vda", bus = "virtio" }
       },
-      # Installer ISO shared across all VMs.
       {
         device = "cdrom"
         source = {
@@ -168,12 +166,14 @@ resource "libvirt_domain" "node" {
       },
     ]
 
-    graphics = [{
-      spice = {
-        auto_port = true
-        listen = "127.0.0.1"
-      }
-    }]
+    graphics = [
+      {
+        spice = {
+          auto_port = true
+          listen = "127.0.0.1"
+        }
+      },
+    ]
 
     channels = [
       {
@@ -186,9 +186,7 @@ resource "libvirt_domain" "node" {
   }
 }
 
-# Outputs — enough info to drive `talosctl` by hand.
 output "cluster_layout" {
-  description = "Per-environment control-plane and worker addresses."
   value = {
     for env_name in keys(local.environments) : env_name => {
       controlplane = [
@@ -202,4 +200,3 @@ output "cluster_layout" {
     }
   }
 }
-
