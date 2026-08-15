@@ -155,7 +155,7 @@ resource "libvirt_domain" "node" {
 
     interfaces = [
       {
-        mac = each.value.mac
+        mac = { address = each.value.mac }
         model = { type = "virtio" }
         source = {
           network = {
@@ -167,7 +167,7 @@ resource "libvirt_domain" "node" {
 
     graphics = [{
       spice = {
-        auto_port = "yes"
+        auto_port = true
         listen = "127.0.0.1"
       }
     }]
