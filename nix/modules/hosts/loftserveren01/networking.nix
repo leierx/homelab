@@ -46,6 +46,10 @@
           };
         };
       };
+      # NAT
+      networking.nat = {
+        enable = true;
+      };
       # DNS
       services.resolved = {
         enable = true;

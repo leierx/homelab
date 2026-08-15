@@ -1,22 +1,20 @@
 locals {
   talos_schematic_id = "376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba"
-  talos_iso_url = "https://factory.talos.dev/image/${local.talos_schematic_id}/${var.talos_version}/metal-amd64.iso"
+  talos_iso_url      = "https://factory.talos.dev/image/${local.talos_schematic_id}/${var.talos_version}/metal-amd64.iso"
 
   environments = {
     prod = {
-      cidr = "10.10.10.0/24"
-      bridge_ip = "10.10.10.1"
+      cidr       = "10.10.10.0/24"
+      bridge_ip  = "10.10.10.1"
       dhcp_start = "10.10.10.100"
-      dhcp_end = "10.10.10.199"
-      bridge_name = "virbr-prod"
+      dhcp_end   = "10.10.10.199"
       mac_prefix = "52:54:00:aa:00"
     }
     test = {
-      cidr = "10.10.20.0/24"
-      bridge_ip = "10.10.20.1"
+      cidr       = "10.10.20.0/24"
+      bridge_ip  = "10.10.20.1"
       dhcp_start = "10.10.20.100"
-      dhcp_end = "10.10.20.199"
-      bridge_name = "virbr-test"
+      dhcp_end   = "10.10.20.199"
       mac_prefix = "52:54:00:bb:00"
     }
   }
@@ -24,22 +22,22 @@ locals {
   nodes = merge([
     for env_name, env in local.environments : {
       "master-${env_name}01" = {
-        env = env_name
+        env  = env_name
         role = "controlplane"
-        mac = "${env.mac_prefix}:11"
-        ip = cidrhost(env.cidr, 11)
+        mac  = "${env.mac_prefix}:11"
+        ip   = cidrhost(env.cidr, 11)
       }
       "slave-${env_name}01" = {
-        env = env_name
+        env  = env_name
         role = "worker"
-        mac = "${env.mac_prefix}:21"
-        ip = cidrhost(env.cidr, 21)
+        mac  = "${env.mac_prefix}:21"
+        ip   = cidrhost(env.cidr, 21)
       }
       "slave-${env_name}02" = {
-        env = env_name
+        env  = env_name
         role = "worker"
-        mac = "${env.mac_prefix}:22"
-        ip = cidrhost(env.cidr, 22)
+        mac  = "${env.mac_prefix}:22"
+        ip   = cidrhost(env.cidr, 22)
       }
     }
   ]...)
@@ -67,16 +65,19 @@ resource "libvirt_volume" "talos_iso" {
 resource "libvirt_network" "env" {
   for_each = local.environments
 
-  name = each.key
+  name      = each.key
   autostart = true
 
+  bridge = {
+    name = "virbr-${each.key}"
+  }
+
   forward = { mode = "nat" }
-  bridge = { name = each.value.bridge_name }
 
   ips = [
     {
       address = each.value.bridge_ip
-      prefix = tonumber(split("/", each.value.cidr)[1])
+      prefix  = tonumber(split("/", each.value.cidr)[1])
 
       dhcp = {
         ranges = [
@@ -84,8 +85,8 @@ resource "libvirt_network" "env" {
         ]
         hosts = [
           for name, n in local.nodes : {
-            mac = n.mac
-            ip = n.ip
+            mac  = n.mac
+            ip   = n.ip
             name = name
           } if n.env == each.key
         ]
@@ -97,9 +98,9 @@ resource "libvirt_network" "env" {
 resource "libvirt_volume" "node_root" {
   for_each = local.nodes
 
-  name = "${each.key}.qcow2"
-  pool = libvirt_pool.default.name
-  capacity = var.vm_disk_gib
+  name          = "${each.key}.qcow2"
+  pool          = libvirt_pool.default.name
+  capacity      = var.vm_disk_gib
   capacity_unit = "GiB"
 
   target = {
@@ -110,19 +111,19 @@ resource "libvirt_volume" "node_root" {
 resource "libvirt_domain" "node" {
   for_each = local.nodes
 
-  name = each.key
-  type = "kvm"
-  vcpu = var.vm_vcpu
-  memory = var.vm_memory_mib
+  name        = each.key
+  type        = "kvm"
+  vcpu        = var.vm_vcpu
+  memory      = var.vm_memory_mib
   memory_unit = "MiB"
-  running = true
-  autostart = true
+  running     = true
+  autostart   = true
 
   cpu = { mode = "host-passthrough" }
 
   os = {
-    type = "hvm"
-    type_arch = "x86_64"
+    type         = "hvm"
+    type_arch    = "x86_64"
     type_machine = "q35"
     boot_devices = [
       { dev = "hd" },
@@ -136,7 +137,7 @@ resource "libvirt_domain" "node" {
         device = "disk"
         source = {
           volume = {
-            pool = libvirt_volume.node_root[each.key].pool
+            pool   = libvirt_volume.node_root[each.key].pool
             volume = libvirt_volume.node_root[each.key].name
           }
         }
@@ -146,7 +147,7 @@ resource "libvirt_domain" "node" {
         device = "cdrom"
         source = {
           volume = {
-            pool = libvirt_volume.talos_iso.pool
+            pool   = libvirt_volume.talos_iso.pool
             volume = libvirt_volume.talos_iso.name
           }
         }
@@ -156,7 +157,7 @@ resource "libvirt_domain" "node" {
 
     interfaces = [
       {
-        mac = { address = each.value.mac }
+        mac   = { address = each.value.mac }
         model = { type = "virtio" }
         source = {
           network = {
@@ -170,7 +171,7 @@ resource "libvirt_domain" "node" {
       {
         spice = {
           auto_port = true
-          listen = "127.0.0.1"
+          listen    = "127.0.0.1"
         }
       },
     ]
