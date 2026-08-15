@@ -9,7 +9,6 @@ locals {
       dhcp_start = "10.10.10.100"
       dhcp_end = "10.10.10.199"
       bridge_name = "virbr-prod"
-      dns_domain = "prod.talos.local"
       mac_prefix = "52:54:00:aa:00"
     }
     test = {
@@ -18,7 +17,6 @@ locals {
       dhcp_start = "10.10.20.100"
       dhcp_end = "10.10.20.199"
       bridge_name = "virbr-test"
-      dns_domain = "test.talos.local"
       mac_prefix = "52:54:00:bb:00"
     }
   }
@@ -62,7 +60,6 @@ resource "libvirt_network" "env" {
   for_each = local.environments
 
   name = each.key
-  domain = each.value.dns_domain
   autostart = true
 
   forward = { mode = "nat" }
