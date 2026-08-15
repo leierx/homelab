@@ -1,187 +1,55 @@
 locals {
-  cluster_nodes = {
-    test = {
-      controlplane = {
-        ip   = "192.168.100.11"
-        mac  = "52:54:00:10:00:11"
-        role = "controlplane"
-      }
-      worker-1 = {
-        ip   = "192.168.100.12"
-        mac  = "52:54:00:10:00:12"
-        role = "worker"
-      }
-      worker-2 = {
-        ip   = "192.168.100.13"
-        mac  = "52:54:00:10:00:13"
-        role = "worker"
-      }
-    }
-    prod = {
-      controlplane = {
-        ip   = "192.168.101.11"
-        mac  = "52:54:00:20:00:11"
-        role = "controlplane"
-      }
-      worker-1 = {
-        ip   = "192.168.101.12"
-        mac  = "52:54:00:20:00:12"
-        role = "worker"
-      }
-      worker-2 = {
-        ip   = "192.168.101.13"
-        mac  = "52:54:00:20:00:13"
-        role = "worker"
-      }
-    }
-  }
+  talos_schematic_id = "376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba"
+  talos_iso_url = "https://factory.talos.dev/image/${local.talos_schematic_id}/${var.talos_version}/metal-amd64.iso"
 
-  clusters = {
-    test = {
-      network  = "test"
-      gateway  = "192.168.100.1"
-      endpoint = local.cluster_nodes.test.controlplane.ip
-      nodes    = local.cluster_nodes.test
-    }
+  environments = {
     prod = {
-      network  = "prod"
-      gateway  = "192.168.101.1"
-      endpoint = local.cluster_nodes.prod.controlplane.ip
-      nodes    = local.cluster_nodes.prod
+      cidr = "10.10.10.0/24"
+      bridge_ip = "10.10.10.1"
+      dhcp_start = "10.10.10.100"
+      dhcp_end = "10.10.10.199"
+      bridge_name = "virbr-prod"
+      dns_domain = "prod.talos.local"
+      mac_prefix = "52:54:00:aa:00"
+    }
+    test = {
+      cidr = "10.10.20.0/24"
+      bridge_ip = "10.10.20.1"
+      dhcp_start = "10.10.20.100"
+      dhcp_end = "10.10.20.199"
+      bridge_name = "virbr-test"
+      dns_domain = "test.talos.local"
+      mac_prefix = "52:54:00:bb:00"
     }
   }
 
   nodes = merge([
-    for cluster_name, cluster in local.clusters : {
-      for node_name, node in cluster.nodes : "${cluster_name}-${node_name}" => merge(node, {
-        cluster_name     = cluster_name
-        cluster_endpoint = cluster.endpoint
-        gateway          = cluster.gateway
-        network          = cluster.network
-      })
+    for env_name, env in local.environments : {
+      "master-${env_name}01" = {
+        env = env_name
+        role = "controlplane"
+        mac = "${env.mac_prefix}:11"
+        ip = cidrhost(env.cidr, 11)
+      }
+      "slave-${env_name}01" = {
+        env = env_name
+        role = "worker"
+        mac = "${env.mac_prefix}:21"
+        ip = cidrhost(env.cidr, 21)
+      }
+      "slave-${env_name}02" = {
+        env = env_name
+        role = "worker"
+        mac = "${env.mac_prefix}:22"
+        ip = cidrhost(env.cidr, 22)
+      }
     }
   ]...)
-
-  talos_iso_url = "https://github.com/siderolabs/talos/releases/download/${var.talos_version}/metal-amd64.iso"
-
-  machine_patches = {
-    for node_name, node in local.nodes : node_name => yamlencode({
-      machine = {
-        install = {
-          disk  = "/dev/vda"
-          image = "ghcr.io/siderolabs/installer:${var.talos_version}"
-        }
-        network = {
-          interfaces = [{
-            interface = "eth0"
-            dhcp      = true
-          }]
-        }
-      }
-    })
-  }
-}
-
-resource "libvirt_network" "test" {
-  name      = "test"
-  autostart = true
-
-  forward = {
-    mode = "nat"
-  }
-
-  ips = [{
-    address = "192.168.100.1"
-    prefix  = 24
-
-    dhcp = {
-      ranges = [{
-        start = "192.168.100.2"
-        end   = "192.168.100.254"
-      }]
-
-      hosts = [
-        for node in values(local.cluster_nodes.test) : {
-          ip  = node.ip
-          mac = node.mac
-        }
-      ]
-    }
-  }]
-}
-
-resource "libvirt_network" "prod" {
-  name      = "prod"
-  autostart = true
-
-  forward = {
-    mode = "nat"
-  }
-
-  ips = [{
-    address = "192.168.101.1"
-    prefix  = 24
-
-    dhcp = {
-      ranges = [{
-        start = "192.168.101.2"
-        end   = "192.168.101.254"
-      }]
-
-      hosts = [
-        for node in values(local.cluster_nodes.prod) : {
-          ip  = node.ip
-          mac = node.mac
-        }
-      ]
-    }
-  }]
-}
-
-resource "libvirt_pool" "default" {
-  name = "default"
-  type = "dir"
-
-  target = {
-    path = "/var/lib/libvirt/images"
-  }
-}
-
-resource "libvirt_volume" "node" {
-  for_each = local.nodes
-
-  name          = "${each.key}.qcow2"
-  pool          = libvirt_pool.default.name
-  capacity      = var.vm_disk_gib * 1024 * 1024 * 1024
-  capacity_unit = "bytes"
-
-  target = {
-    format = {
-      type = "qcow2"
-    }
-  }
-
-  # Libvirt volumes are immutable, but the provider reports changes to these
-  # fields as updates and then rejects the update. Node disks are intentionally
-  # create-only so reruns do not attempt to modify existing VM storage.
-  lifecycle {
-    ignore_changes = [
-      capacity,
-      capacity_unit,
-      target,
-    ]
-  }
 }
 
 resource "libvirt_volume" "talos_iso" {
-  name = "talos-${var.talos_version}-amd64.iso"
-  pool = libvirt_pool.default.name
-
-  target = {
-    format = {
-      type = "iso"
-    }
-  }
+  name = "talos-${var.talos_version}-metal-amd64.iso"
+  pool = "default"
 
   create = {
     content = {
@@ -190,188 +58,156 @@ resource "libvirt_volume" "talos_iso" {
   }
 }
 
+resource "libvirt_network" "env" {
+  for_each = local.environments
+
+  name = each.key
+  domain = each.value.dns_domain
+  autostart = true
+
+  forward = { mode = "nat" }
+  bridge = { name = each.value.bridge_name }
+
+  ips = [
+    {
+      address = each.value.bridge_ip
+      prefix = tonumber(split("/", each.value.cidr)[1])
+
+      dhcp = {
+        enabled = true
+        ranges = [
+          { start = each.value.dhcp_start, end = each.value.dhcp_end },
+        ]
+        hosts = [
+          for name, n in local.nodes : {
+            mac = n.mac
+            ip = n.ip
+            name = name
+          } if n.env == each.key
+        ]
+      }
+    },
+  ]
+}
+
+# Root disks (empty qcow2 that Talos will install itself onto)
+resource "libvirt_volume" "node_root" {
+  for_each = local.nodes
+
+  name = "${each.key}.qcow2"
+  pool = "default"
+  capacity = var.vm_disk_gib
+  capacity_unit = "GiB"
+
+  target = {
+    format = { type = "qcow2" }
+  }
+}
+
 resource "libvirt_domain" "node" {
   for_each = local.nodes
 
-  name        = each.key
-  type        = "kvm"
-  vcpu        = var.vm_vcpu
-  memory      = var.vm_memory_mib
+  name = each.key
+  type = "kvm"
+  vcpu = var.vm_vcpu
+  memory = var.vm_memory_mib
   memory_unit = "MiB"
-  running     = true
-  autostart   = true
+  running = true
+  autostart = true
+
+  cpu = { mode = "host-passthrough" }
 
   os = {
     type = "hvm"
+    type_arch = "x86_64"
+    type_machine = "q35"
     boot_devices = [
       { dev = "hd" },
       { dev = "cdrom" },
     ]
   }
 
-  cpu = {
-    mode = "host-passthrough"
-  }
-
   devices = {
     disks = [
+      # Root disk – Talos installs to /dev/vda here.
       {
         device = "disk"
-
         source = {
           volume = {
-            pool   = libvirt_pool.default.name
-            volume = libvirt_volume.node[each.key].name
+            pool = libvirt_volume.node_root[each.key].pool
+            volume = libvirt_volume.node_root[each.key].name
           }
         }
-
-        target = {
-          dev = "vda"
-          bus = "virtio"
-        }
+        target = { dev = "vda", bus = "virtio" }
       },
+      # Installer ISO shared across all VMs.
       {
         device = "cdrom"
-
         source = {
           volume = {
-            pool   = libvirt_pool.default.name
+            pool = libvirt_volume.talos_iso.pool
             volume = libvirt_volume.talos_iso.name
           }
         }
-
-        target = {
-          dev = "sda"
-          bus = "sata"
-        }
-      }
+        target = { dev = "sda", bus = "sata" }
+      },
     ]
 
-    interfaces = [{
-      source = {
-        network = {
-          network = each.value.network
+    interfaces = [
+      {
+        mac = each.value.mac
+        model = { type = "virtio" }
+        source = {
+          network = {
+            network = libvirt_network.env[each.value.env].name
+          }
         }
-      }
+      },
+    ]
 
-      mac = {
-        address = each.value.mac
-      }
-
-      model = {
-        type = "virtio"
-      }
-
-      guest = {
-        dev = "eth0"
-      }
-
-      wait_for_ip = {
-        source  = "lease"
-        timeout = 300
-      }
-    }]
-
-    graphics = [{
+    graphics = {
       spice = {
-        auto_port = true
-        listen    = "127.0.0.1"
+        auto_port = "yes"
+        listen = "127.0.0.1"
       }
-    }]
+    }
+    video = { type = "virtio" }
+
+    serials = [
+      { type = "pty" },
+    ]
+    consoles = [
+      {
+        type = "pty"
+        target = { type = "serial" }
+      },
+    ]
+
+    channels = [
+      {
+        source = { unix = {} }
+        target = {
+          virt_io = { name = "org.qemu.guest_agent.0" }
+        }
+      },
+    ]
   }
 }
 
-resource "talos_machine_secrets" "cluster" {
-  for_each = local.clusters
-
-  talos_version = var.talos_version
-}
-
-data "talos_machine_configuration" "controlplane" {
-  for_each = local.clusters
-
-  cluster_name     = each.key
-  cluster_endpoint = "https://${each.value.endpoint}:6443"
-  machine_type     = "controlplane"
-  machine_secrets  = talos_machine_secrets.cluster[each.key].machine_secrets
-  talos_version    = var.talos_version
-}
-
-data "talos_machine_configuration" "worker" {
-  for_each = local.clusters
-
-  cluster_name     = each.key
-  cluster_endpoint = "https://${each.value.endpoint}:6443"
-  machine_type     = "worker"
-  machine_secrets  = talos_machine_secrets.cluster[each.key].machine_secrets
-  talos_version    = var.talos_version
-}
-
-resource "talos_machine_configuration_apply" "node" {
-  for_each = local.nodes
-
-  client_configuration = talos_machine_secrets.cluster[each.value.cluster_name].client_configuration
-  machine_configuration_input = each.value.role == "controlplane" ? (
-    data.talos_machine_configuration.controlplane[each.value.cluster_name].machine_configuration
-    ) : (
-    data.talos_machine_configuration.worker[each.value.cluster_name].machine_configuration
-  )
-  node           = each.value.ip
-  config_patches = [local.machine_patches[each.key]]
-
-  depends_on = [libvirt_domain.node]
-}
-
-resource "talos_machine_bootstrap" "cluster" {
-  for_each = local.clusters
-
-  node                 = each.value.nodes.controlplane.ip
-  endpoint             = each.value.nodes.controlplane.ip
-  client_configuration = talos_machine_secrets.cluster[each.key].client_configuration
-
-  depends_on = [talos_machine_configuration_apply.node]
-}
-
-data "talos_cluster_health" "cluster" {
-  for_each = local.clusters
-
-  client_configuration = talos_machine_secrets.cluster[each.key].client_configuration
-  endpoints            = [each.value.endpoint]
-  control_plane_nodes  = [each.value.nodes.controlplane.ip]
-  worker_nodes = [
-    each.value.nodes["worker-1"].ip,
-    each.value.nodes["worker-2"].ip,
-  ]
-
-  depends_on = [
-    talos_machine_bootstrap.cluster,
-    talos_machine_configuration_apply.node,
-  ]
-
-  timeouts = {
-    read = "30m"
+# Outputs — enough info to drive `talosctl` by hand.
+output "cluster_layout" {
+  description = "Per-environment control-plane and worker addresses."
+  value = {
+    for env_name in keys(local.environments) : env_name => {
+      controlplane = [
+        for name, n in local.nodes : { name = name, ip = n.ip }
+        if n.env == env_name && n.role == "controlplane"
+      ]
+      workers = [
+        for name, n in local.nodes : { name = name, ip = n.ip }
+        if n.env == env_name && n.role == "worker"
+      ]
+    }
   }
 }
 
-data "talos_client_configuration" "cluster" {
-  for_each = local.clusters
-
-  cluster_name         = each.key
-  client_configuration = talos_machine_secrets.cluster[each.key].client_configuration
-  endpoints            = [each.value.endpoint]
-  nodes = [
-    each.value.nodes.controlplane.ip,
-    each.value.nodes["worker-1"].ip,
-    each.value.nodes["worker-2"].ip,
-  ]
-}
-
-resource "talos_cluster_kubeconfig" "cluster" {
-  for_each = local.clusters
-
-  client_configuration = talos_machine_secrets.cluster[each.key].client_configuration
-  node                 = each.value.nodes.controlplane.ip
-  endpoint             = each.value.endpoint
-
-  depends_on = [data.talos_cluster_health.cluster]
-}
