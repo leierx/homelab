@@ -15,12 +15,11 @@ running.
 Each environment is a libvirt-managed IPv4 NAT network. DHCP is enabled by
 the presence of the `ips.dhcp` object in `resources.tf`.
 
-Nodes use stable MAC addresses and DHCP reservations. Their reserved
-addresses are outside the dynamic pool, which gives Talos DHCP while keeping
-the node addresses predictable:
+Nodes use ordinary dynamic DHCP. Libvirt generates guest MAC addresses and
+dnsmasq leases addresses from the complete usable range:
 
-- `prod`: `10.10.10.1/24`, dynamic pool `10.10.10.100-199`
-- `test`: `10.10.20.1/24`, dynamic pool `10.10.20.100-199`
+- `prod`: `10.10.10.1/24`, DHCP pool `10.10.10.2-100`
+- `test`: `10.10.20.1/24`, DHCP pool `10.10.20.2-100`
 
 The networks use NAT for outbound connectivity through the libvirt host.
 
@@ -46,5 +45,5 @@ machine:
         dhcp: true
 ```
 
-Protect the OpenTofu state file. It contains the infrastructure state and
-the DHCP reservations for all nodes.
+Protect the OpenTofu state file. It contains the infrastructure state for all
+nodes.

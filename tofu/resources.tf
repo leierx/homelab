@@ -1,23 +1,21 @@
 locals {
   talos_iso_url = "https://factory.talos.dev/image/${var.talos_schematic_id}/${var.talos_version}/metal-amd64.iso"
 
-  # Each network has a fixed gateway and a separate dynamic DHCP pool.
-  # Node addresses are reserved below, outside the dynamic pool, so Talos
-  # can use DHCP while the node endpoints remain predictable.
+  # Each network has a fixed gateway and a plain dynamic DHCP pool.
   networks = {
     prod = {
       bridge     = "virbr-prod"
       gateway    = "10.10.10.1"
       prefix     = 24
-      dhcp_start = "10.10.10.100"
-      dhcp_end   = "10.10.10.199"
+      dhcp_start = "10.10.10.2"
+      dhcp_end   = "10.10.10.100"
     }
     test = {
       bridge     = "virbr-test"
       gateway    = "10.10.20.1"
       prefix     = 24
-      dhcp_start = "10.10.20.100"
-      dhcp_end   = "10.10.20.199"
+      dhcp_start = "10.10.20.2"
+      dhcp_end   = "10.10.20.100"
     }
   }
 
@@ -25,38 +23,26 @@ locals {
     "master-prod01" = {
       network = "prod"
       role    = "controlplane"
-      ip      = "10.10.10.11"
-      mac     = "52:54:00:aa:00:11"
     }
     "slave-prod01" = {
       network = "prod"
       role    = "worker"
-      ip      = "10.10.10.21"
-      mac     = "52:54:00:aa:00:21"
     }
     "slave-prod02" = {
       network = "prod"
       role    = "worker"
-      ip      = "10.10.10.22"
-      mac     = "52:54:00:aa:00:22"
     }
     "master-test01" = {
       network = "test"
       role    = "controlplane"
-      ip      = "10.10.20.11"
-      mac     = "52:54:00:bb:00:11"
     }
     "slave-test01" = {
       network = "test"
       role    = "worker"
-      ip      = "10.10.20.21"
-      mac     = "52:54:00:bb:00:21"
     }
     "slave-test02" = {
       network = "test"
       role    = "worker"
-      ip      = "10.10.20.22"
-      mac     = "52:54:00:bb:00:22"
     }
   }
 }
@@ -100,21 +86,12 @@ resource "libvirt_network" "env" {
       address = each.value.gateway
       prefix  = each.value.prefix
 
-      # Presence of this object enables libvirt's dnsmasq DHCP service.
       dhcp = {
         ranges = [
           {
             start = each.value.dhcp_start
             end   = each.value.dhcp_end
           }
-        ]
-        hosts = [
-          for name, node in local.nodes : {
-            mac  = node.mac
-            ip   = node.ip
-            name = name
-          }
-          if node.network == each.key
         ]
       }
     }
@@ -193,10 +170,6 @@ resource "libvirt_domain" "node" {
 
     interfaces = [
       {
-        # The stable MAC is intentional: it identifies the DHCP reservation.
-        mac = {
-          address = each.value.mac
-        }
         model = {
           type = "virtio"
         }
@@ -225,14 +198,12 @@ output "cluster_layout" {
       controlplane = [
         for name, node in local.nodes : {
           name = name
-          ip   = node.ip
         }
         if node.network == network_name && node.role == "controlplane"
       ]
       workers = [
         for name, node in local.nodes : {
           name = name
-          ip   = node.ip
         }
         if node.network == network_name && node.role == "worker"
       ]
