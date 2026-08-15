@@ -74,6 +74,10 @@
             52820 # wireguard port
           ];
         };
+        trustedInterfaces = [
+          "virbr-test"
+          "virbr-prod"
+        ];
         interfaces.wg0.allowedTCPPorts = [ 22 ]; # ssh -> wireguard interface
       };
     };
