@@ -1,5 +1,5 @@
 locals {
-  talos_iso_url = "https://factory.talos.dev/image/${var.talos_schematic_id}/${var.talos_version}/metal-amd64.iso"
+  talos_image_url = "https://factory.talos.dev/image/${var.talos_schematic_id}/${var.talos_version}/metal-amd64.qcow2"
 
   # Each network has a fixed gateway and a plain dynamic DHCP pool.
   networks = {
@@ -56,13 +56,19 @@ resource "libvirt_pool" "default" {
   }
 }
 
-resource "libvirt_volume" "talos_iso" {
-  name = "talos-${var.talos_version}-metal-amd64.iso"
+resource "libvirt_volume" "talos_base" {
+  name = "talos-${var.talos_version}-metal-amd64.qcow2"
   pool = libvirt_pool.default.name
+
+  target = {
+    format = {
+      type = "qcow2"
+    }
+  }
 
   create = {
     content = {
-      url = local.talos_iso_url
+      url = local.talos_image_url
     }
   }
 }
@@ -111,6 +117,13 @@ resource "libvirt_volume" "node_root" {
       type = "qcow2"
     }
   }
+
+  backing_store = {
+    path = libvirt_volume.talos_base.path
+    format = {
+      type = "qcow2"
+    }
+  }
 }
 
 resource "libvirt_domain" "node" {
@@ -134,7 +147,6 @@ resource "libvirt_domain" "node" {
     type_machine = "q35"
     boot_devices = [
       { dev = "hd" },
-      { dev = "cdrom" },
     ]
   }
 
@@ -142,6 +154,9 @@ resource "libvirt_domain" "node" {
     disks = [
       {
         device = "disk"
+        driver = {
+          type = "qcow2"
+        }
         source = {
           volume = {
             pool   = libvirt_volume.node_root[each.key].pool
@@ -151,19 +166,6 @@ resource "libvirt_domain" "node" {
         target = {
           dev = "vda"
           bus = "virtio"
-        }
-      },
-      {
-        device = "cdrom"
-        source = {
-          volume = {
-            pool   = libvirt_volume.talos_iso.pool
-            volume = libvirt_volume.talos_iso.name
-          }
-        }
-        target = {
-          dev = "sda"
-          bus = "sata"
         }
       },
     ]
@@ -194,17 +196,16 @@ resource "libvirt_domain" "node" {
 
 output "cluster_layout" {
   value = {
-    for network_name in keys(local.networks) : network_name => {
+    for network_name, network in local.networks : network_name => {
+      gateway    = network.gateway
+      dhcp_start = network.dhcp_start
+      dhcp_end   = network.dhcp_end
       controlplane = [
-        for name, node in local.nodes : {
-          name = name
-        }
+        for name, node in local.nodes : name
         if node.network == network_name && node.role == "controlplane"
       ]
       workers = [
-        for name, node in local.nodes : {
-          name = name
-        }
+        for name, node in local.nodes : name
         if node.network == network_name && node.role == "worker"
       ]
     }

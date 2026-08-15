@@ -6,9 +6,9 @@ manually configured Talos environments:
 - `prod`: one control plane and two workers
 - `test`: one control plane and two workers
 
-OpenTofu manages only libvirt. It does not generate, apply, bootstrap, or
-store Talos configuration. Use `talosctl` manually after the guests are
-running.
+OpenTofu manages only libvirt. It downloads a bootable Talos qcow2 image but
+does not generate, apply, or bootstrap Talos configuration. Use `talosctl`
+manually after the guests are running.
 
 ## Networking
 

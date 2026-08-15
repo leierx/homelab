@@ -1,11 +1,11 @@
 variable "talos_schematic_id" {
-  description = "Talos Image Factory schematic used to build the installer ISO."
+  description = "Talos Image Factory schematic used to build the bootable disk image."
   type        = string
   default     = "376567988ad370138ad8b2698212367b8edcb69b5fd68c80be1f2ec7d603b4ba"
 }
 
 variable "talos_version" {
-  description = "Pinned Talos release used for the installer ISO. Talos configuration is applied manually."
+  description = "Pinned Talos release used for the bootable disk image. Talos configuration is applied manually."
   type        = string
   default     = "v1.13.8"
 }
