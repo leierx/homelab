@@ -3,7 +3,6 @@ locals {
   node_vcpu = 4
   node_memory = 16384
   disk_bytes = 40 * 1024 * 1024 * 1024
-  pool = "default"
 
   clusters = {
     prod = {
@@ -57,7 +56,9 @@ locals {
   }
 
   controlplanes = {
-    for n in local.nodes : n.cluster => n if n.role == "controlplane"
+    for cluster, _ in local.clusters : cluster => [
+      for n in local.nodes : n if n.cluster == cluster && n.role == "controlplane"
+    ]
   }
 
   common_patch = yamlencode({

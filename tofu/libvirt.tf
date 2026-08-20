@@ -57,7 +57,7 @@ resource "libvirt_network" "cluster" {
 
   dns = {
     enable = "yes"
-    host = [
+    hosts = [
       for n in local.cluster_nodes[each.key] : {
         ip = n.ip
         hostnames = [
@@ -72,7 +72,6 @@ resource "libvirt_network" "cluster" {
 resource "libvirt_volume" "iso" {
   name = "talos-${local.talos_version}-metal-amd64.iso"
   pool = libvirt_pool.default.name
-  capacity = 333787136
 
   target = {
     format = {
@@ -162,7 +161,6 @@ resource "libvirt_domain" "node" {
 
     interfaces = [
       {
-        type = "network"
         model = {
           type = "virtio"
         }

@@ -35,7 +35,7 @@ data "talos_client_configuration" "cluster" {
 
   cluster_name = each.key
   client_configuration = talos_machine_secrets.cluster[each.key].client_configuration
-  endpoints = [local.controlplanes[each.key].ip]
+  endpoints = [local.controlplanes[each.key][0].ip]
   nodes = [for n in local.cluster_nodes[each.key] : n.ip]
 }
 
@@ -78,8 +78,8 @@ resource "talos_machine_bootstrap" "cluster" {
   for_each = local.controlplanes
 
   client_configuration = talos_machine_secrets.cluster[each.key].client_configuration
-  node = each.value.ip
-  endpoint = each.value.ip
+  node = each.value[0].ip
+  endpoint = each.value[0].ip
 
   timeouts = {
     create = "15m"
@@ -92,8 +92,8 @@ resource "talos_cluster_kubeconfig" "cluster" {
   for_each = local.controlplanes
 
   client_configuration = talos_machine_secrets.cluster[each.key].client_configuration
-  node = each.value.ip
-  endpoint = each.value.ip
+  node = each.value[0].ip
+  endpoint = each.value[0].ip
 
   timeouts = {
     create = "15m"
