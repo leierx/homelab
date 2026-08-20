@@ -4,9 +4,18 @@
     {
       virtualisation.libvirtd = {
         enable = true;
-        qemu.package = pkgs.qemu_kvm;
         onBoot = "start";
         onShutdown = "shutdown";
+        allowedBridges = [
+          "br-prod"
+          "br-test"
+        ];
+        qemu.package = pkgs.qemu_kvm;
       };
+
+      networking.firewall.trustedInterfaces = [
+        "br-prod"
+        "br-test"
+      ];
     };
 }
