@@ -114,6 +114,10 @@ resource "libvirt_domain" "node" {
     mode = "host-passthrough"
   }
 
+  features = {
+    acpi = true
+  }
+
   os = {
     type = "hvm"
     type_arch = "x86_64"
