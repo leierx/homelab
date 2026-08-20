@@ -18,7 +18,6 @@ resource "libvirt_network" "cluster" {
 
   name = each.key
   autostart = true
-  ipv6 = "no"
 
   forward = {
     mode = "nat"
@@ -57,7 +56,7 @@ resource "libvirt_network" "cluster" {
 
   dns = {
     enable = "yes"
-    hosts = [
+    host = [
       for n in local.cluster_nodes[each.key] : {
         ip = n.ip
         hostnames = [
@@ -75,7 +74,7 @@ resource "libvirt_volume" "iso" {
 
   target = {
     format = {
-      type = "raw"
+      type = "iso"
     }
   }
 
