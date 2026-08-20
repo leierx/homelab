@@ -70,7 +70,6 @@ locals {
       }
       features = {
         rbac = true
-        stableHostname = true
         apidCheckExtKeyUsage = true
         diskQuotaSupport = true
         kubePrism = {
