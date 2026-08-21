@@ -7,8 +7,8 @@ resource "libvirt_pool" "default" {
   }
 
   create = {
-    build = true
-    start = true
+    build     = true
+    start     = true
     autostart = true
   }
 }
@@ -16,7 +16,7 @@ resource "libvirt_pool" "default" {
 resource "libvirt_network" "cluster" {
   for_each = local.clusters
 
-  name = each.key
+  name      = each.key
   autostart = true
 
   forward = {
@@ -28,25 +28,25 @@ resource "libvirt_network" "cluster" {
   }
 
   domain = {
-    name = "${each.key}.lab"
+    name       = "${each.key}.lab"
     local_only = "yes"
   }
 
   ips = [
     {
       address = each.value.gateway
-      prefix = each.value.prefix
+      prefix  = each.value.prefix
       dhcp = {
         ranges = [
           {
             start = cidrhost(each.value.cidr, 200)
-            end = cidrhost(each.value.cidr, 250)
+            end   = cidrhost(each.value.cidr, 250)
           }
         ]
         hosts = [
           for n in local.cluster_nodes[each.key] : {
-            mac = n.mac
-            ip = n.ip
+            mac  = n.mac
+            ip   = n.ip
             name = n.name
           }
         ]
@@ -69,7 +69,7 @@ resource "libvirt_network" "cluster" {
 }
 
 resource "libvirt_volume" "iso" {
-  name = "talos-${local.talos_version}-metal-amd64.iso"
+  name = "kairos-hadron-v0.5.1-standard-amd64-generic-v4.2.0-k3sv1.36.3+k3s1.iso"
   pool = libvirt_pool.default.name
 
   target = {
@@ -80,7 +80,7 @@ resource "libvirt_volume" "iso" {
 
   create = {
     content = {
-      url = "https://github.com/siderolabs/talos/releases/download/${local.talos_version}/metal-amd64.iso"
+      url = "https://github.com/kairos-io/kairos/releases/download/v4.2.0/kairos-hadron-v0.5.1-standard-amd64-generic-v4.2.0-k3sv1.36.3+k3s1.iso"
     }
   }
 }
@@ -88,8 +88,8 @@ resource "libvirt_volume" "iso" {
 resource "libvirt_volume" "disk" {
   for_each = local.nodes
 
-  name = "${each.key}.qcow2"
-  pool = libvirt_pool.default.name
+  name     = "${each.key}.qcow2"
+  pool     = libvirt_pool.default.name
   capacity = local.disk_bytes
 
   target = {
@@ -99,16 +99,43 @@ resource "libvirt_volume" "disk" {
   }
 }
 
+resource "libvirt_cloudinit_disk" "node" {
+  for_each = local.nodes
+
+  name      = "${each.key}-cloudinit"
+  user_data = local.node_cloudinit[each.key].user_data
+  meta_data = local.node_cloudinit[each.key].meta_data
+}
+
+resource "libvirt_volume" "cloudinit" {
+  for_each = local.nodes
+
+  name = "${each.key}-cloudinit.iso"
+  pool = libvirt_pool.default.name
+
+  target = {
+    format = {
+      type = "iso"
+    }
+  }
+
+  create = {
+    content = {
+      url = libvirt_cloudinit_disk.node[each.key].path
+    }
+  }
+}
+
 resource "libvirt_domain" "node" {
   for_each = local.nodes
 
-  name = each.key
-  type = "kvm"
-  vcpu = local.node_vcpu
-  memory = local.node_memory
+  name        = each.key
+  type        = "kvm"
+  vcpu        = local.node_vcpu
+  memory      = local.node_memory
   memory_unit = "MiB"
-  running = true
-  autostart = true
+  running     = true
+  autostart   = true
 
   cpu = {
     mode = "host-passthrough"
@@ -119,10 +146,10 @@ resource "libvirt_domain" "node" {
   }
 
   os = {
-    type = "hvm"
-    type_arch = "x86_64"
+    type         = "hvm"
+    type_arch    = "x86_64"
     type_machine = "q35"
-    firmware = "efi"
+    firmware     = "efi"
     boot_devices = [
       { dev = "hd" },
       { dev = "cdrom" },
@@ -134,7 +161,7 @@ resource "libvirt_domain" "node" {
       {
         source = {
           volume = {
-            pool = libvirt_volume.disk[each.key].pool
+            pool   = libvirt_volume.disk[each.key].pool
             volume = libvirt_volume.disk[each.key].name
           }
         }
@@ -147,16 +174,30 @@ resource "libvirt_domain" "node" {
         }
       },
       {
-        device = "cdrom"
+        device    = "cdrom"
         read_only = true
         source = {
           volume = {
-            pool = libvirt_volume.iso.pool
+            pool   = libvirt_volume.iso.pool
             volume = libvirt_volume.iso.name
           }
         }
         target = {
           dev = "sda"
+          bus = "sata"
+        }
+      },
+      {
+        device    = "cdrom"
+        read_only = true
+        source = {
+          volume = {
+            pool   = libvirt_volume.cloudinit[each.key].pool
+            volume = libvirt_volume.cloudinit[each.key].name
+          }
+        }
+        target = {
+          dev = "sdb"
           bus = "sata"
         }
       }
@@ -177,7 +218,15 @@ resource "libvirt_domain" "node" {
         }
         wait_for_ip = {
           timeout = 300
-          source = "lease"
+          source  = "lease"
+        }
+      }
+    ]
+
+    graphics = [
+      {
+        spice = {
+          auto_port = true
         }
       }
     ]

@@ -2,22 +2,21 @@ output "nodes" {
   value = {
     for name, n in local.nodes : name => {
       cluster = n.cluster
-      role = n.role
-      ip = n.ip
+      role    = n.role
+      ip      = n.ip
     }
   }
 }
 
 output "endpoints" {
-  value = { for name, cfg in local.clusters : name => cfg.endpoint }
+  value = {
+    for cluster, cp in local.controlplanes : cluster => "https://${cp[0].ip}:6443"
+  }
 }
 
-output "talosconfig" {
+output "k3s_tokens" {
   sensitive = true
-  value = { for name, cfg in data.talos_client_configuration.cluster : name => cfg.talos_config }
-}
-
-output "kubeconfig" {
-  sensitive = true
-  value = { for name, cfg in talos_cluster_kubeconfig.cluster : name => cfg.kubeconfig_raw }
+  value = {
+    for cluster, token in random_password.k3s_token : cluster => token.result
+  }
 }

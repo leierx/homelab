@@ -45,6 +45,8 @@
         install -o leier -g users -m 644 \
           ${pkgs.writeText "zshrc-extra" ''
             export LIBVIRT_DEFAULT_URI=qemu:///system
+
+            alias k=kubectl
           ''} \
           ${config.users.users."leier".home}/.zshrc
       '';

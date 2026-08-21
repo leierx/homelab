@@ -1,50 +1,43 @@
 locals {
-  talos_version = "v1.13.9"
-  node_vcpu = 4
+  node_vcpu   = 4
   node_memory = 16384
-  disk_bytes = 40 * 1024 * 1024 * 1024
+  disk_bytes  = 40 * 1024 * 1024 * 1024
+
+  # One entry per node position. Prefix drives the node name, role the k3s type.
+  node_roles = [
+    { prefix = "master", role = "controlplane" },
+    { prefix = "slave", role = "worker" },
+    { prefix = "slave", role = "worker" },
+  ]
 
   clusters = {
     prod = {
-      cidr = "192.168.100.0/24"
-      prefix = 24
+      cidr    = "192.168.100.0/24"
+      prefix  = 24
       gateway = "192.168.100.1"
-      endpoint = "https://192.168.100.11:6443"
       mac_net = "52:54:00:64"
     }
     test = {
-      cidr = "192.168.101.0/24"
-      prefix = 24
+      cidr    = "192.168.101.0/24"
+      prefix  = 24
       gateway = "192.168.101.1"
-      endpoint = "https://192.168.101.11:6443"
       mac_net = "52:54:00:65"
     }
   }
 
+  # Each role is numbered from 01 (master-01, slave-01, slave-02). A block of IPs
+  # is reserved for master nodes (.10-.20), so slaves start at .21; MACs derive from
+  # position.
   nodes = {
     for n in flatten([
       for cluster, cfg in local.clusters : [
-        {
-          name = "master-${cluster}01"
+        for i, r in local.node_roles : {
+          name    = "hadron-${r.prefix}-${cluster}${format("%02d", i + 1)}"
           cluster = cluster
-          role = "controlplane"
-          ip = cidrhost(cfg.cidr, 11)
-          mac = "${cfg.mac_net}:00:0b"
-        },
-        {
-          name = "slave-${cluster}02"
-          cluster = cluster
-          role = "worker"
-          ip = cidrhost(cfg.cidr, 12)
-          mac = "${cfg.mac_net}:00:0c"
-        },
-        {
-          name = "slave-${cluster}03"
-          cluster = cluster
-          role = "worker"
-          ip = cidrhost(cfg.cidr, 13)
-          mac = "${cfg.mac_net}:00:0d"
-        },
+          role    = r.role
+          ip      = cidrhost(cfg.cidr, i == 0 ? 10 : 20 + i)
+          mac     = "${cfg.mac_net}:00:${format("%02x", 11 + i)}"
+        }
       ]
     ]) : n.name => n
   }
@@ -61,56 +54,59 @@ locals {
     ]
   }
 
-  common_patch = yamlencode({
-    machine = {
-      install = {
-        disk = "/dev/vda"
-        wipe = true
-        image = "ghcr.io/siderolabs/installer:${local.talos_version}"
-      }
-      features = {
-        rbac = true
-        apidCheckExtKeyUsage = true
-        diskQuotaSupport = true
-        kubePrism = {
+  # k3s provider block per node: controlplanes run k3s (server), workers run
+  # k3s-agent. Consistent types via a filtered helper map.
+  node_k3s = {
+    for name, n in local.nodes : name => {
+      for k, v in {
+        k3s = n.role == "controlplane" ? {
           enabled = true
-          port = 7445
-        }
-        hostDNS = {
+          args = [
+            "--cluster-init",
+            "--write-kubeconfig-mode=644",
+            "--token=${random_password.k3s_token[n.cluster].result}",
+          ]
+        } : null
+        k3s-agent = n.role == "controlplane" ? null : {
           enabled = true
-          forwardKubeDNSToHost = true
+          args = [
+            "--server=https://${local.controlplanes[n.cluster][0].ip}:6443",
+            "--token=${random_password.k3s_token[n.cluster].result}",
+          ]
         }
-      }
-      network = {
-        nameservers = [
-          "9.9.9.9",
-          "149.112.112.112",
+      } : k => v if v != null
+    }
+  }
+
+  # Single source of truth for cloud-init. Add or remove keys here and they'll
+  # apply to every node. The #cloud-config header is required so cloud-init
+  # parses the file; libvirt_cloudinit_disk writes it verbatim.
+  node_cloudinit = {
+    for name, n in local.nodes : name => {
+      hostname = n.name
+      user_data = "#cloud-config\n${yamlencode(merge({
+        hostname = n.name
+        strict: true
+        eject-cd: true
+        users = [
+          {
+            name                = "hadron"
+            groups              = ["admin"]
+            lock_passwd         = true
+            ssh_authorized_keys = [var.ssh_public_key]
+          }
         ]
-      }
-      time = {
-        servers = ["time.cloudflare.com"]
-      }
-    }
-    cluster = {
-      network = {
-        cni = {
-          name = "none"
+        install = {
+          auto   = true
+          device = "auto"
+          reboot = true
+          ssh_hardening: true
         }
-      }
-      proxy = {
-        disabled = true
-      }
-      discovery = {
-        enabled = true
-        registries = {
-          kubernetes = {
-            disabled = false
-          }
-          service = {
-            disabled = true
-          }
-        }
-      }
+      }, local.node_k3s[name]))}"
+      meta_data = yamlencode({
+        instance-id    = name
+        local-hostname = n.name
+      })
     }
-  })
+  }
 }
