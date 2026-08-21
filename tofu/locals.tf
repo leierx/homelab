@@ -63,10 +63,22 @@ locals {
           enabled = true
           args = [
             "--cluster-init",
-            "--write-kubeconfig-mode=644",
             "--token=${random_password.k3s_token[n.cluster].result}",
+            # No CNI, no network policy — Cilium will own this
+            "--flannel-backend=none",
+            # No kube-proxy — Cilium in kube-proxy-replacement mode
+            "--disable-kube-proxy",
+            # bloat
+            "--disable-cloud-controller",
+            "--disable-helm-controller",
+            "--disable-network-policy",
+            "--disable=traefik",
+            "--disable=servicelb",
+            "--disable=local-storage",
+            "--disable=metrics-server",
           ]
         } : null
+
         k3s-agent = n.role == "controlplane" ? null : {
           enabled = true
           args = [
