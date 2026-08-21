@@ -102,7 +102,7 @@ locals {
         eject-cd: true
         users = [
           {
-            name                = "hadron"
+            name                = "kairos"
             groups              = ["admin"]
             lock_passwd         = true
             ssh_authorized_keys = [var.ssh_public_key]
