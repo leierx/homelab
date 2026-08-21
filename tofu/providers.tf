@@ -16,10 +16,3 @@ terraform {
 provider "libvirt" {
   uri = "qemu:///system"
 }
-
-resource "random_password" "k3s_token" {
-  for_each = local.clusters
-
-  length  = 64
-  special = false
-}

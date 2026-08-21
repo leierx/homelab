@@ -64,9 +64,9 @@ locals {
           args = [
             "--cluster-init",
             "--token=${random_password.k3s_token[n.cluster].result}",
-            # No CNI, no network policy — Cilium will own this
+            # No CNI, no network policy; Cilium will own this.
             "--flannel-backend=none",
-            # No kube-proxy — Cilium in kube-proxy-replacement mode
+            # No kube-proxy; Cilium in kube-proxy-replacement mode.
             "--disable-kube-proxy",
             # bloat
             "--disable-cloud-controller",
@@ -98,8 +98,8 @@ locals {
       hostname = n.name
       user_data = "#cloud-config\n${yamlencode(merge({
         hostname = n.name
-        strict: true
-        eject-cd: true
+        strict   = true
+        eject-cd = true
         users = [
           {
             name                = "kairos"
@@ -109,10 +109,10 @@ locals {
           }
         ]
         install = {
-          auto   = true
-          device = "auto"
-          reboot = true
-          ssh_hardening: true
+          auto          = true
+          device        = "auto"
+          reboot        = true
+          ssh_hardening = true
         }
       }, local.node_k3s[name]))}"
       meta_data = yamlencode({
