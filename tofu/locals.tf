@@ -5,9 +5,9 @@ locals {
 
   # One entry per node position. Prefix drives the node name, role the k3s type.
   node_roles = [
-    { prefix = "master", role = "controlplane" },
-    { prefix = "slave", role = "worker" },
-    { prefix = "slave", role = "worker" },
+    { prefix = "master", role = "controlplane", number = 1 },
+    { prefix = "slave", role = "worker", number = 1 },
+    { prefix = "slave", role = "worker", number = 2 },
   ]
 
   clusters = {
@@ -32,7 +32,7 @@ locals {
     for n in flatten([
       for cluster, cfg in local.clusters : [
         for i, r in local.node_roles : {
-          name    = "hadron-${r.prefix}-${cluster}${format("%02d", i + 1)}"
+          name    = "hadron-${r.prefix}-${cluster}${format("%02d", r.number)}"
           cluster = cluster
           role    = r.role
           ip      = cidrhost(cfg.cidr, i == 0 ? 10 : 20 + i)
