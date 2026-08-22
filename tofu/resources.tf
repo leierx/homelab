@@ -263,8 +263,8 @@ resource "null_resource" "eject_iso" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      virsh change-media ${each.key} sda --eject --config || true
-      virsh change-media ${each.key} sdb --eject --config || true
+      virsh detach-disk ${each.key} sda --config
+      virsh detach-disk ${each.key} sdb --config
     EOT
   }
 }
