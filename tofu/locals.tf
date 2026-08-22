@@ -114,6 +114,13 @@ locals {
           reboot        = true
           ssh_hardening = true
         }
+        bundles = [
+          {
+            targets = [
+              "run://quay.io/kairos/community-bundles:qemu-guest-agent_latest"
+            ]
+          }
+        ]
       }, local.node_k3s[name]))}"
       meta_data = yamlencode({
         instance-id    = name
