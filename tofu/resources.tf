@@ -248,4 +248,23 @@ resource "libvirt_domain" "node" {
       }
     ]
   }
+
+  lifecycle {
+    ignore_changes = [
+      devices[0].disks,
+    ]
+  }
+}
+
+resource "null_resource" "eject_iso" {
+  for_each = local.nodes
+
+  depends_on = [libvirt_domain.node]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      virsh change-media ${each.key} sda --eject --config || true
+      virsh change-media ${each.key} sdb --eject --config || true
+    EOT
+  }
 }
