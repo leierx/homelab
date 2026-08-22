@@ -99,7 +99,6 @@ locals {
       user_data = "#cloud-config\n${yamlencode(merge({
         hostname = n.name
         strict   = true
-        eject-cd = true
         users = [
           {
             name                = "kairos"
@@ -114,13 +113,6 @@ locals {
           reboot        = true
           ssh_hardening = true
         }
-        bundles = [
-          {
-            targets = [
-              "run://quay.io/kairos/community-bundles:qemu-guest-agent-main"
-            ]
-          }
-        ]
       }, local.node_k3s[name]))}"
       meta_data = yamlencode({
         instance-id    = name
