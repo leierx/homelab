@@ -230,6 +230,16 @@ resource "libvirt_domain" "node" {
       }
     ]
 
+    serials  = [{ target = { type = "isa-serial", port = 0 } }]
+    consoles = [{ target = { type = "serial", port = 0 } }]
+
+    channels = [
+      {
+        source = { unix = {} }
+        target = { virt_io = { name = "org.qemu.guest_agent.0" } }
+      }
+    ]
+
     graphics = [
       {
         spice = {

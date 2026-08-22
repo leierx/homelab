@@ -117,7 +117,7 @@ locals {
         bundles = [
           {
             targets = [
-              "run://quay.io/kairos/community-bundles:qemu-guest-agent_latest"
+              "run://quay.io/kairos/community-bundles:qemu-guest-agent-main"
             ]
           }
         ]
