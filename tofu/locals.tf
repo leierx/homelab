@@ -64,9 +64,9 @@ locals {
           args = [
             "--cluster-init",
             "--token=${random_password.k3s_token[n.cluster].result}",
-            # No CNI, no network policy; Cilium will own this.
+            # Cillium
+            "--cluster-cidr=10.42.0.0/16",
             "--flannel-backend=none",
-            # No kube-proxy; Cilium in kube-proxy-replacement mode.
             "--disable-kube-proxy",
             # bloat
             "--disable-cloud-controller",
