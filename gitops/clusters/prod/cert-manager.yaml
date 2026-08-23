@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/leierx/homelab.git
+      targetRevision: HEAD
+      path: gitops/apps/cert-manager/helm
+      helm:
+        valueFiles:
+          - values.yaml
+          - prod/values.yaml
+    - repoURL: https://github.com/leierx/homelab.git
+      targetRevision: HEAD
+      path: gitops/apps/cert-manager/kustomize
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

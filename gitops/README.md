@@ -20,28 +20,34 @@ gitops/
 │       ├── cilium.yaml
 │       └── argocd.yaml
 └── apps/
-    ├── cilium/                 # CNI + kube-proxy replacement
-    │   ├── base/               # umbrella Chart.yaml + values.yaml (shared)
-    │   ├── prod/values.yaml    # per-cluster overrides
-    │   └── test/values.yaml
-    └── argocd/                 # Argo CD itself (self-managed once adopted)
-        ├── base/
-        ├── prod/values.yaml
-        └── test/values.yaml
+    ├── <name>/                 # standard layout
+    │   ├── helm/               # deploy via Helm (Chart.yaml + values.yaml)
+    │   │   ├── prod/values.yaml    # per-cluster overrides
+    │   │   └── test/values.yaml
+    │   └── kustomize/          # deploy via kustomize when needed
+    │       └── <resources>.yaml
+    ├── cilium/                 # existing apps still on the older `base/` layout
+    │   └── base/
+    └── argocd/
+        └── base/
 ```
 
-**Adding an app**: drop `apps/<name>/` with a `base/` umbrella chart +
-`values.yaml` and `prod/values.yaml` + `test/values.yaml` overrides, then add
+**Adding an app**: drop `apps/<name>/` with a `helm/` umbrella chart +
+`helm/values.yaml` and `helm/prod/values.yaml` + `helm/test/values.yaml`
+overrides, plus an optional `kustomize/` dir for any extra plain manifests
+(issued later than the chart via `argocd.argoproj.io/sync-wave`). Then add
 `clusters/prod/<name>.yaml` and keep `clusters/test/` in sync with
 `sed s/prod/test/g` (copy `prod/<name>.yaml` and sed it). `root-app` sources
 each cluster dir, so every Application dropped in is adopted automatically —
 no wrapper to edit.
 
-Each `clusters/<cluster>/<name>.yaml` is a plain `Application` pointing at
-`apps/<name>/base` with helm `valueFiles` `values.yaml` +
-`../prod|test/values.yaml` (Argo resolves `../` fine). Note: `valueFiles`
-order matches the bootstrap command, so Argo's render == bootstrap's render —
-zero drift at adoption.
+Each `clusters/<cluster>/<name>.yaml` is a plain `Application`, single- or
+multi-source. For a `helm/` + `kustomize/` combo (like cert-manager), use
+`spec.sources`; the Helm source references `apps/<name>/helm` with
+`valueFiles: [values.yaml, ../prod|test/values.yaml]` and the kustomize source
+points at `apps/<name>/kustomize`. Note: `valueFiles` order and the two sources
+match the bootstrap, so Argo's render == bootstrap's render — zero drift at
+adoption.
 
 ## 2. k3s install
 
