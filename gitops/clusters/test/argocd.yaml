@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/leierx/homelab.git
     targetRevision: HEAD
-    path: apps/argocd/base
+    path: gitops/apps/argocd/base
     helm:
       valueFiles:
         - values.yaml

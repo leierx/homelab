@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/leierx/homelab.git
     targetRevision: HEAD
-    path: apps/cilium/base
+    path: gitops/apps/cilium/base
     helm:
       valueFiles:
         - values.yaml

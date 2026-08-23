@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/leierx/homelab.git
     targetRevision: HEAD
-    path: clusters/test
+    path: gitops/clusters/test
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

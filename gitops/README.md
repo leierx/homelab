@@ -130,11 +130,11 @@ When ready, on each cluster:
      drySource:
        repoURL: https://github.com/leierx/homelab.git
        targetRevision: main
-       path: apps/cilium/base
+       path: gitops/apps/cilium/base
      syncSource:
        repoURL: https://github.com/leierx/homelab.git
        targetRevision: env/prod
-       path: apps/cilium/base
+       path: gitops/apps/cilium/base
        helm:
          valueFiles:
            - values.yaml

@@ -4,13 +4,13 @@ metadata:
   name: root-app
   namespace: argocd
   finalizers:
-    - resources-finalizer.argocd.argoproj.io
+    - resources-finalizer.argocd.argoproj.io/background
 spec:
   project: default
   source:
     repoURL: https://github.com/leierx/homelab.git
     targetRevision: HEAD
-    path: clusters/prod
+    path: gitops/clusters/prod
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
