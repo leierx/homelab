@@ -1,0 +1,10 @@
+apps/**/charts/
+apps/**/Chart.lock
+**/charts/
+**/Chart.lock
+*.tgz
+*.dec.yaml
+*.dec.yml
+.DS_Store
+*~
+*.swp

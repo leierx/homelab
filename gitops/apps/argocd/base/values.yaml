@@ -1,0 +1,12 @@
+argo-cd:
+  commitServer:
+    enabled: false
+  crds:
+    install: true
+  server:
+    extraArgs:
+      - --insecure
+  redis:
+    enabled: true
+  redis-ha:
+    enabled: false
