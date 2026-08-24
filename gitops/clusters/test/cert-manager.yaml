@@ -4,7 +4,7 @@ metadata:
   name: cert-manager
   namespace: argocd
   finalizers:
-    - resources-finalizer.argocd.argoproj.io
+    - resources-finalizer.argocd.argoproj.io/background
 spec:
   project: default
   sources:
@@ -14,10 +14,10 @@ spec:
       helm:
         valueFiles:
           - values.yaml
-          - test/values.yaml
+          - test-values.yaml
     - repoURL: https://github.com/leierx/homelab.git
       targetRevision: HEAD
-      path: gitops/apps/cert-manager/kustomize
+      path: gitops/apps/cert-manager/overlays/test
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager
