@@ -2,6 +2,8 @@ cilium:
   kubeProxyReplacement: true
   gatewayAPI:
       enabled: true
+  hubble:
+    enabled: false
   ipam:
     operator:
       clusterPoolIPv4PodCIDRList:
