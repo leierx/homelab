@@ -124,6 +124,25 @@ in
                 atime = "off";
               };
             };
+            # Per-cluster roots for the NFS-backed k8s StorageClass. Kept as
+            # separate datasets so prod/test PVs never collide on one export.
+            # Inherit lz4/atime from the k8s parent above.
+            prod = {
+              type = "zfs_fs";
+              options = {
+                mountpoint = "/tank/k8s/prod";
+                compression = "lz4";
+                atime = "off";
+              };
+            };
+            test = {
+              type = "zfs_fs";
+              options = {
+                mountpoint = "/tank/k8s/test";
+                compression = "lz4";
+                atime = "off";
+              };
+            };
           };
         };
       };

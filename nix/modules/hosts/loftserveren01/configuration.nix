@@ -30,8 +30,10 @@
       # networks, and the dataset is kept separate from the ZFS mount root.
       services.nfs.server.enable = true;
       services.nfs.settings.nfsd.vers3 = false;
+      # crossmnt: /tank/k8s/{prod,test} are separate ZFS datasets (mount points).
+      # Without it nfsd refuses to traverse into them, so subpath mounts ENOENT.
       services.nfs.server.exports = ''
-        /tank/k8s 192.168.100.0/24(rw,sync,no_root_squash,no_subtree_check,fsid=0) 192.168.101.0/24(rw,sync,no_root_squash,no_subtree_check)
+        /tank/k8s 192.168.100.0/24(rw,sync,crossmnt,no_root_squash,no_subtree_check,fsid=0) 192.168.101.0/24(rw,sync,crossmnt,no_root_squash,no_subtree_check)
       '';
 
       # Git
