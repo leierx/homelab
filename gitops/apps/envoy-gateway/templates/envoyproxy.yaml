@@ -1,0 +1,27 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: shared-gateway-proxy
+  namespace: gateway
+  annotations:
+    # Referenced by the shared-gateway via spec.infrastructure.parametersRef.
+    # NodePort data plane: no LoadBalancer IP needed on this cluster (which
+    # has no LB-IPAM pool); HAProxy targets master:<nodeport>.
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        type: NodePort
+        # Pin deterministic NodePorts so the host's haproxy can target fixed
+        # ports (master:30080 / master:30443) instead of drifting 3xxxx ranges.
+        patch:
+          type: StrategicMerge
+          value:
+            spec:
+              ports:
+                - port: 80
+                  nodePort: 30080
+                - port: 443
+                  nodePort: 30443

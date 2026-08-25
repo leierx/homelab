@@ -32,15 +32,17 @@
           default_backend be_drop_http
 
         backend be_prod
-          server prod-master 192.168.100.10:443
+          # Pinned k8s NodePorts of the Envoy Gateway data plane (the gateway's
+          # TLS/HTTP listeners surface on NodePort 30443/30080 on the master).
+          server prod-master 192.168.100.10:30443
         backend be_test
-          server test-master 192.168.101.10:443
+          server test-master 192.168.101.10:30443
         backend be_prod_http
           mode http
-          server prod-master 192.168.100.10:80
+          server prod-master 192.168.100.10:30080
         backend be_test_http
           mode http
-          server test-master 192.168.101.10:80
+          server test-master 192.168.101.10:30080
         backend be_drop
           tcp-request content silent-drop
         backend be_drop_http

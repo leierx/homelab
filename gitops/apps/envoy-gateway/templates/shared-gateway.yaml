@@ -8,6 +8,12 @@ metadata:
     argocd.argoproj.io/sync-wave: "2"
 spec:
   gatewayClassName: envoy-gateway
+  # NodePort data plane (see envoyproxy.yaml) - no LB-IPAM pool on this cluster.
+  infrastructure:
+    parametersRef:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: shared-gateway-proxy
   # Static front door. TLS listeners + certs are contributed per-app via
   # ListenerSets; this HTTP listener serves ACME HTTP-01 challenges for them.
   listeners:
