@@ -7,3 +7,6 @@ dependencies:
   - name: cilium
     version: "1.20.1"
     repository: https://helm.cilium.io/
+# templates/crds.yaml ships the Gateway API (standard channel) CRDs, pinned to
+# v1.6.1 to match this cilium version's sigs.k8s.io/gateway-api pin. Bump the
+# CRDs together with cilium.
