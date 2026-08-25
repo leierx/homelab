@@ -1,0 +1,34 @@
+authentik:
+  authentik:
+    log_level: info
+    web:
+      path: /
+    error_reporting:
+      enabled: false
+    secret_key: ""
+    postgresql:
+      host: authentik-postgresql
+      name: authentik
+      user: authentik
+      password: ""
+      port: 5432
+  server:
+    route:
+      main:
+        enabled: true
+        apiVersion: gateway.networking.k8s.io/v1
+        kind: HTTPRoute
+        parentRefs:
+          - name: shared-gateway
+            namespace: gateway
+  postgresql:
+    enabled: true
+    auth:
+      username: authentik
+      database: authentik
+      password: ""
+    primary:
+      persistence:
+        enabled: true
+        storageClass: nfs
+        size: 8Gi

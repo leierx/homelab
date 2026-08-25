@@ -1,0 +1,7 @@
+nfs-subdir-external-provisioner:
+  nfs:
+    server: 192.168.101.1
+    path: /tank/k8s/test
+    mountOptions:
+      - nfsvers=4
+      - noatime

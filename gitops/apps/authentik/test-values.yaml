@@ -1,0 +1,15 @@
+authentik:
+  authentik:
+    secret_key: "eMtxOxVcskRQbMrd4TNQLtvDfpF4DetJJGwd3tFws1M442iIIu1YyaBWUqUlDiq3"
+    postgresql:
+      password: "o6tT0Pdb8UxPpR5qZxyjnaIFpffVQhOm"
+  postgresql:
+    auth:
+      password: "o6tT0Pdb8UxPpR5qZxyjnaIFpffVQhOm"
+  server:
+    route:
+      main:
+        hostnames:
+          - auth.test.skinke.net
+certificate:
+  dnsName: auth.test.skinke.net

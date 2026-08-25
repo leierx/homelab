@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: authentik
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/background
+spec:
+  project: default
+  sourceHydrator:
+    drySource:
+      repoURL: https://github.com/leierx/homelab.git
+      path: gitops/apps/authentik
+      targetRevision: HEAD
+      helm:
+        valueFiles:
+          - values.yaml
+          - prod-values.yaml
+    syncSource:
+      targetBranch: env/prod
+      path: gitops/hydrated/authentik
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: authentik
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

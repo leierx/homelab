@@ -1,0 +1,14 @@
+nfs-subdir-external-provisioner:
+  storageClass:
+    name: nfs
+    defaultClass: true
+    allowVolumeExpansion: true
+    reclaimPolicy: Delete
+    # Remove the NFS directory when the PVC is removed (no leftover archives).
+    archiveOnDelete: false
+    accessModes: ReadWriteOnce
+    volumeBindingMode: Immediate
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
