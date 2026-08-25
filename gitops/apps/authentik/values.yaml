@@ -1,5 +1,7 @@
 authentik:
   authentik:
+    disable_startup_analytics: true
+    disable_update_check: true
     log_level: info
     web:
       path: /
