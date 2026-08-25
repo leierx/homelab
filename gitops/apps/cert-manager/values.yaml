@@ -2,6 +2,3 @@ cert-manager:
   crds:
     enabled: true
     keep: true
-  global:
-    commonLabels:
-      app.kubernetes.io/managed-by: homelab-gitops
