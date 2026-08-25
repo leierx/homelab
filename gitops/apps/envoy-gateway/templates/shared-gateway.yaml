@@ -4,7 +4,8 @@ metadata:
   name: shared-gateway
   namespace: gateway
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    # After the envoy-gateway GatewayClass (sync-wave 1) so this can be accepted.
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   gatewayClassName: envoy-gateway
   # Static front door. TLS listeners + certs are contributed per-app via
