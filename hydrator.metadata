@@ -1,7 +1,7 @@
 {
   "repoURL": "https://github.com/leierx/homelab.git",
-  "drySha": "53e99a0188304c9c30ea10103aac7bf4da1b15c1",
+  "drySha": "690e5a30dc4ceb28d2ecbcb0033982e5c28799c4",
   "author": "Lars Smith Eier <larssmitheier@protonmail.com>",
-  "date": "2026-08-25T19:14:33Z",
-  "subject": "gitops: revert cert-manager label, restore promoter namespace, add Argo CD integration"
+  "date": "2026-08-25T19:27:18Z",
+  "subject": "argocd: use extension-installer v1.0.1 (fixes checksum grep)"
 }

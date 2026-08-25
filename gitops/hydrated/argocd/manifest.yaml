@@ -32471,7 +32471,7 @@ spec:
               value: https://github.com/argoproj-labs/gitops-promoter/releases/download/v0.36.0/gitops-promoter-argocd-extension.tar.gz
             - name: EXTENSION_CHECKSUM_URL
               value: https://github.com/argoproj-labs/gitops-promoter/releases/download/v0.36.0/gitops-promoter_0.36.0_checksums.txt
-          image: quay.io/argoprojlabs/argocd-extension-installer:v0.0.9@sha256:d2b43c18ac1401f579f6d27878f45e253d1e3f30287471ae74e6a4315ceb0611
+          image: quay.io/argoprojlabs/argocd-extension-installer:v1.0.1@sha256:ce1a1b3276c2ebb30f2228b26197a1cf94e23fbb8872881c7382507c96e4e3d9
           name: extension-gitops-promoter
           securityContext:
             allowPrivilegeEscalation: false
