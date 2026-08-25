@@ -1,7 +1,7 @@
 {
   "repoURL": "https://github.com/leierx/homelab.git",
-  "drySha": "690e5a30dc4ceb28d2ecbcb0033982e5c28799c4",
+  "drySha": "c42c8abf74eb147b6c79054520a59fc79adc6397",
   "author": "Lars Smith Eier <larssmitheier@protonmail.com>",
-  "date": "2026-08-25T19:27:18Z",
-  "subject": "argocd: use extension-installer v1.0.1 (fixes checksum grep)"
+  "date": "2026-08-25T19:37:27Z",
+  "subject": "argocd: drop gitops-promoter UI extension and deep links"
 }

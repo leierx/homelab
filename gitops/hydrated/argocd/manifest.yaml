@@ -364,7 +364,6 @@ data:
   commit.author.email: gitops@homelab
   commit.author.name: GitOps Bot
   exec.enabled: "false"
-  resource.customLabels: promoter.argoproj.io/commit-status
   resource.customizations.ignoreResourceUpdates.ConfigMap: |
     jqPathExpressions:
       # Ignore the cluster-autoscaler status
@@ -458,15 +457,6 @@ data:
       - BackgroundScanReport
       - ClusterBackgroundScanReport
       - UpdateRequest
-  resource.links: |
-    - url: '{{.resource.status.url}}'
-      title: Pull Request
-      icon.class: fa-code-pull-request
-      if: resource.apiVersion == "promoter.argoproj.io/v1alpha1" && resource.kind == "PullRequest" && resource.status.url != nil && resource.status.url != ""
-    - url: '{{.resource.status.pullRequest.url}}'
-      title: Pull Request
-      icon.class: fa-code-pull-request
-      if: resource.apiVersion == "promoter.argoproj.io/v1alpha1" && resource.kind == "ChangeTransferPolicy" && resource.status.pullRequest != nil && resource.status.pullRequest.url != nil && resource.status.pullRequest.url != ""
   statusbadge.enabled: "false"
   timeout.hard.reconciliation: 0s
   timeout.reconciliation: 120s
@@ -31645,7 +31635,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/cm: 746f419a7240183cbc981e04c6e82da84ad7f094e2b20d2132ae71cac6bdf18b
+        checksum/cm: 49469c1be572589fad6e53d202b6024efd1917885adfad01f691fa024bf4eb95
         checksum/cmd-params: 41f23185a6a93250b78182b31dd6400ee379c52034243ce1786b32e7f175c110
       labels:
         app.kubernetes.io/component: repo-server
@@ -32069,7 +32059,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/cm: 746f419a7240183cbc981e04c6e82da84ad7f094e2b20d2132ae71cac6bdf18b
+        checksum/cm: 49469c1be572589fad6e53d202b6024efd1917885adfad01f691fa024bf4eb95
         checksum/cmd-params: 41f23185a6a93250b78182b31dd6400ee379c52034243ce1786b32e7f175c110
       labels:
         app.kubernetes.io/component: server
@@ -32444,8 +32434,6 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           volumeMounts:
-            - mountPath: /tmp/extensions/
-              name: extensions
             - mountPath: /app/config/ssh
               name: ssh-known-hosts
             - mountPath: /app/config/tls
@@ -32463,29 +32451,11 @@ spec:
             - mountPath: /home/argocd/params
               name: argocd-cmd-params-cm
       dnsPolicy: ClusterFirst
-      initContainers:
-        - env:
-            - name: EXTENSION_NAME
-              value: gitops-promoter
-            - name: EXTENSION_URL
-              value: https://github.com/argoproj-labs/gitops-promoter/releases/download/v0.36.0/gitops-promoter-argocd-extension.tar.gz
-            - name: EXTENSION_CHECKSUM_URL
-              value: https://github.com/argoproj-labs/gitops-promoter/releases/download/v0.36.0/gitops-promoter_0.36.0_checksums.txt
-          image: quay.io/argoprojlabs/argocd-extension-installer:v1.0.1@sha256:ce1a1b3276c2ebb30f2228b26197a1cf94e23fbb8872881c7382507c96e4e3d9
-          name: extension-gitops-promoter
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsUser: 1000
-          volumeMounts:
-            - mountPath: /tmp/extensions/
-              name: extensions
       nodeSelector:
         kubernetes.io/os: linux
       serviceAccountName: argocd-server
       terminationGracePeriodSeconds: 30
       volumes:
-        - emptyDir: {}
-          name: extensions
         - emptyDir: {}
           name: plugins-home
         - emptyDir: {}
@@ -32789,7 +32759,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/cm: 746f419a7240183cbc981e04c6e82da84ad7f094e2b20d2132ae71cac6bdf18b
+        checksum/cm: 49469c1be572589fad6e53d202b6024efd1917885adfad01f691fa024bf4eb95
         checksum/cmd-params: 41f23185a6a93250b78182b31dd6400ee379c52034243ce1786b32e7f175c110
       labels:
         app.kubernetes.io/component: application-controller
