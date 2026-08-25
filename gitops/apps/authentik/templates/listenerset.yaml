@@ -24,4 +24,8 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: authentik-tls
+          # Explicit group/kind: the API materializes these defaults on write,
+          # which Argo would otherwise flag as perpetual drift.
+          - group: ""
+            kind: Secret
+            name: authentik-tls
