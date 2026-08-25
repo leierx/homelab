@@ -1,7 +1,7 @@
 {
   "repoURL": "https://github.com/leierx/homelab.git",
-  "drySha": "c12b701f1230ef8debe8b3d3324c1e5a39cf6cf4",
+  "drySha": "d01f6c548bde6042f1f65c9f2baf94104ef6d8fe",
   "author": "Lars Smith Eier <larssmitheier@protonmail.com>",
-  "date": "2026-08-25T16:31:06Z",
-  "subject": "trying hydration"
+  "date": "2026-08-25T19:02:54Z",
+  "subject": "cert-manager: label all resources (forces re-hydration)"
 }

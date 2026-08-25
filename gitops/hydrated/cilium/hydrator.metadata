@@ -1,0 +1,7 @@
+{
+  "repoURL": "https://github.com/leierx/homelab.git",
+  "drySha": "d01f6c548bde6042f1f65c9f2baf94104ef6d8fe",
+  "commands": [
+    "helm template . --name-template cilium --namespace kube-system --values ./gitops/apps/cilium/values.yaml --values ./gitops/apps/cilium/prod-values.yaml --include-crds"
+  ]
+}
