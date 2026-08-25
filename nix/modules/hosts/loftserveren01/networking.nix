@@ -72,7 +72,10 @@
         checkReversePath = "loose"; # causes problems for wireguard
         allowedTCPPorts = [ ];
         interfaces.eno1 = {
-          allowedTCPPorts = [ ];
+          allowedTCPPorts = [
+            30080
+            30443
+          ];
           allowedUDPPorts = [
             52820 # wireguard port
           ];
