@@ -7,6 +7,7 @@
         config.modules.autoUpgrade
         config.modules.bootloader
         config.modules.doas
+        config.modules.haproxy
         config.modules.libvirt
         config.modules.locale
         config.modules.nixosConfig
@@ -39,9 +40,6 @@
       environment.systemPackages = with pkgs; [
         wireguard-tools
         jq
-        talosctl
-        kubectl
-        fluxcd
         opentofu
       ];
 
