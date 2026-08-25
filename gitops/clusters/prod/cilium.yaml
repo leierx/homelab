@@ -19,8 +19,6 @@ spec:
     syncSource:
       targetBranch: env/prod
       path: gitops/hydrated/cilium
-    hydrateTo:
-      targetBranch: env/prod-next
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system

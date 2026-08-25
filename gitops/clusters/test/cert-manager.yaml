@@ -18,8 +18,6 @@ spec:
     syncSource:
       targetBranch: env/test
       path: gitops/hydrated/cert-manager
-    hydrateTo:
-      targetBranch: env/test-next
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager
