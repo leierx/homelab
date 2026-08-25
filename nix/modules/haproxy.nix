@@ -17,7 +17,7 @@
           bind :30443
           stick-table type ip size 100k expire 30s store conn_rate(10s)
           tcp-request connection track-sc1 src
-          tcp-request connection silent-drop if { sc1_conn_rate(10s) gt 100 }
+          tcp-request connection silent-drop if { sc1_conn_rate gt 100 }
           tcp-request inspect-delay 5s
           tcp-request content silent-drop unless { req_ssl_hello_type 1 }
           use_backend be_test if { req_ssl_sni -m end -i .test.skinke.net }

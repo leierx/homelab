@@ -20,13 +20,12 @@
       # Firmware
       hardware.enableRedistributableFirmware = true;
       services.fwupd.enable = true; # firmware updates when supported
-      services.thermald.enable = true; # Intel thermal management
       services.smartd.enable = true; # SMART monitoring for disks
 
       # spread NIC and storage IRQs across CPUs
       services.irqbalance.enable = true;
 
-      # Viritualization
+      # Virtualization
       boot.kernelModules = [ "kvm-intel" ];
 
       # FStrim for the nvme
@@ -37,10 +36,6 @@
       boot.supportedFilesystems = [ "zfs" ];
       boot.zfs.forceImportRoot = false; # will be the default in 26.05
       boot.zfs.extraPools = [ "pool0" ];
-      boot.kernelParams = [
-        "zfs.zfs_arc_max=0" # Use ZFS's default dynamic cache allocation
-        "zfs.zfs_txg_timeout=5" # Transaction latency optimization
-      ];
       services.zfs.autoScrub.enable = true; # Periodic data integrity checks
       services.zfs.autoScrub.pools = [ "pool0" ];
       environment.systemPackages = with pkgs; [ zfs ];
