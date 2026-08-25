@@ -6,5 +6,5 @@ gitops-promoter:
   crd:
     enable: true
   metrics:
-    enable: true
-    secure: true
+    enable: false
+

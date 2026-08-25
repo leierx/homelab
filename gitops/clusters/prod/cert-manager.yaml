@@ -7,17 +7,19 @@ metadata:
     - resources-finalizer.argocd.argoproj.io/background
 spec:
   project: default
-  sources:
-    - repoURL: https://github.com/leierx/homelab.git
+  sourceHydrator:
+    drySource:
+      repoURL: https://github.com/leierx/homelab.git
+      path: gitops/apps/cert-manager
       targetRevision: HEAD
-      path: gitops/apps/cert-manager/helm
       helm:
         valueFiles:
           - values.yaml
-          - prod-values.yaml
-    - repoURL: https://github.com/leierx/homelab.git
-      targetRevision: HEAD
-      path: gitops/apps/cert-manager/overlays/prod
+    syncSource:
+      targetBranch: env/prod
+      path: gitops/hydrated/cert-manager
+    hydrateTo:
+      targetBranch: env/prod-next
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager

@@ -18,7 +18,7 @@ spec:
           - prod-values.yaml
     syncSource:
       targetBranch: env/prod
-      path: gitops/apps/cilium/hydrated
+      path: gitops/hydrated/cilium
     hydrateTo:
       targetBranch: env/prod-next
   destination:

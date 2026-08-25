@@ -77,7 +77,6 @@ to before touching anything:
   files. Argo CD's repo-server auto-runs `helm dependency build`, so
   **`charts/**` and `*.tgz` are gitignored — never commit fetched charts**
   (they're also in `gitops/.gitignore`).
-- cert-manager additionally deploys a kustomize overlay
-  (`apps/cert-manager/{base,overlays}`) for the `ClusterIssuer` via a
-  multi-source Application (`spec.sources`); the issuer carries
+- cert-manager's umbrella chart templates a `ClusterIssuer`
+  (`apps/cert-manager/templates/clusterissuer.yaml`); the issuer carries
   `argocd.argoproj.io/sync-wave: "1"` to order after the chart.

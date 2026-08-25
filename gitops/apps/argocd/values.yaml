@@ -1,5 +1,4 @@
 argo-cd:
-  # Source Hydrator (beta, v3.5+) needs the commit server + hydrator.enabled.
   commitServer:
     enabled: true
   crds:
@@ -7,7 +6,6 @@ argo-cd:
   server:
     extraArgs:
       - --insecure
-  # argocd-cmd-params-cm
   configs:
     params:
       "hydrator.enabled": "true"

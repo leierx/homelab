@@ -3,6 +3,8 @@ kind: GitRepository
 metadata:
   name: homelab
   namespace: promoter-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   github:
     name: homelab

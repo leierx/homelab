@@ -7,14 +7,20 @@ metadata:
     - resources-finalizer.argocd.argoproj.io/background
 spec:
   project: default
-  source:
-    repoURL: https://github.com/leierx/homelab.git
-    targetRevision: HEAD
-    path: gitops/apps/argocd
-    helm:
-      valueFiles:
-        - values.yaml
-        - prod-values.yaml
+  sourceHydrator:
+    drySource:
+      repoURL: https://github.com/leierx/homelab.git
+      path: gitops/apps/argocd
+      targetRevision: HEAD
+      helm:
+        valueFiles:
+          - values.yaml
+          - prod-values.yaml
+    syncSource:
+      targetBranch: env/prod
+      path: gitops/hydrated/argocd
+    hydrateTo:
+      targetBranch: env/prod-next
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

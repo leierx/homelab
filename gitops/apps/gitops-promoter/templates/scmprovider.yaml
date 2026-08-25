@@ -3,9 +3,10 @@ kind: ScmProvider
 metadata:
   name: homelab
   namespace: promoter-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   secretRef:
     name: promoter-github-app
   github:
     appID: 4715868
-
