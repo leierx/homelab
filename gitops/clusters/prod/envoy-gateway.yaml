@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: envoy-gateway
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/background
+  annotations:
+    # Gateway API CRDs must land before anything creates HTTPRoutes/Gateways.
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  sourceHydrator:
+    drySource:
+      repoURL: https://github.com/leierx/homelab.git
+      path: gitops/apps/envoy-gateway
+      targetRevision: HEAD
+      helm:
+        valueFiles:
+          - values.yaml
+    syncSource:
+      targetBranch: env/prod
+      path: gitops/hydrated/envoy-gateway
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: envoy-gateway
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

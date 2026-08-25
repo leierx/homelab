@@ -1,0 +1,25 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: authentik
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    # cert-manager creates the Certificate (secret authentik-tls) from this
+    # ListenerSet's https listener, using the cluster letsencrypt issuer.
+    cert-manager.io/cluster-issuer: letsencrypt
+    # Serve ACME HTTP-01 challenges via the shared-gateway's HTTP listener.
+    acme.cert-manager.io/http01-parentreffallback: "true"
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  parentRef:
+    name: shared-gateway
+    namespace: gateway
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: {{ .Values.certificate.dnsName | quote }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: authentik-tls
