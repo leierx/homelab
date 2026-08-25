@@ -14,3 +14,18 @@ spec:
     kubernetes:
       envoyService:
         type: NodePort
+        # Deterministic NodePorts for both clusters (master:30080 / master:30443)
+        # so the host's haproxy never chases random allocations. Names must match
+        # EG's generated port names (http-80/https-443) so the strategic-merge
+        # stays valid even before the https listener has programmed.
+        patch:
+          type: StrategicMerge
+          value:
+            spec:
+              ports:
+                - name: http-80
+                  port: 80
+                  nodePort: 30080
+                - name: https-443
+                  port: 443
+                  nodePort: 30443

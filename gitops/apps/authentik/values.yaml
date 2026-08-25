@@ -19,7 +19,9 @@ authentik:
         apiVersion: gateway.networking.k8s.io/v1
         kind: HTTPRoute
         parentRefs:
-          - kind: ListenerSet
+          # group explicit (not defaulted) to avoid a perpetual Argo drift diff.
+          - group: gateway.networking.k8s.io
+            kind: ListenerSet
             name: authentik
             namespace: authentik
   postgresql:

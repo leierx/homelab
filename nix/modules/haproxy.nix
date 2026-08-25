@@ -32,17 +32,17 @@
           default_backend be_drop_http
 
         backend be_prod
-          # TEMP: real Envoy Gateway NodePorts (http/https) get set here once the
-          # data-plane Service has programmed (see gitops envoy-gateway app).
-          server prod-master 192.168.100.10:443
+          # Envoy Gateway NodePorts are pinned in the gitops envoy-gateway app:
+          # https-443 -> 30443, http-80 -> 30080 (identical on both clusters).
+          server prod-master 192.168.100.10:30443
         backend be_test
-          server test-master 192.168.101.10:443
+          server test-master 192.168.101.10:30443
         backend be_prod_http
           mode http
-          server prod-master 192.168.100.10:80
+          server prod-master 192.168.100.10:30080
         backend be_test_http
           mode http
-          server test-master 192.168.101.10:80
+          server test-master 192.168.101.10:30080
         backend be_drop
           tcp-request content silent-drop
         backend be_drop_http
