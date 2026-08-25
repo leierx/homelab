@@ -9,7 +9,9 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt
     # Serve ACME HTTP-01 challenges via the shared-gateway's HTTP listener.
     acme.cert-manager.io/http01-parentreffallback: "true"
-    argocd.argoproj.io/sync-wave: "1"
+    # Default wave (same as the HTTPRoute): the route's parent is this
+    # ListenerSet, so it must be applied in the same wave - a later wave
+    # deadlocks Argo waiting for the HTTPRoute's health.
 spec:
   parentRef:
     name: shared-gateway
