@@ -1,7 +1,9 @@
 nfs-subdir-external-provisioner:
   nfs:
+    # The host (loftserveren01) is the NAT gateway of the test libvirt network.
     server: 192.168.101.1
-    path: /tank/k8s/test
+    # Same NFSv4-root-relative path convention as prod (both networks fsid=0).
+    path: /test
     mountOptions:
       - nfsvers=4
       - noatime
