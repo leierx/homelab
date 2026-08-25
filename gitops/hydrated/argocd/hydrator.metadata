@@ -1,0 +1,7 @@
+{
+  "repoURL": "https://github.com/leierx/homelab.git",
+  "drySha": "334775e3d8e1040c2445d90347099a63eb6947b3",
+  "commands": [
+    "helm template . --name-template argocd --namespace argocd --values ./gitops/apps/argocd/values.yaml --values ./gitops/apps/argocd/test-values.yaml --include-crds"
+  ]
+}
