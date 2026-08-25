@@ -1,12 +1,17 @@
 argo-cd:
+  # Source Hydrator (beta, v3.5+) needs the commit server + hydrator.enabled.
   commitServer:
-    enabled: false
+    enabled: true
   crds:
     install: true
   server:
     extraArgs:
       - --insecure
-  redis:
-    enabled: true
-  redis-ha:
-    enabled: false
+  # argocd-cmd-params-cm
+  configs:
+    params:
+      "hydrator.enabled": "true"
+    cm:
+      commit.author.name: "GitOps Bot"
+      commit.author.email: "gitops@homelab"
+

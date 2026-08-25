@@ -1,0 +1,14 @@
+apiVersion: promoter.argoproj.io/v1alpha1
+kind: PromotionStrategy
+metadata:
+  name: homelab
+  namespace: promoter-system
+spec:
+  gitRepositoryRef:
+    name: homelab
+  environments:
+    - branch: env/test
+      autoMerge: true
+    - branch: env/prod
+      autoMerge: false
+

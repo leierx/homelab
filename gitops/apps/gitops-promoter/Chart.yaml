@@ -1,0 +1,9 @@
+apiVersion: v2
+name: gitops-promoter
+type: application
+version: 0.15.0
+appVersion: 0.36.0
+dependencies:
+  - name: gitops-promoter
+    version: "0.15.0"
+    repository: https://argoproj-labs.github.io/gitops-promoter-helm

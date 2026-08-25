@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitops-promoter
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/background
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/leierx/homelab.git
+      targetRevision: HEAD
+      path: gitops/apps/gitops-promoter
+      helm:
+        valueFiles:
+          - values.yaml
+          - prod-values.yaml
+    - repoURL: https://github.com/leierx/homelab.git
+      targetRevision: HEAD
+      path: gitops/apps/gitops-promoter/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: promoter-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

@@ -1,0 +1,10 @@
+gitops-promoter:
+  webhook:
+    enable: false
+  apiserver:
+    enabled: false
+  crd:
+    enable: true
+  metrics:
+    enable: true
+    secure: true

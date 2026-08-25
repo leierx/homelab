@@ -1,0 +1,11 @@
+gitops-promoter:
+  controllerConfiguration:
+    promotionStrategy:
+      workQueue:
+        requeueDuration: "30s"
+    changeTransferPolicy:
+      workQueue:
+        requeueDuration: "30s"
+    pullRequest:
+      workQueue:
+        requeueDuration: "30s"
