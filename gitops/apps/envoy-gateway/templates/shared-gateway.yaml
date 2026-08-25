@@ -8,6 +8,12 @@ metadata:
     argocd.argoproj.io/sync-wave: "2"
 spec:
   gatewayClassName: envoy-gateway
+  # Explicit address (required for non-LoadBalancer providers): EG uses this as
+  # the data-plane Service's ExternalIP AND publishes it in the Gateway status;
+  # without it the Gateway stays Programmed=False (AddressNotAssigned).
+  addresses:
+    - type: IPAddress
+      value: {{ .Values.gateway.address | quote }}
   # NodePort data plane (see envoyproxy.yaml) - no LB-IPAM pool on this cluster.
   infrastructure:
     parametersRef:

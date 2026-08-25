@@ -18,6 +18,7 @@ spec:
       helm:
         valueFiles:
           - values.yaml
+          - prod-values.yaml
     syncSource:
       targetBranch: env/prod
       path: gitops/hydrated/envoy-gateway

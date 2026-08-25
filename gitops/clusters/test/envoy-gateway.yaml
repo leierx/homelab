@@ -18,6 +18,7 @@ spec:
       helm:
         valueFiles:
           - values.yaml
+          - test-values.yaml
     syncSource:
       targetBranch: env/test
       path: gitops/hydrated/envoy-gateway
