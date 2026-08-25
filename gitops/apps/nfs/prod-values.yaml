@@ -1,10 +1,8 @@
 nfs-subdir-external-provisioner:
   nfs:
-    # The host (loftserveren01) is the NAT gateway of the prod libvirt network.
     server: 192.168.100.1
-    # Path relative to the NFSv4 root (fsid=0 exposes /tank/k8s as "/"). The
-    # provisioner mounts this and creates per-PV subdirs inside it.
     path: /prod
     mountOptions:
       - nfsvers=4
       - noatime
+

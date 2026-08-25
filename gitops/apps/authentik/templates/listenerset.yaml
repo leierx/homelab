@@ -4,14 +4,8 @@ metadata:
   name: authentik
   namespace: {{ .Release.Namespace }}
   annotations:
-    # cert-manager creates the Certificate (secret authentik-tls) from this
-    # ListenerSet's https listener, using the cluster letsencrypt issuer.
     cert-manager.io/cluster-issuer: letsencrypt
-    # Serve ACME HTTP-01 challenges via the shared-gateway's HTTP listener.
     acme.cert-manager.io/http01-parentreffallback: "true"
-    # Default wave (same as the HTTPRoute): the route's parent is this
-    # ListenerSet, so it must be applied in the same wave - a later wave
-    # deadlocks Argo waiting for the HTTPRoute's health.
 spec:
   parentRef:
     name: shared-gateway
@@ -24,8 +18,7 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          # Explicit group/kind: the API materializes these defaults on write,
-          # which Argo would otherwise flag as perpetual drift.
           - group: ""
             kind: Secret
             name: authentik-tls
+

@@ -4,38 +4,28 @@ metadata:
   name: shared-gateway
   namespace: gateway
   annotations:
-    # After the envoy-gateway GatewayClass (sync-wave 1) so this can be accepted.
     argocd.argoproj.io/sync-wave: "2"
 spec:
   gatewayClassName: envoy-gateway
-  # Explicit address (required for non-LoadBalancer providers): EG uses this as
-  # the data-plane Service's ExternalIP AND publishes it in the Gateway status;
-  # without it the Gateway stays Programmed=False (AddressNotAssigned).
   addresses:
     - type: IPAddress
       value: {{ .Values.gateway.address | quote }}
-  # NodePort data plane (see envoyproxy.yaml) - no LB-IPAM pool on this cluster.
   infrastructure:
     parametersRef:
       group: gateway.envoyproxy.io
       kind: EnvoyProxy
       name: shared-gateway-proxy
-  # Static front door. TLS listeners + certs are contributed per-app via
-  # ListenerSets; this HTTP listener serves ACME HTTP-01 challenges for them.
   listeners:
     - name: http
       protocol: HTTP
       port: 80
       allowedRoutes:
         kinds:
-          # group is required explicitly: the API server defaults it to
-          # gateway.networking.k8s.io on write, which Argo would otherwise
-          # diff as a perpetual one-line drift.
           - group: gateway.networking.k8s.io
             kind: HTTPRoute
         namespaces:
           from: All
-  # Allow apps in any namespace to attach their own ListenerSets.
   allowedListeners:
     namespaces:
       from: All
+

@@ -12,3 +12,4 @@ nfs-subdir-external-provisioner:
     requests:
       cpu: 50m
       memory: 64Mi
+

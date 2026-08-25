@@ -3,11 +3,7 @@ kind: GatewayClass
 metadata:
   name: envoy-gateway
   annotations:
-    # Declared explicitly instead of relying on Envoy Gateway's startup-only
-    # auto-bootstrap (which races the CRDs being applied by this same app).
-    # Must sync BEFORE the shared-gateway: the gateway can't become healthy
-    # without the class, and Argo won't advance to the next sync-wave until the
-    # current one is healthy.
     argocd.argoproj.io/sync-wave: "1"
 spec:
   controllerName: gateway.envoyproxy.io/gatewayclass-controller
+
