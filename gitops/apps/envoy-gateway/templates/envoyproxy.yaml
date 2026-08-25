@@ -14,14 +14,3 @@ spec:
     kubernetes:
       envoyService:
         type: NodePort
-        # Pin deterministic NodePorts so the host's haproxy can target fixed
-        # ports (master:30080 / master:30443) instead of drifting 3xxxx ranges.
-        patch:
-          type: StrategicMerge
-          value:
-            spec:
-              ports:
-                - port: 80
-                  nodePort: 30080
-                - port: 443
-                  nodePort: 30443
