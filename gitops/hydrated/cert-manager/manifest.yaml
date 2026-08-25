@@ -6,7 +6,7 @@ metadata:
     app: cainjector
     app.kubernetes.io/component: cainjector
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cainjector
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -21,7 +21,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -36,7 +36,7 @@ metadata:
     app: webhook
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: webhook
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -52,7 +52,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: crds
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -3384,7 +3384,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: crds
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -3674,7 +3674,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: crds
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -4000,7 +4000,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: crds
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -4914,7 +4914,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: crds
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -8867,7 +8867,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: crds
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -12817,7 +12817,7 @@ metadata:
     app: cainjector
     app.kubernetes.io/component: cainjector
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cainjector
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -12887,7 +12887,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -12935,7 +12935,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -12983,7 +12983,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13054,7 +13054,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13129,7 +13129,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13236,7 +13236,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13309,7 +13309,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13332,7 +13332,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13369,7 +13369,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13419,7 +13419,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: cert-manager
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13442,7 +13442,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: cert-manager
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13487,7 +13487,7 @@ metadata:
     app: webhook
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: webhook
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13507,7 +13507,7 @@ metadata:
     app: cainjector
     app.kubernetes.io/component: cainjector
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cainjector
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13528,7 +13528,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13549,7 +13549,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13570,7 +13570,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13591,7 +13591,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13612,7 +13612,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13633,7 +13633,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13654,7 +13654,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: cert-manager
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13675,7 +13675,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: cert-manager
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13696,7 +13696,7 @@ metadata:
     app: webhook
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: webhook
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13717,7 +13717,7 @@ metadata:
     app: cainjector
     app.kubernetes.io/component: cainjector
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cainjector
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13749,7 +13749,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13780,7 +13780,7 @@ metadata:
     app: webhook
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: webhook
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13812,7 +13812,7 @@ metadata:
     app: cainjector
     app.kubernetes.io/component: cainjector
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cainjector
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13834,7 +13834,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13856,7 +13856,7 @@ metadata:
     app: webhook
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: webhook
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13878,7 +13878,7 @@ metadata:
     app: cainjector
     app.kubernetes.io/component: cainjector
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cainjector
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13902,7 +13902,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13926,7 +13926,7 @@ metadata:
     app: webhook
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: webhook
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13955,7 +13955,7 @@ metadata:
     app: cainjector
     app.kubernetes.io/component: cainjector
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cainjector
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -13978,7 +13978,7 @@ spec:
         app: cainjector
         app.kubernetes.io/component: cainjector
         app.kubernetes.io/instance: cert-manager
-        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/managed-by: homelab-gitops
         app.kubernetes.io/name: cainjector
         app.kubernetes.io/version: v1.21.1
         helm.sh/chart: cert-manager-v1.21.1
@@ -14021,7 +14021,7 @@ metadata:
     app: cert-manager
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -14044,7 +14044,7 @@ spec:
         app: cert-manager
         app.kubernetes.io/component: controller
         app.kubernetes.io/instance: cert-manager
-        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/managed-by: homelab-gitops
         app.kubernetes.io/name: cert-manager
         app.kubernetes.io/version: v1.21.1
         helm.sh/chart: cert-manager-v1.21.1
@@ -14055,6 +14055,7 @@ spec:
             - --cluster-resource-namespace=$(POD_NAMESPACE)
             - --leader-election-namespace=kube-system
             - --acme-http01-solver-image=quay.io/jetstack/cert-manager-acmesolver:v1.21.1
+            - --acme-http01-solver-extra-labels=app.kubernetes.io/managed-by=homelab-gitops
             - --max-concurrent-challenges=60
           env:
             - name: POD_NAMESPACE
@@ -14103,7 +14104,7 @@ metadata:
     app: webhook
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: webhook
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -14126,7 +14127,7 @@ spec:
         app: webhook
         app.kubernetes.io/component: webhook
         app.kubernetes.io/instance: cert-manager
-        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/managed-by: homelab-gitops
         app.kubernetes.io/name: webhook
         app.kubernetes.io/version: v1.21.1
         helm.sh/chart: cert-manager-v1.21.1
@@ -14202,7 +14203,7 @@ metadata:
     app: webhook
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: webhook
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -14239,7 +14240,7 @@ metadata:
     app: webhook
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: webhook
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -14308,7 +14309,7 @@ metadata:
     app: startupapicheck
     app.kubernetes.io/component: startupapicheck
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: startupapicheck
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -14326,7 +14327,7 @@ metadata:
     app: startupapicheck
     app.kubernetes.io/component: startupapicheck
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: startupapicheck
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -14351,7 +14352,7 @@ metadata:
     app: startupapicheck
     app.kubernetes.io/component: startupapicheck
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: startupapicheck
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -14377,7 +14378,7 @@ metadata:
     app: startupapicheck
     app.kubernetes.io/component: startupapicheck
     app.kubernetes.io/instance: cert-manager
-    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/managed-by: homelab-gitops
     app.kubernetes.io/name: startupapicheck
     app.kubernetes.io/version: v1.21.1
     helm.sh/chart: cert-manager-v1.21.1
@@ -14391,7 +14392,7 @@ spec:
         app: startupapicheck
         app.kubernetes.io/component: startupapicheck
         app.kubernetes.io/instance: cert-manager
-        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/managed-by: homelab-gitops
         app.kubernetes.io/name: startupapicheck
         app.kubernetes.io/version: v1.21.1
         helm.sh/chart: cert-manager-v1.21.1
