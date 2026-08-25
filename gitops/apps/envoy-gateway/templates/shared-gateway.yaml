@@ -15,7 +15,11 @@ spec:
       port: 80
       allowedRoutes:
         kinds:
-          - kind: HTTPRoute
+          # group is required explicitly: the API server defaults it to
+          # gateway.networking.k8s.io on write, which Argo would otherwise
+          # diff as a perpetual one-line drift.
+          - group: gateway.networking.k8s.io
+            kind: HTTPRoute
         namespaces:
           from: All
   # Allow apps in any namespace to attach their own ListenerSets.
