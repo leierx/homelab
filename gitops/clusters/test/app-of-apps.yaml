@@ -41,7 +41,7 @@ spec:
           helm:
             valueFiles:
               - values.yaml
-              - 'values-{{.env}}.yaml'
+              - '{{.env}}-values.yaml'
         syncSource:
           targetBranch: 'environments/{{.env}}'
           path: 'gitops/hydrated/{{.env}}/{{.name}}'

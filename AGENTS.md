@@ -75,10 +75,10 @@ App-of-apps via **ApplicationSet + sourceHydrator**; two Argo CD instances
   only on `prod`, `apps/test/` only on `test`. Each app dir is an umbrella
   Helm chart (`Chart.yaml` declares the upstream chart as a `dependency`) plus:
   - `app.yaml` — metadata the ApplicationSet reads (see below);
-  - `values.yaml` (shared defaults) and `values-<env>.yaml` **for every env it
-    belongs to** (shared apps therefore ship `values-prod.yaml` +
-    `values-test.yaml`, even if empty). The ApplicationSet always renders
-    `valueFiles: [values.yaml, values-<env>.yaml]`, so a missing file breaks
+  - `values.yaml` (shared defaults) and `<env>-values.yaml` **for every env it
+    belongs to** (shared apps therefore ship `prod-values.yaml` +
+    `test-values.yaml`, even if empty). The ApplicationSet always renders
+    `valueFiles: [values.yaml, <env>-values.yaml]`, so a missing file breaks
     an env.
   - Argo CD's repo-server auto-runs `helm dependency build`, so
     **`charts/**` and `*.tgz` are gitignored — never commit fetched charts**
