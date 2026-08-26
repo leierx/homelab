@@ -30,24 +30,24 @@ spec:
                   group: prod
   template:
     metadata:
-      name: '{{name}}'
+      name: '{{.name}}'
     spec:
       project: default
       sourceHydrator:
         drySource:
           repoURL: https://github.com/leierx/homelab.git
-          path: 'gitops/apps/{{group}}/{{name}}'
+          path: 'gitops/apps/{{.group}}/{{.name}}'
           targetRevision: HEAD
           helm:
             valueFiles:
               - values.yaml
-              - 'values-{{env}}.yaml'
+              - 'values-{{.env}}.yaml'
         syncSource:
-          targetBranch: 'environments/{{env}}'
-          path: 'gitops/hydrated/{{env}}/{{name}}'
+          targetBranch: 'environments/{{.env}}'
+          path: 'gitops/hydrated/{{.env}}/{{.name}}'
       destination:
         server: https://kubernetes.default.svc
-        namespace: '{{namespace}}'
+        namespace: '{{.namespace}}'
       syncPolicy:
         automated:
           prune: true
