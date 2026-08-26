@@ -43,7 +43,7 @@ spec:
               - values.yaml
               - '{{.env}}-values.yaml'
         syncSource:
-          targetBranch: 'environments/{{.env}}'
+          targetBranch: 'env/{{.env}}'
           path: 'gitops/hydrated/{{.env}}/{{.name}}'
       destination:
         server: https://kubernetes.default.svc

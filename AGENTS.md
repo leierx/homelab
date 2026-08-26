@@ -91,11 +91,10 @@ App-of-apps via **ApplicationSet + sourceHydrator**; two Argo CD instances
   `env`/`group`. Adding a **shared app** = drop a folder (never touch
   `clusters/`); a **prod-only/test-only** app = drop it in `apps/prod/` /
   `apps/test/`.
-- Hydration branches: `environments/prod` and `environments/test` contain only
+- Hydration branches: `env/prod` and `env/test` contain only
   Argo CD's hydrated output under `gitops/hydrated/<env>/<app>/`. Each branch
   is owned by exactly one instance (a hydrator hard requirement) and should be
-  branch-protected so only Argo CD writes to it. The old `env/*` branches are
-  retired — don't resurrect the name.
+  branch-protected so only Argo CD writes to it.
 - Hydrator reacts only to dry-source commits: after adding a **new** app
   folder, push an empty commit to `main` to force hydration to pick it up.
 - cert-manager's umbrella chart templates a `ClusterIssuer`

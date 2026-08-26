@@ -6,6 +6,9 @@ argo-cd:
   server:
     extraArgs:
       - --insecure
+  applicationSet:
+    extraArgs:
+      - --policy=create-update
   configs:
     params:
       "hydrator.enabled": "true"
