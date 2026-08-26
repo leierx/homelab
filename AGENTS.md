@@ -68,15 +68,36 @@ to before touching anything:
 
 ## GitOps (`gitops/`, Argo CD)
 
-- App-of-apps: `clusters/{prod,test}/root-app.yaml` is the bootstrap
-  Application that adopts every other `clusters/<cluster>/*.yaml`. The two
-  clusters are **managed independently** — `clusters/test/` is kept in sync
-  with `clusters/prod/` by hand, not generated.
-- Each `apps/<name>/` is an umbrella Helm chart: `Chart.yaml` declares the
-  upstream chart as a `dependency`, plus `values.yaml` and per-cluster override
-  files. Argo CD's repo-server auto-runs `helm dependency build`, so
-  **`charts/**` and `*.tgz` are gitignored — never commit fetched charts**
-  (they're also in `gitops/.gitignore`).
+App-of-apps via **ApplicationSet + sourceHydrator**; two Argo CD instances
+(one per cluster), each hydrating to its **own** branch.
+
+- App layout: `apps/shared/<app>/` renders on **both** clusters, `apps/prod/`
+  only on `prod`, `apps/test/` only on `test`. Each app dir is an umbrella
+  Helm chart (`Chart.yaml` declares the upstream chart as a `dependency`) plus:
+  - `app.yaml` — metadata the ApplicationSet reads (see below);
+  - `values.yaml` (shared defaults) and `values-<env>.yaml` **for every env it
+    belongs to** (shared apps therefore ship `values-prod.yaml` +
+    `values-test.yaml`, even if empty). The ApplicationSet always renders
+    `valueFiles: [values.yaml, values-<env>.yaml]`, so a missing file breaks
+    an env.
+  - Argo CD's repo-server auto-runs `helm dependency build`, so
+    **`charts/**` and `*.tgz` are gitignored — never commit fetched charts**
+    (they're also in `gitops/.gitignore`).
+- `apps/<app>/app.yaml` contract — keys the file generator feeds the template:
+  `name` (must equal the folder name) and `namespace` (Argo CD destination).
+- App-of-apps: `clusters/{prod,test}/root-app.yaml` bootstraps the single
+  `app-of-apps.yaml` ApplicationSet in that cluster dir. The two AppSets are
+  near-identical; each matrix-block's list generator carries the cluster's
+  `env`/`group`. Adding a **shared app** = drop a folder (never touch
+  `clusters/`); a **prod-only/test-only** app = drop it in `apps/prod/` /
+  `apps/test/`.
+- Hydration branches: `environments/prod` and `environments/test` contain only
+  Argo CD's hydrated output under `gitops/hydrated/<env>/<app>/`. Each branch
+  is owned by exactly one instance (a hydrator hard requirement) and should be
+  branch-protected so only Argo CD writes to it. The old `env/*` branches are
+  retired — don't resurrect the name.
+- Hydrator reacts only to dry-source commits: after adding a **new** app
+  folder, push an empty commit to `main` to force hydration to pick it up.
 - cert-manager's umbrella chart templates a `ClusterIssuer`
   (`apps/cert-manager/templates/clusterissuer.yaml`); the issuer carries
   `argocd.argoproj.io/sync-wave: "1"` to order after the chart.

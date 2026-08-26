@@ -1,0 +1,12 @@
+cert-manager:
+  crds:
+    enabled: true
+    keep: true
+  # Self-service TLS via ListenerSet (GEP-1713): apps own their
+  # ListenerSet/Certificate/HTTPRoute; the shared-gateway stays static.
+  config:
+    gatewayAPI:
+      enabled: true
+      enableListenerSet: true
+    featureGates:
+      ListenerSets: true

@@ -1,0 +1,10 @@
+cilium:
+  kubeProxyReplacement: true
+  hubble:
+    enabled: false
+  ipam:
+    operator:
+      clusterPoolIPv4PodCIDRList:
+        - "10.42.0.0/16"
+  operator:
+    replicas: 1 # downgrade from default 2

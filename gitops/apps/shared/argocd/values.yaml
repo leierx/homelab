@@ -1,0 +1,15 @@
+argo-cd:
+  commitServer:
+    enabled: true
+  crds:
+    install: true
+  server:
+    extraArgs:
+      - --insecure
+  configs:
+    params:
+      "hydrator.enabled": "true"
+    cm:
+      commit.author.name: "GitOps Bot"
+      commit.author.email: "gitops@homelab"
+

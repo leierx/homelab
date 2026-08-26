@@ -1,0 +1,55 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: app-of-apps
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - matrix:
+        - git:
+            repoURL: https://github.com/leierx/homelab.git
+            revision: HEAD
+            files:
+              - path: gitops/apps/shared/*/app.yaml
+        - list:
+            elements:
+              - env: test
+                group: shared
+    - matrix:
+        - git:
+            repoURL: https://github.com/leierx/homelab.git
+            revision: HEAD
+            files:
+              - path: gitops/apps/test/*/app.yaml
+        - list:
+            elements:
+              - env: test
+                group: test
+  template:
+    metadata:
+      name: '{{name}}'
+    spec:
+      project: default
+      sourceHydrator:
+        drySource:
+          repoURL: https://github.com/leierx/homelab.git
+          path: 'gitops/apps/{{group}}/{{name}}'
+          targetRevision: HEAD
+          helm:
+            valueFiles:
+              - values.yaml
+              - 'values-{{env}}.yaml'
+        syncSource:
+          targetBranch: 'environments/{{env}}'
+          path: 'gitops/hydrated/{{env}}/{{name}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
