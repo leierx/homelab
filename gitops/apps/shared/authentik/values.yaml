@@ -5,6 +5,8 @@ authentik:
     disable_startup_analytics: true
     disable_update_check: true
   server:
+    deploymentAnnotations:
+      argocd.argoproj.io/sync-wave: "1"
     envFrom:
       - secretRef:
           name: authentik-secrets
@@ -24,6 +26,8 @@ authentik:
             name: authentik
             namespace: authentik
   worker:
+    deploymentAnnotations:
+      argocd.argoproj.io/sync-wave: "2"
     envFrom:
       - secretRef:
           name: authentik-secrets
