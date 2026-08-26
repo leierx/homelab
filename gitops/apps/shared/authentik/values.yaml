@@ -1,43 +1,53 @@
+certificate:
+  dnsName: auth.invalid
 authentik:
   authentik:
     disable_startup_analytics: true
     disable_update_check: true
-    log_level: info
-    web:
-      path: /
-    error_reporting:
-      enabled: false
-    existingSecret:
-      secretName: authentik-secrets
-    postgresql:
-      host: authentik-postgresql
-      name: authentik
-      user: authentik
-      port: 5432
   server:
+    envFrom:
+      - secretRef:
+          name: authentik-secrets
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "2"
+        memory: 2Gi
     route:
       main:
         enabled: true
-        apiVersion: gateway.networking.k8s.io/v1
-        kind: HTTPRoute
         parentRefs:
           - group: gateway.networking.k8s.io
             kind: ListenerSet
             name: authentik
             namespace: authentik
+  worker:
+    envFrom:
+      - secretRef:
+          name: authentik-secrets
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "2"
+        memory: 2Gi
   postgresql:
     enabled: true
-    default_schema: authentik
     auth:
-      username: authentik
-      database: authentik
       existingSecret: authentik-postgresql
       secretKeys:
-        userPasswordKey: password
         adminPasswordKey: postgresql-postgres-password
     primary:
       persistence:
-        enabled: true
         storageClass: nfs
-        size: 8Gi
-
+        size: 20Gi
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+        limits:
+          cpu: "2"
+          memory: 2Gi
