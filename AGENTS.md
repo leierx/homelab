@@ -75,11 +75,10 @@ App-of-apps via **ApplicationSet + sourceHydrator**; two Argo CD instances
   only on `prod`, `apps/test/` only on `test`. Each app dir is an umbrella
   Helm chart (`Chart.yaml` declares the upstream chart as a `dependency`) plus:
   - `app.yaml` — metadata the ApplicationSet reads (see below);
-  - `values.yaml` (shared defaults) and `<env>-values.yaml` **for every env it
-    belongs to** (shared apps therefore ship `prod-values.yaml` +
-    `test-values.yaml`, even if empty). The ApplicationSet always renders
-    `valueFiles: [values.yaml, <env>-values.yaml]`, so a missing file breaks
-    an env.
+  - `values.yaml` (shared defaults) and optional `<env>-values.yaml`. The
+    ApplicationSet renders
+    `valueFiles: [values.yaml, {name: <env>-values.yaml, ignoreMissing: true}]`,
+    so missing env-value files are fine and can be skipped per app.
   - Argo CD's repo-server auto-runs `helm dependency build`, so
     **`charts/**` and `*.tgz` are gitignored — never commit fetched charts**
     (they're also in `gitops/.gitignore`).
@@ -91,9 +90,9 @@ App-of-apps via **ApplicationSet + sourceHydrator**; two Argo CD instances
   `env`/`group`. Adding a **shared app** = drop a folder (never touch
   `clusters/`); a **prod-only/test-only** app = drop it in `apps/prod/` /
   `apps/test/`.
-- Hydration branches: `env/prod` and `env/test` contain only
-  Argo CD's hydrated output under `gitops/hydrated/<env>/<app>/`. Each branch
-  is owned by exactly one instance (a hydrator hard requirement) and should be
+- Hydration branches: `env/prod` and `env/test` contain Argo CD's hydrated
+  output under `gitops/hydrated/<env>/<app>/`. Each branch is owned by exactly
+  one Argo CD instance (a hydrator hard requirement) and should be
   branch-protected so only Argo CD writes to it.
 - Hydrator reacts only to dry-source commits: after adding a **new** app
   folder, push an empty commit to `main` to force hydration to pick it up.

@@ -13,6 +13,6 @@ argo-cd:
     params:
       "hydrator.enabled": "true"
     cm:
-      commit.author.name: "GitOps Bot"
-      commit.author.email: "gitops@homelab"
+      commit.author.name: "Hydrator Bot"
+      commit.author.email: "argocd@homelab"
 
