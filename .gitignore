@@ -1,0 +1,4 @@
+_scratch/
+*.rendered.yaml
+charts/
+Chart.lock
