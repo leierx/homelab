@@ -7,25 +7,27 @@ spec:
   goTemplate: true
   generators:
     - matrix:
-        - git:
-            repoURL: https://github.com/leierx/homelab.git
-            revision: HEAD
-            files:
-              - path: gitops/apps/shared/*/app.yaml
-        - list:
-            elements:
-              - env: prod
-                group: shared
+        generators:
+          - git:
+              repoURL: https://github.com/leierx/homelab.git
+              revision: HEAD
+              files:
+                - path: gitops/apps/shared/*/app.yaml
+          - list:
+              elements:
+                - env: prod
+                  group: shared
     - matrix:
-        - git:
-            repoURL: https://github.com/leierx/homelab.git
-            revision: HEAD
-            files:
-              - path: gitops/apps/prod/*/app.yaml
-        - list:
-            elements:
-              - env: prod
-                group: prod
+        generators:
+          - git:
+              repoURL: https://github.com/leierx/homelab.git
+              revision: HEAD
+              files:
+                - path: gitops/apps/prod/*/app.yaml
+          - list:
+              elements:
+                - env: prod
+                  group: prod
   template:
     metadata:
       name: '{{name}}'
