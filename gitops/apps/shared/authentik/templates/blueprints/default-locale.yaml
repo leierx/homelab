@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-default-locale
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+data:
+  default-locale.yaml: |
+    version: 1
+    metadata:
+      name: authentik Default Locale
+      labels:
+        blueprints.goauthentik.io/description: Force English as the default UI language
+    entries:
+      - model: authentik_brands.brand
+        state: present
+        identifiers:
+          default: true
+        attrs:
+          attributes:
+            settings:
+              locale: en
