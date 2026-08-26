@@ -1,0 +1,56 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: bitwarden-ca-issuer
+  namespace: {{ .Release.Namespace }}
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: bitwarden-ca
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: bitwarden-ca
+  isCA: true
+  commonName: bitwarden-ca
+  duration: 87600h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: bitwarden-ca-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: bitwarden-issuer
+  namespace: {{ .Release.Namespace }}
+spec:
+  ca:
+    secretName: bitwarden-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: bitwarden-tls-certs
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: bitwarden-tls-certs
+  commonName: bitwarden-sdk-server
+  duration: 8760h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  dnsNames:
+    - bitwarden-sdk-server
+    - bitwarden-sdk-server.{{ .Release.Namespace }}
+    - bitwarden-sdk-server.{{ .Release.Namespace }}.svc
+    - bitwarden-sdk-server.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    name: bitwarden-issuer
+    kind: Issuer
+    group: cert-manager.io
