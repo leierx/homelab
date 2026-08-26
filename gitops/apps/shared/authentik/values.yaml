@@ -7,12 +7,12 @@ authentik:
       path: /
     error_reporting:
       enabled: false
-    secret_key: ""
+    existingSecret:
+      secretName: authentik-secrets
     postgresql:
       host: authentik-postgresql
       name: authentik
       user: authentik
-      password: ""
       port: 5432
   server:
     route:
@@ -30,7 +30,10 @@ authentik:
     auth:
       username: authentik
       database: authentik
-      password: ""
+      existingSecret: authentik-postgresql
+      secretKeys:
+        userPasswordKey: password
+        adminPasswordKey: postgresql-postgres-password
     primary:
       persistence:
         enabled: true

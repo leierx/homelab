@@ -1,11 +1,4 @@
 authentik:
-  authentik:
-    secret_key: "8oyP/IcLuWXrnT0yIVD7Ftdj32RQRKRnnVbJzw7nQPrUVRzR5UzcHB9nxXKHJVHx"
-    postgresql:
-      password: "CwELKakZW9Uvr6QMK3NXZqcBngHDsQuo"
-  postgresql:
-    auth:
-      password: "CwELKakZW9Uvr6QMK3NXZqcBngHDsQuo"
   server:
     route:
       main:

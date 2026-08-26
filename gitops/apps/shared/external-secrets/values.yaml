@@ -3,7 +3,6 @@ bitwarden:
   identityURL: https://identity.bitwarden.com
   serverSDKURL: https://bitwarden-sdk-server.external-secrets.svc.cluster.local:9998
   organizationID: "a51e9958-f4d5-4ec7-a1cb-b4af013bd758"
-  projectID: "7ab884be-48e4-48db-91fb-b4b200fd2698"
 
 external-secrets:
   bitwarden-sdk-server:
