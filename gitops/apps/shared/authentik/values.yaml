@@ -27,6 +27,7 @@ authentik:
             namespace: authentik
   postgresql:
     enabled: true
+    default_schema: authentik
     auth:
       username: authentik
       database: authentik
