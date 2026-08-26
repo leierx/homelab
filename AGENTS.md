@@ -76,9 +76,10 @@ App-of-apps via **ApplicationSet + sourceHydrator**; two Argo CD instances
   Helm chart (`Chart.yaml` declares the upstream chart as a `dependency`) plus:
   - `app.yaml` — metadata the ApplicationSet reads (see below);
   - `values.yaml` (shared defaults) and optional `<env>-values.yaml`. The
-    ApplicationSet renders
-    `valueFiles: [values.yaml, {name: <env>-values.yaml, ignoreMissing: true}]`,
-    so missing env-value files are fine and can be skipped per app.
+    ApplicationSet renders `valueFiles: [values.yaml, <env>-values.yaml]` with
+    `helm.ignoreMissingValueFiles: true`, so missing `<env>-values.yaml` files
+    are skipped per app (Argo CD v3.5.1 does not support per-file
+    `{name, ignoreMissing}` maps in `valueFiles`).
   - Argo CD's repo-server auto-runs `helm dependency build`, so
     **`charts/**` and `*.tgz` are gitignored — never commit fetched charts**
     (they're also in `gitops/.gitignore`).

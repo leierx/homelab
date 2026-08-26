@@ -41,8 +41,8 @@ spec:
           helm:
             valueFiles:
               - values.yaml
-              - name: '{{.env}}-values.yaml'
-                ignoreMissing: true
+              - '{{.env}}-values.yaml'
+            ignoreMissingValueFiles: true
         syncSource:
           targetBranch: 'env/{{.env}}'
           path: 'gitops/hydrated/{{.env}}/{{.name}}'
