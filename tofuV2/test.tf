@@ -79,8 +79,13 @@ resource "incus_instance" "test_master_01" {
   }
 }
 
-resource "incus_instance" "test_slave_01" {
-  name    = "hadron-slave-test01"
+resource "incus_instance" "test_slave" {
+  for_each = {
+    "hadron-slave-test01" = { ip = "192.168.101.21", mac = "52:54:00:65:00:0c" }
+    "hadron-slave-test02" = { ip = "192.168.101.22", mac = "52:54:00:65:00:0d" }
+  }
+
+  name    = each.key
   type    = "virtual-machine"
   image   = incus_image.kairos.fingerprint
   running = true
@@ -91,7 +96,7 @@ resource "incus_instance" "test_slave_01" {
     "limits.memory"       = "16GiB"
     "security.secureboot" = "false"
     "cloud-init.user-data" = templatefile("${path.module}/templates/worker.yaml.tftpl", {
-      hostname        = "hadron-slave-test01"
+      hostname        = each.key
       token           = random_password.test_k3s_token.result
       bootstrap_cp_ip = "192.168.101.10"
     })
@@ -121,60 +126,8 @@ resource "incus_instance" "test_slave_01" {
     type = "nic"
     properties = {
       network        = incus_network.test.name
-      hwaddr         = "52:54:00:65:00:0c"
-      "ipv4.address" = "192.168.101.21"
-    }
-  }
-
-  wait_for {
-    type = "ipv4"
-  }
-}
-
-resource "incus_instance" "test_slave_02" {
-  name    = "hadron-slave-test02"
-  type    = "virtual-machine"
-  image   = incus_image.kairos.fingerprint
-  running = true
-
-  config = {
-    "boot.autostart"      = "true"
-    "limits.cpu"          = "4"
-    "limits.memory"       = "16GiB"
-    "security.secureboot" = "false"
-    "cloud-init.user-data" = templatefile("${path.module}/templates/worker.yaml.tftpl", {
-      hostname        = "hadron-slave-test02"
-      token           = random_password.test_k3s_token.result
-      bootstrap_cp_ip = "192.168.101.10"
-    })
-  }
-
-  device {
-    name = "root"
-    type = "disk"
-    properties = {
-      path            = "/"
-      pool            = incus_storage_pool.default.name
-      size            = "20GiB"
-      "boot.priority" = "10"
-    }
-  }
-
-  device {
-    name = "cloud-init"
-    type = "disk"
-    properties = {
-      source = "cloud-init:config"
-    }
-  }
-
-  device {
-    name = "eth0"
-    type = "nic"
-    properties = {
-      network        = incus_network.test.name
-      hwaddr         = "52:54:00:65:00:0d"
-      "ipv4.address" = "192.168.101.22"
+      hwaddr         = each.value.mac
+      "ipv4.address" = each.value.ip
     }
   }
 
