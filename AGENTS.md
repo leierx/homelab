@@ -8,8 +8,10 @@
 - **Never run `kubectl`, `ssh`, or otherwise operate on the live systems**
   (the `loftserveren01` host, the k3s clusters, VMs, or Argo CD) unless I
   manually grant permission first. File/config edits and local commands
-  (`nix fmt`, `tofu plan`) that do not touch live systems are fine; anything
-  that reaches the running infrastructure requires explicit approval.
+  (`nix fmt`, `tofu fmt`/`tofu validate`) that do not touch live systems are
+  fine; anything that reaches the running infrastructure requires explicit
+  approval. Note `tofu plan`/`apply` now only run **on the server** (state and
+  the Incus socket live there), so they fall under this rule too.
 - **Never run `nix build` (or other heavyweight flake builds) unless I
   explicitly ask** — they're slow. Default to cheap validation like
   `nix fmt -- --ci`; only build when told to.
@@ -21,8 +23,10 @@ independent subsystems live in one repo — figure out which one a task belongs
 to before touching anything:
 
 - `nix/` — NixOS config for the physical host (flake).
-- `tofu/` — OpenTofu: provisions the k3s/Kairos VMs via libvirt.
-- `gitops/` — Argo CD app-of-apps for the two k3s clusters (`prod`, `test`).
+- `opentofu/` — OpenTofu: provisions the k3s/Kairos VMs on Incus (runs on the
+  server itself).
+- `gitops/` — Argo CD app-of-apps for the `prod` and `test` k3s clusters
+  (`mgmt` has no gitops yet).
 
 ## Nix (flake)
 
@@ -53,18 +57,29 @@ to before touching anything:
   `sops.secrets`. To add a secret: add an entry there and re-encrypt
   `nix/secrets.yaml` with `sops`.
 
-## OpenTofu (`tofu/`)
+## OpenTofu (`opentofu/`)
 
-- Run from `tofu/`: `tofu plan` / `tofu apply`. State and `.terraform/` are
-  gitignored (local-only workflow, no remote backend).
-- Provisions Kairos/k3s VMs (`prod` = 192.168.100.0/24, `test` =
-  192.168.101.0/24) through the `dmacvicar/libvirt` provider against
-  `qemu:///system` — requires the host's `libvirtd` running. Locals in
-  `locals.tf` are the source of truth for node layout/addresses/cloud-init.
-- `renovate.json` is configured to manage only `terraform` (tofu provider deps
-  in `.terraform.lock.hcl`).
-- The `talos` provider cached under `.terraform/` is stale — only libvirt,
-  `random`, and `null` are in `providers.tf`.
+- Runs **on loftserveren01 itself** (`~/opentofu`, `lxc/incus` provider
+  against the local Incus unix socket) — state, `.terraform/` and the lock
+  file live there, not in this checkout. Locally only `tofu fmt` /
+  `tofu validate` are useful.
+- Three k3s clusters as Kairos VMs: `prod` = 192.168.100.0/24, `test` = .101,
+  `mgmt` = .102 — 1 control-plane + 2 workers each. One flat file per cluster
+  at the repo root of `opentofu/` (`prod.tf`, `test.tf`, `mgmt.tf`):
+  network, token and all VMs hardcoded and explicit. The only loop is the
+  worker `for_each` map per cluster — don't add abstraction beyond that
+  (no modules, no locals layer, no yaml data files).
+- VMs clone a shared pre-installed **golden image** built by `make image`
+  (`image/build.sh`: official Kairos hadron release ISO, pinned sha256 →
+  unattended install in a local QEMU VM → qcow2 split image). The image is
+  fully generic; SSH key, k3s role/token and the partition-grow stage arrive
+  per node via `cloud-init.user-data` (`templates/*.yaml.tftpl`) — see
+  `opentofu/README.md` and `opentofu/image/README.md`.
+- Makefile targets (all server-side): `image`, `kubeconfig`
+  (→ `~/.kube/config-hadron`), `kubeconfig-merge` (opt-in, backs up first).
+- `renovate.json` still enables only the `terraform` manager; with no
+  committed `.terraform.lock.hcl` it effectively watches the provider
+  constraints in `opentofu/versions.tf`.
 
 ## GitOps (`gitops/`, Argo CD)
 
