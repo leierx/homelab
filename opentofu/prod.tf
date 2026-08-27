@@ -19,8 +19,8 @@ resource "incus_network" "prod" {
   }
 }
 
-resource "incus_instance" "prod_master_01" {
-  name    = "hadron-master-prod01"
+resource "incus_instance" "prod_c1" {
+  name    = "prod-c1"
   type    = "virtual-machine"
   image   = incus_image.kairos.fingerprint
   running = true
@@ -31,7 +31,7 @@ resource "incus_instance" "prod_master_01" {
     "limits.memory"       = "16GiB"
     "security.secureboot" = "false" # Kairos images aren't signed for our keys
     "cloud-init.user-data" = templatefile("${path.module}/templates/controlplane-init.yaml.tftpl", {
-      hostname = "hadron-master-prod01"
+      hostname = "prod-c1"
       token    = random_password.prod_k3s_token.result
     })
   }
@@ -71,10 +71,10 @@ resource "incus_instance" "prod_master_01" {
   }
 }
 
-resource "incus_instance" "prod_slave" {
+resource "incus_instance" "prod_worker" {
   for_each = {
-    "hadron-slave-prod01" = { ip = "192.168.100.21", mac = "52:54:00:64:00:0c" }
-    "hadron-slave-prod02" = { ip = "192.168.100.22", mac = "52:54:00:64:00:0d" }
+    "prod-w1" = { ip = "192.168.100.21", mac = "52:54:00:64:00:0c" }
+    "prod-w2" = { ip = "192.168.100.22", mac = "52:54:00:64:00:0d" }
   }
 
   name    = each.key

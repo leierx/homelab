@@ -48,6 +48,7 @@
         kubectl
         kubernetes-helm
         gnumake
+        yq-go
       ];
 
       system.stateVersion = "26.05";

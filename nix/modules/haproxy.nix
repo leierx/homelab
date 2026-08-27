@@ -34,15 +34,15 @@
         backend be_prod
           # Envoy Gateway NodePorts are pinned in the gitops envoy-gateway app:
           # https-443 -> 30443, http-80 -> 30080 (identical on both clusters).
-          server prod-master 192.168.100.10:30443
+          server prod-c1 192.168.100.10:30443
         backend be_test
-          server test-master 192.168.101.10:30443
+          server test-c1 192.168.101.10:30443
         backend be_prod_http
           mode http
-          server prod-master 192.168.100.10:30080
+          server prod-c1 192.168.100.10:30080
         backend be_test_http
           mode http
-          server test-master 192.168.101.10:30080
+          server test-c1 192.168.101.10:30080
         backend be_drop
           tcp-request content silent-drop
         backend be_drop_http
