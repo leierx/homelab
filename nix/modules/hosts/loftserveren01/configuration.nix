@@ -45,11 +45,9 @@
         wireguard-tools
         jq
         opentofu
-        # opentofu/: qemu_kvm + xorriso for `make image`, kubectl + yq-go for `make kubeconfig`
-        qemu_kvm
-        xorriso
         kubectl
-        yq-go
+        kubernetes-helm
+        gnumake
       ];
 
       system.stateVersion = "26.05";
