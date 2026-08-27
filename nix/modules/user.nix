@@ -18,7 +18,6 @@
           "systemd-journal"
           "incus-admin"
           "kvm"
-          "podman" # rootful podman socket (image builds)
         ];
         subUidRanges = [
           {
