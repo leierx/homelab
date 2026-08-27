@@ -17,27 +17,3 @@ resource "incus_image" "kairos" {
     name = "kairos-hadron"
   }
 }
-
-locals {
-  cluster_names = toset([
-    for f in fileset("${path.module}/clusters", "*/cluster.yaml") : dirname(f)
-  ])
-}
-
-module "cluster" {
-  source   = "./modules/cluster"
-  for_each = local.cluster_names
-
-  name         = each.key
-  cluster_yaml = yamldecode(file("${path.module}/clusters/${each.key}/cluster.yaml"))
-  nodes = {
-    for f in fileset("${path.module}/clusters/${each.key}/nodes", "*.yaml") :
-    trimsuffix(f, ".yaml") => yamldecode(file("${path.module}/clusters/${each.key}/nodes/${f}"))
-  }
-  acls = {
-    for f in fileset("${path.module}/clusters/${each.key}/acls", "*.yaml") :
-    trimsuffix(f, ".yaml") => yamldecode(file("${path.module}/clusters/${each.key}/acls/${f}"))
-  }
-  image = incus_image.kairos.fingerprint
-  pool  = incus_storage_pool.default.name
-}

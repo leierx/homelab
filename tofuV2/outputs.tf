@@ -1,18 +1,19 @@
+# Literal on purpose. When you add or remove a cluster file (prod.tf/...),
+# add or remove its lines here too. `make kubeconfig` reads bootstrap_ips.
 output "endpoints" {
   description = "Kubernetes API endpoint (bootstrap control-plane) per cluster."
-  value       = { for name, c in module.cluster : name => c.endpoint }
+  value = {
+    prod = "https://192.168.100.10:6443"
+    test = "https://192.168.101.10:6443"
+    mgmt = "https://192.168.102.10:6443"
+  }
 }
 
 output "bootstrap_ips" {
   description = "Bootstrap control-plane IP per cluster (used by `make kubeconfig`)."
-  value       = { for name, c in module.cluster : name => c.bootstrap_ip }
-}
-
-output "nodes" {
-  description = "Node name -> IP per cluster."
-  value       = { for name, c in module.cluster : name => c.node_ips }
-}
-
-output "kubeconfig_hint" {
-  value = "ssh kairos@<bootstrap-cp-ip> sudo cat /etc/rancher/k3s/k3s.yaml"
+  value = {
+    prod = "192.168.100.10"
+    test = "192.168.101.10"
+    mgmt = "192.168.102.10"
+  }
 }

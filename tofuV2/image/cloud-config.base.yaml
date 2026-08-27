@@ -6,8 +6,15 @@ users:
     lock_passwd: true
     ssh_authorized_keys:
       - "${SSH_PUBLIC_KEY}"
-install:
-  auto: true
-  device: auto
-  reboot: true
-  ssh_hardening: true
+# The golden qcow2 is cloned onto bigger root disks by Incus; grow the last
+# partition into the new space on every boot (no-op when there's none). This is
+# resize2fs on an existing filesystem — not the create-then-format path that
+# races on first boot (kairos-io/kairos#4082).
+stages:
+  boot:
+    - name: "Grow COS_PERSISTENT to fill the disk"
+      layout:
+        device:
+          label: COS_PERSISTENT
+        expand_partition:
+          size: 0 # 0 = all remaining space

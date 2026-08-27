@@ -1,0 +1,11 @@
+#cloud-config
+# Drives the one-time unattended install inside the build QEMU VM (delivered as
+# a cidata seed ISO next to the installer ISO). Deliberately separate from
+# cloud-config.base.yaml: this never becomes part of the installed OS — the
+# /oem config comes from the base cloud-config embedded in the installer ISO.
+install:
+  auto: true
+  device: "auto"
+  reboot: false
+  poweroff: true
+  ssh_hardening: true
