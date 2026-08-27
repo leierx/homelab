@@ -8,7 +8,9 @@ VMSSH := ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 
 image:
 	cd image && mkdir -p build && \
-	  install -m 644 $$(nix build -L --no-link --print-out-paths "path:.#kairos-hadron-image")/kairos-hadron.qcow2 build/kairos-hadron.qcow2
+	  out=$$(nix build -L --no-link --print-out-paths "path:.#kairos-hadron-image") && \
+	  install -m 644 "$$out/kairos-hadron.qcow2" build/kairos-hadron.qcow2 && \
+	  install -m 644 "$$out/kairos-metadata.tar.gz" build/kairos-metadata.tar.gz
 
 # k3s admin kubeconfigs -> ~/.kube/config-hadron (contexts hadron-<cluster>)
 kubeconfig:

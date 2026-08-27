@@ -42,7 +42,7 @@ resource "incus_instance" "mgmt_master_01" {
     properties = {
       path            = "/"
       pool            = incus_storage_pool.default.name
-      size            = "20GiB"
+      size            = "35GiB"
       "boot.priority" = "10"
     }
   }
@@ -100,7 +100,7 @@ resource "incus_instance" "mgmt_slave" {
     properties = {
       path            = "/"
       pool            = incus_storage_pool.default.name
-      size            = "20GiB"
+      size            = "35GiB"
       "boot.priority" = "10"
     }
   }

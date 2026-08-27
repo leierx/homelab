@@ -5,17 +5,19 @@ users:
     groups: [admin]
     lock_passwd: true
     ssh_authorized_keys:
-      # loftserveren01's key — VMs are only reachable from the server
       - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDXMmejnVvbXN04wV48vuX+/IwNMaWt9G3H9/fWD48DF leier@loftserveren01"
-# grow the last partition into the clone's bigger disk (no-op when already full)
 stages:
   boot:
-    - name: "Grow COS_PERSISTENT to fill the disk"
-      layout:
-        device:
-          label: COS_PERSISTENT
-        expand_partition:
-          size: 0 # 0 = all remaining space
+  - name: "Repart image"
+    layout:
+      device:
+        label: COS_PERSISTENT
+      expand_partition:
+        size: 0 # all space
+    commands:
+      # grow filesystem if not used 100%
+      - |
+         [[ "$(echo "$(df -h | grep COS_PERSISTENT)" | awk '{print $5}' | tr -d '%')" -ne 100 ]] && resize2fs /dev/disk/by-label/COS_PERSISTENT
 k3s:
   enabled: true
   args:

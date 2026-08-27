@@ -68,6 +68,19 @@
 
           mkdir -p "$out"
           qemu-img convert -f raw -O qcow2 disk.raw "$out/kairos-hadron.qcow2"
+
+          # Incus split-image metadata tarball (metadata.yaml + qcow2 data file)
+          mkdir -p metadata-dir
+          cat > metadata-dir/metadata.yaml <<EOF
+          architecture: x86_64
+          creation_date: $(date +%s)
+          properties:
+            description: Kairos hadron v0.5.1, standard generic amd64 (k3s v1.36.3) VM image
+            os: kairos
+            release: 4.2.0
+            variant: standard
+          EOF
+          tar -C metadata-dir -czf "$out/kairos-metadata.tar.gz" metadata.yaml
         '';
       };
     in
