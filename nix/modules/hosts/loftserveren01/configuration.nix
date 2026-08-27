@@ -10,6 +10,7 @@
         config.modules.haproxy
         config.modules.incus
         config.modules.locale
+        config.modules.podman
         config.modules.nixosConfig
         config.modules.sops
         config.modules.user
