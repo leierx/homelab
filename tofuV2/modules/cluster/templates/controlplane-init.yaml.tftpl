@@ -1,0 +1,17 @@
+#cloud-config
+hostname: ${hostname}
+k3s:
+  enabled: true
+  args:
+    - "--cluster-init"
+    - "--token=${token}"
+    - "--cluster-cidr=10.42.0.0/16"
+    - "--flannel-backend=none"
+    - "--disable-kube-proxy"
+    - "--disable-cloud-controller"
+    - "--disable-helm-controller"
+    - "--disable-network-policy"
+    - "--disable=traefik"
+    - "--disable=servicelb"
+    - "--disable=local-storage"
+    - "--disable=metrics-server"

@@ -1,0 +1,13 @@
+#cloud-config
+strict: true
+users:
+  - name: kairos
+    groups: [admin]
+    lock_passwd: true
+    ssh_authorized_keys:
+      - "${SSH_PUBLIC_KEY}"
+install:
+  auto: true
+  device: auto
+  reboot: true
+  ssh_hardening: true

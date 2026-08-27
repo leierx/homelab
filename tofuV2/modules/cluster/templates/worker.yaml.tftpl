@@ -1,0 +1,7 @@
+#cloud-config
+hostname: ${hostname}
+k3s-agent:
+  enabled: true
+  args:
+    - "--server=https://${bootstrap_cp_ip}:6443"
+    - "--token=${token}"

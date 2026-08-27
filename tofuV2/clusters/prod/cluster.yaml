@@ -1,0 +1,11 @@
+network:
+  cidr: "192.168.100.0/24"
+  gateway: "192.168.100.1"
+  mac_prefix: "52:54:00:64"
+  dns_domain: "prod.lab"
+  dhcp_range_start: 200
+  dhcp_range_end: 250
+node_specs:
+  cpu: 4
+  memory_gib: 16
+  disk_gib: 20
