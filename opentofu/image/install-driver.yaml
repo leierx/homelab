@@ -1,8 +1,0 @@
-#cloud-config
-# drives the one-time unattended install in the build VM; never part of the image
-install:
-  auto: true
-  device: "auto"
-  reboot: false
-  poweroff: true
-  ssh_hardening: true

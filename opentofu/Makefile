@@ -7,7 +7,8 @@ VMSSH := ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 .PHONY: image kubeconfig kubeconfig-merge
 
 image:
-	cd image && ./build.sh
+	cd image && mkdir -p build && \
+	  install -m 644 $$(nix build -L --no-link --print-out-paths "path:.#kairos-hadron-image")/kairos-hadron.qcow2 build/kairos-hadron.qcow2
 
 # k3s admin kubeconfigs -> ~/.kube/config-hadron (contexts hadron-<cluster>)
 kubeconfig:
