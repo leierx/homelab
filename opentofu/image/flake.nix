@@ -58,7 +58,7 @@
           cp -f "$OVMF_VARS" efivars.fd && chmod u+w efivars.fd
 
           qemu-system-x86_64 \
-            -machine q35 -cpu max -m 4096 -smp 4 -display none \
+            -machine q35 -accel kvm -cpu host -m 8192 -smp 8 -display none \
             -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE" \
             -drive if=pflash,format=raw,file=efivars.fd \
             -drive if=virtio,media=disk,format=raw,file=disk.raw \
