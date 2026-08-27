@@ -70,6 +70,14 @@
       networking.firewall = {
         enable = true;
         checkReversePath = "loose"; # causes problems for wireguard
+        # Incus bridges: guests need DHCP/DNS (and NFS) from the host. Incus
+        # installs its own accept rules, but a drop in nixos-fw still wins, so
+        # the bridges have to be trusted here.
+        trustedInterfaces = [
+          "br-prod"
+          "br-test"
+          "br-mgmt"
+        ];
         allowedTCPPorts = [ ];
         interfaces.eno1 = {
           allowedTCPPorts = [
