@@ -16,7 +16,7 @@
           "wheel"
           "systemd-network"
           "systemd-journal"
-          "libvirtd"
+          "incus-admin"
           "kvm"
         ];
         openssh.authorizedKeys.keys = [
@@ -44,8 +44,6 @@
       system.activationScripts.leierZshrc = ''
         install -o leier -g users -m 644 \
           ${pkgs.writeText "zshrc-extra" ''
-            export LIBVIRT_DEFAULT_URI=qemu:///system
-
             alias k=kubectl
           ''} \
           ${config.users.users."leier".home}/.zshrc

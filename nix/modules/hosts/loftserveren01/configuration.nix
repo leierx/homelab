@@ -8,7 +8,7 @@
         config.modules.bootloader
         config.modules.doas
         config.modules.haproxy
-        config.modules.libvirt
+        config.modules.incus
         config.modules.locale
         config.modules.nixosConfig
         config.modules.sops
