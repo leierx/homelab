@@ -1,4 +1,0 @@
-role: controlplane
-bootstrap: true
-ip_offset: 10
-mac_offset: 11

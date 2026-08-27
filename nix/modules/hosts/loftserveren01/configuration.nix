@@ -45,6 +45,10 @@
         wireguard-tools
         jq
         opentofu
+        # Golden image build (tofuV2/image/build.sh): qemu-system-x86_64 +
+        # qemu-img + bundled EDK2 firmware, and xorrisofs for the cidata seed.
+        qemu_kvm
+        xorriso
       ];
 
       system.stateVersion = "26.05";
