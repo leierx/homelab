@@ -5,10 +5,9 @@ users:
     groups: [admin]
     lock_passwd: true
     ssh_authorized_keys:
-      # loftserveren01's own key: VMs sit on NAT'd bridges, only reachable from there
+      # loftserveren01's key — VMs are only reachable from the server
       - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDXMmejnVvbXN04wV48vuX+/IwNMaWt9G3H9/fWD48DF leier@loftserveren01"
-# The generic golden image is cloned onto bigger root disks; grow the last
-# partition into the new space on every boot (no-op when there's none).
+# grow the last partition into the clone's bigger disk (no-op when already full)
 stages:
   boot:
     - name: "Grow COS_PERSISTENT to fill the disk"

@@ -1,5 +1,4 @@
-# test cluster: 1 control-plane + 2 workers, 192.168.101.0/24.
-# Delete this file (and the test lines in outputs.tf) to delete the cluster.
+# test: 1 control-plane + 2 workers, 192.168.101.0/24
 
 resource "random_password" "test_k3s_token" {
   length  = 64
@@ -17,8 +16,6 @@ resource "incus_network" "test" {
     "ipv4.dhcp.ranges" = "192.168.101.200-192.168.101.250"
     "ipv6.address"     = "none"
     "dns.domain"       = "test.lab"
-    # ACLs, when needed: incus_network_acl resources in this file, then
-    # "security.acls" = incus_network_acl.test_<name>.name here.
   }
 }
 
@@ -33,15 +30,12 @@ resource "incus_instance" "test_master_01" {
     "limits.cpu"          = "4"
     "limits.memory"       = "16GiB"
     "security.secureboot" = "false" # Kairos images aren't signed for our keys
-    # Reaches the guest only via the cloud-init:config disk (no incus-agent).
     "cloud-init.user-data" = templatefile("${path.module}/templates/controlplane-init.yaml.tftpl", {
       hostname = "hadron-master-test01"
       token    = random_password.test_k3s_token.result
     })
   }
 
-  # Root disk, cloned from the shared Kairos image. Kairos expands the
-  # persistent partition to fill it on first boot.
   device {
     name = "root"
     type = "disk"
@@ -53,8 +47,7 @@ resource "incus_instance" "test_master_01" {
     }
   }
 
-  # REQUIRED: without this disk, cloud-init in an agent-less VM silently does
-  # nothing (https://linuxcontainers.org/incus/docs/main/cloud-init/).
+  # IMPORTANT: without this disk, cloud-init never reaches the agent-less VM
   device {
     name = "cloud-init"
     type = "disk"
@@ -73,9 +66,8 @@ resource "incus_instance" "test_master_01" {
     }
   }
 
-  # No agent in the guest, so wait for the DHCP lease instead.
   wait_for {
-    type = "ipv4"
+    type = "ipv4" # no incus-agent in Kairos VMs
   }
 }
 
@@ -113,6 +105,7 @@ resource "incus_instance" "test_slave" {
     }
   }
 
+  # IMPORTANT: without this disk, cloud-init never reaches the agent-less VM
   device {
     name = "cloud-init"
     type = "disk"

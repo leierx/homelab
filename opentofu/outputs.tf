@@ -1,5 +1,4 @@
-# Literal on purpose. When you add or remove a cluster file (prod.tf/...),
-# add or remove its lines here too. `make kubeconfig` reads bootstrap_ips.
+# literal on purpose — update these when adding/removing a cluster file
 output "endpoints" {
   description = "Kubernetes API endpoint (bootstrap control-plane) per cluster."
   value = {
