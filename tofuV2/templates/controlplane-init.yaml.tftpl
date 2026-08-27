@@ -1,5 +1,22 @@
 #cloud-config
 hostname: ${hostname}
+users:
+  - name: kairos
+    groups: [admin]
+    lock_passwd: true
+    ssh_authorized_keys:
+      # loftserveren01's own key: VMs sit on NAT'd bridges, only reachable from there
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDXMmejnVvbXN04wV48vuX+/IwNMaWt9G3H9/fWD48DF leier@loftserveren01"
+# The generic golden image is cloned onto bigger root disks; grow the last
+# partition into the new space on every boot (no-op when there's none).
+stages:
+  boot:
+    - name: "Grow COS_PERSISTENT to fill the disk"
+      layout:
+        device:
+          label: COS_PERSISTENT
+        expand_partition:
+          size: 0 # 0 = all remaining space
 k3s:
   enabled: true
   args:

@@ -5,12 +5,12 @@ Three Cilium-ready k3s clusters (prod, test, mgmt) as Kairos VMs on loftserveren
 ## Prereqs
 
 - Incus with unix-socket access for `leier`, OpenTofu ≥ 1.9.
-- Rootful podman socket for the image build (see `image/README.md`).
+- `/dev/kvm` + qemu/xorriso from the host config for the image build (see `image/README.md`).
 
 ## Workflow
 
 ```
-make image       # build the Kairos base image (once, or on version/key bump)
+make image       # build the Kairos base image (once, or on version bump)
 tofu init
 tofu apply
 make kubeconfig  # -> ~/.kube/config-hadron (needs yq-go + kubectl)
