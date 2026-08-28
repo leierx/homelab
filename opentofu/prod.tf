@@ -16,6 +16,9 @@ resource "incus_network" "prod" {
     "ipv4.dhcp.ranges" = "192.168.100.200-192.168.100.250"
     "ipv6.address"     = "none"
     "dns.domain"       = "prod.lab"
+    "dns.mode"        = "none"
+    "dns.nameservers" = "192.168.100.1"
+    "raw.dnsmasq"     = "port=0"
   }
 }
 
@@ -47,7 +50,6 @@ resource "incus_instance" "prod_c1" {
     }
   }
 
-  # IMPORTANT: without this disk, cloud-init never reaches the agent-less VM
   device {
     name = "cloud-init"
     type = "disk"
@@ -105,7 +107,6 @@ resource "incus_instance" "prod_worker" {
     }
   }
 
-  # IMPORTANT: without this disk, cloud-init never reaches the agent-less VM
   device {
     name = "cloud-init"
     type = "disk"

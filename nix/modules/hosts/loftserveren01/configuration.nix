@@ -6,6 +6,7 @@
       imports = [
         config.modules.autoUpgrade
         config.modules.bootloader
+        config.modules.coredns
         config.modules.doas
         config.modules.haproxy
         config.modules.incus

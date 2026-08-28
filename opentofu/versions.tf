@@ -13,5 +13,4 @@ terraform {
   }
 }
 
-# runs on loftserveren01 itself — local Incus unix socket
 provider "incus" {}

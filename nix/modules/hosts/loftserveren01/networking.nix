@@ -3,6 +3,7 @@
     { config, lib, ... }:
     {
       networking.enableIPv6 = false; # all my homies use IPV4
+      networking.domain = "home.arpa"; # FQDN: loftserveren01.home.arpa (hostName stays short)
       networking.dhcpcd.enable = false;
       networking.useDHCP = false;
       networking.useNetworkd = true;

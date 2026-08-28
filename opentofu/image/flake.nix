@@ -80,6 +80,19 @@
               }
             ];
           }
+          {
+            name = "Disable sshd (incus-agent-only access)";
+            systemctl = {
+              disable = [
+                "sshd"
+                "sshd.socket"
+              ];
+              mask = [
+                "sshd"
+                "sshd.socket"
+              ];
+            };
+          }
         ];
       };
 

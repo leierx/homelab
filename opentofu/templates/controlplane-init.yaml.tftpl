@@ -13,7 +13,6 @@ stages:
       expand_partition:
         size: 0 # all space
     commands:
-      # grow filesystem if not used 100%
       - |
          [[ "$(echo "$(df -h | grep COS_PERSISTENT)" | awk '{print $5}' | tr -d '%')" -ne 100 ]] && resize2fs /dev/disk/by-label/COS_PERSISTENT
 k3s:
