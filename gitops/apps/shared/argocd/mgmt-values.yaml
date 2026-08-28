@@ -27,6 +27,9 @@ argo-cd:
     allowAnyNamespace: true
     extraArgs:
       - --policy=create-update
+      # With applicationset-namespaces set, Argo CD v3 requires SCM providers
+      # to be disabled (or --allowed-scm-providers set).
+      - --enable-scm-providers=false
   configs:
     cm:
       commit.author.name: "Hydrator Bot"
@@ -65,5 +68,10 @@ argocd-agent-principal:
 
 # mgmt's own agent talks to the principal over the in-cluster service.
 argocd-agent-agent:
+  # Hub shares the argocd namespace with the principal, whose argocd-agent-ca
+  # secret must stay kubernetes.io/tls (Secret.type is immutable). The agent
+  # reads every secret field as a cert, so give it a dedicated cert-only CA.
+  # Spokes keep the chart default argocd-agent-ca in their own namespaces.
+  tlsRootCASecretName: argocd-agent-ca-mgmt
   server: "argocd-agent-principal"
   serverPort: "443"
