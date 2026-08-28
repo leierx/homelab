@@ -1,8 +1,6 @@
 # runs on loftserveren01 itself; for plan/apply just type `tofu plan` etc.
 
 KUBE_DIR := $(HOME)/.kube
-# no incus-agent in Kairos VMs, and host keys churn on VM replacement
-VMSSH := ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 
 .PHONY: image kubeconfig kubeconfig-replace
 
@@ -19,7 +17,7 @@ kubeconfig:
 	clusters=$$(echo "$$ips" | yq 'keys | .[]'); \
 	for c in $$clusters; do \
 	  ip=$$(echo "$$ips" | yq ".$$c"); \
-	  $(VMSSH) kairos@$$ip 'sudo cat /etc/rancher/k3s/k3s.yaml' \
+	  incus exec "$$c-c1" -- cat /etc/rancher/k3s/k3s.yaml \
 	    | yq "(.clusters[].cluster.server) = \"https://$$ip:6443\" \
 	        | (.clusters[].name, .contexts[].context.cluster, .contexts[].context.user, .contexts[].name, .users[].name) = \"$$c\" \
 	        | .\"current-context\" = \"$$c\"" \
