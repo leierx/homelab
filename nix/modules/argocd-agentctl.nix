@@ -4,11 +4,11 @@
     let
       argocd-agentctl = pkgs.stdenvNoCC.mkDerivation rec {
         pname = "argocd-agentctl";
-        version = "0.4.1";
+        version = "0.10.0";
 
         src = pkgs.fetchurl {
-          url = "https://github.com/argoproj-labs/argocd-agent/releases/download/v${version}/argocd-agentctl_linux-amd64";
-          hash = "sha256-kkgkCBMi5Jqplb9wajyZri63Ahi9Vtnkab25TXgZv/w=";
+          url = "https://github.com/argoproj-labs/argocd-agent/releases/download/v${version}/argocd-agentctl-linux-amd64";
+          hash = "sha256-/VJ0UKLoy/VE8zTWfrY9g6STyhkYK1BanMsMpqGg7hs=";
         };
 
         nativeBuildInputs = [ pkgs.autoPatchelfHook ];
