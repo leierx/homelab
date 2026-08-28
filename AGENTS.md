@@ -25,8 +25,8 @@ to before touching anything:
 - `nix/` — NixOS config for the physical host (flake).
 - `opentofu/` — OpenTofu: provisions the k3s/Kairos VMs on Incus (runs on the
   server itself).
-- `gitops/` — Argo CD app-of-apps for the `prod` and `test` k3s clusters
-  (`mgmt` has no gitops yet).
+- `gitops/` — Argo CD app-of-apps for all three k3s clusters, run from a
+  single control plane on `mgmt` via argocd-agent (hub/spoke).
 
 ## Nix (flake)
 
@@ -83,35 +83,46 @@ to before touching anything:
 
 ## GitOps (`gitops/`, Argo CD)
 
-App-of-apps via **ApplicationSet + sourceHydrator**; two Argo CD instances
-(one per cluster), each hydrating to its **own** branch.
+**Hub/spoke via argocd-agent** — see `gitops/README.md` for the full
+architecture and the bootstrap/migration runbook. One Argo CD control plane
+on `mgmt` (hub); `prod`/`test` run only application-controller + local redis
++ agent, rendering manifests on the hub's repo-server. `mgmt` manages itself
+through an agent pointed at the principal on the same cluster. Source
+hydration still exists but is **hub-local only**: unlabeled
+`hydrate-<env>-<app>` driver apps (from `clusters/<env>/hydrator.yaml`, ns
+`argocd`, no syncPolicy — permanently OutOfSync by design, never sync them)
+hydrate into the `env/*` branches; the agent-routed apps are plain git
+sources on `env/<env>` at `gitops/hydrated/<env>/<app>` (a `sourceHydrator`
+spec cannot ride through the agent protocol).
 
-- App layout: `apps/shared/<app>/` renders on **both** clusters, `apps/prod/`
-  only on `prod`, `apps/test/` only on `test`. Each app dir is an umbrella
-  Helm chart (`Chart.yaml` declares the upstream chart as a `dependency`) plus:
-  - `app.yaml` — metadata the ApplicationSet reads (see below);
-  - `values.yaml` (shared defaults) and optional `<env>-values.yaml`. The
-    ApplicationSet renders `valueFiles: [values.yaml, <env>-values.yaml]` with
-    `helm.ignoreMissingValueFiles: true`, so missing `<env>-values.yaml` files
-    are skipped per app (Argo CD v3.5.1 does not support per-file
-    `{name, ignoreMissing}` maps in `valueFiles`).
+- App layout: `apps/shared/<app>/` renders on `prod` + `test` (and `mgmt`
+  **only** if listed in the explicit file list inside
+  `clusters/mgmt/app-of-apps.yaml` — currently argocd, cilium, cert-manager,
+  envoy-gateway); `apps/{prod,test,mgmt}/` are per-cluster-only. Each app dir
+  is an umbrella Helm chart (`Chart.yaml` declares the upstream chart as a
+  `dependency`) plus:
+  - `app.yaml` — metadata the ApplicationSet reads: `name` (must equal the
+    folder name) and `namespace` (Argo CD destination);
+  - `values.yaml` (shared defaults) and optional `<env>-values.yaml`,
+    rendered with `helm.ignoreMissingValueFiles: true`.
   - Argo CD's repo-server auto-runs `helm dependency build`, so
     **`charts/**` and `*.tgz` are gitignored — never commit fetched charts**
     (they're also in `gitops/.gitignore`).
-- `apps/<app>/app.yaml` contract — keys the file generator feeds the template:
-  `name` (must equal the folder name) and `namespace` (Argo CD destination).
-- App-of-apps: `clusters/{prod,test}/root-app.yaml` bootstraps the single
-  `app-of-apps.yaml` ApplicationSet in that cluster dir. The two AppSets are
-  near-identical; each matrix-block's list generator carries the cluster's
-  `env`/`group`. Adding a **shared app** = drop a folder (never touch
-  `clusters/`); a **prod-only/test-only** app = drop it in `apps/prod/` /
-  `apps/test/`.
-- Hydration branches: `env/prod` and `env/test` contain Argo CD's hydrated
-  output under `gitops/hydrated/<env>/<app>/`. Each branch is owned by exactly
-  one Argo CD instance (a hydrator hard requirement) and should be
-  branch-protected so only Argo CD writes to it.
-- Hydrator reacts only to dry-source commits: after adding a **new** app
-  folder, push an empty commit to `main` to force hydration to pick it up.
+- App-of-apps: `clusters/mgmt/root-app.yaml` (the only root app; reconciled
+  by the hub's own controller) applies the whole `clusters/` tree: per-agent
+  namespaces plus one `app-of-apps.yaml` ApplicationSet per env. Each AppSet
+  lives **in** its env namespace (`prod`/`test`/`mgmt`) — namespace-based
+  agent mapping routes the generated apps to the same-named agent. Generated
+  apps carry the `argocd-agent=true` label (principal/agents only process
+  labeled resources) and `destination.name: <env>` (the agentctl-created
+  cluster secret, annotated skip-reconcile so the hub controller ignores
+  them). Adding a **shared app** = drop a folder (never touch `clusters/`);
+  a cluster-specific app = drop it in `apps/<env>/`.
+- The `argocd` app (`apps/shared/argocd/`) deploys Argo CD itself everywhere:
+  base `values.yaml` = spoke profile (controller-only + agent),
+  `mgmt-values.yaml` = hub profile (full Argo CD + argocd-agent principal +
+  hub-local agent, plus `templates/hub.yaml` with the fixed NodePort services
+  and the default AppProject's `sourceNamespaces`).
 - cert-manager's umbrella chart templates a `ClusterIssuer`
   (`apps/cert-manager/templates/clusterissuer.yaml`); the issuer carries
   `argocd.argoproj.io/sync-wave: "1"` to order after the chart.

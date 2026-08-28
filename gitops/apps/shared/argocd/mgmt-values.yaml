@@ -1,0 +1,69 @@
+# Hub / control-plane profile: full Argo CD (UI, repo-server, redis,
+# applicationset-controller, application-controller) plus the argocd-agent
+# principal, plus an agent connected to the local principal so mgmt manages
+# itself through the same pull-based mechanism as prod/test.
+argo-cd:
+  global:
+    domain: argocd.mgmt.example.com
+  dex:
+    enabled: true
+  server:
+    replicas: 1
+    extraArgs:
+      - --insecure
+  repoServer:
+    replicas: 1
+  # Source hydration runs only here: the hub's application-controller +
+  # commit-server hydrate the hub-local hydrate-* driver apps (see
+  # clusters/*/hydrator.yaml) into the env/* branches. Needs a repository
+  # secret with push access to the repo.
+  commitServer:
+    enabled: true
+  applicationSet:
+    replicas: 1
+    # The per-env app-of-apps ApplicationSets live in the prod/test/mgmt
+    # namespaces (namespace-based agent mapping), so the controller needs the
+    # any-namespace ClusterRole.
+    allowAnyNamespace: true
+    extraArgs:
+      - --policy=create-update
+  configs:
+    cm:
+      commit.author.name: "Hydrator Bot"
+      commit.author.email: "argocd@homelab"
+    params:
+      "hydrator.enabled": "true"
+      # Undo the spoke override from values.yaml: the hub uses its own
+      # repo-server directly.
+      repo.server: "argocd-repo-server:8081"
+      # All redis traffic flows through the principal's redis proxy; it
+      # forwards non-agent keys to the real redis and resolves agent app
+      # resource trees via the corresponding agent.
+      redis.server: "argocd-agent-redis-proxy:6379"
+      # Apps for the agents live in one namespace per agent.
+      application.namespaces: "prod,test,mgmt"
+      applicationsetcontroller.namespaces: "prod,test,mgmt"
+
+argocd-agent-principal:
+  enabled: true
+  fullnameOverride: argocd-agent-principal
+  service:
+    # Exposed to the spokes via the fixed NodePort service in templates/hub.yaml.
+    type: ClusterIP
+  principal:
+    listen:
+      # Listen on all interfaces (mTLS-only, per chart docs).
+      host: ""
+    # One namespace per agent; must match the agent names issued via
+    # `argocd-agentctl agent create`.
+    allowedNamespaces: "prod,test,mgmt"
+    labelSelector: "argocd-agent=true"
+    tls:
+      clientCert:
+        require: true
+        matchSubject: true
+
+# mgmt's own agent talks to the principal over the in-cluster service.
+argocd-agent-agent:
+  server: "argocd-agent-principal"
+  serverPort: "443"

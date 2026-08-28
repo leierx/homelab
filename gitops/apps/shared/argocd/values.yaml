@@ -1,18 +1,40 @@
+# Base = spoke profile (prod/test): only the application-controller and a local
+# redis run here, plus the argocd-agent in managed mode connected to the
+# principal on mgmt. Manifest rendering happens on the hub's repo-server
+# ("Centralized Resource Sharing"). mgmt-values.yaml flips everything into the
+# hub/control-plane profile.
 argo-cd:
-  commitServer:
-    enabled: true
   crds:
     install: true
+  dex:
+    enabled: false
+  notifications:
+    enabled: false
+  # argo-helm has no enable/disable toggles for these core components, so
+  # spokes scale them to zero instead. mgmt scales them back up.
   server:
-    extraArgs:
-      - --insecure
+    replicas: 0
+  repoServer:
+    replicas: 0
   applicationSet:
-    extraArgs:
-      - --policy=create-update
+    replicas: 0
   configs:
     params:
-      "hydrator.enabled": "true"
-    cm:
-      commit.author.name: "Hydrator Bot"
-      commit.author.email: "argocd@homelab"
+      # Hub repo-server, exposed as a fixed NodePort on the mgmt control-plane
+      # node (see templates/hub.yaml). Spokes render no manifests themselves.
+      repo.server: "192.168.102.10:30081"
 
+argocd-agent-principal:
+  enabled: false
+
+argocd-agent-agent:
+  fullnameOverride: argocd-agent-agent
+  agentMode: managed
+  # Principal gRPC endpoint, exposed as a fixed NodePort on the mgmt
+  # control-plane node (see templates/hub.yaml). mgmt-values.yaml overrides
+  # this to the in-cluster service.
+  server: "192.168.102.10"
+  serverPort: "30643"
+  # Agents only see resources carrying this label; keeps the hub's own
+  # root-app and the agent-created copies invisible to the agent machinery.
+  labelSelector: "argocd-agent=true"

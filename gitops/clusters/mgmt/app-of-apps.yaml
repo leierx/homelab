@@ -3,8 +3,9 @@ kind: ApplicationSet
 metadata:
   name: app-of-apps
   # Namespace-based agent mapping: apps in this namespace are routed to the
-  # agent of the same name by the principal.
-  namespace: prod
+  # mgmt agent, which runs on this very cluster and points at the local
+  # principal — so the hub manages itself the same way as the spokes.
+  namespace: mgmt
 spec:
   goTemplate: true
   generators:
@@ -13,11 +14,16 @@ spec:
           - git:
               repoURL: https://github.com/leierx/homelab.git
               revision: HEAD
+              # mgmt only runs the infrastructure subset of the shared apps —
+              # list the app.yaml files explicitly instead of globbing.
               files:
-                - path: gitops/apps/shared/*/app.yaml
+                - path: gitops/apps/shared/argocd/app.yaml
+                - path: gitops/apps/shared/cilium/app.yaml
+                - path: gitops/apps/shared/cert-manager/app.yaml
+                - path: gitops/apps/shared/envoy-gateway/app.yaml
           - list:
               elements:
-                - env: prod
+                - env: mgmt
                   group: shared
     - matrix:
         generators:
@@ -25,11 +31,11 @@ spec:
               repoURL: https://github.com/leierx/homelab.git
               revision: HEAD
               files:
-                - path: gitops/apps/prod/*/app.yaml
+                - path: gitops/apps/mgmt/*/app.yaml
           - list:
               elements:
-                - env: prod
-                  group: prod
+                - env: mgmt
+                  group: mgmt
   template:
     metadata:
       name: '{{.name}}'

@@ -1,0 +1,58 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: hydrate-mgmt
+  # Hub-local hydration drivers — see clusters/prod/hydrator.yaml for how
+  # this works. Generators mirror clusters/mgmt/app-of-apps.yaml (explicit
+  # shared subset).
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/leierx/homelab.git
+              revision: HEAD
+              files:
+                - path: gitops/apps/shared/argocd/app.yaml
+                - path: gitops/apps/shared/cilium/app.yaml
+                - path: gitops/apps/shared/cert-manager/app.yaml
+                - path: gitops/apps/shared/envoy-gateway/app.yaml
+          - list:
+              elements:
+                - env: mgmt
+                  group: shared
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/leierx/homelab.git
+              revision: HEAD
+              files:
+                - path: gitops/apps/mgmt/*/app.yaml
+          - list:
+              elements:
+                - env: mgmt
+                  group: mgmt
+  template:
+    metadata:
+      name: 'hydrate-{{.env}}-{{.name}}'
+    spec:
+      project: default
+      sourceHydrator:
+        drySource:
+          repoURL: https://github.com/leierx/homelab.git
+          path: 'gitops/apps/{{.group}}/{{.name}}'
+          targetRevision: HEAD
+          helm:
+            valueFiles:
+              - values.yaml
+              - '{{.env}}-values.yaml'
+            ignoreMissingValueFiles: true
+        syncSource:
+          targetBranch: 'env/{{.env}}'
+          path: 'gitops/hydrated/{{.env}}/{{.name}}'
+      # Deliberately no syncPolicy — hydration only (see prod/hydrator.yaml).
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{.namespace}}'

@@ -2,7 +2,9 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: app-of-apps
-  namespace: argocd
+  # Namespace-based agent mapping: apps in this namespace are routed to the
+  # agent of the same name by the principal.
+  namespace: test
 spec:
   goTemplate: true
   generators:
@@ -31,23 +33,21 @@ spec:
   template:
     metadata:
       name: '{{.name}}'
+      labels:
+        # Principal and agents only process resources carrying this label.
+        argocd-agent: "true"
     spec:
       project: default
-      sourceHydrator:
-        drySource:
-          repoURL: https://github.com/leierx/homelab.git
-          path: 'gitops/apps/{{.group}}/{{.name}}'
-          targetRevision: HEAD
-          helm:
-            valueFiles:
-              - values.yaml
-              - '{{.env}}-values.yaml'
-            ignoreMissingValueFiles: true
-        syncSource:
-          targetBranch: 'env/{{.env}}'
-          path: 'gitops/hydrated/{{.env}}/{{.name}}'
+      # Plain source: syncs the hydrated output produced by the hydrate-*
+      # driver apps on the hub (see hydrator.yaml in this directory).
+      source:
+        repoURL: https://github.com/leierx/homelab.git
+        targetRevision: 'env/{{.env}}'
+        path: 'gitops/hydrated/{{.env}}/{{.name}}'
       destination:
-        server: https://kubernetes.default.svc
+        # Agent cluster secret (created by `argocd-agentctl agent create`);
+        # carries skip-reconcile so the hub's controller leaves these alone.
+        name: '{{.env}}'
         namespace: '{{.namespace}}'
       syncPolicy:
         automated:

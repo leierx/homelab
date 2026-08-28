@@ -7,3 +7,10 @@ dependencies:
   - name: argo-cd
     version: "10.4.0"
     repository: https://argoproj.github.io/argo-helm
+  - name: argocd-agent-principal
+    version: "0.3.3"
+    repository: oci://ghcr.io/argoproj-labs/argocd-agent
+    condition: argocd-agent-principal.enabled
+  - name: argocd-agent-agent
+    version: "0.2.7"
+    repository: oci://ghcr.io/argoproj-labs/argocd-agent
