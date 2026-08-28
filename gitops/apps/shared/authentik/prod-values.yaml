@@ -1,4 +1,7 @@
 authentik:
+  authentik:
+    web:
+      base_url: https://auth.skinke.net
   server:
     route:
       main:
