@@ -117,7 +117,7 @@
           : > meta-data
           xorrisofs -output ci.iso -volid cidata -joliet -rock user-data meta-data
 
-          truncate -s 5G disk.raw
+          truncate -s 15G disk.raw
           cp -f "${pkgs.OVMF.fd}/FV/OVMF_VARS.fd" efivars.fd && chmod u+w efivars.fd
 
           qemu-system-x86_64 \
