@@ -53,12 +53,11 @@
         externalInterface = "eno1";
         internalInterfaces = [ "wg0" ];
       };
-      # DNS — local recursive resolver (unbound). systemd-networkd writes
-      # /etc/resolv.conf from these nameservers; the box talks to unbound
-      # only, so there is nothing to silently fall back to.
-      networking.nameservers = [
-        "127.0.0.1"
-      ];
+      # DNS — local recursive resolver (unbound). The box talks to unbound only,
+      # so there is nothing to silently fall back to. systemd-networkd enables
+      # systemd-resolved by default; we don't want it here.
+      services.resolved.enable = false;
+      networking.nameservers = [ "127.0.0.1" ];
       # FIREWALL
       networking.nftables.enable = true;
       networking.firewall = {
