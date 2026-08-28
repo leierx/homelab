@@ -28,6 +28,12 @@ argocd-agent-principal:
   enabled: false
 
 argocd-agent-agent:
+  # The agent chart defaults to ghcr.io/argoproj-labs/argocd-agent/argocd-agent,
+  # which only carries sha/latest tags — its appVersion (v0.8.1) never exists
+  # there. quay.io is the registry releases are actually published to.
+  image:
+    repository: quay.io/argoprojlabs/argocd-agent
+    tag: v0.8.1
   fullnameOverride: argocd-agent-agent
   agentMode: managed
   # Principal gRPC endpoint, exposed as a fixed NodePort on the mgmt
