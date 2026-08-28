@@ -34,7 +34,7 @@ resource "incus_instance" "mgmt_c1" {
     "limits.memory"       = "8GiB"
     "security.secureboot" = "false" # Kairos images aren't signed for our keys
     "cloud-init.user-data" = templatefile("${path.module}/templates/controlplane-init.yaml.tftpl", {
-      hostname = "mgmt-c1"
+      hostname = "mgmt-c1.home.arpa"
       token    = random_password.mgmt_k3s_token.result
     })
   }
@@ -90,7 +90,7 @@ resource "incus_instance" "mgmt_worker" {
     "limits.memory"       = "8GiB"
     "security.secureboot" = "false"
     "cloud-init.user-data" = templatefile("${path.module}/templates/worker.yaml.tftpl", {
-      hostname        = each.key
+      hostname        = "${each.key}.home.arpa"
       token           = random_password.mgmt_k3s_token.result
       bootstrap_cp_ip = "192.168.102.10"
     })
