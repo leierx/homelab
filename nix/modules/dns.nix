@@ -14,7 +14,7 @@
           ];
 
           do-ip6 = "no";
-          module-config = "validator iterator";
+          module-config = "\"validator iterator\"";
           hide-identity = "yes";
           hide-version = "yes";
 
