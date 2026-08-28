@@ -5,16 +5,15 @@ users:
     groups: [admin]
     lock_passwd: true
 stages:
-  boot:
+  initramfs:
   - name: "Repart image"
     layout:
       device:
         label: COS_PERSISTENT
       expand_partition:
-        size: 0 # all space
+        size: 0
     commands:
-      - |
-         [[ "$(echo "$(df -h | grep COS_PERSISTENT)" | awk '{print $5}' | tr -d '%')" -ne 100 ]] && resize2fs /dev/disk/by-label/COS_PERSISTENT
+      - resize2fs /dev/disk/by-label/COS_PERSISTENT
 k3s:
   enabled: true
   args:
