@@ -4,6 +4,7 @@
     { pkgs, ... }:
     {
       imports = [
+        config.modules.argocdAgentctl
         config.modules.autoUpgrade
         config.modules.bootloader
         config.modules.doas
