@@ -27,10 +27,16 @@ kubeconfig:
 	chmod 600 $(KUBE_DIR)/config-hadron; \
 	echo "wrote $(KUBE_DIR)/config-hadron (contexts: $$(echo $$clusters))"
 
-# merge config-hadron into ~/.kube/config (backup kept), replacing it
+# merge config-hadron into ~/.kube/config (backup kept); config-hadron takes
+# precedence so fresh entries win over stale same-named ones, and leftover
+# clusters pointing at the same k3s servers (e.g. old names) are dropped
 kubeconfig-replace:
 	@[ -f $(KUBE_DIR)/config-hadron ] || { echo "run 'make kubeconfig' first"; exit 1; }
 	@[ -f $(KUBE_DIR)/config ] && cp $(KUBE_DIR)/config $(KUBE_DIR)/config.bak || true
-	@KUBECONFIG=$(KUBE_DIR)/config:$(KUBE_DIR)/config-hadron kubectl config view --flatten > $(KUBE_DIR)/config.new
-	@mv $(KUBE_DIR)/config.new $(KUBE_DIR)/config && chmod 600 $(KUBE_DIR)/config
-	@echo "merged into $(KUBE_DIR)/config (backup: $(KUBE_DIR)/config.bak)"
+	@tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+	hadron_names=$$(yq -r '.clusters[].name' $(KUBE_DIR)/config-hadron | paste -sd'|' -); \
+	hadron_servers=$$(yq -r '.clusters[].cluster.server' $(KUBE_DIR)/config-hadron | paste -sd'|' -); \
+	KUBECONFIG=$(KUBE_DIR)/config-hadron:$(KUBE_DIR)/config kubectl config view --flatten > "$$tmp/merged"; \
+	env hadron_names="$$hadron_names" hadron_servers="$$hadron_servers" yq -i '( .clusters | map(select(.name as $$n | .cluster.server as $$s | [ (env(hadron_names) | split("|") | any_c(. == $$n)), ((env(hadron_servers) | split("|") | any_c(. == $$s)) | not) ] | any )) ) as $$clusters | ( .contexts | map(select(.context.cluster as $$n | ($$clusters | map(.name) | any_c(. == $$n)))) ) as $$contexts | ( $$contexts | map(.context.user) | unique ) as $$users | .clusters = $$clusters | .contexts = $$contexts | .users = ( .users | map(select(.name as $$u | ($$users | any_c(. == $$u)))) )' "$$tmp/merged"; \
+	mv "$$tmp/merged" $(KUBE_DIR)/config && chmod 600 $(KUBE_DIR)/config; \
+	echo "merged config-hadron into $(KUBE_DIR)/config (backup: $(KUBE_DIR)/config.bak)"
