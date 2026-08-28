@@ -1,0 +1,17 @@
+argo-cd:
+  commitServer:
+    enabled: true
+  crds:
+    install: true
+  server:
+    extraArgs:
+      - --insecure
+  applicationSet:
+    extraArgs:
+      - --policy=create-update
+  configs:
+    params:
+      "hydrator.enabled": "true"
+    cm:
+      commit.author.name: "Hydrator Bot"
+      commit.author.email: "argocd@homelab"

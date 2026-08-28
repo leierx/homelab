@@ -2,10 +2,11 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: app-of-apps
-  # Namespace-based agent mapping: apps in this namespace are routed to the
-  # mgmt agent, which runs on this very cluster and points at the local
-  # principal — so the hub manages itself the same way as the spokes.
-  namespace: mgmt
+  # Single control plane on mgmt manages all three clusters the classic way.
+  # All Applications live here in the argocd namespace; destination.name
+  # selects the registered cluster secret (`argocd cluster add ... --name
+  # prod|test|mgmt`, mgmt pointing at in-cluster).
+  namespace: argocd
 spec:
   goTemplate: true
   generators:
@@ -14,17 +15,52 @@ spec:
           - git:
               repoURL: https://github.com/leierx/homelab.git
               revision: HEAD
+              files:
+                - path: gitops/apps/shared/*/app.yaml
+          - list:
+              elements:
+                - env: prod
+                  group: shared
+                - env: test
+                  group: shared
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/leierx/homelab.git
+              revision: HEAD
               # mgmt only runs the infrastructure subset of the shared apps —
               # list the app.yaml files explicitly instead of globbing.
               files:
-                - path: gitops/apps/shared/argocd/app.yaml
                 - path: gitops/apps/shared/cilium/app.yaml
                 - path: gitops/apps/shared/cert-manager/app.yaml
                 - path: gitops/apps/shared/envoy-gateway/app.yaml
+                - path: gitops/apps/shared/external-secrets/app.yaml
           - list:
               elements:
                 - env: mgmt
                   group: shared
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/leierx/homelab.git
+              revision: HEAD
+              files:
+                - path: gitops/apps/prod/*/app.yaml
+          - list:
+              elements:
+                - env: prod
+                  group: prod
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/leierx/homelab.git
+              revision: HEAD
+              files:
+                - path: gitops/apps/test/*/app.yaml
+          - list:
+              elements:
+                - env: test
+                  group: test
     - matrix:
         generators:
           - git:
@@ -38,21 +74,28 @@ spec:
                   group: mgmt
   template:
     metadata:
-      name: '{{.name}}'
-      labels:
-        # Principal and agents only process resources carrying this label.
-        argocd-agent: "true"
+      # One Argo CD manages every cluster, so names must be unique across
+      # envs.
+      name: '{{.env}}-{{.name}}'
     spec:
       project: default
-      # Plain source: syncs the hydrated output produced by the hydrate-*
-      # driver apps on the hub (see hydrator.yaml in this directory).
-      source:
-        repoURL: https://github.com/leierx/homelab.git
-        targetRevision: 'env/{{.env}}'
-        path: 'gitops/hydrated/{{.env}}/{{.name}}'
+      # Plain (hydrated) source per env branch, rendered by this instance's
+      # commit-server; the dry source in apps/<group>/ is hydrated into it.
+      sourceHydrator:
+        drySource:
+          repoURL: https://github.com/leierx/homelab.git
+          path: 'gitops/apps/{{.group}}/{{.name}}'
+          targetRevision: HEAD
+          helm:
+            valueFiles:
+              - values.yaml
+              - '{{.env}}-values.yaml'
+            ignoreMissingValueFiles: true
+        syncSource:
+          targetBranch: 'env/{{.env}}'
+          path: 'hydrated/{{.env}}/{{.name}}'
       destination:
-        # Agent cluster secret (created by `argocd-agentctl agent create`);
-        # carries skip-reconcile so the hub's controller leaves these alone.
+        # Cluster secret name as registered on the mgmt control plane.
         name: '{{.env}}'
         namespace: '{{.namespace}}'
       syncPolicy:

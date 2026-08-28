@@ -25,8 +25,9 @@ to before touching anything:
 - `nix/` — NixOS config for the physical host (flake).
 - `opentofu/` — OpenTofu: provisions the k3s/Kairos VMs on Incus (runs on the
   server itself).
-- `gitops/` — Argo CD app-of-apps for all three k3s clusters, run from a
-  single control plane on `mgmt` via argocd-agent (hub/spoke).
+- `gitops/` — Argo CD app-of-apps. A single control-plane Argo CD on the
+  `mgmt` cluster manages all three k3s clusters (`prod`, `test`, `mgmt`)
+  the classic way: cluster secrets + git sources, no agents.
 
 ## Nix (flake)
 
@@ -76,53 +77,95 @@ to before touching anything:
   per node via `cloud-init.user-data` (`templates/*.yaml.tftpl`) — see
   `opentofu/README.md` and `opentofu/image/README.md`.
 - Makefile targets (all server-side): `image`, `kubeconfig`
-  (→ `~/.kube/config-hadron`), `kubeconfig-merge` (opt-in, backs up first).
+  (→ `~/.kube/config-hadron`), `kubeconfig-replace` (opt-in, merges into
+  `~/.kube/config`, backs up first).
 - `renovate.json` still enables only the `terraform` manager; with no
   committed `.terraform.lock.hcl` it effectively watches the provider
   constraints in `opentofu/versions.tf`.
 
 ## GitOps (`gitops/`, Argo CD)
 
-**Hub/spoke via argocd-agent** — see `gitops/README.md` for the full
-architecture and the bootstrap/migration runbook. One Argo CD control plane
-on `mgmt` (hub); `prod`/`test` run only application-controller + local redis
-+ agent, rendering manifests on the hub's repo-server. `mgmt` manages itself
-through an agent pointed at the principal on the same cluster. Source
-hydration still exists but is **hub-local only**: unlabeled
-`hydrate-<env>-<app>` driver apps (from `clusters/<env>/hydrator.yaml`, ns
-`argocd`, no syncPolicy — permanently OutOfSync by design, never sync them)
-hydrate into the `env/*` branches; the agent-routed apps are plain git
-sources on `env/<env>` at `gitops/hydrated/<env>/<app>` (a `sourceHydrator`
-spec cannot ride through the agent protocol).
+One control-plane Argo CD instance on the `mgmt` cluster manages all three
+k3s clusters the classic way: `argocd cluster add` cluster secrets + git
+sources, no agents. App-of-apps is a single **ApplicationSet + sourceHydrator**
+on mgmt; its commit-server hydrates each env's apps into its own branch.
 
-- App layout: `apps/shared/<app>/` renders on `prod` + `test` (and `mgmt`
-  **only** if listed in the explicit file list inside
-  `clusters/mgmt/app-of-apps.yaml` — currently argocd, cilium, cert-manager,
-  envoy-gateway); `apps/{prod,test,mgmt}/` are per-cluster-only. Each app dir
-  is an umbrella Helm chart (`Chart.yaml` declares the upstream chart as a
+- App layout: `apps/shared/<app>/` renders on **all three** clusters;
+  `apps/mgmt/<app>/` only on `mgmt` (argocd, the control plane itself);
+  `apps/prod/` and `apps/test/` only on the respective cluster. Each app dir is
+  an umbrella Helm chart (`Chart.yaml` declares the upstream chart as a
   `dependency`) plus:
-  - `app.yaml` — metadata the ApplicationSet reads: `name` (must equal the
-    folder name) and `namespace` (Argo CD destination);
-  - `values.yaml` (shared defaults) and optional `<env>-values.yaml`,
-    rendered with `helm.ignoreMissingValueFiles: true`.
+  - `app.yaml` — metadata the ApplicationSet reads (see below);
+  - `values.yaml` (shared defaults) and optional `<env>-values.yaml`. The
+    ApplicationSet renders `valueFiles: [values.yaml, <env>-values.yaml]` with
+    `helm.ignoreMissingValueFiles: true`, so missing `<env>-values.yaml` files
+    are skipped per app (Argo CD v3.5.1 does not support per-file
+    `{name, ignoreMissing}` maps in `valueFiles`).
   - Argo CD's repo-server auto-runs `helm dependency build`, so
     **`charts/**` and `*.tgz` are gitignored — never commit fetched charts**
     (they're also in `gitops/.gitignore`).
-- App-of-apps: `clusters/mgmt/root-app.yaml` (the only root app; reconciled
-  by the hub's own controller) applies the whole `clusters/` tree: per-agent
-  namespaces plus one `app-of-apps.yaml` ApplicationSet per env. Each AppSet
-  lives **in** its env namespace (`prod`/`test`/`mgmt`) — namespace-based
-  agent mapping routes the generated apps to the same-named agent. Generated
-  apps carry the `argocd-agent=true` label (principal/agents only process
-  labeled resources) and `destination.name: <env>` (the agentctl-created
-  cluster secret, annotated skip-reconcile so the hub controller ignores
-  them). Adding a **shared app** = drop a folder (never touch `clusters/`);
-  a cluster-specific app = drop it in `apps/<env>/`.
-- The `argocd` app (`apps/shared/argocd/`) deploys Argo CD itself everywhere:
-  base `values.yaml` = spoke profile (controller-only + agent),
-  `mgmt-values.yaml` = hub profile (full Argo CD + argocd-agent principal +
-  hub-local agent, plus `templates/hub.yaml` with the fixed NodePort services
-  and the default AppProject's `sourceNamespaces`).
+- `apps/<app>/app.yaml` contract — keys the file generator feeds the template:
+  `name` (must equal the folder name) and `namespace` (Argo CD destination
+  namespace on the target cluster).
+- App-of-apps: `clusters/mgmt/root-app.yaml` bootstraps the single
+  `app-of-apps.yaml` ApplicationSet in `clusters/mgmt/` (the only `clusters/`
+  dir — prod/test run no Argo CD of their own). It generates one Application
+  per `env × app`, named `{{.env}}-{{.name}}`, synced from the hydrated output
+  and targeting `destination.name: <env>` — register each cluster as a secret
+  on mgmt (`argocd cluster add <ctx> --name <env>`, mgmt itself included,
+  pointing at in-cluster). Shared apps glob `apps/shared/*/app.yaml` for
+  prod/test; mgmt's shared block lists the infra-only subset (cilium,
+  cert-manager, envoy-gateway, external-secrets) explicitly.
+  Adding a **shared app** = drop a folder in `apps/shared/` (never touch
+  `clusters/`); an **env-only** app = drop it in `apps/prod/` / `apps/test/` /
+  `apps/mgmt/`.
+- Hydration branches: `env/prod`, `env/test` and `env/mgmt` contain Argo CD's
+  hydrated output under `hydrated/<env>/<app>/`. All three are owned by
+  the single mgmt instance (the one-writer-per-branch rule) and should be
+  branch-protected so only Argo CD writes to them.
+- Hydrator reacts only to dry-source commits: after adding a **new** app
+  folder, push an empty commit to `main` to force hydration to pick it up.
 - cert-manager's umbrella chart templates a `ClusterIssuer`
   (`apps/cert-manager/templates/clusterissuer.yaml`); the issuer carries
   `argocd.argoproj.io/sync-wave: "1"` to order after the chart.
+
+### Secrets (Bitwarden via External Secrets)
+
+- **No secret (not even encrypted) lives in the gitops repo.** The only
+  credential ESO needs to reach Bitwarden — the access token — is seeded by
+  hand into each cluster after a rebuild. From the host, with the regenerated
+  kubeconfig from `make kubeconfig` (`~/.kube/config-hadron`, contexts
+  prod/test/mgmt):
+
+  ```sh
+  KUBECONFIG=~/.kube/config-hadron \
+    kubectl --context <prod|test|mgmt> create secret generic \
+    bitwarden-access-token --namespace external-secrets \
+    --from-literal=token=<token> --dry-run=client -o yaml |
+    KUBECONFIG=~/.kube/config-hadron kubectl --context <prod|test|mgmt> apply -f -
+  ```
+- Every other secret is an `ExternalSecret` → Bitwarden via the
+  `external-secrets` shared app's ClusterSecretStore (each cluster has its own
+  Bitwarden project ID in `<env>-values.yaml`).
+- The Argo CD git write token also lives in Bitwarden. On mgmt an ExternalSecret
+  (`external-secrets/templates/argocd-repo-creds.yaml`, enabled only in
+  `mgmt-values.yaml`) materializes it as the `argocd-repo-creds` repository
+  secret in `argocd` — the commit-server needs it to push hydrated output to
+  the `env/*` branches.
+
+### Fresh rebuild bootstrap (order matters)
+
+1. `cilium` (CNI, the only thing that can't wait).
+2. `cert-manager` (the bitwarden SDK server's CA comes from it).
+3. `external-secrets` — on mgmt this also renders the `argocd-repo-creds`
+   ExternalSecret, so the git write token lands in `argocd` automatically.
+4. From the host, run `make kubeconfig` (the rebuilt cluster's CA is new, so
+   the kubeconfig must be regenerated) then seed the Bitwarden access token
+   into each cluster by hand — see the Secrets section above. ESO retries until
+   the Secret exists, so ordering vs. step 3 is not strict.
+5. `argocd` — starts with repo creds already present, so the very first
+   hydration works; `root-app` → ApplicationSet hydrates the `env/*` branches
+   and syncs everything else.
+6. After the first run the `env/*` branches hold rendered output for every app,
+   so later rebuilds `kubectl apply` straight from `hydrated/<env>/...` instead
+   of helming.

@@ -3,7 +3,6 @@ resource "incus_storage_pool" "default" {
   driver = "dir"
 }
 
-# IMPORTANT: Incus VM images must be qcow2 split images — built by `make image`
 resource "incus_image" "kairos" {
   source_file = {
     data_path     = var.image_path

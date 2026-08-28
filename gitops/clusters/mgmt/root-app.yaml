@@ -10,12 +10,7 @@ spec:
   source:
     repoURL: https://github.com/leierx/homelab.git
     targetRevision: HEAD
-    # The whole clusters/ tree: per-agent namespaces and the three
-    # app-of-apps ApplicationSets (and this file — the root app manages
-    # itself). Reconciled by the hub's own application-controller.
-    path: gitops/clusters
-    directory:
-      recurse: true
+    path: gitops/clusters/mgmt
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
