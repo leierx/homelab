@@ -1,6 +1,6 @@
 {
   modules.nixosHosts.loftserveren01 =
-    { config, lib, ... }:
+    { config, ... }:
     {
       networking.enableIPv6 = false; # all my homies use IPV4
       networking.domain = "home.arpa"; # FQDN: loftserveren01.home.arpa (hostName stays short)
@@ -53,18 +53,11 @@
         externalInterface = "eno1";
         internalInterfaces = [ "wg0" ];
       };
-      # DNS
-      services.resolved = {
-        enable = true;
-        settings.Resolve = {
-          DNSOverTLS = "true"; # strict DoT
-          DNSSEC = "true";
-          FallbackDNS = lib.mkForce [ ]; # do not silently fall back
-        };
-      };
+      # DNS — local recursive resolver (unbound). systemd-networkd writes
+      # /etc/resolv.conf from these nameservers; the box talks to unbound
+      # only, so there is nothing to silently fall back to.
       networking.nameservers = [
-        "9.9.9.9#dns.quad9.net"
-        "149.112.112.112#dns.quad9.net"
+        "127.0.0.1"
       ];
       # FIREWALL
       networking.nftables.enable = true;

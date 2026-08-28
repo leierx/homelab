@@ -15,10 +15,10 @@ resource "incus_network" "test" {
     "ipv4.dhcp"        = "true"
     "ipv4.dhcp.ranges" = "192.168.101.200-192.168.101.250"
     "ipv6.address"     = "none"
-    "dns.domain"       = "test.lab"
-    "dns.mode"        = "none"
-    "dns.nameservers" = "192.168.101.1"
-    "raw.dnsmasq"     = "port=0"
+    "dns.domain"       = "home.arpa"
+    "dns.mode"         = "none"
+    "dns.nameservers"  = "192.168.101.1"
+    "raw.dnsmasq"      = "port=0"
   }
 }
 
