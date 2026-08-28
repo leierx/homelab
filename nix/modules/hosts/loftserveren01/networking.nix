@@ -53,9 +53,6 @@
         externalInterface = "eno1";
         internalInterfaces = [ "wg0" ];
       };
-      # DNS — local recursive resolver (unbound). The box talks to unbound only,
-      # so there is nothing to silently fall back to. systemd-networkd enables
-      # systemd-resolved by default; we don't want it here.
       services.resolved.enable = false;
       networking.nameservers = [ "127.0.0.1" ];
       # FIREWALL
@@ -63,9 +60,6 @@
       networking.firewall = {
         enable = true;
         checkReversePath = "loose"; # causes problems for wireguard
-        # Incus bridges: guests need DHCP/DNS (and NFS) from the host. Incus
-        # installs its own accept rules, but a drop in nixos-fw still wins, so
-        # the bridges have to be trusted here.
         trustedInterfaces = [
           "br-prod"
           "br-test"
