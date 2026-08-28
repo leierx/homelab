@@ -14,7 +14,6 @@
           ];
 
           do-ip6 = "no";
-          do-daemonize = "no";
           module-config = "validator iterator";
           hide-identity = "yes";
           hide-version = "yes";
