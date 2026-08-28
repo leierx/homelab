@@ -1,5 +1,6 @@
 cilium:
-  kubeProxyReplacement: true
+  envoy:
+    enabled: false
   hubble:
     enabled: false
   ipam:
