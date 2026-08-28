@@ -50,7 +50,7 @@ spec:
             ignoreMissingValueFiles: true
         syncSource:
           targetBranch: 'env/{{.env}}'
-          path: 'gitops/hydrated/{{.env}}/{{.name}}'
+          path: '{{.env}}/{{.name}}'
       # Deliberately no syncPolicy: this app is never synced (it would deploy
       # the env's manifests onto the hub). It exists purely to drive
       # hydration; the destination namespace only provides the helm rendering
