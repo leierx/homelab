@@ -24,8 +24,22 @@
 
         [Service]
         Type=notify
-        WorkingDirectory=-/run/incus_agent
-        ExecStartPre=-/bin/sh -c 'modprobe 9pnet_virtio 2>/dev/null || true; mkdir -p /run/incus_agent && { mount -t 9p config /run/incus_agent -o access=0,trans=virtio,size=1048576 2>/dev/null || mount /dev/disk/by-label/incus-agent /run/incus_agent 2>/dev/null || true; }'
+        RuntimeDirectory=incus_agent
+        WorkingDirectory=/run/incus_agent
+        ExecStartPre=/bin/sh -exc '\
+          modprobe 9pnet_virtio || true; \
+          mkdir -p /run/incus_agent/.mnt; \
+          mount -t 9p agent /run/incus_agent/.mnt -o ro,access=0,trans=virtio,size=1048576; \
+          cp "/run/incus_agent/.mnt/incus-agent.linux.$(uname -m)" /run/incus_agent/incus-agent; \
+          chmod 0755 /run/incus_agent/incus-agent; \
+          umount /run/incus_agent/.mnt; \
+          mount -t 9p config /run/incus_agent/.mnt -o ro,access=0,trans=virtio,size=1048576; \
+          for f in server.crt agent.crt agent.key agent.conf agent-mounts.json; do \
+            [ -e "/run/incus_agent/.mnt/$f" ] && cp "/run/incus_agent/.mnt/$f" /run/incus_agent/; \
+          done; \
+          umount /run/incus_agent/.mnt; \
+          rmdir  /run/incus_agent/.mnt'
+        ExecStopPost=-/bin/sh -c 'mountpoint -q /run/incus_agent/.mnt && umount /run/incus_agent/.mnt; rmdir /run/incus_agent/.mnt 2>/dev/null || true'
         ExecStart=/run/incus_agent/incus-agent
         Restart=on-failure
         RestartSec=5s
