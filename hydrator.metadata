@@ -1,7 +1,8 @@
 {
   "repoURL": "https://github.com/leierx/homelab.git",
-  "drySha": "c6fc5b2d6308c7e756f7a3c85e3c017921361b1a",
+  "drySha": "3a6dd46e461e90846198c7430440bc015388bcfa",
   "author": "Lars Smith Eier <larssmitheier@protonmail.com>",
-  "date": "2026-08-28T23:58:10Z",
-  "subject": "minor tweak to a file"
+  "date": "2026-08-29T22:12:47Z",
+  "subject": "gitops: fix external-secrets argocd repo creds template, document bootstrap",
+  "body": "The argocd-repo-creds template indexed .Values.argocdRepoToken.enabled\nwithout a default, nil-pointing on prod/test where argocdRepoToken is\nundefined and blocking hydration. Guard with dig + default (dict).\n\nmgmt feeds the git write token directly as a repository-write secret now,\nso disable the Bitwarden-materialized argocd repo secret on mgmt.\n\nAdd bootstrap.md: tofu destroy -> apply routine (mgmt-only manual steps\n+ app-of-apps takes over).\n"
 }

@@ -1,6 +1,6 @@
 {
   "repoURL": "https://github.com/leierx/homelab.git",
-  "drySha": "c6fc5b2d6308c7e756f7a3c85e3c017921361b1a",
+  "drySha": "3a6dd46e461e90846198c7430440bc015388bcfa",
   "commands": [
     "helm template . --name-template mgmt-external-secrets --namespace external-secrets --values ./gitops/apps/shared/external-secrets/values.yaml --values ./gitops/apps/shared/external-secrets/mgmt-values.yaml --include-crds"
   ]
