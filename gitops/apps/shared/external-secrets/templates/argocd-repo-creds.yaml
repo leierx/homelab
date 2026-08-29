@@ -1,4 +1,4 @@
-{{- if .Values.argocdRepoToken.enabled }}
+{{- if dig "enabled" false (default (dict) .Values.argocdRepoToken) }}
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
@@ -23,5 +23,5 @@ spec:
   data:
     - secretKey: password
       remoteRef:
-        key: {{ .Values.argocdRepoToken.key | quote }}
+        key: {{ dig "key" "" (default (dict) .Values.argocdRepoToken) | quote }}
 {{- end }}

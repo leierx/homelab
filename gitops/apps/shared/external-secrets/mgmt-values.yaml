@@ -2,9 +2,8 @@ bitwarden:
   # TODO: fill in the mgmt cluster's Bitwarden project ID before first sync.
   projectID: "00000000-0000-0000-0000-000000000000"
 
-# mgmt only: materialize the Argo CD git write token (stored in Bitwarden)
-# as the argocd-repo-creds repository secret, so the commit-server can push
-# hydrated output to the env/* branches.
+# The Argo CD git write token is provided directly as a repository-write secret
+# (see bootstrap.md), so no Bitwarden-materialized repo secret is needed on mgmt.
 argocdRepoToken:
-  enabled: true
+  enabled: false
   key: argocd/git-token
