@@ -9,3 +9,8 @@ cilium:
         - "10.42.0.0/16"
   operator:
     replicas: 1 # downgrade from default 2
+  kubeProxyReplacement: true
+  socketLB:
+    # k3s supports socket-LB (no eth checks on physical devices), which is
+    # required for the envoy-gateway NodePort services to be served.
+    hostNamespaceOnly: true
