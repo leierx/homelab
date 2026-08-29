@@ -1,0 +1,7 @@
+{
+  "repoURL": "https://github.com/leierx/homelab.git",
+  "drySha": "3a6dd46e461e90846198c7430440bc015388bcfa",
+  "commands": [
+    "helm template . --name-template prod-cert-manager --namespace cert-manager --values ./gitops/apps/shared/cert-manager/values.yaml --include-crds"
+  ]
+}
