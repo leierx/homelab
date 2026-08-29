@@ -1,0 +1,7 @@
+{
+  "repoURL": "https://github.com/leierx/homelab.git",
+  "drySha": "3a6dd46e461e90846198c7430440bc015388bcfa",
+  "commands": [
+    "helm template . --name-template test-envoy-gateway --namespace envoy-gateway --values ./gitops/apps/shared/envoy-gateway/values.yaml --values ./gitops/apps/shared/envoy-gateway/test-values.yaml --include-crds"
+  ]
+}
