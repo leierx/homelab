@@ -36,7 +36,32 @@ The fine-grained GitHub PAT used for `homelab-repo-write` **must** have
 `Contents: Read and write` on `leierx/homelab`. A read-only PAT clones fine but
 `git push` fails with `401`, and hydration silently cannot write `env/*`.
 
-## 1. Wipe + rebuild the VMs
+## 1. Save the secrets (before you destroy!)
+
+The only two credentials a rebuild needs are the Bitwarden access token
+(`external-secrets/bitwarden-access-token`, on **each** cluster) and the Argo
+CD cluster/repo secrets on mgmt. Before `tofu destroy`, dump them so they can
+be re-seeded afterwards:
+
+```sh
+export KUBECONFIG=~/.kube/config-hadron
+mkdir -p ~/tofu-backup-secrets/bootstrap
+
+for ctx in mgmt prod test; do
+  kubectl --context $ctx -n external-secrets get secret bitwarden-access-token -o yaml \
+    > ~/tofu-backup-secrets/bootstrap/bitwarden-access-token-$ctx.yaml
+done
+for s in homelab-repo-write mgmt prod test argocd-initial-admin-secret; do
+  kubectl --context mgmt -n argocd get secret $s -o yaml \
+    > ~/tofu-backup-secrets/bootstrap/argo-$s.yaml
+done
+```
+
+These are full Secrets (base64 data), so they can be re-applied as-is. The
+kubeconfig CA changes on rebuild so the cluster registration secrets are
+regenerated in step 5 — but the PAT + Bitwarden token are reused verbatim.
+
+## 2. Wipe + rebuild the VMs
 
 ```sh
 cd ~/tofu
@@ -44,7 +69,7 @@ tofu destroy            # tears down br-prod/br-test/br-mgmt + all 9 VMs
 tofu apply              # fresh VMs, all nodes NotReady (no CNI yet)
 ```
 
-## 2. Regenerate the kubeconfig
+## 3. Regenerate the kubeconfig
 
 ```sh
 cd ~/tofu && make kubeconfig   # -> ~/.kube/config-hadron (contexts prod test mgmt)
@@ -53,7 +78,7 @@ export KUBECONFIG=~/.kube/config-hadron
 
 The k3s CA is new after a rebuild, so the kubeconfig must come from the fresh nodes.
 
-## 3. mgmt: the whole control plane in one apply
+## 4. mgmt: the whole control plane in one apply
 
 Everything mgmt needs is the hydrated output (cilium = CNI, argocd = the
 engine) plus the app-of-apps seed. Since the hydrated branches already exist,
@@ -66,11 +91,14 @@ argocd's CRDs must arrive before `root-app` references the ApplicationSet.
 git clone https://<PAT>@github.com/leierx/homelab.git ~/hydrated
 git -C ~/hydrated fetch origin env/mgmt env/prod env/test
 
-# 2. one apply for the whole control plane (order matters: cilium, argocd, root-app)
+# 2. ONE apply for the whole control plane (order matters: cilium, argocd, root-app)
 kubectl --context mgmt apply --server-side \
   -f ~/hydrated/hydrated/mgmt/cilium/manifest.yaml \
   -f ~/hydrated/hydrated/mgmt/argocd/manifest.yaml \
   -f gitops/clusters/mgmt/root-app.yaml
+
+kubectl --context mgmt get nodes -w          # wait: all Ready (CNI up)
+kubectl --context mgmt get pods -n argocd -w # wait: all Running
 ```
 
 The single apply installs cilium (CNI), Argo CD (controller + commit-server),
@@ -78,17 +106,13 @@ and the root Application in one shot; pods schedule themselves once the CNI is
 up. `root-app` drives the `app-of-apps` ApplicationSet in
 `gitops/clusters/mgmt/`.
 
-## 4. mgmt: register the three clusters on Argo CD
+## 5. mgmt: register the three clusters on Argo CD
 
 Each is a Secret in the `argocd` namespace labelled
 `argocd.argoproj.io/secret-type: cluster`, with `config` = the kubeconfig's
 ClusterConfig (`tlsClientConfig` with `caData`/`certData`/`keyData`) as JSON:
 
 ```sh
-for c in prod test mgmt; do
-  kubectl --context $c cluster-info >/dev/null 2>&1   # contexts already in config-hadron
-done
-
 for c in prod test mgmt; do
   KUBECONFIG=~/.kube/config-hadron kubectl config view --minify --context $c --raw -o json > /tmp/$c-kubeconfig.json
   export CA=$(yq -r '.clusters[0].cluster.certificate-authority-data' /tmp/$c-kubeconfig.json)
@@ -111,44 +135,22 @@ kubectl --context mgmt logs -n argocd statefulset/argocd-application-controller 
   | grep -E "assigned to shard"   # expect one line per cluster, no "unmarshal" errors
 ```
 
-## 5. mgmt: the two secrets
+## 6. mgmt: re-seed the two secrets from backup
 
-A write-capable GitHub PAT for the commit-server (you can choose `repo` = classic
-scope or fine-grained with `Contents: Read and write`):
-
-```sh
-kubectl -n argocd apply -f - <<'EOF'
-apiVersion: v1
-kind: Secret
-metadata:
-  name: homelab-repo-write
-  namespace: argocd
-  labels: { argocd.argoproj.io/secret-type: repository-write }
-stringData:
-  type: git
-  url: https://github.com/leierx/homelab.git
-  username: leierx
-  password: <PAT>
-EOF
-```
-
-The Bitwarden access token (needed by External Secrets on **each** cluster; ESO
-retries until the Secret exists, so seeding can even wait until the apps land):
+Re-apply the Secrets saved in step 1 — the repo-write PAT on mgmt and the
+Bitwarden token on **each** cluster (ESO retries until the token exists, so
+this can even happen after the apps land):
 
 ```sh
-kubectl apply -f - <<'EOF'
-apiVersion: v1
-kind: Secret
-type: Opaque
-metadata:
-  name: bitwarden-access-token
-  namespace: external-secrets
-stringData:
-  token: <token>
-EOF
+kubectl --context mgmt apply -f ~/tofu-backup-secrets/bootstrap/argo-homelab-repo-write.yaml
+
+for ctx in mgmt prod test; do
+  kubectl --context $ctx create ns external-secrets --dry-run=client -o yaml | kubectl --context $ctx apply -f -
+  kubectl --context $ctx apply -f ~/tofu-backup-secrets/bootstrap/bitwarden-access-token-$ctx.yaml
+done
 ```
 
-## 6. Verify
+## 7. Verify
 
 ```sh
 export KUBECONFIG=~/.kube/config-hadron
@@ -158,8 +160,8 @@ kubectl --context test get nodes            # test: Ready once cilium app lands
 kubectl --context prod get nodes            # prod: Ready once cilium app lands
 ```
 
-`root-app` (applied in step 3) already booted the app-of-apps ApplicationSet;
-step 5's secrets are picked up as the apps sync. RollingSync stages the rollout
+`root-app` (applied in step 4) already booted the app-of-apps ApplicationSet;
+step 6's secrets are picked up as the apps sync. RollingSync stages the rollout
 by each app's `wave` (declared in `apps/<app>/app.yaml`): infra apps wave 1,
 consumer apps a higher wave — a wave only starts once the previous is
 `Healthy`.
@@ -179,4 +181,4 @@ consumer apps a higher wave — a wave only starts once the previous is
   `gitops/apps/shared/external-secrets/templates/argocd-repo-creds.yaml` uses
   `dig "enabled" false (default (dict) .Values.argocdRepoToken)`.
 - **Cluster secrets rejected (`could not unmarshal cluster secret`)**: `config`
-  must be a JSON `ClusterConfig` (step 4), not a raw kubeconfig.
+  must be a JSON `ClusterConfig` (step 5), not a raw kubeconfig.
