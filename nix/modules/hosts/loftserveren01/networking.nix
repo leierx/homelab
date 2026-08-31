@@ -60,11 +60,8 @@
       networking.firewall = {
         enable = true;
         checkReversePath = "loose"; # causes problems for wireguard
-        trustedInterfaces = [
-          "br-prod"
-          "br-test"
-          "br-mgmt"
-        ];
+        # whitelist VM traffic at the receivers: host input (DNS/DHCP/NFS from the bridges) and forwarded traffic (internet via Incus NAT + mgmt->prod/test 6443)
+        filterForward = true; # + extraForwardRules below
         allowedTCPPorts = [ ];
         interfaces.eno1 = {
           allowedTCPPorts = [
@@ -76,6 +73,44 @@
           ];
         };
         interfaces.wg0.allowedTCPPorts = [ 22 ]; # ssh -> wireguard interface
+        interfaces.br-prod = {
+          allowedTCPPorts = [
+            53
+            2049 # NFS
+          ];
+          allowedUDPPorts = [
+            53
+            67 # DHCP (dnsmasq on the bridge)
+          ];
+        };
+        interfaces.br-test = {
+          allowedTCPPorts = [
+            53
+            2049 # NFS
+          ];
+          allowedUDPPorts = [
+            53
+            67 # DHCP (dnsmasq on the bridge)
+          ];
+        };
+        interfaces.br-mgmt = {
+          allowedTCPPorts = [
+            53
+            2049 # NFS
+          ];
+          allowedUDPPorts = [
+            53
+            67 # DHCP (dnsmasq on the bridge)
+          ];
+        };
+        extraForwardRules = ''
+          # wireguard peer -> internet (existing host NAT for wg0)
+          iifname wg0 oifname eno1 accept
+          # VMs -> internet via Incus NAT (LAN 192.168.2.0/24 + wg peer net intentionally excluded)
+          iifname { br-prod, br-test, br-mgmt } oifname eno1 ip daddr != { 192.168.2.0/24, 10.0.0.0/24 } accept
+          # mgmt Argo CD -> prod/test kube API
+          iifname br-mgmt oifname { br-prod, br-test } ip saddr 192.168.102.0/24 ip daddr { 192.168.100.10, 192.168.101.10 } tcp dport 6443 accept
+        '';
       };
     };
 }

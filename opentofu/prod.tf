@@ -10,16 +10,42 @@ resource "incus_network" "prod" {
   type = "bridge"
 
   config = {
-    "ipv4.address"     = "192.168.100.1/24"
-    "ipv4.nat"         = "true"
-    "ipv4.dhcp"        = "true"
-    "ipv4.dhcp.ranges" = "192.168.100.200-192.168.100.250"
-    "ipv6.address"     = "none"
-    "dns.domain"       = "home.arpa"
-    "dns.mode"         = "none"
-    "dns.nameservers"  = "192.168.100.1"
-    "raw.dnsmasq"      = "port=0"
+    "ipv4.address"                        = "192.168.100.1/24"
+    "ipv4.nat"                            = "true"
+    "ipv4.dhcp"                           = "true"
+    "ipv4.dhcp.ranges"                    = "192.168.100.200-192.168.100.250"
+    "ipv6.address"                        = "none"
+    "dns.domain"                          = "home.arpa"
+    "dns.mode"                            = "none"
+    "dns.nameservers"                     = "192.168.100.1"
+    "raw.dnsmasq"                         = "port=0"
+    "security.acls"                       = incus_network_acl.prod.name
+    "security.acls.default.egress.action" = "allow"
   }
+}
+
+# Whitelist what may reach the prod VMs (ingress only); egress is permissive by design and filtered by the receivers instead — see network.nix.
+resource "incus_network_acl" "prod" {
+  name = "acl-prod"
+
+  ingress = [
+    {
+      action           = "allow"
+      state            = "enabled"
+      protocol         = "tcp"
+      source           = "192.168.102.0/24"
+      destination_port = "6443"
+      description      = "Argo CD (mgmt) -> kube API"
+    },
+    {
+      action           = "allow"
+      state            = "enabled"
+      protocol         = "tcp"
+      source           = "192.168.100.1"
+      destination_port = "6443,30080,30443"
+      description      = "host -> kubectl/haproxy nodeports"
+    },
+  ]
 }
 
 resource "incus_instance" "prod_c1" {

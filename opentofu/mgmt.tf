@@ -10,16 +10,34 @@ resource "incus_network" "mgmt" {
   type = "bridge"
 
   config = {
-    "ipv4.address"     = "192.168.102.1/24"
-    "ipv4.nat"         = "true"
-    "ipv4.dhcp"        = "true"
-    "ipv4.dhcp.ranges" = "192.168.102.200-192.168.102.250"
-    "ipv6.address"     = "none"
-    "dns.domain"       = "home.arpa"
-    "dns.mode"         = "none"
-    "dns.nameservers"  = "192.168.102.1"
-    "raw.dnsmasq"      = "port=0"
+    "ipv4.address"                        = "192.168.102.1/24"
+    "ipv4.nat"                            = "true"
+    "ipv4.dhcp"                           = "true"
+    "ipv4.dhcp.ranges"                    = "192.168.102.200-192.168.102.250"
+    "ipv6.address"                        = "none"
+    "dns.domain"                          = "home.arpa"
+    "dns.mode"                            = "none"
+    "dns.nameservers"                     = "192.168.102.1"
+    "raw.dnsmasq"                         = "port=0"
+    "security.acls"                       = incus_network_acl.mgmt.name
+    "security.acls.default.egress.action" = "allow"
   }
+}
+
+# Whitelist what may reach the mgmt VMs; only the host initiates here (kubectl admin).
+resource "incus_network_acl" "mgmt" {
+  name = "acl-mgmt"
+
+  ingress = [
+    {
+      action           = "allow"
+      state            = "enabled"
+      protocol         = "tcp"
+      source           = "192.168.102.1"
+      destination_port = "6443"
+      description      = "host -> kube API"
+    },
+  ]
 }
 
 resource "incus_instance" "mgmt_c1" {

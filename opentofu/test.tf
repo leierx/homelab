@@ -10,16 +10,42 @@ resource "incus_network" "test" {
   type = "bridge"
 
   config = {
-    "ipv4.address"     = "192.168.101.1/24"
-    "ipv4.nat"         = "true"
-    "ipv4.dhcp"        = "true"
-    "ipv4.dhcp.ranges" = "192.168.101.200-192.168.101.250"
-    "ipv6.address"     = "none"
-    "dns.domain"       = "home.arpa"
-    "dns.mode"         = "none"
-    "dns.nameservers"  = "192.168.101.1"
-    "raw.dnsmasq"      = "port=0"
+    "ipv4.address"                        = "192.168.101.1/24"
+    "ipv4.nat"                            = "true"
+    "ipv4.dhcp"                           = "true"
+    "ipv4.dhcp.ranges"                    = "192.168.101.200-192.168.101.250"
+    "ipv6.address"                        = "none"
+    "dns.domain"                          = "home.arpa"
+    "dns.mode"                            = "none"
+    "dns.nameservers"                     = "192.168.101.1"
+    "raw.dnsmasq"                         = "port=0"
+    "security.acls"                       = incus_network_acl.test.name
+    "security.acls.default.egress.action" = "allow"
   }
+}
+
+# Whitelist what may reach the test VMs (see prod.tf for the rationale).
+resource "incus_network_acl" "test" {
+  name = "acl-test"
+
+  ingress = [
+    {
+      action           = "allow"
+      state            = "enabled"
+      protocol         = "tcp"
+      source           = "192.168.102.0/24"
+      destination_port = "6443"
+      description      = "Argo CD (mgmt) -> kube API"
+    },
+    {
+      action           = "allow"
+      state            = "enabled"
+      protocol         = "tcp"
+      source           = "192.168.101.1"
+      destination_port = "6443,30080,30443"
+      description      = "host -> kubectl/haproxy nodeports"
+    },
+  ]
 }
 
 resource "incus_instance" "test_c1" {

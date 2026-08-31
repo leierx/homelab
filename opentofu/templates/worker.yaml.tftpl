@@ -6,10 +6,12 @@ users:
     lock_passwd: true
 stages:
   boot:
-  - name: "Kick partition reread + grow fs"
+  - name: "Grow persistent fs when partition is bigger than fs"
     commands:
-      - partx -u /dev/sda
-      - resize2fs /dev/disk/by-label/COS_PERSISTENT
+      - |
+        part=/dev/disk/by-label/COS_PERSISTENT
+        partx -u "/dev/$(lsblk -ndo pkname "$part")"
+        [ "$(blockdev --getsize64 "$part")" -gt "$(dumpe2fs -h "$part" 2>/dev/null | awk '/^Block size:/{s=$3}/^Block count:/{c=$3}END{print s*c}')" ] && resize2fs "$part"
 k3s-agent:
   enabled: true
   args:
