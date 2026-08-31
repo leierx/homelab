@@ -31089,6 +31089,7 @@ spec:
             - --probe-addr=:8081
             - --webhook-addr=:7000
             - --policy=create-update
+            - --enable-progressive-syncs
           env:
             - name: NAMESPACE
               valueFrom:

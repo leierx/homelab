@@ -1,8 +1,8 @@
 {
   "repoURL": "https://github.com/leierx/homelab.git",
-  "drySha": "352dd6d650ae29b270fae9d5eb5a44fac19864a8",
+  "drySha": "cbf4777ca29617cc9263863daf461610f75b4070",
   "author": "Lars Smith Eier <larssmitheier@protonmail.com>",
-  "date": "2026-08-29T22:42:56Z",
-  "subject": "cilium: enable kube-proxy-replacement (k3s runs --disable-kube-proxy)",
-  "body": "k3s is installed with --flannel-backend=none --disable-kube-proxy, so\ncilium must act as the service proxy too. Without kubeProxyReplacement,\nNodePort/LoadBalancer services (envoy-gateway's 30080/30443) are never\nserved, which is why auth.skinke.net's HTTP-01 ACME challenge and the\ngateway nodeports hang.\n\nsocketLB.hostNamespaceOnly matches k3s (no socket-LB fallback to eth).\n"
+  "date": "2026-08-31T19:10:49Z",
+  "subject": "argocd: stage app-of-apps rollout with RollingSync waves",
+  "body": "- enable progressive syncs on the applicationset controller\n- appset: RollingSync strategy with explicit wave steps 1-2\n- generated apps labeled homelab.io/sync-wave from each app.yaml's\n  optional `wave` key (default 1; authentik = 2)\n- generated apps drop the automated block (RollingSync drives syncs),\n  prune kept via Prune=true sync-option\n- bootstrap.md: one kubectl apply for the whole mgmt control plane\n  from hydrated branches (cilium + argocd + root-app)\n"
 }
