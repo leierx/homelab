@@ -65,6 +65,7 @@
         allowedTCPPorts = [ ];
         interfaces.eno1 = {
           allowedTCPPorts = [
+            22 # LAN ssh to the host
             30080
             30443
           ];
@@ -104,6 +105,10 @@
           ];
         };
         extraForwardRules = ''
+          # intra-bridge k8s traffic (br_netfilter routes it through the FORWARD chain)
+          iifname "br-prod" oifname "br-prod" accept
+          iifname "br-test" oifname "br-test" accept
+          iifname "br-mgmt" oifname "br-mgmt" accept
           # wireguard peer -> internet (existing host NAT for wg0)
           iifname wg0 oifname eno1 accept
           # VMs -> internet via Incus NAT (LAN 192.168.2.0/24 + wg peer net intentionally excluded)

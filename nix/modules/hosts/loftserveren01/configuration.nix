@@ -20,6 +20,7 @@
       # SSH
       services.openssh = {
         enable = true;
+        openFirewall = false; # ssh is scoped to eno1/wg0 in networking.nix — don't blanket-open 22
         settings = {
           PermitRootLogin = "no";
           PasswordAuthentication = false;
