@@ -59,7 +59,7 @@ done
 
 These are full Secrets (base64 data), so they can be re-applied as-is. The
 kubeconfig CA changes on rebuild so the cluster registration secrets are
-regenerated in step 5 — but the PAT + Bitwarden token are reused verbatim.
+regenerated in step 4 — but the PAT + Bitwarden token are reused verbatim.
 
 ## 2. Wipe + rebuild the VMs
 
@@ -78,7 +78,64 @@ export KUBECONFIG=~/.kube/config-hadron
 
 The k3s CA is new after a rebuild, so the kubeconfig must come from the fresh nodes.
 
-## 4. mgmt: the whole control plane in one apply
+## 4. mgmt: pre-seed clusters + secrets (before the control plane)
+
+Everything argocd needs to start clean can be staged in advance: the two target
+namespaces, the three cluster registration secrets (fresh CA from the new
+kubeconfig), the repo-write PAT and the Bitwarden tokens. These are just
+Secrets in namespaces — no dependency on argocd running — so argocd's very
+first reconcile already knows its clusters and has its credentials.
+
+```sh
+# target namespaces (argocd will update them when it lands; harmless to pre-create)
+kubectl --context mgmt create ns argocd --dry-run=client -o yaml | kubectl --context mgmt apply -f -
+for ctx in mgmt prod test; do
+  kubectl --context $ctx create ns external-secrets --dry-run=client -o yaml | kubectl --context $ctx apply -f -
+done
+```
+
+Cluster registration secrets: each is a Secret in the `argocd` namespace
+labelled `argocd.argoproj.io/secret-type: cluster`, with `config` = the
+kubeconfig's ClusterConfig (`tlsClientConfig` with `caData`/`certData`/
+`keyData`) as JSON:
+
+```sh
+for c in prod test mgmt; do
+  KUBECONFIG=~/.kube/config-hadron kubectl config view --minify --context $c --raw -o json > /tmp/$c-kubeconfig.json
+  export CA=$(yq -r '.clusters[0].cluster.certificate-authority-data' /tmp/$c-kubeconfig.json)
+  export CERT=$(yq -r '.users[0].user.client-certificate-data' /tmp/$c-kubeconfig.json)
+  export KEY=$(yq -r '.users[0].user.client-key-data' /tmp/$c-kubeconfig.json)
+  printf '{"tlsClientConfig":{"caData":"%s","certData":"%s","keyData":"%s"}}' "$CA" "$CERT" "$KEY" > /tmp/$c-config.json
+  server=$(yq -r '.clusters[0].cluster.server' /tmp/$c-kubeconfig.json)
+  kubectl --context mgmt create secret generic $c -n argocd \
+    --from-literal=name=$c --from-literal=server=$server \
+    --from-file=config=/tmp/$c-config.json --dry-run=client -o yaml \
+    | kubectl --context mgmt apply -f -
+  kubectl --context mgmt label secret $c -n argocd argocd.argoproj.io/secret-type=cluster --overwrite
+done
+```
+
+Re-apply the credentials saved in step 1 — the repo-write PAT on mgmt and the
+Bitwarden token on **each** cluster:
+
+```sh
+kubectl --context mgmt apply -f ~/tofu-backup-secrets/bootstrap/argo-homelab-repo-write.yaml
+
+for ctx in mgmt prod test; do
+  kubectl --context $ctx apply -f ~/tofu-backup-secrets/bootstrap/bitwarden-access-token-$ctx.yaml
+done
+```
+
+Sanity check the secrets are in place before applying the control plane:
+
+```sh
+kubectl --context mgmt -n argocd get secrets -l argocd.argoproj.io/secret-type=cluster   # prod test mgmt
+for ctx in mgmt prod test; do
+  kubectl --context $ctx -n external-secrets get secret bitwarden-access-token
+done
+```
+
+## 5. mgmt: the whole control plane in one apply
 
 Everything mgmt needs is the hydrated output (cilium = CNI, argocd = the
 engine) plus the app-of-apps seed. Since the hydrated branches already exist,
@@ -104,53 +161,18 @@ kubectl --context mgmt get pods -n argocd -w # wait: all Running
 The single apply installs cilium (CNI), Argo CD (controller + commit-server),
 and the root Application in one shot; pods schedule themselves once the CNI is
 up. `root-app` drives the `app-of-apps` ApplicationSet in
-`gitops/clusters/mgmt/`.
+`gitops/clusters/mgmt/`. Because clusters + credentials were pre-seeded, the
+controller's first sync already knows all three clusters and the apps never
+land in a missing-secret state.
 
-## 5. mgmt: register the three clusters on Argo CD
-
-Each is a Secret in the `argocd` namespace labelled
-`argocd.argoproj.io/secret-type: cluster`, with `config` = the kubeconfig's
-ClusterConfig (`tlsClientConfig` with `caData`/`certData`/`keyData`) as JSON:
-
-```sh
-for c in prod test mgmt; do
-  KUBECONFIG=~/.kube/config-hadron kubectl config view --minify --context $c --raw -o json > /tmp/$c-kubeconfig.json
-  export CA=$(yq -r '.clusters[0].cluster.certificate-authority-data' /tmp/$c-kubeconfig.json)
-  export CERT=$(yq -r '.users[0].user.client-certificate-data' /tmp/$c-kubeconfig.json)
-  export KEY=$(yq -r '.users[0].user.client-key-data' /tmp/$c-kubeconfig.json)
-  printf '{"tlsClientConfig":{"caData":"%s","certData":"%s","keyData":"%s"}}' "$CA" "$CERT" "$KEY" > /tmp/$c-config.json
-  server=$(yq -r '.clusters[0].cluster.server' /tmp/$c-kubeconfig.json)
-  kubectl --context mgmt create secret generic $c -n argocd \
-    --from-literal=name=$c --from-literal=server=$server \
-    --from-file=config=/tmp/$c-config.json --dry-run=client -o yaml \
-    | kubectl --context mgmt apply -f -
-  kubectl --context mgmt label secret $c -n argocd argocd.argoproj.io/secret-type=cluster --overwrite
-done
-```
-
-Sanity check the controller accepted them:
+Sanity check the controller accepted the clusters:
 
 ```sh
 kubectl --context mgmt logs -n argocd statefulset/argocd-application-controller --tail 20 \
   | grep -E "assigned to shard"   # expect one line per cluster, no "unmarshal" errors
 ```
 
-## 6. mgmt: re-seed the two secrets from backup
-
-Re-apply the Secrets saved in step 1 — the repo-write PAT on mgmt and the
-Bitwarden token on **each** cluster (ESO retries until the token exists, so
-this can even happen after the apps land):
-
-```sh
-kubectl --context mgmt apply -f ~/tofu-backup-secrets/bootstrap/argo-homelab-repo-write.yaml
-
-for ctx in mgmt prod test; do
-  kubectl --context $ctx create ns external-secrets --dry-run=client -o yaml | kubectl --context $ctx apply -f -
-  kubectl --context $ctx apply -f ~/tofu-backup-secrets/bootstrap/bitwarden-access-token-$ctx.yaml
-done
-```
-
-## 7. Verify
+## 6. Verify
 
 ```sh
 export KUBECONFIG=~/.kube/config-hadron
@@ -160,11 +182,11 @@ kubectl --context test get nodes            # test: Ready once cilium app lands
 kubectl --context prod get nodes            # prod: Ready once cilium app lands
 ```
 
-`root-app` (applied in step 4) already booted the app-of-apps ApplicationSet;
-step 6's secrets are picked up as the apps sync. RollingSync stages the rollout
-by each app's `wave` (declared in `apps/<app>/app.yaml`): infra apps wave 1,
-consumer apps a higher wave — a wave only starts once the previous is
-`Healthy`.
+`root-app` (applied in step 5) already booted the app-of-apps ApplicationSet;
+clusters + credentials were pre-seeded in step 4, so the first sync is clean.
+RollingSync stages the rollout by each app's `wave` (declared in
+`apps/<app>/app.yaml`): infra apps wave 1, consumer apps a higher wave — a
+wave only starts once the previous is `Healthy`.
 
 ---
 
@@ -181,4 +203,4 @@ consumer apps a higher wave — a wave only starts once the previous is
   `gitops/apps/shared/external-secrets/templates/argocd-repo-creds.yaml` uses
   `dig "enabled" false (default (dict) .Values.argocdRepoToken)`.
 - **Cluster secrets rejected (`could not unmarshal cluster secret`)**: `config`
-  must be a JSON `ClusterConfig` (step 5), not a raw kubeconfig.
+  must be a JSON `ClusterConfig` (step 4), not a raw kubeconfig.

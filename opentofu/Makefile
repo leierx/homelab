@@ -2,6 +2,10 @@
 
 KUBE_DIR := $(HOME)/.kube
 
+# how long to wait for a control-plane VM's k3s to expose its kubeconfig
+# before giving up (default 5 min; override with `make kubeconfig K3S_WAIT=600`)
+K3S_WAIT ?= 300
+
 .PHONY: image kubeconfig kubeconfig-replace
 
 image:
@@ -17,6 +21,14 @@ kubeconfig:
 	clusters=$$(echo "$$ips" | yq 'keys | .[]'); \
 	for c in $$clusters; do \
 	  ip=$$(echo "$$ips" | yq ".$$c"); \
+	  waited=0; \
+	  until incus exec "$$c-c1" -- test -f /etc/rancher/k3s/k3s.yaml 2>/dev/null; do \
+	    waited=$$((waited+5)); \
+	    if [ $$waited -ge "$(K3S_WAIT)" ]; then \
+	      echo "error: timed out waiting $(K3S_WAIT)s for $$c-c1 k3s (no kubeconfig yet)"; exit 1; \
+	    fi; \
+	    echo "waiting for $$c-c1 ($(K3S_WAIT)s timeout, $$waited s elapsed)"; sleep 5; \
+	  done; \
 	  incus exec "$$c-c1" -- cat /etc/rancher/k3s/k3s.yaml \
 	    | yq "(.clusters[].cluster.server) = \"https://$$ip:6443\" \
 	        | (.clusters[].name, .contexts[].context.cluster, .contexts[].context.user, .contexts[].name, .users[].name) = \"$$c\" \
