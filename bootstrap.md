@@ -20,7 +20,11 @@ Everything else is declarative in `gitops/` and self-heals.
 5. `bitwarden-access-token` -- so External Secrets can reach Bitwarden.
 6. `root-app.yaml` -- the app-of-apps seed; this single file boots the whole federation.
 
-After (6) the ApplicationSet hydrates `env/*` branches and syncs all 17 apps.
+After (6) the ApplicationSet hydrates `env/*` branches and syncs all 17 apps
+in waves: each app's `app.yaml` `wave: <int>` key (default 1 for infra apps,
+authentik = 2) maps to the `homelab.io/sync-wave` label, and RollingSync
+waits for every app in a wave to be `Healthy` before starting the next — so
+authentik never races cert-manager/envoy/external-secrets/nfs.
 
 ---
 
@@ -49,33 +53,32 @@ export KUBECONFIG=~/.kube/config-hadron
 
 The k3s CA is new after a rebuild, so the kubeconfig must come from the fresh nodes.
 
-## 3. mgmt: cilium (CNI)
+## 3. mgmt: the whole control plane in one apply
+
+Everything mgmt needs is the hydrated output (cilium = CNI, argocd = the
+engine) plus the app-of-apps seed. Since the hydrated branches already exist,
+this is now a single `kubectl` call — no helm at all. Order of `-f` matters:
+argocd's CRDs must arrive before `root-app` references the ApplicationSet.
 
 ```sh
-cd gitops/apps/shared/cilium
-helm dependency build
-helm template cilium . -f values.yaml -f mgmt-values.yaml --namespace kube-system \
-  | kubectl --context mgmt apply -f -
-kubectl --context mgmt get pods -n kube-system -w   # wait: all cilium + coredns Running
-kubectl --context mgmt get nodes                     # wait: all Ready
+# 1. pull the hydrated env/* branches somewhere on the server (use the write
+#    PAT in the URL — the repo is private) 
+git clone https://<PAT>@github.com/leierx/homelab.git ~/hydrated
+git -C ~/hydrated fetch origin env/mgmt env/prod env/test
+
+# 2. one apply for the whole control plane (order matters: cilium, argocd, root-app)
+kubectl --context mgmt apply --server-side \
+  -f ~/hydrated/hydrated/mgmt/cilium/manifest.yaml \
+  -f ~/hydrated/hydrated/mgmt/argocd/manifest.yaml \
+  -f gitops/clusters/mgmt/root-app.yaml
 ```
 
-## 4. mgmt: Argo CD
+The single apply installs cilium (CNI), Argo CD (controller + commit-server),
+and the root Application in one shot; pods schedule themselves once the CNI is
+up. `root-app` drives the `app-of-apps` ApplicationSet in
+`gitops/clusters/mgmt/`.
 
-```sh
-cd gitops/apps/mgmt/argocd
-helm dependency build
-
-# CRDs first (some are too large for the client-side apply annotation)
-helm template argocd . -f values.yaml -f mgmt-values.yaml --namespace argocd > /tmp/argocd-all.yaml
-helm template argocd . -f values.yaml -f mgmt-values.yaml --namespace argocd --include-crds \
-  | awk '/^kind: CustomResourceDefinition/{c=1} /^---$/{if(c)print "---"; c=0} c{print}' \
-  | kubectl --context mgmt apply --server-side -f -
-kubectl --context mgmt apply --server-side -f /tmp/argocd-all.yaml
-kubectl --context mgmt get pods -n argocd -w   # wait: all Running
-```
-
-## 5. mgmt: register the three clusters on Argo CD
+## 4. mgmt: register the three clusters on Argo CD
 
 Each is a Secret in the `argocd` namespace labelled
 `argocd.argoproj.io/secret-type: cluster`, with `config` = the kubeconfig's
@@ -108,7 +111,7 @@ kubectl --context mgmt logs -n argocd statefulset/argocd-application-controller 
   | grep -E "assigned to shard"   # expect one line per cluster, no "unmarshal" errors
 ```
 
-## 6. mgmt: the two secrets
+## 5. mgmt: the two secrets
 
 A write-capable GitHub PAT for the commit-server (you can choose `repo` = classic
 scope or fine-grained with `Contents: Read and write`):
@@ -145,24 +148,21 @@ stringData:
 EOF
 ```
 
-## 7. Boot the app-of-apps
-
-```sh
-kubectl --context mgmt apply -f gitops/clusters/mgmt/root-app.yaml
-```
-
-That creates the `app-of-apps` ApplicationSet -> 17 Applications. The
-commit-server pushes hydrated output to `env/{prod,test,mgmt}` and syncs them.
-
-## 8. Verify
+## 6. Verify
 
 ```sh
 export KUBECONFIG=~/.kube/config-hadron
-kubectl --context mgmt get app -n argocd    # all Synced + Healthy
+kubectl --context mgmt get app -n argocd    # all Synced + Healthy, wave 2 last
 kubectl --context mgmt get nodes            # mgmt Ready
 kubectl --context test get nodes            # test: Ready once cilium app lands
 kubectl --context prod get nodes            # prod: Ready once cilium app lands
 ```
+
+`root-app` (applied in step 3) already booted the app-of-apps ApplicationSet;
+step 5's secrets are picked up as the apps sync. RollingSync stages the rollout
+by each app's `wave` (declared in `apps/<app>/app.yaml`): infra apps wave 1,
+consumer apps a higher wave — a wave only starts once the previous is
+`Healthy`.
 
 ---
 
@@ -179,4 +179,4 @@ kubectl --context prod get nodes            # prod: Ready once cilium app lands
   `gitops/apps/shared/external-secrets/templates/argocd-repo-creds.yaml` uses
   `dig "enabled" false (default (dict) .Values.argocdRepoToken)`.
 - **Cluster secrets rejected (`could not unmarshal cluster secret`)**: `config`
-  must be a JSON `ClusterConfig` (step 5), not a raw kubeconfig.
+  must be a JSON `ClusterConfig` (step 4), not a raw kubeconfig.

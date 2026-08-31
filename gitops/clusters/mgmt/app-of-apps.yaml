@@ -72,11 +72,30 @@ spec:
               elements:
                 - env: mgmt
                   group: mgmt
+  # RollingSync: stage app rollout so dependency apps land before their
+  # consumers. Each app's `app.yaml` sets `wave: <int>` — infra apps default to
+  # 1 (cilium, cert-manager, envoy-gateway, external-secrets, nfs, argocd),
+  # consumer apps pick a higher wave. Rollout waits for every app in a wave to
+  # be `Healthy` before starting the next. Add more steps below as waves grow.
+  strategy:
+    type: RollingSync
+    rollingSync:
+      steps:
+        - matchExpressions:
+            - key: homelab.io/sync-wave
+              operator: In
+              values: ['1']
+        - matchExpressions:
+            - key: homelab.io/sync-wave
+              operator: In
+              values: ['2']
   template:
     metadata:
       # One Argo CD manages every cluster, so names must be unique across
       # envs.
       name: '{{.env}}-{{.name}}'
+      labels:
+        homelab.io/sync-wave: '{{ if .wave }}{{ .wave }}{{ else }}1{{ end }}'
     spec:
       project: default
       # Plain (hydrated) source per env branch, rendered by this instance's
@@ -99,9 +118,9 @@ spec:
         name: '{{.env}}'
         namespace: '{{.namespace}}'
       syncPolicy:
-        automated:
-          prune: true
-          selfHeal: true
+        # No `automated` here: RollingSync drives syncs per wave and
+        # disables per-app autosync. Prune is kept via sync option.
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
+          - Prune=true

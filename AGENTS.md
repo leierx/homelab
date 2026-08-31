@@ -105,8 +105,8 @@ on mgmt; its commit-server hydrates each env's apps into its own branch.
     **`charts/**` and `*.tgz` are gitignored — never commit fetched charts**
     (they're also in `gitops/.gitignore`).
 - `apps/<app>/app.yaml` contract — keys the file generator feeds the template:
-  `name` (must equal the folder name) and `namespace` (Argo CD destination
-  namespace on the target cluster).
+  `name` (must equal the folder name), `namespace` (Argo CD destination
+  namespace on the target cluster), and optional `wave` (RollingSync stage).
 - App-of-apps: `clusters/mgmt/root-app.yaml` bootstraps the single
   `app-of-apps.yaml` ApplicationSet in `clusters/mgmt/` (the only `clusters/`
   dir — prod/test run no Argo CD of their own). It generates one Application
@@ -119,6 +119,17 @@ on mgmt; its commit-server hydrates each env's apps into its own branch.
   Adding a **shared app** = drop a folder in `apps/shared/` (never touch
   `clusters/`); an **env-only** app = drop it in `apps/prod/` / `apps/test/` /
   `apps/mgmt/`.
+  App rollouts are staged with ApplicationSet **RollingSync** (progressive
+  syncs, enabled on the argocd applicationSet controller): the app's `wave`
+  key in `app.yaml` becomes the `homelab.io/sync-wave` label — infra apps
+  default to wave 1 (cilium, cert-manager, envoy-gateway, external-secrets,
+  nfs, argocd), consumer apps set a higher wave (authentik = 2). Rollout
+  waits for every app in a wave to be `Healthy` before starting the next.
+  Generated apps carry no `automated` block — RollingSync drives syncs (Prune
+  kept via sync-option). The wave steps are listed explicitly in
+  `clusters/mgmt/app-of-apps.yaml`: **an app whose `wave` exceeds the last
+  declared step is excluded from the rollout and never auto-syncs** — bump the
+  step list when you add a higher wave.
 - Hydration branches: `env/prod`, `env/test` and `env/mgmt` contain Argo CD's
   hydrated output under `hydrated/<env>/<app>/`. All three are owned by
   the single mgmt instance (the one-writer-per-branch rule) and should be

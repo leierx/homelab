@@ -9,6 +9,7 @@ argo-cd:
   applicationSet:
     extraArgs:
       - --policy=create-update
+      - --enable-progressive-syncs
   configs:
     params:
       "hydrator.enabled": "true"
