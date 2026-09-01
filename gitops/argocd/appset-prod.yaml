@@ -35,7 +35,7 @@ spec:
     metadata:
       name: '{{.values.cluster}}-{{.name}}'
       labels:
-        homelab.io/sync-wave: '{{ printf "w%d" (.wave | default 0) }}'
+        homelab.io/sync-wave: '{{ printf "w%v" (.wave | default 0) }}'
     spec:
       project: default
       sourceHydrator:

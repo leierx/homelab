@@ -118,7 +118,7 @@ commit-server hydrates each env's apps into its own branch.
     cilium/cert-manager/envoy-gateway/external-secrets → all three; nfs →
     prod+test; argocd → mgmt; authentik → prod+test;
   - `wave` is optional and defaults to 0. The appset renders it into the
-    `homelab.io/sync-wave` label as `{{ printf "w%d" (.wave | default 0) }}`
+    `homelab.io/sync-wave` label as `{{ printf "w%v" (.wave | default 0) }}`
     (e.g. `w-1`, `w0`, `w1`) — the `w` prefix keeps the value a valid k8s
     label (a bare `-1` is rejected by the API server) while preserving
     ordering. Use `-1` for infra that must land first. Additional string keys
