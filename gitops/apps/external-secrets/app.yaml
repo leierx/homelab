@@ -1,2 +1,4 @@
 name: external-secrets
 namespace: external-secrets
+clusters: [mgmt, prod, test]
+wave: -1

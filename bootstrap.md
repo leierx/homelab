@@ -109,7 +109,7 @@ git -C ~/hydrated fetch origin env/mgmt env/prod env/test
 kubectl --context mgmt apply --server-side \
   -f ~/hydrated/hydrated/mgmt/cilium/manifest.yaml \
   -f ~/hydrated/hydrated/mgmt/argocd/manifest.yaml \
-  -f gitops/clusters/mgmt/root-app.yaml
+  -f gitops/argocd/root-app.yaml
 
 kubectl --context mgmt get nodes -w          # all Ready (CNI up)
 kubectl --context mgmt get pods -n argocd -w # all Running
@@ -139,9 +139,9 @@ kubectl --context prod get nodes            # Ready once cilium app lands
   — regenerate with `Contents: Read and write`.
 - **`ClusterSecretStore bitwarden` = `InvalidProviderConfig` on mgmt**: mgmt
   `projectID` placeholder in
-  `gitops/apps/infra/external-secrets/mgmt-values.yaml` or token not seeded.
+  `gitops/apps/external-secrets/mgmt-values.yaml` or token not seeded.
 - **`nil pointer evaluating .Values.argocdRepoToken.enabled`**:
-  `gitops/apps/infra/external-secrets/templates/argocd-repo-creds.yaml` needs
+  `gitops/apps/external-secrets/templates/argocd-repo-creds.yaml` needs
   the `dig "enabled" false (default (dict) .Values.argocdRepoToken)` guard.
 - **Cluster secrets rejected (`could not unmarshal cluster secret`)**: `config`
   must be a JSON `ClusterConfig` (step 4), not a raw kubeconfig.

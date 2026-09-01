@@ -1,0 +1,4 @@
+name: nfs
+namespace: nfs-provisioner
+clusters: [prod, test]
+wave: -1

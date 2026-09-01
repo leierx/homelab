@@ -91,60 +91,66 @@ to before touching anything:
 One control-plane Argo CD instance on the `mgmt` cluster manages all three
 k3s clusters the classic way: `argocd cluster add` cluster secrets + git
 sources, no agents. App-of-apps is **one ApplicationSet per env**
-(`app-of-apps-{prod,test,mgmt}.yaml` in `clusters/mgmt/`) + sourceHydrator;
-its commit-server hydrates each env's apps into its own branch.
+(`appset-{prod,test,mgmt}.yaml` in `argocd/`) + sourceHydrator; its
+commit-server hydrates each env's apps into its own branch.
 
-- App layout: apps are grouped by *deployment tier*, not by cluster, so the
-  slot where an app lands decides its rollout wave:
-  - `apps/infra/<app>/` — infrastructure, deployed on **prod + test**
-    (cilium, cert-manager, envoy-gateway, external-secrets, nfs). Wave 0.
-  - `apps/shared/<app>/` — normal apps deployed on **prod + test**
-    (authentik). Wave 1.
-  - `apps/mgmt/<app>/` — control-plane only (argocd). Wave 1.
-  - `apps/prod/` and `apps/test/` — env-only apps (currently unused). Wave 1.
+- App layout: one flat directory per app, `apps/<app>/`, deployed on whatever
+  the app's own `app.yaml` says. No tier/group folders, no per-env dirs.
   Each app dir is an umbrella Helm chart (`Chart.yaml` declares the upstream
   chart as a `dependency`) plus:
-  - `app.yaml` — metadata the ApplicationSet reads (see below);
+  - `app.yaml` — membership + rollout metadata the ApplicationSet reads (see
+    below);
   - `values.yaml` (shared defaults) and optional `<env>-values.yaml`. The
     ApplicationSet renders `valueFiles: [values.yaml, <env>-values.yaml]` with
     `helm.ignoreMissingValueFiles: true`, so missing `<env>-values.yaml` files
     are skipped per app (Argo CD v3.5.1 does not support per-file
-    `{name, ignoreMissing}` maps in `valueFiles`).
+    `{name, ignoreMissing}` maps in `valueFiles`), and the per-env value file
+    name matches the env (`prod-values.yaml` for the prod appset, etc).
   - Argo CD's repo-server auto-runs `helm dependency build`, so
     **`charts/**` and `*.tgz` are gitignored — never commit fetched charts**
     (they're also in `gitops/.gitignore`).
-- `apps/<app>/app.yaml` contract — keys the file generator feeds the template:
-  `name` (must equal the folder name) and `namespace` (Argo CD destination
-  namespace on the target cluster). `wave` is optional (defaults by folder,
-  see below) and overrides the folder default. Additional string keys are
-  available to the template if ever needed. Sync-policy divergence lives per
-  env in `app-of-apps-<env>.yaml`, not in `app.yaml` (ApplicationSet
-  goTemplate is per-field/string-only, so a conditional `automated` block
-  can't be rendered without custom tooling — e.g. run prod without
-  RollingSync / manual by editing only that file).
-- App-of-apps: `clusters/mgmt/root-app.yaml` bootstraps the three
-  per-env ApplicationSets in `clusters/mgmt/` (the only `clusters/` dir —
-  prod/test run no Argo CD of their own). The `app-of-apps-prod.yaml` and
-  `-test.yaml` glob `apps/infra/*` + `apps/shared/*` + `apps/prod/*`/`apps/test/*`;
-  `-mgmt.yaml` lists the infra-only subset explicitly (cilium, cert-manager,
-  envoy-gateway, external-secrets) plus `apps/mgmt/*`. Each generates one
-  Application per app, named `{{.env}}-{{.name}}`, synced from the hydrated
-  output and targeting `destination.name: <env>` — register each cluster as a
-  secret on mgmt (`argocd cluster add <ctx> --name <env>`, mgmt itself
-  included, pointing at in-cluster).
-  Adding an **infra app** = drop a folder in `apps/infra/` (never touch
-  `clusters/`); a **shared app** = drop it in `apps/shared/`; an **env-only**
-  app = drop it in `apps/prod/` / `apps/test/` / `apps/mgmt/`.
+- `apps/<app>/app.yaml` contract — the git-file generator hands every key to
+  the template:
+  - `name` (must equal the folder name) and `namespace` (Argo CD destination
+    namespace on the target cluster);
+  - `clusters: [mgmt, prod, test]` — which clusters the app runs on. Some
+    subset of `mgmt`/`prod`/`test`, not the full list. Sources of truth:
+    cilium/cert-manager/envoy-gateway/external-secrets → all three; nfs →
+    prod+test; argocd → mgmt; authentik → prod+test;
+  - `wave` is optional and defaults to 0. The appset renders it into the
+    `homelab.io/sync-wave` label as `{{ .wave | default 0 }}` verbatim (a
+    `-1` label value is invalid for k8s and will break the app's sync —
+    accept that, it documents intent down to -1 for infra that must land
+    first). Additional string keys are available to the template if ever
+    needed. Sync-policy divergence lives per env in `appset-<env>.yaml`,
+    not in `app.yaml` (ApplicationSet goTemplate is per-field/string-only, so
+    a conditional `automated` block can't be rendered without custom tooling
+    — e.g. run prod without RollingSync / manual by editing only that file).
+- App-of-apps: `argocd/root-app.yaml` bootstraps the three per-env
+  ApplicationSets in `argocd/` (the only `clusters/`-ish dir — prod/test run
+  no Argo CD of their own). Every appset uses **one** git-file generator over
+  `apps/*/app.yaml` — no matrix, no per-app file lists. Membership is a
+  generator `selector` on a per-file templated value: the git generator's
+  `values` are re-templated against each file's own params, so
+  `values.enabled: '{{ has "prod" .clusters }}'` + selector
+  `matchExpressions: [values.enabled In ["true"]]` keeps only apps declaring
+  this cluster. The cluster is a per-appset constant (`git.values.cluster`),
+  which drives app names (`{{.values.cluster}}-{{.name}}`), the hydrated
+  branch (`env/<cluster>`), and the per-env value file
+  (`<cluster>-values.yaml`). Register each cluster as a secret on mgmt
+  (`argocd cluster add <ctx> --name <env>`, mgmt itself included, pointing at
+  in-cluster).
+  Adding an app = `mkdir apps/<app>` with an `app.yaml` declaring its
+  `clusters`; nothing in `argocd/` changes.
   App rollouts are staged with ApplicationSet **RollingSync** (progressive
   syncs, enabled on the argocd applicationSet controller) using the
-  `homelab.io/sync-wave` label: apps in `infra/` default to wave 0, apps in
-  `shared/`, `mgmt/`, `prod/`, `test/` to wave 1; a `wave:` key in `app.yaml`
-  overrides the folder default. Rollout waits for every app in a wave to be
-  `Healthy` before starting the next. Generated apps carry no `automated`
-  block — RollingSync drives syncs (Prune kept via sync-option). The wave
-  steps are listed explicitly in each `app-of-apps-<env>.yaml`: **an app
-  whose `wave` exceeds the last declared step is excluded from the rollout and
-  never auto-syncs** — bump the step list when you add a higher wave.
+  `homelab.io/sync-wave` label = the app's `wave` (default 0). Rollout waits
+  for every app in a wave to be `Healthy` before starting the next. Generated
+  apps carry no `automated` block — RollingSync drives syncs (Prune kept via
+  sync-option). The wave steps are listed explicitly in each
+  `appset-<env>.yaml` (`['-1']` then `['0']` today): **an app whose `wave`
+  exceeds the last declared step is excluded from the rollout and never
+  auto-syncs** — bump the step list when you add a higher wave.
 - Hydration branches: `env/prod`, `env/test` and `env/mgmt` contain Argo CD's
   hydrated output under `hydrated/<env>/<app>/`. All three are owned by
   the single mgmt instance (the one-writer-per-branch rule) and should be
@@ -152,7 +158,7 @@ its commit-server hydrates each env's apps into its own branch.
 - Hydrator reacts only to dry-source commits: after adding a **new** app
   folder, push an empty commit to `main` to force hydration to pick it up.
 - cert-manager's umbrella chart templates a `ClusterIssuer`
-  (`apps/infra/cert-manager/templates/clusterissuer.yaml`); the issuer carries
+  (`apps/cert-manager/templates/clusterissuer.yaml`); the issuer carries
   `argocd.argoproj.io/sync-wave: "1"` to order after the chart.
 
 ### Secrets (Bitwarden via External Secrets)
