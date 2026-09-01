@@ -1,0 +1,101 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: app-of-apps-test
+  # Per-env app-of-apps: one ApplicationSet per cluster means test can change
+  # rollout policy (e.g. faster waves / AllAtOnce) without touching
+  # prod/mgmt. All Applications live in the argocd namespace on mgmt;
+  # destination.name selects the registered cluster secret.
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/leierx/homelab.git
+              revision: HEAD
+              files:
+                - path: gitops/apps/infra/*/app.yaml
+          - list:
+              elements:
+                - env: test
+                  group: infra
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/leierx/homelab.git
+              revision: HEAD
+              files:
+                - path: gitops/apps/consumers/*/app.yaml
+          - list:
+              elements:
+                - env: test
+                  group: consumers
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/leierx/homelab.git
+              revision: HEAD
+              files:
+                - path: gitops/apps/test/*/app.yaml
+          - list:
+              elements:
+                - env: test
+                  group: test
+  # RollingSync: stage app rollout so dependency apps land before their
+  # consumers. Wave is derived from the app's folder — apps/infra/ defaults to
+  # wave 1, apps/consumers/ to wave 2 (an app.yaml `wave:` key overrides).
+  # Rollout waits for every app in a wave to be `Healthy` before the next.
+  strategy:
+    type: RollingSync
+    rollingSync:
+      steps:
+        - matchExpressions:
+            - key: homelab.io/sync-wave
+              operator: In
+              values: ['1']
+        - matchExpressions:
+            - key: homelab.io/sync-wave
+              operator: In
+              values: ['2']
+  template:
+    metadata:
+      # One Argo CD manages every cluster, so names must be unique across
+      # appsets.
+      name: '{{.env}}-{{.name}}'
+      labels:
+        homelab.io/sync-wave: '{{ if .wave }}{{ .wave }}{{ else if eq .group "consumers" }}2{{ else }}1{{ end }}'
+    spec:
+      project: default
+      # Plain (hydrated) source per env branch, rendered by this instance's
+      # commit-server; the dry source in apps/<group>/ is hydrated into it.
+      sourceHydrator:
+        drySource:
+          repoURL: https://github.com/leierx/homelab.git
+          path: 'gitops/apps/{{.group}}/{{.name}}'
+          targetRevision: HEAD
+          helm:
+            valueFiles:
+              - values.yaml
+              - '{{.env}}-values.yaml'
+            ignoreMissingValueFiles: true
+        syncSource:
+          targetBranch: 'env/{{.env}}'
+          path: 'hydrated/{{.env}}/{{.name}}'
+      destination:
+        # Cluster secret name as registered on the mgmt control plane.
+        name: '{{.env}}'
+        namespace: '{{.namespace}}'
+      syncPolicy:
+        # No automated block: RollingSync drives syncs (Prune via sync-option).
+        # Karverket-style per-app toggles like autoSync/selfHeal cannot be
+        # rendered conditionally — ApplicationSet goTemplate is per-field and
+        # string-only (bare `{{ if }}` lines are invalid YAML for the typed
+        # CRD). Sync-policy divergence lives per env in this file instead:
+        # prod can drop RollingSync or go manual by editing only THAT appset,
+        # without touching test/mgmt.
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - Prune=true

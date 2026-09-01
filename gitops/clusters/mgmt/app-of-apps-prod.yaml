@@ -1,11 +1,11 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: app-of-apps
-  # Single control plane on mgmt manages all three clusters the classic way.
-  # All Applications live here in the argocd namespace; destination.name
-  # selects the registered cluster secret (`argocd cluster add ... --name
-  # prod|test|mgmt`, mgmt pointing at in-cluster).
+  name: app-of-apps-prod
+  # Per-env app-of-apps: one ApplicationSet per cluster means prod can change
+  # rollout policy (e.g. drop RollingSync / go manual) without touching
+  # test/mgmt. All Applications live in the argocd namespace on mgmt;
+  # destination.name selects the registered cluster secret.
   namespace: argocd
 spec:
   goTemplate: true
@@ -16,29 +16,22 @@ spec:
               repoURL: https://github.com/leierx/homelab.git
               revision: HEAD
               files:
-                - path: gitops/apps/shared/*/app.yaml
+                - path: gitops/apps/infra/*/app.yaml
           - list:
               elements:
                 - env: prod
-                  group: shared
-                - env: test
-                  group: shared
+                  group: infra
     - matrix:
         generators:
           - git:
               repoURL: https://github.com/leierx/homelab.git
               revision: HEAD
-              # mgmt only runs the infrastructure subset of the shared apps —
-              # list the app.yaml files explicitly instead of globbing.
               files:
-                - path: gitops/apps/shared/cilium/app.yaml
-                - path: gitops/apps/shared/cert-manager/app.yaml
-                - path: gitops/apps/shared/envoy-gateway/app.yaml
-                - path: gitops/apps/shared/external-secrets/app.yaml
+                - path: gitops/apps/consumers/*/app.yaml
           - list:
               elements:
-                - env: mgmt
-                  group: shared
+                - env: prod
+                  group: consumers
     - matrix:
         generators:
           - git:
@@ -50,33 +43,10 @@ spec:
               elements:
                 - env: prod
                   group: prod
-    - matrix:
-        generators:
-          - git:
-              repoURL: https://github.com/leierx/homelab.git
-              revision: HEAD
-              files:
-                - path: gitops/apps/test/*/app.yaml
-          - list:
-              elements:
-                - env: test
-                  group: test
-    - matrix:
-        generators:
-          - git:
-              repoURL: https://github.com/leierx/homelab.git
-              revision: HEAD
-              files:
-                - path: gitops/apps/mgmt/*/app.yaml
-          - list:
-              elements:
-                - env: mgmt
-                  group: mgmt
   # RollingSync: stage app rollout so dependency apps land before their
-  # consumers. Each app's `app.yaml` sets `wave: <int>` — infra apps default to
-  # 1 (cilium, cert-manager, envoy-gateway, external-secrets, nfs, argocd),
-  # consumer apps pick a higher wave. Rollout waits for every app in a wave to
-  # be `Healthy` before starting the next. Add more steps below as waves grow.
+  # consumers. Wave is derived from the app's folder — apps/infra/ defaults to
+  # wave 1, apps/consumers/ to wave 2 (an app.yaml `wave:` key overrides).
+  # Rollout waits for every app in a wave to be `Healthy` before the next.
   strategy:
     type: RollingSync
     rollingSync:
@@ -92,10 +62,10 @@ spec:
   template:
     metadata:
       # One Argo CD manages every cluster, so names must be unique across
-      # envs.
+      # appsets.
       name: '{{.env}}-{{.name}}'
       labels:
-        homelab.io/sync-wave: '{{ if .wave }}{{ .wave }}{{ else }}1{{ end }}'
+        homelab.io/sync-wave: '{{ if .wave }}{{ .wave }}{{ else if eq .group "consumers" }}2{{ else }}1{{ end }}'
     spec:
       project: default
       # Plain (hydrated) source per env branch, rendered by this instance's
@@ -118,8 +88,13 @@ spec:
         name: '{{.env}}'
         namespace: '{{.namespace}}'
       syncPolicy:
-        # No `automated` here: RollingSync drives syncs per wave and
-        # disables per-app autosync. Prune is kept via sync option.
+        # No automated block: RollingSync drives syncs (Prune via sync-option).
+        # Karverket-style per-app toggles like autoSync/selfHeal cannot be
+        # rendered conditionally — ApplicationSet goTemplate is per-field and
+        # string-only (bare `{{ if }}` lines are invalid YAML for the typed
+        # CRD). Sync-policy divergence lives per env in this file instead:
+        # prod can drop RollingSync or go manual by editing only THIS appset,
+        # without touching test/mgmt.
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
