@@ -4,7 +4,7 @@ metadata:
   name: app-of-apps-mgmt
   # Per-env app-of-apps: mgmt runs only the control-plane subset — the infra
   # apps needed to host Argo CD itself (cilium, cert-manager, envoy-gateway,
-  # external-secrets) plus apps/mgmt/* (argocd). No nfs, no consumers.
+  # external-secrets) plus apps/mgmt/* (argocd). No nfs, no shared apps.
   # destination.name selects the in-cluster registered secret.
   namespace: argocd
 spec:
@@ -37,13 +37,16 @@ spec:
               elements:
                 - env: mgmt
                   group: mgmt
-  # RollingSync: stage app rollout so Argo CD's dependencies land first. Infra
-  # apps are wave 1 by folder; mgmt/<app> entries (argocd) default to wave 1
-  # too. No step 2 apps exist on mgmt today — add steps as waves grow.
+  # RollingSync: infra apps land first (wave 0), then the control-plane apps
+  # (wave 1).
   strategy:
     type: RollingSync
     rollingSync:
       steps:
+        - matchExpressions:
+            - key: homelab.io/sync-wave
+              operator: In
+              values: ['0']
         - matchExpressions:
             - key: homelab.io/sync-wave
               operator: In
@@ -54,7 +57,7 @@ spec:
       # appsets.
       name: '{{.env}}-{{.name}}'
       labels:
-        homelab.io/sync-wave: '{{ if .wave }}{{ .wave }}{{ else }}1{{ end }}'
+        homelab.io/sync-wave: '{{ if .wave }}{{ .wave }}{{ else if eq .group "infra" }}0{{ else }}1{{ end }}'
     spec:
       project: default
       # Plain (hydrated) source per env branch, rendered by this instance's
@@ -77,11 +80,7 @@ spec:
         name: '{{.env}}'
         namespace: '{{.namespace}}'
       syncPolicy:
-        # No automated block: RollingSync drives syncs (Prune via sync-option).
-        # Karverket-style per-app toggles like autoSync/selfHeal cannot be
-        # rendered conditionally — ApplicationSet goTemplate is per-field and
-        # string-only (bare `{{ if }}` lines are invalid YAML for the typed
-        # CRD). Sync-policy divergence lives per env in this file instead.
+        # No automated: RollingSync drives syncs (Prune via sync-option).
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
