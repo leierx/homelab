@@ -118,14 +118,15 @@ commit-server hydrates each env's apps into its own branch.
     cilium/cert-manager/envoy-gateway/external-secrets → all three; nfs →
     prod+test; argocd → mgmt; authentik → prod+test;
   - `wave` is optional and defaults to 0. The appset renders it into the
-    `homelab.io/sync-wave` label as `{{ .wave | default 0 }}` verbatim (a
-    `-1` label value is invalid for k8s and will break the app's sync —
-    accept that, it documents intent down to -1 for infra that must land
-    first). Additional string keys are available to the template if ever
-    needed. Sync-policy divergence lives per env in `appset-<env>.yaml`,
-    not in `app.yaml` (ApplicationSet goTemplate is per-field/string-only, so
-    a conditional `automated` block can't be rendered without custom tooling
-    — e.g. run prod without RollingSync / manual by editing only that file).
+    `homelab.io/sync-wave` label as `{{ printf "w%d" (.wave | default 0) }}`
+    (e.g. `w-1`, `w0`, `w1`) — the `w` prefix keeps the value a valid k8s
+    label (a bare `-1` is rejected by the API server) while preserving
+    ordering. Use `-1` for infra that must land first. Additional string keys
+    are available to the template if ever needed. Sync-policy divergence
+    lives per env in `appset-<env>.yaml`, not in `app.yaml` (ApplicationSet
+    goTemplate is per-field/string-only, so a conditional `automated` block
+    can't be rendered without custom tooling — e.g. run prod without
+    RollingSync / manual by editing only that file).
 - App-of-apps: `argocd/root-app.yaml` bootstraps the three per-env
   ApplicationSets in `argocd/` (the only `clusters/`-ish dir — prod/test run
   no Argo CD of their own). Every appset uses **one** git-file generator over
@@ -148,7 +149,7 @@ commit-server hydrates each env's apps into its own branch.
   for every app in a wave to be `Healthy` before starting the next. Generated
   apps carry no `automated` block — RollingSync drives syncs (Prune kept via
   sync-option). The wave steps are listed explicitly in each
-  `appset-<env>.yaml` (`['-1']` then `['0']` today): **an app whose `wave`
+  `appset-<env>.yaml` (`['w-1']` then `['w0']` today): **an app whose `wave`
   exceeds the last declared step is excluded from the rollout and never
   auto-syncs** — bump the step list when you add a higher wave.
 - Hydration branches: `env/prod`, `env/test` and `env/mgmt` contain Argo CD's

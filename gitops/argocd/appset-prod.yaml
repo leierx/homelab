@@ -26,16 +26,16 @@ spec:
         - matchExpressions:
             - key: homelab.io/sync-wave
               operator: In
-              values: ['-1']
+              values: ['w-1']
         - matchExpressions:
             - key: homelab.io/sync-wave
               operator: In
-              values: ['0']
+              values: ['w0']
   template:
     metadata:
       name: '{{.values.cluster}}-{{.name}}'
       labels:
-        homelab.io/sync-wave: '{{ .wave | default 0 }}'
+        homelab.io/sync-wave: '{{ printf "w%d" (.wave | default 0) }}'
     spec:
       project: default
       sourceHydrator:
