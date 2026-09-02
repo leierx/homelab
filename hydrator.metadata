@@ -1,8 +1,7 @@
 {
   "repoURL": "https://github.com/leierx/homelab.git",
-  "drySha": "cbf4777ca29617cc9263863daf461610f75b4070",
+  "drySha": "390b0bdf20746eebf70aa3a59365e9077396a611",
   "author": "Lars Smith Eier <larssmitheier@protonmail.com>",
-  "date": "2026-08-31T19:10:49Z",
-  "subject": "argocd: stage app-of-apps rollout with RollingSync waves",
-  "body": "- enable progressive syncs on the applicationset controller\n- appset: RollingSync strategy with explicit wave steps 1-2\n- generated apps labeled homelab.io/sync-wave from each app.yaml's\n  optional `wave` key (default 1; authentik = 2)\n- generated apps drop the automated block (RollingSync drives syncs),\n  prune kept via Prune=true sync-option\n- bootstrap.md: one kubectl apply for the whole mgmt control plane\n  from hydrated branches (cilium + argocd + root-app)\n"
+  "date": "2026-09-02T17:55:18Z",
+  "subject": "progress"
 }

@@ -5,6 +5,6 @@ To hydrate the manifests in this repository, run the following commands:
 ```shell
 git clone https://github.com/leierx/homelab.git
 # cd into the cloned directory
-git checkout c6fc5b2d6308c7e756f7a3c85e3c017921361b1a
-helm template . --name-template mgmt-cert-manager --namespace cert-manager --values ./gitops/apps/shared/cert-manager/values.yaml --include-crds
+git checkout 390b0bdf20746eebf70aa3a59365e9077396a611
+helm template . --name-template mgmt-cert-manager --namespace cert-manager --values ./gitops/apps/cert-manager/values.yaml --include-crds
 ```

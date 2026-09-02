@@ -47,10 +47,8 @@ apiVersion: v1
 data:
   config.yaml: |
     apiVersion: controller.config.cert-manager.io/v1alpha1
-    featureGates:
-      ListenerSets: true
     gatewayAPI:
-      enableListenerSet: true
+      enableListenerSet: false
       enabled: true
     kind: ControllerConfiguration
 kind: ConfigMap
