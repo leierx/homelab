@@ -1,7 +1,7 @@
 {
   "repoURL": "https://github.com/leierx/homelab.git",
-  "drySha": "3a6dd46e461e90846198c7430440bc015388bcfa",
+  "drySha": "390b0bdf20746eebf70aa3a59365e9077396a611",
   "commands": [
-    "helm template . --name-template prod-authentik --namespace authentik --values ./gitops/apps/shared/authentik/values.yaml --values ./gitops/apps/shared/authentik/prod-values.yaml --include-crds"
+    "helm template . --name-template prod-authentik --namespace authentik --values ./gitops/apps/authentik/values.yaml --values ./gitops/apps/authentik/prod-values.yaml --include-crds"
   ]
 }
