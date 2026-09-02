@@ -3,10 +3,6 @@ kind: ListenerSet
 metadata:
   name: authentik
   namespace: {{ .Release.Namespace }}
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt
-    acme.cert-manager.io/http01-parentreffallback: "true"
-    argocd.argoproj.io/sync-wave: "-1"
 spec:
   parentRef:
     name: shared-gateway

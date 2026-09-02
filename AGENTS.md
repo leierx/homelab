@@ -136,11 +136,15 @@ commit-server hydrates each env's apps into its own branch.
   `values.enabled: '{{ has "prod" .clusters }}'` + selector
   `matchExpressions: [values.enabled In ["true"]]` keeps only apps declaring
   this cluster. The cluster is a per-appset constant (`git.values.cluster`),
-  which drives app names (`{{.values.cluster}}-{{.name}}`), the hydrated
-  branch (`env/<cluster>`), and the per-env value file
-  (`<cluster>-values.yaml`). Register each cluster as a secret on mgmt
-  (`argocd cluster add <ctx> --name <env>`, mgmt itself included, pointing at
-  in-cluster).
+  which drives app names (`{{ if eq (len .clusters) 1 }}{{ .name }}{{ else }}{{ .values.cluster }}-{{ .name }}{{ end }}`
+  — single-cluster apps drop the prefix, multi-cluster ones keep it so the
+  generated Applications don't collide in the control plane's `argocd`
+  namespace), the hydrated branch (`env/<cluster>`), and the per-env value file
+  (`<cluster>-values.yaml`). Register prod/test as secrets on mgmt
+  (`argocd cluster add <ctx> --name <env>`); mgmt itself needs no
+  registration — its apps target the local cluster via
+  `https://kubernetes.default.svc` (`appset-mgmt.yaml`), RG using Argo CD's
+  in-cluster ServiceAccount.
   Adding an app = `mkdir apps/<app>` with an `app.yaml` declaring its
   `clusters`; nothing in `argocd/` changes.
   App rollouts are staged with ApplicationSet **RollingSync** (progressive
@@ -161,6 +165,12 @@ commit-server hydrates each env's apps into its own branch.
 - cert-manager's umbrella chart templates a `ClusterIssuer`
   (`apps/cert-manager/templates/clusterissuer.yaml`); the issuer carries
   `argocd.argoproj.io/sync-wave: "1"` to order after the chart.
+- TLS is explicit `Certificate` objects in each app (issued via the
+  `letsencrypt` ClusterIssuer's `gatewayHTTPRoute` solver); the
+  annotation-driven ListenerSet provisioning is disabled in
+  `apps/cert-manager/values.yaml`. A within-app `argocd.argoproj.io/sync-wave`
+  gate holds an app's later waves until its Certificate is Ready (cert-manager
+  has a built-in Argo health check).
 
 ### Secrets (Bitwarden via External Secrets)
 

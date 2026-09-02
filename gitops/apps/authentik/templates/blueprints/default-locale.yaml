@@ -3,8 +3,6 @@ kind: ConfigMap
 metadata:
   name: authentik-default-locale
   namespace: {{ .Release.Namespace }}
-  annotations:
-    argocd.argoproj.io/sync-wave: "-2"
 data:
   default-locale.yaml: |
     version: 1

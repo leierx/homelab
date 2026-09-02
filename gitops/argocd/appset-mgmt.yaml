@@ -33,7 +33,7 @@ spec:
               values: ['w0']
   template:
     metadata:
-      name: '{{.values.cluster}}-{{.name}}'
+      name: '{{ if eq (len .clusters) 1 }}{{ .name }}{{ else }}{{ .values.cluster }}-{{ .name }}{{ end }}'
       labels:
         homelab.io/sync-wave: '{{ printf "w%v" (.wave | default 0) }}'
     spec:
@@ -52,7 +52,7 @@ spec:
           targetBranch: 'env/{{.values.cluster}}'
           path: 'hydrated/{{.values.cluster}}/{{.name}}'
       destination:
-        name: '{{.values.cluster}}'
+        server: https://kubernetes.default.svc
         namespace: '{{.namespace}}'
       syncPolicy:
         syncOptions:
