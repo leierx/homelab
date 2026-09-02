@@ -27,7 +27,7 @@ kubeconfig:
 	    if [ $$waited -ge "$(K3S_WAIT)" ]; then \
 	      echo "error: timed out waiting $(K3S_WAIT)s for $$c-c1 k3s (no kubeconfig yet)"; exit 1; \
 	    fi; \
-	    echo "waiting for $$c-c1 ($(K3S_WAIT)s timeout, $$waited s elapsed)"; sleep 5; \
+	    echo "waiting for $$c-c1 ($(K3S_WAIT)s timeout, $${waited}s elapsed)"; sleep 5; \
 	  done; \
 	  incus exec "$$c-c1" -- cat /etc/rancher/k3s/k3s.yaml \
 	    | yq "(.clusters[].cluster.server) = \"https://$$ip:6443\" \
