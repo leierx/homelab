@@ -8,13 +8,13 @@ kind: NetworkPolicy
 metadata:
   labels:
     app.kubernetes.io/component: application-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-application-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-application-controller
+  name: argocd-application-controller
   namespace: argocd
 spec:
   ingress:
@@ -24,7 +24,7 @@ spec:
         - port: metrics
   podSelector:
     matchLabels:
-      app.kubernetes.io/instance: mgmt-argocd
+      app.kubernetes.io/instance: argocd
       app.kubernetes.io/name: argocd-application-controller
   policyTypes:
     - Ingress
@@ -32,14 +32,14 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: mgmt-argocd-commit-server
+  name: argocd-commit-server
   namespace: argocd
 spec:
   ingress:
     - from:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/instance: mgmt-argocd
+              app.kubernetes.io/instance: argocd
               app.kubernetes.io/name: argocd-application-controller
       ports:
         - port: 8086
@@ -50,7 +50,7 @@ spec:
         - port: 8087
   podSelector:
     matchLabels:
-      app.kubernetes.io/instance: mgmt-argocd
+      app.kubernetes.io/instance: argocd
       app.kubernetes.io/name: argocd-commit-server
   policyTypes:
     - Ingress
@@ -60,13 +60,13 @@ kind: NetworkPolicy
 metadata:
   labels:
     app.kubernetes.io/component: notifications-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-notifications-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-notifications-controller
+  name: argocd-notifications-controller
   namespace: argocd
 spec:
   ingress:
@@ -76,7 +76,7 @@ spec:
         - port: metrics
   podSelector:
     matchLabels:
-      app.kubernetes.io/instance: mgmt-argocd
+      app.kubernetes.io/instance: argocd
       app.kubernetes.io/name: argocd-notifications-controller
   policyTypes:
     - Ingress
@@ -86,32 +86,32 @@ kind: NetworkPolicy
 metadata:
   labels:
     app.kubernetes.io/component: repo-server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-repo-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-repo-server
+  name: argocd-repo-server
   namespace: argocd
 spec:
   ingress:
     - from:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/instance: mgmt-argocd
+              app.kubernetes.io/instance: argocd
               app.kubernetes.io/name: argocd-server
         - podSelector:
             matchLabels:
-              app.kubernetes.io/instance: mgmt-argocd
+              app.kubernetes.io/instance: argocd
               app.kubernetes.io/name: argocd-application-controller
         - podSelector:
             matchLabels:
-              app.kubernetes.io/instance: mgmt-argocd
+              app.kubernetes.io/instance: argocd
               app.kubernetes.io/name: argocd-notifications-controller
         - podSelector:
             matchLabels:
-              app.kubernetes.io/instance: mgmt-argocd
+              app.kubernetes.io/instance: argocd
               app.kubernetes.io/name: argocd-applicationset-controller
       ports:
         - port: repo-server
@@ -122,7 +122,7 @@ spec:
         - port: metrics
   podSelector:
     matchLabels:
-      app.kubernetes.io/instance: mgmt-argocd
+      app.kubernetes.io/instance: argocd
       app.kubernetes.io/name: argocd-repo-server
   policyTypes:
     - Ingress
@@ -132,20 +132,20 @@ kind: NetworkPolicy
 metadata:
   labels:
     app.kubernetes.io/component: server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-server
+  name: argocd-server
   namespace: argocd
 spec:
   ingress:
     - {}
   podSelector:
     matchLabels:
-      app.kubernetes.io/instance: mgmt-argocd
+      app.kubernetes.io/instance: argocd
       app.kubernetes.io/name: argocd-server
   policyTypes:
     - Ingress
@@ -155,20 +155,20 @@ kind: NetworkPolicy
 metadata:
   labels:
     app.kubernetes.io/component: dex-server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-dex-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-dex-server
+  name: argocd-dex-server
   namespace: argocd
 spec:
   ingress:
     - from:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/instance: mgmt-argocd
+              app.kubernetes.io/instance: argocd
               app.kubernetes.io/name: argocd-server
       ports:
         - port: http
@@ -182,7 +182,7 @@ spec:
           protocol: TCP
   podSelector:
     matchLabels:
-      app.kubernetes.io/instance: mgmt-argocd
+      app.kubernetes.io/instance: argocd
       app.kubernetes.io/name: argocd-dex-server
   policyTypes:
     - Ingress
@@ -192,35 +192,35 @@ kind: NetworkPolicy
 metadata:
   labels:
     app.kubernetes.io/component: redis
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-redis
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-redis
+  name: argocd-redis
   namespace: argocd
 spec:
   ingress:
     - from:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/instance: mgmt-argocd
+              app.kubernetes.io/instance: argocd
               app.kubernetes.io/name: argocd-server
         - podSelector:
             matchLabels:
-              app.kubernetes.io/instance: mgmt-argocd
+              app.kubernetes.io/instance: argocd
               app.kubernetes.io/name: argocd-repo-server
         - podSelector:
             matchLabels:
-              app.kubernetes.io/instance: mgmt-argocd
+              app.kubernetes.io/instance: argocd
               app.kubernetes.io/name: argocd-application-controller
       ports:
         - port: redis
           protocol: TCP
   podSelector:
     matchLabels:
-      app.kubernetes.io/instance: mgmt-argocd
+      app.kubernetes.io/instance: argocd
       app.kubernetes.io/name: argocd-redis
   policyTypes:
     - Ingress
@@ -231,7 +231,7 @@ kind: ServiceAccount
 metadata:
   labels:
     app.kubernetes.io/component: application-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-application-controller
     app.kubernetes.io/part-of: argocd
@@ -246,7 +246,7 @@ kind: ServiceAccount
 metadata:
   labels:
     app.kubernetes.io/component: applicationset-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-applicationset-controller
     app.kubernetes.io/part-of: argocd
@@ -261,7 +261,7 @@ kind: ServiceAccount
 metadata:
   labels:
     app.kubernetes.io/component: commit-server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-commit-server
     app.kubernetes.io/part-of: argocd
@@ -276,7 +276,7 @@ kind: ServiceAccount
 metadata:
   labels:
     app.kubernetes.io/component: notifications-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-notifications-controller
     app.kubernetes.io/part-of: argocd
@@ -291,13 +291,13 @@ kind: ServiceAccount
 metadata:
   labels:
     app.kubernetes.io/component: repo-server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-repo-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-repo-server
+  name: argocd-repo-server
   namespace: argocd
 ---
 apiVersion: v1
@@ -306,7 +306,7 @@ kind: ServiceAccount
 metadata:
   labels:
     app.kubernetes.io/component: server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-server
     app.kubernetes.io/part-of: argocd
@@ -321,7 +321,7 @@ kind: ServiceAccount
 metadata:
   labels:
     app.kubernetes.io/component: dex-server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-dex-server
     app.kubernetes.io/part-of: argocd
@@ -335,7 +335,7 @@ kind: Secret
 metadata:
   labels:
     app.kubernetes.io/component: notifications-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-notifications-controller
     app.kubernetes.io/part-of: argocd
@@ -351,7 +351,7 @@ kind: Secret
 metadata:
   labels:
     app.kubernetes.io/component: server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-secret
     app.kubernetes.io/part-of: argocd
@@ -471,7 +471,7 @@ kind: ConfigMap
 metadata:
   labels:
     app.kubernetes.io/component: server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-cm
     app.kubernetes.io/part-of: argocd
@@ -485,7 +485,7 @@ data:
   applicationsetcontroller.enable.leader.election: "false"
   applicationsetcontroller.log.format: text
   applicationsetcontroller.log.level: info
-  commit.server: mgmt-argocd-commit-server:8086
+  commit.server: argocd-commit-server:8086
   commitserver.log.format: text
   commitserver.log.level: info
   controller.log.format: text
@@ -495,11 +495,11 @@ data:
   hydrator.enabled: "true"
   notificationscontroller.log.format: text
   notificationscontroller.log.level: info
-  redis.server: mgmt-argocd-redis:6379
-  repo.server: mgmt-argocd-repo-server:8081
+  redis.server: argocd-redis:6379
+  repo.server: argocd-repo-server:8081
   reposerver.log.format: text
   reposerver.log.level: info
-  server.dex.server: https://mgmt-argocd-dex-server:5556
+  server.dex.server: https://argocd-dex-server:5556
   server.dex.server.strict.tls: "false"
   server.log.format: text
   server.log.level: info
@@ -508,7 +508,7 @@ kind: ConfigMap
 metadata:
   labels:
     app.kubernetes.io/component: server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-cmd-params-cm
     app.kubernetes.io/part-of: argocd
@@ -521,7 +521,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   labels:
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-gpg-keys-cm
     app.kubernetes.io/part-of: argocd
@@ -538,7 +538,7 @@ kind: ConfigMap
 metadata:
   labels:
     app.kubernetes.io/component: notifications-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-notifications-controller
     app.kubernetes.io/part-of: argocd
@@ -557,7 +557,7 @@ kind: ConfigMap
 metadata:
   labels:
     app.kubernetes.io/component: server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-rbac-cm
     app.kubernetes.io/part-of: argocd
@@ -586,7 +586,7 @@ data:
 kind: ConfigMap
 metadata:
   labels:
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-ssh-known-hosts-cm
     app.kubernetes.io/part-of: argocd
@@ -599,7 +599,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   labels:
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-tls-certs-cm
     app.kubernetes.io/part-of: argocd
@@ -640,13 +640,13 @@ kind: ConfigMap
 metadata:
   labels:
     app.kubernetes.io/component: redis
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-redis
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-redis-health-configmap
+  name: argocd-redis-health-configmap
   namespace: argocd
 ---
 apiVersion: apiextensions.k8s.io/v1
@@ -30280,13 +30280,13 @@ kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/component: application-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-application-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-application-controller
+  name: argocd-application-controller
 rules:
   - apiGroups:
       - '*'
@@ -30304,13 +30304,13 @@ kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/component: notifications-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-notifications-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-notifications-controller
+  name: argocd-notifications-controller
 rules:
   - apiGroups:
       - argoproj.io
@@ -30353,13 +30353,13 @@ kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/component: server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-server
+  name: argocd-server
 rules:
   - apiGroups:
       - '*'
@@ -30411,17 +30411,17 @@ kind: ClusterRoleBinding
 metadata:
   labels:
     app.kubernetes.io/component: application-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-application-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-application-controller
+  name: argocd-application-controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: mgmt-argocd-application-controller
+  name: argocd-application-controller
 subjects:
   - kind: ServiceAccount
     name: argocd-application-controller
@@ -30432,17 +30432,17 @@ kind: ClusterRoleBinding
 metadata:
   labels:
     app.kubernetes.io/component: notifications-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-notifications-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-notifications-controller
+  name: argocd-notifications-controller
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: mgmt-argocd-notifications-controller
+  name: argocd-notifications-controller
 subjects:
   - kind: ServiceAccount
     name: argocd-notifications-controller
@@ -30453,17 +30453,17 @@ kind: ClusterRoleBinding
 metadata:
   labels:
     app.kubernetes.io/component: server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-server
+  name: argocd-server
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: mgmt-argocd-server
+  name: argocd-server
 subjects:
   - kind: ServiceAccount
     name: argocd-server
@@ -30474,13 +30474,13 @@ kind: Role
 metadata:
   labels:
     app.kubernetes.io/component: application-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-application-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-application-controller
+  name: argocd-application-controller
   namespace: argocd
 rules:
   - apiGroups:
@@ -30527,13 +30527,13 @@ kind: Role
 metadata:
   labels:
     app.kubernetes.io/component: applicationset-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-applicationset-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-applicationset-controller
+  name: argocd-applicationset-controller
   namespace: argocd
 rules:
   - apiGroups:
@@ -30627,13 +30627,13 @@ kind: Role
 metadata:
   labels:
     app.kubernetes.io/component: notifications-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-notifications-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-notifications-controller
+  name: argocd-notifications-controller
   namespace: argocd
 rules:
   - apiGroups:
@@ -30677,13 +30677,13 @@ kind: Role
 metadata:
   labels:
     app.kubernetes.io/component: repo-server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-repo-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-repo-server
+  name: argocd-repo-server
   namespace: argocd
 rules: null
 ---
@@ -30692,13 +30692,13 @@ kind: Role
 metadata:
   labels:
     app.kubernetes.io/component: server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-server
+  name: argocd-server
   namespace: argocd
 rules:
   - apiGroups:
@@ -30741,13 +30741,13 @@ kind: Role
 metadata:
   labels:
     app.kubernetes.io/component: dex-server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-dex-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-dex-server
+  name: argocd-dex-server
   namespace: argocd
 rules:
   - apiGroups:
@@ -30765,18 +30765,18 @@ kind: RoleBinding
 metadata:
   labels:
     app.kubernetes.io/component: application-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-application-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-application-controller
+  name: argocd-application-controller
   namespace: argocd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: mgmt-argocd-application-controller
+  name: argocd-application-controller
 subjects:
   - kind: ServiceAccount
     name: argocd-application-controller
@@ -30787,18 +30787,18 @@ kind: RoleBinding
 metadata:
   labels:
     app.kubernetes.io/component: applicationset-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-applicationset-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-applicationset-controller
+  name: argocd-applicationset-controller
   namespace: argocd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: mgmt-argocd-applicationset-controller
+  name: argocd-applicationset-controller
 subjects:
   - kind: ServiceAccount
     name: argocd-applicationset-controller
@@ -30809,18 +30809,18 @@ kind: RoleBinding
 metadata:
   labels:
     app.kubernetes.io/component: notifications-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-notifications-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-notifications-controller
+  name: argocd-notifications-controller
   namespace: argocd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: mgmt-argocd-notifications-controller
+  name: argocd-notifications-controller
 subjects:
   - kind: ServiceAccount
     name: argocd-notifications-controller
@@ -30831,21 +30831,21 @@ kind: RoleBinding
 metadata:
   labels:
     app.kubernetes.io/component: repo-server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-repo-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-repo-server
+  name: argocd-repo-server
   namespace: argocd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: mgmt-argocd-repo-server
+  name: argocd-repo-server
 subjects:
   - kind: ServiceAccount
-    name: mgmt-argocd-repo-server
+    name: argocd-repo-server
     namespace: argocd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -30853,18 +30853,18 @@ kind: RoleBinding
 metadata:
   labels:
     app.kubernetes.io/component: server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-server
+  name: argocd-server
   namespace: argocd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: mgmt-argocd-server
+  name: argocd-server
 subjects:
   - kind: ServiceAccount
     name: argocd-server
@@ -30875,18 +30875,18 @@ kind: RoleBinding
 metadata:
   labels:
     app.kubernetes.io/component: dex-server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-dex-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-dex-server
+  name: argocd-dex-server
   namespace: argocd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: mgmt-argocd-dex-server
+  name: argocd-dex-server
 subjects:
   - kind: ServiceAccount
     name: argocd-dex-server
@@ -30897,13 +30897,13 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: applicationset-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-applicationset-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-applicationset-controller
+  name: argocd-applicationset-controller
   namespace: argocd
 spec:
   ports:
@@ -30911,7 +30911,7 @@ spec:
       port: 7000
       targetPort: webhook
   selector:
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/name: argocd-applicationset-controller
   type: ClusterIP
 ---
@@ -30920,13 +30920,13 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: commit-server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-commit-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-commit-server
+  name: argocd-commit-server
   namespace: argocd
 spec:
   ports:
@@ -30935,7 +30935,7 @@ spec:
       protocol: TCP
       targetPort: server
   selector:
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/name: argocd-commit-server
 ---
 apiVersion: v1
@@ -30943,13 +30943,13 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: repo-server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-repo-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-repo-server
+  name: argocd-repo-server
   namespace: argocd
 spec:
   ports:
@@ -30958,7 +30958,7 @@ spec:
       protocol: TCP
       targetPort: repo-server
   selector:
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/name: argocd-repo-server
 ---
 apiVersion: v1
@@ -30966,13 +30966,13 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-server
+  name: argocd-server
   namespace: argocd
 spec:
   ports:
@@ -30985,7 +30985,7 @@ spec:
       protocol: TCP
       targetPort: 8080
   selector:
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/name: argocd-server
   sessionAffinity: None
   type: ClusterIP
@@ -30995,13 +30995,13 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: dex-server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-dex-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-dex-server
+  name: argocd-dex-server
   namespace: argocd
 spec:
   ports:
@@ -31014,7 +31014,7 @@ spec:
       protocol: TCP
       targetPort: grpc
   selector:
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/name: argocd-dex-server
 ---
 apiVersion: v1
@@ -31022,13 +31022,13 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: redis
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-redis
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-redis
+  name: argocd-redis
   namespace: argocd
 spec:
   ports:
@@ -31036,7 +31036,7 @@ spec:
       port: 6379
       targetPort: redis
   selector:
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/name: argocd-redis
 ---
 apiVersion: apps/v1
@@ -31044,28 +31044,28 @@ kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: applicationset-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-applicationset-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-applicationset-controller
+  name: argocd-applicationset-controller
   namespace: argocd
 spec:
   replicas: 1
   revisionHistoryLimit: 3
   selector:
     matchLabels:
-      app.kubernetes.io/instance: mgmt-argocd
+      app.kubernetes.io/instance: argocd
       app.kubernetes.io/name: argocd-applicationset-controller
   template:
     metadata:
       annotations:
-        checksum/cmd-params: b010513a5f468ed086af10bd8a5dedaff9f0a67c99c46a48ea97daacae43dc10
+        checksum/cmd-params: 41f23185a6a93250b78182b31dd6400ee379c52034243ce1786b32e7f175c110
       labels:
         app.kubernetes.io/component: applicationset-controller
-        app.kubernetes.io/instance: mgmt-argocd
+        app.kubernetes.io/instance: argocd
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: argocd-applicationset-controller
         app.kubernetes.io/part-of: argocd
@@ -31338,26 +31338,26 @@ kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: commit-server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-commit-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-commit-server
+  name: argocd-commit-server
   namespace: argocd
 spec:
   revisionHistoryLimit: 3
   selector:
     matchLabels:
-      app.kubernetes.io/instance: mgmt-argocd
+      app.kubernetes.io/instance: argocd
       app.kubernetes.io/name: argocd-commit-server
   template:
     metadata:
       annotations: null
       labels:
         app.kubernetes.io/component: commit-server
-        app.kubernetes.io/instance: mgmt-argocd
+        app.kubernetes.io/instance: argocd
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: argocd-commit-server
         app.kubernetes.io/part-of: argocd
@@ -31491,30 +31491,30 @@ kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: notifications-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-notifications-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-notifications-controller
+  name: argocd-notifications-controller
   namespace: argocd
 spec:
   replicas: 1
   revisionHistoryLimit: 3
   selector:
     matchLabels:
-      app.kubernetes.io/instance: mgmt-argocd
+      app.kubernetes.io/instance: argocd
       app.kubernetes.io/name: argocd-notifications-controller
   strategy:
     type: Recreate
   template:
     metadata:
       annotations:
-        checksum/cmd-params: b010513a5f468ed086af10bd8a5dedaff9f0a67c99c46a48ea97daacae43dc10
+        checksum/cmd-params: 41f23185a6a93250b78182b31dd6400ee379c52034243ce1786b32e7f175c110
       labels:
         app.kubernetes.io/component: notifications-controller
-        app.kubernetes.io/instance: mgmt-argocd
+        app.kubernetes.io/instance: argocd
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: argocd-notifications-controller
         app.kubernetes.io/part-of: argocd
@@ -31536,7 +31536,7 @@ spec:
             - /usr/local/bin/argocd-notifications
             - --metrics-port=9001
             - --namespace=argocd
-            - --argocd-repo-server=mgmt-argocd-repo-server:8081
+            - --argocd-repo-server=argocd-repo-server:8081
             - --secret-name=argocd-notifications-secret
           env:
             - name: ARGOCD_NOTIFICATIONS_CONTROLLER_LOGLEVEL
@@ -31624,29 +31624,29 @@ kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: repo-server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-repo-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-repo-server
+  name: argocd-repo-server
   namespace: argocd
 spec:
   replicas: 1
   revisionHistoryLimit: 3
   selector:
     matchLabels:
-      app.kubernetes.io/instance: mgmt-argocd
+      app.kubernetes.io/instance: argocd
       app.kubernetes.io/name: argocd-repo-server
   template:
     metadata:
       annotations:
-        checksum/cm: ed379e1159084c997ca79953d5ed55566f576b7d6238f3ed1f78502638e78869
-        checksum/cmd-params: b010513a5f468ed086af10bd8a5dedaff9f0a67c99c46a48ea97daacae43dc10
+        checksum/cm: dec79a64c9bfe31c4d50eef418963084759f7419156e0c1e0d76c295a27e49a1
+        checksum/cmd-params: 41f23185a6a93250b78182b31dd6400ee379c52034243ce1786b32e7f175c110
       labels:
         app.kubernetes.io/component: repo-server
-        app.kubernetes.io/instance: mgmt-argocd
+        app.kubernetes.io/instance: argocd
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: argocd-repo-server
         app.kubernetes.io/part-of: argocd
@@ -31670,7 +31670,7 @@ spec:
             - --metrics-port=8084
           env:
             - name: ARGOCD_REPO_SERVER_NAME
-              value: mgmt-argocd-repo-server
+              value: argocd-repo-server
             - name: ARGOCD_RECONCILIATION_TIMEOUT
               valueFrom:
                 configMapKeyRef:
@@ -31777,13 +31777,13 @@ spec:
               valueFrom:
                 secretKeyRef:
                   key: redis-sentinel-username
-                  name: mgmt-argocd-redis
+                  name: argocd-redis
                   optional: true
             - name: REDIS_SENTINEL_PASSWORD
               valueFrom:
                 secretKeyRef:
                   key: redis-sentinel-password
-                  name: mgmt-argocd-redis
+                  name: argocd-redis
                   optional: true
             - name: ARGOCD_DEFAULT_CACHE_EXPIRATION
               valueFrom:
@@ -32009,7 +32009,7 @@ spec:
               name: var-files
       nodeSelector:
         kubernetes.io/os: linux
-      serviceAccountName: mgmt-argocd-repo-server
+      serviceAccountName: argocd-repo-server
       terminationGracePeriodSeconds: 30
       volumes:
         - emptyDir: {}
@@ -32048,29 +32048,29 @@ kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-server
+  name: argocd-server
   namespace: argocd
 spec:
   replicas: 1
   revisionHistoryLimit: 3
   selector:
     matchLabels:
-      app.kubernetes.io/instance: mgmt-argocd
+      app.kubernetes.io/instance: argocd
       app.kubernetes.io/name: argocd-server
   template:
     metadata:
       annotations:
-        checksum/cm: ed379e1159084c997ca79953d5ed55566f576b7d6238f3ed1f78502638e78869
-        checksum/cmd-params: b010513a5f468ed086af10bd8a5dedaff9f0a67c99c46a48ea97daacae43dc10
+        checksum/cm: dec79a64c9bfe31c4d50eef418963084759f7419156e0c1e0d76c295a27e49a1
+        checksum/cmd-params: 41f23185a6a93250b78182b31dd6400ee379c52034243ce1786b32e7f175c110
       labels:
         app.kubernetes.io/component: server
-        app.kubernetes.io/instance: mgmt-argocd
+        app.kubernetes.io/instance: argocd
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: argocd-server
         app.kubernetes.io/part-of: argocd
@@ -32095,7 +32095,7 @@ spec:
             - --insecure
           env:
             - name: ARGOCD_SERVER_NAME
-              value: mgmt-argocd-server
+              value: argocd-server
             - name: ARGOCD_SERVER_INSECURE
               valueFrom:
                 configMapKeyRef:
@@ -32268,13 +32268,13 @@ spec:
               valueFrom:
                 secretKeyRef:
                   key: redis-sentinel-username
-                  name: mgmt-argocd-redis
+                  name: argocd-redis
                   optional: true
             - name: REDIS_SENTINEL_PASSWORD
               valueFrom:
                 secretKeyRef:
                   key: redis-sentinel-password
-                  name: mgmt-argocd-redis
+                  name: argocd-redis
                   optional: true
             - name: ARGOCD_DEFAULT_CACHE_EXPIRATION
               valueFrom:
@@ -32510,28 +32510,28 @@ kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: dex-server
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-dex-server
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-dex-server
+  name: argocd-dex-server
   namespace: argocd
 spec:
   replicas: 1
   revisionHistoryLimit: 3
   selector:
     matchLabels:
-      app.kubernetes.io/instance: mgmt-argocd
+      app.kubernetes.io/instance: argocd
       app.kubernetes.io/name: argocd-dex-server
   template:
     metadata:
       annotations:
-        checksum/cmd-params: b010513a5f468ed086af10bd8a5dedaff9f0a67c99c46a48ea97daacae43dc10
+        checksum/cmd-params: 41f23185a6a93250b78182b31dd6400ee379c52034243ce1786b32e7f175c110
       labels:
         app.kubernetes.io/component: dex-server
-        app.kubernetes.io/instance: mgmt-argocd
+        app.kubernetes.io/instance: argocd
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: argocd-dex-server
         app.kubernetes.io/part-of: argocd
@@ -32661,13 +32661,13 @@ kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: redis
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-redis
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-redis
+  name: argocd-redis
   namespace: argocd
 spec:
   replicas: 1
@@ -32679,7 +32679,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/component: redis
-        app.kubernetes.io/instance: mgmt-argocd
+        app.kubernetes.io/instance: argocd
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: argocd-redis
         app.kubernetes.io/part-of: argocd
@@ -32739,7 +32739,7 @@ spec:
       volumes:
         - configMap:
             defaultMode: 493
-            name: mgmt-argocd-redis-health-configmap
+            name: argocd-redis-health-configmap
           name: health
 ---
 apiVersion: apps/v1
@@ -32747,30 +32747,30 @@ kind: StatefulSet
 metadata:
   labels:
     app.kubernetes.io/component: application-controller
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-application-controller
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-application-controller
+  name: argocd-application-controller
   namespace: argocd
 spec:
   replicas: 1
   revisionHistoryLimit: 5
   selector:
     matchLabels:
-      app.kubernetes.io/instance: mgmt-argocd
+      app.kubernetes.io/instance: argocd
       app.kubernetes.io/name: argocd-application-controller
-  serviceName: mgmt-argocd-application-controller
+  serviceName: argocd-application-controller
   template:
     metadata:
       annotations:
-        checksum/cm: ed379e1159084c997ca79953d5ed55566f576b7d6238f3ed1f78502638e78869
-        checksum/cmd-params: b010513a5f468ed086af10bd8a5dedaff9f0a67c99c46a48ea97daacae43dc10
+        checksum/cm: dec79a64c9bfe31c4d50eef418963084759f7419156e0c1e0d76c295a27e49a1
+        checksum/cmd-params: 41f23185a6a93250b78182b31dd6400ee379c52034243ce1786b32e7f175c110
       labels:
         app.kubernetes.io/component: application-controller
-        app.kubernetes.io/instance: mgmt-argocd
+        app.kubernetes.io/instance: argocd
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: argocd-application-controller
         app.kubernetes.io/part-of: argocd
@@ -32795,7 +32795,7 @@ spec:
             - name: ARGOCD_CONTROLLER_REPLICAS
               value: "1"
             - name: ARGOCD_APPLICATION_CONTROLLER_NAME
-              value: mgmt-argocd-application-controller
+              value: argocd-application-controller
             - name: ARGOCD_RECONCILIATION_TIMEOUT
               valueFrom:
                 configMapKeyRef:
@@ -32968,13 +32968,13 @@ spec:
               valueFrom:
                 secretKeyRef:
                   key: redis-sentinel-username
-                  name: mgmt-argocd-redis
+                  name: argocd-redis
                   optional: true
             - name: REDIS_SENTINEL_PASSWORD
               valueFrom:
                 secretKeyRef:
                   key: redis-sentinel-password
-                  name: mgmt-argocd-redis
+                  name: argocd-redis
                   optional: true
             - name: ARGOCD_DEFAULT_CACHE_EXPIRATION
               valueFrom:
@@ -33148,13 +33148,13 @@ metadata:
     helm.sh/hook-delete-policy: before-hook-creation
   labels:
     app.kubernetes.io/component: redis-secret-init
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-redis-secret-init
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-redis-secret-init
+  name: argocd-redis-secret-init
   namespace: argocd
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -33165,13 +33165,13 @@ metadata:
     helm.sh/hook-delete-policy: before-hook-creation
   labels:
     app.kubernetes.io/component: redis-secret-init
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-redis-secret-init
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-redis-secret-init
+  name: argocd-redis-secret-init
   namespace: argocd
 rules:
   - apiGroups:
@@ -33197,21 +33197,21 @@ metadata:
     helm.sh/hook-delete-policy: before-hook-creation
   labels:
     app.kubernetes.io/component: redis-secret-init
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-redis-secret-init
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-redis-secret-init
+  name: argocd-redis-secret-init
   namespace: argocd
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: mgmt-argocd-redis-secret-init
+  name: argocd-redis-secret-init
 subjects:
   - kind: ServiceAccount
-    name: mgmt-argocd-redis-secret-init
+    name: argocd-redis-secret-init
     namespace: argocd
 ---
 apiVersion: batch/v1
@@ -33222,20 +33222,20 @@ metadata:
     helm.sh/hook-delete-policy: before-hook-creation
   labels:
     app.kubernetes.io/component: redis-secret-init
-    app.kubernetes.io/instance: mgmt-argocd
+    app.kubernetes.io/instance: argocd
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: argocd-redis-secret-init
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: v3.5.1
     helm.sh/chart: argo-cd-10.4.0
-  name: mgmt-argocd-redis-secret-init
+  name: argocd-redis-secret-init
   namespace: argocd
 spec:
   template:
     metadata:
       labels:
         app.kubernetes.io/component: redis-secret-init
-        app.kubernetes.io/instance: mgmt-argocd
+        app.kubernetes.io/instance: argocd
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: argocd-redis-secret-init
         app.kubernetes.io/part-of: argocd
@@ -33272,5 +33272,5 @@ spec:
       nodeSelector:
         kubernetes.io/os: linux
       restartPolicy: OnFailure
-      serviceAccountName: mgmt-argocd-redis-secret-init
+      serviceAccountName: argocd-redis-secret-init
   ttlSecondsAfterFinished: 60
