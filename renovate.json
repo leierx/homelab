@@ -4,16 +4,7 @@
   "rebaseWhen": "behind-base-branch",
   "timezone": "Europe/Oslo",
   "dependencyDashboard": true,
-  "enabledManagers": ["github-actions", "custom.regex"],
-  "customManagers": [
-    {
-      "customType": "regex",
-      "managerFilePatterns": ["nixos/*.nix"],
-      "matchStrings": [
-        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+) registryUrl=(?<registryUrl>\\S+)\\s+version = \"(?<currentValue>[^\"]+)\";"
-      ]
-    }
-  ],
+  "enabledManagers": ["github-actions", "helmv3"],
   "packageRules": [
     {
       "matchUpdateTypes": ["minor", "patch", "digest"],

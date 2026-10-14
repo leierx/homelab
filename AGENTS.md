@@ -10,15 +10,16 @@
 
 ## Repo
 
-NixOS flake for one host, `loft01` (HPE ProLiant, single-node k3s
-management cluster with Cilium). `flake.nix` holds only inputs and outputs. Host
-code lives flat in `nixos/`:
+Two parts: `nixos/` is the NixOS flake for the host `loft01` (HPE ProLiant,
+single-node k3s, the management cluster). `gitops/` is the Argo CD fleet that
+runs on that cluster and manages every cluster. `flake.nix` holds only inputs
+and outputs. Host code lives flat in `nixos/`:
 
 - `configuration.nix`: users, ssh, doas, locale/ntp, nix, auto-upgrade, packages
 - `hardware.nix`: cpu, firmware, zfs, smartd, fstrim, zram
 - `disko.nix`: NVMe ESP + ext4 root, ZFS pools `prod` (raidz1) and `test` (mirror)
 - `network.nix`: networkd, WireGuard `wg0`, resolved (DNSSEC + DoT), nftables firewall, NAT
-- `k3s.nix`: k3s + Cilium `HelmChart` (version bumped by Renovate)
+- `k3s.nix`: k3s without a CNI (Cilium comes from `gitops/`)
 - `sops.nix` + `secrets.yaml`: WireGuard keys and the SSH host key
 - `installer.nix`: offline auto-install ISO
 
@@ -32,8 +33,11 @@ code lives flat in `nixos/`:
   toplevel. It pushes `flake.lock` to `main` only if all of those pass. PRs get
   the same checks without the update and without the push. Don't hand-bump
   inputs.
-- Renovate handles GitHub Actions and `# renovate:` annotated versions in
-  `nixos/*.nix`. Minor/patch/digest updates automerge once CI passes.
+- The same workflow renders every gitops addon for every cluster that enables
+  it (`gitops/render.sh`).
+- Renovate handles GitHub Actions and the chart dependencies in
+  `gitops/addons/*/Chart.yaml`. Minor/patch/digest updates automerge once CI
+  passes.
 
 ## Secrets
 
@@ -51,13 +55,48 @@ SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt nix build --impure \
 The ISO contains the age private key, so treat it as a secret. When booted,
 it wipes all disks after a 30 s countdown on tty1, installs, and reboots.
 
+## GitOps (`gitops/`)
+
+There is one Argo CD, on mgmt, and it manages the whole fleet.
+
+- `fleet/clusters/<cluster>.yaml`: Argo cluster Secrets. Labels decide what a
+  cluster gets: `env: <env>` plus `addons.homelab/<addon>: "true"` per addon.
+  mgmt is the local cluster, so its Secret has no credentials.
+- `fleet/addons.yaml`: one ApplicationSet that crosses every
+  `addons/*/addon.yaml` with every cluster carrying that addon's label, giving
+  `<addon>-<cluster>` apps.
+- `addons/<addon>/`: an umbrella Helm chart (`Chart.yaml` pins the upstream
+  chart; local `templates/` hold extras). `addon.yaml` sets the namespace.
+  Values layer as `values.yaml`, then `env/<env>.yaml`, then
+  `clusters/<cluster>.yaml`. Missing files are skipped.
+- Adding an addon: create `addons/<name>/` and label the clusters. Adding a
+  cluster: add a Secret under `fleet/clusters/`.
+- `preserveResourcesOnDeletion` is on: removing a label or an addon deletes the
+  Application but leaves its resources running. Clean those up by hand.
+- `charts/` and `Chart.lock` are gitignored; Argo builds dependencies itself.
+
+One-time bootstrap after an install, over the SSH tunnel. The k3s node stays
+NotReady until Cilium is in:
+
+```sh
+helm dependency update gitops/addons/cilium
+helm install cilium gitops/addons/cilium -n kube-system -f gitops/addons/cilium/clusters/mgmt.yaml
+helm dependency update gitops/addons/argocd
+helm install argocd gitops/addons/argocd -n argocd --create-namespace
+kubectl apply -f gitops/root.yaml
+```
+
+After that, Argo adopts both releases and manages everything from git.
+
 ## Kubernetes
 
 - kubectl: `ssh -L 6443:127.0.0.1:6443 leier@192.168.2.50`, then use a copy of
   `/etc/rancher/k3s/k3s.yaml` (root-only on the host). 6443 is not open on
   `eno1` or `wg0`.
-- ZFS pools `prod` and `test` are reserved for OpenEBS ZFS-LocalPV (zvols).
-  Nothing mounts them on the host.
+- ZFS pools `prod` and `test` back the `zfs-prod`/`zfs-test` StorageClasses
+  (zfs-localpv, one zvol per PVC). Nothing mounts them on the host.
+- mgmt is the public edge: the `edge` Gateway (envoy-gateway addon) is NodePort
+  30080. HTTPS on 30443 still needs a listener and certificates.
 - Cilium kube-proxy replacement handles NodePorts in BPF before nftables, so
   every NodePort is reachable on `eno1`. The router port forward
   (30080/30443/52820) is the real edge.

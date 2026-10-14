@@ -1,0 +1,6 @@
+zfs-localpv:
+  analytics:
+    enabled: false
+  zfs:
+    bin: /run/current-system/sw/bin/zfs
+pools: []

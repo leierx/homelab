@@ -1,0 +1,11 @@
+cilium:
+  kubeProxyReplacement: true
+  bpf:
+    masquerade: true
+  ipv6:
+    enabled: false
+  hubble:
+    tls:
+      auto:
+        # the default (helm) regenerates certs on every render, so Argo would never be in sync
+        method: cronJob

@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: addons
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/leierx/homelab.git
+              revision: HEAD
+              files:
+                - path: gitops/addons/*/addon.yaml
+          - clusters:
+              selector:
+                matchLabels:
+                  addons.homelab/{{ .path.basename }}: "true"
+  syncPolicy:
+    # removing a label or addon never uninstalls; a bad commit can't take out Cilium or Argo
+    preserveResourcesOnDeletion: true
+  template:
+    metadata:
+      name: "{{ .path.basename }}-{{ .name }}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/leierx/homelab.git
+        targetRevision: HEAD
+        path: "{{ .path.path }}"
+        helm:
+          releaseName: "{{ .path.basename }}"
+          valueFiles:
+            - "env/{{ .metadata.labels.env }}.yaml"
+            - "clusters/{{ .name }}.yaml"
+          ignoreMissingValueFiles: true
+      destination:
+        server: "{{ .server }}"
+        namespace: "{{ .namespace }}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: -1
