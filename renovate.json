@@ -1,0 +1,24 @@
+{
+  "extends": ["config:recommended"],
+  "gitAuthor": "Renovate Bot <renovatebot@noreply.com>",
+  "rebaseWhen": "behind-base-branch",
+  "timezone": "Europe/Oslo",
+  "dependencyDashboard": true,
+  "enabledManagers": ["github-actions", "custom.regex"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["nixos/*.nix"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+) registryUrl=(?<registryUrl>\\S+)\\s+version = \"(?<currentValue>[^\"]+)\";"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "automerge": true,
+      "automergeStrategy": "merge-commit"
+    }
+  ]
+}
