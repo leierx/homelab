@@ -1,3 +1,0 @@
-name: argocd
-namespace: argocd
-clusters: [mgmt]

@@ -1,4 +1,0 @@
-name: cilium
-namespace: kube-system
-clusters: [mgmt, prod, test]
-wave: -1
