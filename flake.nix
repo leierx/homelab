@@ -15,7 +15,7 @@
       sops-nix,
     }:
     {
-      nixosConfigurations.loftserveren01 = nixpkgs.lib.nixosSystem {
+      nixosConfigurations.loft01 = nixpkgs.lib.nixosSystem {
         modules = [
           disko.nixosModules.disko
           sops-nix.nixosModules.sops
@@ -28,8 +28,8 @@
         ];
       };
 
-      nixosConfigurations.offlineInstaller-loftserveren01 = nixpkgs.lib.nixosSystem {
-        specialArgs.target = self.nixosConfigurations.loftserveren01;
+      nixosConfigurations.offlineInstaller-loft01 = nixpkgs.lib.nixosSystem {
+        specialArgs.target = self.nixosConfigurations.loft01;
         modules = [ ./nixos/installer.nix ];
       };
 

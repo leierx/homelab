@@ -41,7 +41,7 @@ in
   services.getty.autologinUser = lib.mkForce "root";
   services.getty.helpLine = lib.mkForce ''
 
-    *** UNATTENDED INSTALLER: loftserveren01 ***
+    *** UNATTENDED INSTALLER: loft01 ***
     tty1 wipes ALL disks and installs after a 30 s countdown.
     Abort: Ctrl-C on tty1, or `systemctl stop auto-install` here.
   '';
@@ -51,7 +51,7 @@ in
   systemd.services."autovt@tty1".enable = false;
 
   systemd.services.auto-install = {
-    description = "Unattended install of loftserveren01";
+    description = "Unattended install of loft01";
     wantedBy = [ "multi-user.target" ];
     after = [ "multi-user.target" ];
     path = [
@@ -69,7 +69,7 @@ in
     };
     script = ''
       set -euo pipefail
-      echo "Wiping ALL disks and installing loftserveren01. Ctrl-C to abort."
+      echo "Wiping ALL disks and installing loft01. Ctrl-C to abort."
       for i in $(seq 30 -1 1); do
         printf '\rStarting in %2d s ' "$i"
         sleep 1

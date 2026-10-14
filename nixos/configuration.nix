@@ -88,7 +88,7 @@
 
   system.autoUpgrade = {
     enable = true;
-    flake = "git+https://github.com/leierx/homelab.git?ref=main#loftserveren01";
+    flake = "git+https://github.com/leierx/homelab.git?ref=main#loft01";
     flags = [ "-L" ];
     dates = "Fri 03:30";
     randomizedDelaySec = "30min";

@@ -1,7 +1,7 @@
 { config, ... }:
 {
   networking = {
-    hostName = "loftserveren01";
+    hostName = "loft01";
     domain = "home.arpa";
     enableIPv6 = false;
     useNetworkd = true;

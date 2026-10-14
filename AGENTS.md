@@ -10,7 +10,7 @@
 
 ## Repo
 
-NixOS flake for one host, `loftserveren01` (HPE ProLiant, single-node k3s
+NixOS flake for one host, `loft01` (HPE ProLiant, single-node k3s
 management cluster with Cilium). `flake.nix` holds only inputs and outputs. Host
 code lives flat in `nixos/`:
 
@@ -45,7 +45,7 @@ in `nixos/sops.nix` and add it to `secrets.yaml`.
 
 ```sh
 SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt nix build --impure \
-  .#nixosConfigurations.offlineInstaller-loftserveren01.config.system.build.isoImage
+  .#nixosConfigurations.offlineInstaller-loft01.config.system.build.isoImage
 ```
 
 The ISO contains the age private key, so treat it as a secret. When booted,

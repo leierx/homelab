@@ -26,7 +26,7 @@ jobs:
 
       - run: nix fmt -- --ci
       - run: nix flake check
-      - run: nix build --no-link .#nixosConfigurations.loftserveren01.config.system.build.toplevel
+      - run: nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
 
       - name: push flake.lock
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
