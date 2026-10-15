@@ -57,6 +57,7 @@ in
     path = [
       pkgs.util-linux
       config.boot.zfs.package
+      config.nix.package
     ];
     serviceConfig = {
       Type = "oneshot";
