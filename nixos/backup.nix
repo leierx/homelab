@@ -5,14 +5,11 @@
   ...
 }:
 let
-  # Off-site copy to rsync.net. Before flipping `enable`, add `borg/ssh_key`
-  # (private key in rsync.net's authorized_keys) and `borg/passphrase` to
-  # secrets.yaml and set `repo`; sops-nix fails activation on a declared secret
-  # that secrets.yaml doesn't have.
+  # enable only once secrets.yaml has borg/ssh_key and borg/passphrase: sops-nix fails activation on missing secrets
   offsite = {
     enable = false;
     repo = "USER@HOST.rsync.net:homelab";
-    # rsync.net's name for its borg 1.x binary; check with `ssh USER@HOST.rsync.net borg1 --version`
+    # rsync.net's borg 1.x binary; check with `ssh USER@HOST.rsync.net borg1 --version`
     remotePath = "borg1";
   };
 
@@ -38,12 +35,11 @@ let
       export BORG_BASE_DIR=${stateDir}
       create=(borg create --checkpoint-interval 600 --compression "zstd,3")
 
-      # Only this unit writes the repo and systemd runs one instance at a time,
-      # so a lock left by a run cut off by a reboot is always stale.
+      # this unit is the repo's only writer, so any lock left behind is stale
       borg break-lock || true
       borg info >/dev/null 2>&1 || borg init --encryption=repokey-blake2
 
-      # k3s state (kine sqlite, token, CA and credentials): restoring a PVC needs its k8s objects too
+      # k3s state: restoring a PVC needs its k8s objects too
       stage=${stateDir}/k3s
       rm -rf "$stage" && mkdir -p "$stage"
       sqlite3 /var/lib/rancher/k3s/server/db/state.db ".backup '$stage/state.db'"
@@ -51,9 +47,7 @@ let
       "''${create[@]}" "::k3s-{now:%Y-%m-%dT%H:%M}" "$stage"
       borg prune --glob-archives 'k3s-*' --keep-daily 14 --keep-weekly 8 --keep-monthly 6
 
-      # One archive per PVC zvol per sanoid daily snapshot. A run interrupted mid-way
-      # leaves only `.checkpoint` archives; the next run redoes that archive and
-      # dedup skips the chunks already uploaded. Nothing on the pools is changed.
+      # one archive per zvol per daily snapshot; an interrupted one is redone, dedup skips what's uploaded
       for vol in $(zfs list -H -t volume -o name -r prod); do
         snap=$(zfs list -H -t snapshot -o name -s creation -d 1 "$vol" | grep '@autosnap_.*_daily$' | tail -n 1) || continue
         prefix=''${vol//\//_}
@@ -69,7 +63,6 @@ let
   };
 in
 {
-  # local snapshots of every PVC zvol; atomic across the pool
   services.sanoid = {
     enable = true;
     datasets.prod = {
@@ -104,8 +97,7 @@ in
     };
   };
 
-  # nightly, and again after every boot: a run cut off by the auto-upgrade
-  # reboot picks up where it stopped
+  # also after boot, so a run cut off by the auto-upgrade reboot resumes
   systemd.timers.homelab-backup = lib.mkIf offsite.enable {
     wantedBy = [ "timers.target" ];
     timerConfig = {

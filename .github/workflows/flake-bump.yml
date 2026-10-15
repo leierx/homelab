@@ -27,11 +27,10 @@ jobs:
       - run: nix fmt -- --ci
       - run: nix flake check
       - run: nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
-      # the ISO itself needs the age key, but its system can be instantiated without it
+      # the ISO needs the age key; its system doesn't
       - run: nix eval --raw .#nixosConfigurations.offlineInstaller-loft01.config.system.build.toplevel.drvPath
 
-      # `nix flake update` stays on the pinned release branch, so an end-of-life
-      # release would keep "updating" without fixes; stop once the next one exists
+      # `nix flake update` never leaves the pinned branch, so fail once the next release exists
       - name: nixpkgs release is current
         run: |
           release=$(nix eval --raw .#nixosConfigurations.loft01.config.system.nixos.release)

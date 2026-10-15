@@ -26,8 +26,8 @@ and outputs. Host code lives flat in `nixos/`:
 
 ## Updates
 
-- The host auto-upgrades from `main` every Friday at 03:30 (up to 30 min
-  delay) and may reboot between 03:00 and 05:00. A kernel update that finishes
+- The host auto-upgrades from `main` every Friday at 02:00 (up to 30 min
+  delay) and may reboot between 02:00 and 04:00. A kernel update that finishes
   outside that window is only staged (`nixos-rebuild boot`) until the next run.
   Anything merged to `main` ships, so don't merge broken configs.
 - `.github/workflows/flake-bump.yml` runs every 2 days and on dispatch: it runs

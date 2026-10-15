@@ -18,8 +18,7 @@
     gracefulNodeShutdown.enable = true;
   };
 
-  # kubelet holds shutdown for gracefulNodeShutdown.shutdownGracePeriod (30s);
-  # logind's 5s default would cut that short (kubelet would otherwise write its own drop-in to /etc)
+  # kubelet needs the 30s shutdownGracePeriod; logind's default is 5s
   services.logind.settings.Login.InhibitDelayMaxSec = 30;
 
   environment.systemPackages = with pkgs; [

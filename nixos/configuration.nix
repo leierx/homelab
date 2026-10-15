@@ -8,7 +8,7 @@
   boot.loader.efi.canTouchEfiVariables = true;
   boot.tmp.cleanOnBoot = true;
 
-  # declarative accounts: leier has no password (locked), only its SSH key
+  # immutable users: leier is SSH-key only, its old /etc/shadow password goes away
   users.mutableUsers = false;
   users.users.root.hashedPassword = "!";
   users.users.leier = {
@@ -43,7 +43,7 @@
       {
         groups = [ "wheel" ];
         noPass = true;
-        # keepenv would hand root this user's XDG_RUNTIME_DIR and friends
+        # keepenv would hand root this user's XDG_RUNTIME_DIR
         setEnv = [
           "LANG"
           "NIX_PATH"
@@ -80,6 +80,7 @@
         "flakes"
       ];
       flake-registry = "";
+      auto-optimise-store = true;
       trusted-users = [ "@wheel" ];
     };
     gc = {
@@ -87,23 +88,20 @@
       dates = "weekly";
       options = "--delete-older-than 30d";
     };
-    # periodic hard-linking instead of auto-optimise-store's per-build cost
-    optimise.automatic = true;
   };
 
   system.autoUpgrade = {
     enable = true;
     flake = "git+https://github.com/leierx/homelab.git?ref=main#loft01";
     flags = [ "-L" ];
-    dates = "Fri 03:30";
+    dates = "Fri 02:00";
     randomizedDelaySec = "30min";
     fixedRandomDelay = true;
     allowReboot = true;
-    # a kernel update finishing after `upper` is only staged (`boot`, not switched)
-    # until the next run, so leave room for the 30 min delay plus the build
+    # kernel updates finishing after `upper` are only staged until next week; 04:00 keeps the house asleep
     rebootWindow = {
-      lower = "03:00";
-      upper = "05:00";
+      lower = "02:00";
+      upper = "04:00";
     };
   };
 
