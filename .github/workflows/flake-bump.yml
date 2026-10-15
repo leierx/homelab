@@ -27,6 +27,20 @@ jobs:
       - run: nix fmt -- --ci
       - run: nix flake check
       - run: nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
+      # the ISO itself needs the age key, but its system can be instantiated without it
+      - run: nix eval --raw .#nixosConfigurations.offlineInstaller-loft01.config.system.build.toplevel.drvPath
+
+      # `nix flake update` stays on the pinned release branch, so an end-of-life
+      # release would keep "updating" without fixes; stop once the next one exists
+      - name: nixpkgs release is current
+        run: |
+          release=$(nix eval --raw .#nixosConfigurations.loft01.config.system.nixos.release)
+          year=${release%.*} month=${release#*.}
+          if [ "$month" = 05 ]; then next="$year.11"; else next="$((10#$year + 1)).05"; fi
+          if git ls-remote --exit-code --heads https://github.com/NixOS/nixpkgs "nixos-$next" >/dev/null; then
+            echo "::error::nixos-$next exists: move nixpkgs (and services.k3s.package) off nixos-$release in flake.nix"
+            exit 1
+          fi
 
       - name: push flake.lock
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
