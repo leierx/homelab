@@ -25,6 +25,7 @@
           ./nixos/network.nix
           ./nixos/k3s.nix
           ./nixos/sops.nix
+          ./nixos/backup.nix
         ];
       };
 
