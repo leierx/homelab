@@ -7,19 +7,19 @@
   ...
 }:
 let
-  inherit (target.config.system.build) toplevel diskoScript;
+  inherit (target.config.system.build) toplevel destroyFormatMount;
 in
 {
   imports = [ "${modulesPath}/installer/cd-dvd/installation-cd-minimal.nix" ];
 
-  nixpkgs.hostPlatform = "x86_64-linux";
+  nixpkgs.hostPlatform = target.config.nixpkgs.hostPlatform;
   networking.hostId = target.config.networking.hostId;
   boot.zfs.forceImportRoot = false;
-  console.keyMap = "no";
+  console.keyMap = target.config.console.keyMap;
 
   isoImage.storeContents = [
     toplevel
-    diskoScript
+    destroyFormatMount
   ];
   isoImage.contents = [
     {
@@ -75,7 +75,8 @@ in
         sleep 1
       done
       echo
-      ${diskoScript}
+      # the countdown above is the confirmation
+      ${lib.getExe destroyFormatMount} --yes-wipe-all-disks
       install -d -m 0700 /mnt/var/lib/sops-nix
       install -m 0600 /iso/age-key.txt /mnt/var/lib/sops-nix/key.txt
       ${lib.getExe pkgs.nixos-install} --root /mnt --no-root-passwd --no-channel-copy --system ${toplevel}
