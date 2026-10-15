@@ -8,11 +8,12 @@
   boot.loader.efi.canTouchEfiVariables = true;
   boot.tmp.cleanOnBoot = true;
 
+  # declarative accounts: leier has no password (locked), only its SSH key
+  users.mutableUsers = false;
   users.users.root.hashedPassword = "!";
   users.users.leier = {
     isNormalUser = true;
     extraGroups = [ "wheel" ];
-    initialPassword = "123";
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICKkHlDWS9S4YWSPSah1Pea5Jpt6+zasaPed0cR2FFhh"
     ];
@@ -42,11 +43,14 @@
       {
         groups = [ "wheel" ];
         noPass = true;
-        keepEnv = true;
+        # keepenv would hand root this user's XDG_RUNTIME_DIR and friends
+        setEnv = [
+          "LANG"
+          "NIX_PATH"
+        ];
       }
     ];
   };
-  environment.shellAliases.sudo = "doas";
 
   programs.nano.enable = false;
   programs.neovim = {
@@ -76,7 +80,6 @@
         "flakes"
       ];
       flake-registry = "";
-      auto-optimise-store = true;
       trusted-users = [ "@wheel" ];
     };
     gc = {
@@ -84,6 +87,8 @@
       dates = "weekly";
       options = "--delete-older-than 30d";
     };
+    # periodic hard-linking instead of auto-optimise-store's per-build cost
+    optimise.automatic = true;
   };
 
   system.autoUpgrade = {
@@ -94,9 +99,11 @@
     randomizedDelaySec = "30min";
     fixedRandomDelay = true;
     allowReboot = true;
+    # a kernel update finishing after `upper` is only staged (`boot`, not switched)
+    # until the next run, so leave room for the 30 min delay plus the build
     rebootWindow = {
       lower = "03:00";
-      upper = "04:00";
+      upper = "05:00";
     };
   };
 

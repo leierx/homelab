@@ -14,7 +14,13 @@
       "--kubelet-arg=system-reserved=cpu=2,memory=16Gi"
       "--kubelet-arg=kube-reserved=cpu=2,memory=16Gi"
     ];
+    # kubelet stops pods cleanly before the auto-upgrade reboot
+    gracefulNodeShutdown.enable = true;
   };
+
+  # kubelet holds shutdown for gracefulNodeShutdown.shutdownGracePeriod (30s);
+  # logind's 5s default would cut that short (kubelet would otherwise write its own drop-in to /etc)
+  services.logind.settings.Login.InhibitDelayMaxSec = 30;
 
   environment.systemPackages = with pkgs; [
     kubectl
