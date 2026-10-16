@@ -172,3 +172,7 @@ renders, so Argo adopts both and manages everything from git after step 4.
 - Single node: VMs can never live-migrate or be evicted elsewhere. KubeVirt's
   cluster-wide `evictionStrategy` is `None`, so a drain or shutdown just stops
   them; don't set `evictionStrategy` on VMs or `KubevirtMachineTemplate`s.
+  CAPK's upstream cluster templates set `evictionStrategy: External` and boot
+  from a `containerDisk`, which resets on every VM restart (so every weekly
+  host reboot). Start from `cluster-template-persistent-storage.yaml`
+  (CDI-imported disks on a zfs StorageClass) and drop `evictionStrategy`.
