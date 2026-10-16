@@ -29,13 +29,7 @@ spec:
       source:
         repoURL: https://github.com/leierx/homelab.git
         targetRevision: HEAD
-        path: "{{ .path.path }}"
-        helm:
-          releaseName: "{{ .path.basename }}"
-          valueFiles:
-            - "env/{{ .metadata.labels.env }}.yaml"
-            - "clusters/{{ .name }}.yaml"
-          ignoreMissingValueFiles: true
+        path: "{{ .path.path }}/{{ .metadata.labels.env }}"
       destination:
         server: "{{ .server }}"
         namespace: "{{ .namespace }}"
@@ -48,3 +42,16 @@ spec:
           - ServerSideApply=true
         retry:
           limit: -1
+  # addons whose addon.yaml sets `kustomize: true` have a kustomization.yaml instead of a Chart.yaml
+  templatePatch: |
+    {{- if not (hasKey . "kustomize") }}
+    spec:
+      source:
+        helm:
+          releaseName: "{{ .path.basename }}"
+          valueFiles:
+            - ../values.yaml
+            - values.yaml
+            - "../clusters/{{ .name }}.yaml"
+          ignoreMissingValueFiles: true
+    {{- end }}

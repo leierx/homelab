@@ -4,12 +4,47 @@
   "rebaseWhen": "behind-base-branch",
   "timezone": "Europe/Oslo",
   "dependencyDashboard": true,
-  "enabledManagers": ["github-actions", "helmv3"],
+  "enabledManagers": ["github-actions", "helmv3", "custom.regex"],
+  "automergeStrategy": "merge-commit",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "versions annotated with a `# renovate:` comment",
+      "managerFilePatterns": ["/^gitops/addons/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+\\S+:\\s*(?<currentValue>\\S+)"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "GitHub release assets in kustomizations",
+      "managerFilePatterns": ["/^gitops/addons/.+/kustomization\\.yaml$/"],
+      "matchStrings": [
+        "https://github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/(?<currentValue>[^/]+)/"
+      ],
+      "datasourceTemplate": "github-releases"
+    }
+  ],
   "packageRules": [
     {
+      "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
-      "automerge": true,
-      "automergeStrategy": "merge-commit"
+      "automerge": true
+    },
+    {
+      "description": "one PR per env, so test, prod and mgmt move independently",
+      "matchFileNames": ["gitops/addons/**"],
+      "additionalBranchPrefix": "{{parentDir}}-",
+      "commitMessageSuffix": "({{parentDir}})"
+    },
+    {
+      "matchFileNames": ["gitops/addons/*/test/**"],
+      "automerge": true
+    },
+    {
+      "matchFileNames": ["gitops/addons/*/prod/**", "gitops/addons/*/mgmt/**"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "automerge": true
     }
   ]
 }

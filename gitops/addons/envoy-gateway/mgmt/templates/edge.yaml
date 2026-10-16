@@ -1,4 +1,3 @@
-{{- if .Values.edge.enabled }}
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
@@ -42,4 +41,3 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
-{{- end }}
