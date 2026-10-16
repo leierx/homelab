@@ -1,0 +1,17 @@
+cluster-api-operator:
+  core:
+    cluster-api:
+      # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-api
+      version: v1.14.3
+  bootstrap:
+    kubeadm:
+      # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-api
+      version: v1.14.3
+  controlPlane:
+    kubeadm:
+      # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-api
+      version: v1.14.3
+  infrastructure:
+    kubevirt:
+      # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-api-provider-kubevirt
+      version: v0.11.2

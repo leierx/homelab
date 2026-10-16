@@ -10,16 +10,18 @@
 
 ## Repo
 
-Two parts: `nixos/` is the NixOS flake for the host `loft01` (HPE ProLiant,
+Three parts: `nixos/` is the NixOS flake for the host `loft01` (HPE ProLiant,
 single-node k3s, the management cluster). `gitops/` is the Argo CD fleet that
-runs on that cluster and manages every cluster. `flake.nix` holds only inputs
-and outputs. Host code lives flat in `nixos/`:
+runs on that cluster and manages every cluster. `apps/` holds our own Go
+programs. `flake.nix` holds only inputs and outputs. Host code lives flat in
+`nixos/`:
 
 - `configuration.nix`: users (immutable; `leier` is SSH-key only, no password), ssh, doas, locale/ntp, nix, auto-upgrade, packages
-- `hardware.nix`: cpu, firmware, zfs, smartd, fstrim, zram
+- `hardware.nix`: cpu, firmware, iLO watchdog (`hpwdt`), zfs, smartd, fstrim, zram
 - `disko.nix`: NVMe ESP + ext4 root, ZFS pools `prod` (raidz1) and `test` (mirror)
 - `network.nix`: networkd, WireGuard `wg0`, resolved (DNSSEC + DoT), nftables firewall, NAT
-- `k3s.nix`: k3s without a CNI (Cilium comes from `gitops/`), graceful node shutdown
+- `k3s.nix`: k3s without a CNI (Cilium comes from `gitops/`), graceful node
+  shutdown (300 s, so KubeVirt VMs get their 180 s to shut down)
 - `backup.nix`: sanoid snapshots of `prod`; off-site borg to rsync.net (off until its secrets exist)
 - `sops.nix` + `secrets.yaml`: WireGuard keys and the SSH host key
 - `installer.nix`: offline auto-install ISO
@@ -39,11 +41,15 @@ and outputs. Host code lives flat in `nixos/`:
   update` never leaves the pinned `nixos-YY.MM`). Then move `nixpkgs` in
   `flake.nix` to the new release, and `services.k3s.package` one Kubernetes
   minor at a time.
-- The same workflow renders every gitops addon for every cluster that enables
-  it (`gitops/render.sh`).
-- Renovate handles GitHub Actions and the chart dependencies in
-  `gitops/addons/*/Chart.yaml`. Minor/patch/digest updates automerge once CI
-  passes.
+- Renovate (`renovate.json`; the hosted app is removed, a self-hosted one is
+  planned) handles GitHub Actions, the chart dependencies in
+  `gitops/addons/*/<env>/Chart.yaml`, versions marked `# renovate:` and GitHub
+  release URLs in kustomizations. Each env gets its own PRs: `test`
+  automerges everything, `prod` and `mgmt` automerge minor/patch, majors wait
+  for review. Nothing renders the charts in CI.
+- Each `apps/<name>` has its own `.github/workflows/<name>.yml`, triggered by
+  changes to that dir. `cluster-registrar` vets and tests on PRs, and on
+  `main` publishes `ghcr.io/leierx/cluster-registrar:{main,<sha>}` with ko.
 
 ## Secrets
 
@@ -83,34 +89,68 @@ it wipes all disks after a 30 s countdown on tty1, installs, and reboots.
 
 There is one Argo CD, on mgmt, and it manages the whole fleet.
 
-- `fleet/clusters/<cluster>.yaml`: Argo cluster Secrets. Labels decide what a
-  cluster gets: `env: <env>` plus `addons.homelab/<addon>: "true"` per addon.
-  mgmt is the local cluster, so its Secret has no credentials.
+- Argo cluster Secrets carry the labels that decide what a cluster gets:
+  `env: <env>` (`mgmt`, `prod` or `test`) plus `addons.homelab/<addon>: "true"`
+  per addon. mgmt's is `fleet/clusters/mgmt.yaml` (local cluster, no
+  credentials). Workload clusters are CAPI `Cluster`s; `cluster-registrar`
+  (`apps/cluster-registrar`) turns each one plus its `<name>-kubeconfig`
+  Secret into an Argo Secret `cluster-<name>`, copying `env` and
+  `addons.homelab/*` from the Cluster's labels, and deletes it with the
+  Cluster. So a workload cluster's labels live on its `Cluster` manifest.
 - `fleet/addons.yaml`: one ApplicationSet that crosses every
   `addons/*/addon.yaml` with every cluster carrying that addon's label, giving
   `<addon>-<cluster>` apps.
-- `addons/<addon>/`: an umbrella Helm chart (`Chart.yaml` pins the upstream
-  chart; local `templates/` hold extras). `addon.yaml` sets the namespace.
-  Values layer as `values.yaml`, then `env/<env>.yaml`, then
-  `clusters/<cluster>.yaml`. Missing files are skipped.
-- Adding an addon: create `addons/<name>/` and label the clusters. Adding a
-  cluster: add a Secret under `fleet/clusters/`.
+- `addons/<addon>/<env>/` is what an env runs, so `test`, `prod` and `mgmt`
+  are upgraded independently. Usually an umbrella Helm chart: `Chart.yaml`
+  pins the upstream chart for that env, `templates/` holds env-local extras.
+  Values layer as `<addon>/values.yaml` (all envs), `<env>/values.yaml`, then
+  `<addon>/clusters/<cluster>.yaml`; missing files are skipped. An addon with
+  no Helm chart (KubeVirt, CDI) sets `kustomize: true` in `addon.yaml` and has
+  a `<env>/kustomization.yaml` pointing at upstream release manifests.
+- `addon.yaml` sets the namespace. Adding an addon: create `addons/<name>/`
+  with a dir per env that runs it, and label the clusters. An env without a
+  dir for a labelled addon fails to sync.
 - `preserveResourcesOnDeletion` is on: removing a label or an addon deletes the
   Application but leaves its resources running. Clean those up by hand.
 - `charts/` and `Chart.lock` are gitignored; Argo builds dependencies itself.
+- Deliberate, don't "fix": every app uses the `default` AppProject, everything
+  tracks `HEAD` of `main`, Argo CD and Cilium manage themselves, and there is
+  no ordering between apps (CRDs from another app, e.g. cert-manager for
+  cluster-api, arrive via endless retry).
 
-One-time bootstrap after an install, over the SSH tunnel. The k3s node stays
-NotReady until Cilium is in:
+Bootstrap is the only imperative step: install from the ISO, then run this once
+from a workstation checkout of the repo. The k3s node stays NotReady until
+Cilium is in.
 
 ```sh
-helm dependency update gitops/addons/cilium
-helm install cilium gitops/addons/cilium -n kube-system -f gitops/addons/cilium/clusters/mgmt.yaml
-helm dependency update gitops/addons/argocd
-helm install argocd gitops/addons/argocd -n argocd --create-namespace
+# 1. kubeconfig + tunnel
+ssh leier@192.168.2.50 doas cat /etc/rancher/k3s/k3s.yaml > ~/.kube/loft01
+chmod 600 ~/.kube/loft01
+ssh -fN -L 6443:127.0.0.1:6443 leier@192.168.2.50
+export KUBECONFIG=~/.kube/loft01
+
+# 2. Cilium
+helm dependency update gitops/addons/cilium/mgmt
+helm install cilium gitops/addons/cilium/mgmt -n kube-system \
+  -f gitops/addons/cilium/values.yaml -f gitops/addons/cilium/clusters/mgmt.yaml
+kubectl wait --for=condition=Ready node --all --timeout=10m
+
+# 3. Argo CD
+helm dependency update gitops/addons/argocd/mgmt
+helm install argocd gitops/addons/argocd/mgmt -n argocd --create-namespace \
+  -f gitops/addons/argocd/values.yaml
+kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
+
+# 4. hand over to git
 kubectl apply -f gitops/root.yaml
+
+# 5. UI: https://localhost:8080, user admin
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+kubectl -n argocd port-forward svc/argocd-server 8080:443
 ```
 
-After that, Argo adopts both releases and manages everything from git.
+The release names and namespaces match what the `addons` ApplicationSet
+renders, so Argo adopts both and manages everything from git after step 4.
 
 ## Kubernetes
 
@@ -123,4 +163,12 @@ After that, Argo adopts both releases and manages everything from git.
   30080. HTTPS on 30443 still needs a listener and certificates.
 - Cilium kube-proxy replacement handles NodePorts in BPF before nftables, so
   every NodePort is reachable on `eno1`. The router port forward
-  (30080/30443/52820) is the real edge.
+  (30080/30443/52820) is the real edge. Traffic for a workload cluster goes
+  from mgmt's `edge` Gateway to ports inside that cluster.
+- mgmt runs the CAPI management stack (cert-manager, cluster-api operator with
+  the kubeadm and KubeVirt providers, KubeVirt, CDI). Workload clusters are
+  KubeVirt VMs on this one node. Their pod and service CIDRs must not overlap
+  mgmt's `10.42.0.0/16` and `10.43.0.0/16`.
+- Single node: VMs can never live-migrate or be evicted elsewhere. KubeVirt's
+  cluster-wide `evictionStrategy` is `None`, so a drain or shutdown just stops
+  them; don't set `evictionStrategy` on VMs or `KubevirtMachineTemplate`s.

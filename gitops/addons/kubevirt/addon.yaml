@@ -1,0 +1,2 @@
+namespace: kubevirt
+kustomize: true

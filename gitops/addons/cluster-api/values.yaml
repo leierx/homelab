@@ -1,0 +1,3 @@
+cluster-api-operator:
+  # as Helm hooks, Argo would neither diff nor prune the provider CRs; sync-waves order them instead
+  enableHelmHook: false
