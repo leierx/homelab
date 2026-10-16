@@ -5,6 +5,10 @@ kubeconfig:
     chmod 600 ~/.kube/loft01.tmp
     mv ~/.kube/loft01.tmp ~/.kube/loft01
 
-# forward local 6443 to the k3s API (the loft01 ssh host sets the LocalForward)
+# forward local 6443 to the k3s API in the background (the loft01 ssh host sets the LocalForward)
 tunnel:
-    ssh -N loft01
+    ssh -fN -M -S ~/.ssh/loft01-tunnel.sock loft01
+
+# close the background tunnel
+untunnel:
+    ssh -S ~/.ssh/loft01-tunnel.sock -O exit loft01

@@ -123,7 +123,7 @@ from a workstation checkout of the repo. The k3s node stays NotReady until
 Cilium is in.
 
 ```sh
-# 1. kubeconfig + tunnel (second one in another terminal, or background it)
+# 1. kubeconfig + tunnel (backgrounded; `just untunnel` closes it)
 just kubeconfig   # -> ~/.kube/loft01 (via ssh loft01, 10.0.0.1 over wg0)
 just tunnel
 export KUBECONFIG=~/.kube/loft01
