@@ -2,7 +2,12 @@
 {
   hardware.cpu.intel.updateMicrocode = true;
   hardware.enableRedistributableFirmware = true;
-  boot.kernelModules = [ "kvm-intel" ];
+  boot.kernelModules = [
+    "kvm-intel"
+    "hpwdt"
+  ];
+  # iLO resets the box if systemd stops petting the watchdog
+  systemd.settings.Manager.RuntimeWatchdogSec = "30s";
   powerManagement.cpuFreqGovernor = "performance";
 
   services.smartd.enable = true;

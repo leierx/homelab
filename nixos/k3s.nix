@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 {
   services.k3s = {
     enable = true;
@@ -15,11 +15,15 @@
       "--kubelet-arg=kube-reserved=cpu=2,memory=16Gi"
     ];
     # kubelet stops pods cleanly before the auto-upgrade reboot
-    gracefulNodeShutdown.enable = true;
+    gracefulNodeShutdown = {
+      enable = true;
+      # KubeVirt gives a VM 180s to shut down its guest
+      shutdownGracePeriod = "300s";
+    };
   };
 
-  # kubelet needs the 30s shutdownGracePeriod; logind's default is 5s
-  services.logind.settings.Login.InhibitDelayMaxSec = 30;
+  services.logind.settings.Login.InhibitDelayMaxSec =
+    config.services.k3s.gracefulNodeShutdown.shutdownGracePeriod;
 
   environment.systemPackages = with pkgs; [
     kubectl
