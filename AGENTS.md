@@ -124,9 +124,8 @@ Cilium is in.
 
 ```sh
 # 1. kubeconfig + tunnel (backgrounded; `just untunnel` closes it)
-just kubeconfig   # -> ~/.kube/loft01 (via ssh loft01, 10.0.0.1 over wg0)
+just kubeconfig   # -> ~/.kube/config (via ssh loft01, 10.0.0.1 over wg0)
 just tunnel
-export KUBECONFIG=~/.kube/loft01
 
 # 2. Cilium
 helm dependency update gitops/addons/cilium/mgmt
