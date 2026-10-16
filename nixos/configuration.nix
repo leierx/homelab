@@ -4,7 +4,11 @@
   nixpkgs.config.allowUnfree = true;
   system.stateVersion = "26.05";
 
-  boot.loader.systemd-boot.enable = true;
+  boot.loader.systemd-boot = {
+    enable = true;
+    # the 500M ESP; a full one makes every auto-upgrade fail
+    configurationLimit = 10;
+  };
   boot.loader.efi.canTouchEfiVariables = true;
   boot.tmp.cleanOnBoot = true;
 
