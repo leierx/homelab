@@ -21,7 +21,7 @@ programs. `flake.nix` holds only inputs and outputs. Host code lives flat in
 - `disko.nix`: NVMe ESP + ext4 root, ZFS pools `prod` (raidz1) and `test` (mirror)
 - `network.nix`: networkd, WireGuard `wg0`, resolved (DNSSEC + DoT), nftables firewall, NAT
 - `k3s.nix`: k3s without a CNI (Cilium comes from `gitops/`), graceful node
-  shutdown (300 s, so KubeVirt VMs get their 180 s to shut down)
+  shutdown (300 s, so KubeVirt VMs get their 180 s to shut down); admin kubeconfig is group `wheel` (0640) and `KUBECONFIG` points at it, so kubectl works on the host without doas
 - `backup.nix`: sanoid snapshots of `prod`; off-site borg to rsync.net (off until its secrets exist)
 - `sops.nix` + `secrets.yaml`: WireGuard keys and the SSH host key
 - `installer.nix`: offline auto-install ISO

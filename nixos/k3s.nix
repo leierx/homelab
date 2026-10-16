@@ -11,6 +11,8 @@
       "--disable=traefik,servicelb,local-storage,metrics-server"
       "--disable-cloud-controller"
       "--cluster-cidr=10.42.0.0/16"
+      "--write-kubeconfig-mode=0640"
+      "--write-kubeconfig-group=wheel"
       "--kubelet-arg=system-reserved=cpu=2,memory=16Gi"
       "--kubelet-arg=kube-reserved=cpu=2,memory=16Gi"
     ];
@@ -24,6 +26,9 @@
 
   services.logind.settings.Login.InhibitDelayMaxSec =
     config.services.k3s.gracefulNodeShutdown.shutdownGracePeriod;
+
+  # admin kubeconfig is readable by wheel, so kubectl works as leier without doas
+  environment.variables.KUBECONFIG = "/etc/rancher/k3s/k3s.yaml";
 
   environment.systemPackages = with pkgs; [
     kubectl
