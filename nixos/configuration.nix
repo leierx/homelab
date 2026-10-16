@@ -68,9 +68,8 @@
     "3.no.pool.ntp.org"
   ];
 
-  services.journald.extraConfig = "MaxRetentionSec=90day";
-
-  documentation.nixos.enable = false;
+  documentation.enable = false;
+  documentation.man.enable = false;
 
   nix = {
     channel.enable = false;
