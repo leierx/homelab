@@ -123,10 +123,9 @@ from a workstation checkout of the repo. The k3s node stays NotReady until
 Cilium is in.
 
 ```sh
-# 1. kubeconfig + tunnel
-ssh leier@192.168.2.50 doas cat /etc/rancher/k3s/k3s.yaml > ~/.kube/loft01
-chmod 600 ~/.kube/loft01
-ssh -fN -L 6443:127.0.0.1:6443 leier@192.168.2.50
+# 1. kubeconfig + tunnel (second one in another terminal, or background it)
+just kubeconfig   # -> ~/.kube/loft01 (via ssh loft01, 10.0.0.1 over wg0)
+just tunnel
 export KUBECONFIG=~/.kube/loft01
 
 # 2. Cilium
