@@ -126,6 +126,7 @@
   environment.systemPackages = with pkgs; [
     doas-sudo-shim
     jq
+    kubevirt
     wireguard-tools
   ];
 }
