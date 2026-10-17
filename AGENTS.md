@@ -23,7 +23,7 @@ programs. `flake.nix` holds only inputs and outputs. Host code lives flat in
 - `disko.nix`: NVMe ESP + ext4 root, ZFS pools `prod` (raidz1) and `test` (mirror)
 - `network.nix`: networkd, WireGuard `wg0`, resolved (DNSSEC + DoT), nftables firewall, NAT
 - `k3s.nix`: k3s without a CNI (Cilium comes from `gitops/`), graceful node
-  shutdown (300 s, so KubeVirt VMs get their 180 s to shut down); admin kubeconfig is group `wheel` (0640) and `KUBECONFIG` points at it, so kubectl works on the host without doas
+  shutdown (300 s, so KubeVirt VMs get their 180 s to shut down), Secrets encrypted at rest; admin kubeconfig is group `wheel` (0640) and `KUBECONFIG` points at it, so kubectl works on the host without doas
 - `backup.nix`: sanoid snapshots of `prod`; off-site borg to rsync.net (off until its secrets exist)
 - `sops.nix` + `secrets.yaml`: WireGuard keys and the SSH host key
 - `installer.nix`: offline auto-install ISO
@@ -84,7 +84,9 @@ in `nixos/sops.nix` and add it to `secrets.yaml`.
   120 days of expiry; the host only reboots for kernel changes, so check
   `doas k3s certificate check --output table` now and then.
 - The CAs live only in `/var/lib/rancher/k3s/server/tls` (`*-ca.{crt,key}`,
-  `etcd/*-ca.{crt,key}`, `service.key`) until the borg backup is enabled.
+  `etcd/*-ca.{crt,key}`, `service.key`) until the borg backup is enabled, and
+  so does the Secrets encryption key (`server/cred/encryption-config.json`):
+  a k3s state backup without it can't decrypt a single Secret.
 - Rotating (cross-signed, so existing kubeconfigs and SA tokens keep
   working), as root on the host, then `just kubeconfig` on workstations and
   restart aggregated API servers (e.g. `virt-api`):

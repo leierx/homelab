@@ -13,6 +13,7 @@
       "--cluster-cidr=10.42.0.0/16"
       "--write-kubeconfig-mode=0640"
       "--write-kubeconfig-group=wheel"
+      "--secrets-encryption"
       "--kubelet-arg=system-reserved=cpu=2,memory=16Gi"
       "--kubelet-arg=kube-reserved=cpu=2,memory=16Gi"
     ];
