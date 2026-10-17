@@ -64,7 +64,7 @@ in `nixos/sops.nix` and add it to `secrets.yaml`.
   so its snapshots go with it. `test` is not snapshotted.
 - `homelab-backup` (off until `offsite.enable` in `nixos/backup.nix`) runs
   nightly at 01:00 and 15 min after every boot. It sends a `sqlite3 .backup`
-  of the k3s state plus `server/{token,cred,tls}`, and each zvol's newest
+  of the k3s state plus `server/{token,cred,tls}` and the node password, and each zvol's newest
   sanoid daily snapshot (`zfs send` stream), to an encrypted borg repo on
   rsync.net. It never modifies the pools. Archives that already exist are
   skipped, so a run cut off by a reboot resumes on the next one (borg
@@ -74,6 +74,28 @@ in `nixos/sops.nix` and add it to `secrets.yaml`.
   `borg key export` the repo key and keep it with the age key.
 - Restoring a PVC: `borg extract --stdout ::prod_pvc-…-<date> | zfs recv
   prod/pvc-…` (with its k3s objects restored from the k3s archive).
+
+## Certificates
+
+- k3s's self-signed CAs expire 2036-10-12 and are never renewed
+  automatically. Leaf certs last a year and are renewed when k3s starts within
+  120 days of expiry; the host only reboots for kernel changes, so check
+  `doas k3s certificate check --output table` now and then.
+- The CAs live only in `/var/lib/rancher/k3s/server/tls` (`*-ca.{crt,key}`,
+  `etcd/*-ca.{crt,key}`, `service.key`) until the borg backup is enabled.
+- Rotating (cross-signed, so existing kubeconfigs and SA tokens keep
+  working), as root on the host, then `just kubeconfig` on workstations and
+  restart aggregated API servers (e.g. `virt-api`):
+
+  ```sh
+  curl -sLO https://github.com/k3s-io/k3s/raw/v<k3s version>/contrib/util/rotate-default-ca-certs.sh
+  nix shell nixpkgs#openssl -c bash rotate-default-ca-certs.sh
+  k3s certificate rotate-ca --path=/var/lib/rancher/k3s/server/rotate-ca
+  systemctl restart k3s
+  ```
+
+- CAPI workload clusters have their own kubeadm CAs (`<cluster>-ca` Secrets
+  on mgmt), so they're in the k3s state backup and unaffected by this.
 
 ## Install
 
@@ -124,7 +146,8 @@ Cilium is in.
 
 ```sh
 # 1. kubeconfig
-just kubeconfig   # -> ~/.kube/config (via ssh loft01, 10.0.0.1 over wg0)
+just kubeconfig   # merged into ~/.kube/config as context loft01 (via ssh loft01, 10.0.0.1 over wg0)
+kubectl config use-context loft01
 
 # 2. Cilium
 helm dependency update gitops/addons/cilium/mgmt
