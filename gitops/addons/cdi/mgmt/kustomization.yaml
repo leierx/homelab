@@ -3,3 +3,14 @@ kind: Kustomization
 resources:
   - https://github.com/kubevirt/containerized-data-importer/releases/download/v1.66.1/cdi-operator.yaml
   - https://github.com/kubevirt/containerized-data-importer/releases/download/v1.66.1/cdi-cr.yaml
+patches:
+  # cdi-operator strips v1alpha1 from its own CRD, so applying it leaves the app OutOfSync forever
+  - target:
+      kind: CustomResourceDefinition
+      name: cdis.cdi.kubevirt.io
+    patch: |
+      - op: test
+        path: /spec/versions/0/name
+        value: v1alpha1
+      - op: remove
+        path: /spec/versions/0
