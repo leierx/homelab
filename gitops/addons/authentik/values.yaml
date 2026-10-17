@@ -25,6 +25,8 @@ authentik:
     configMaps:
       - authentik-default-locale
       - authentik-access
+      - authentik-mfa
+      - authentik-enrollment
       - authentik-oidc-clients
   server:
     resources:

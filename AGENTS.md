@@ -241,8 +241,12 @@ server-side apply manager) means Argo owns every field from the start.
   concern). Access tiers are the groups `homelab-{admins,operators,viewers}`;
   `homelab-admins` is an Authentik superuser group and admin everywhere. The
   personal user `leier` gets its password from OpenBao `mgmt/authentik`
-  `leier_password`; `akadmin` is break-glass only. Each `oidcClients` entry in
-  `addons/authentik/values.yaml` is an OIDC provider + application: slug =
+  `leier_password`; `akadmin` is break-glass only. Every login needs a second
+  factor (WebAuthn or TOTP, enrolled on first login). New people join through
+  a single-use invitation (flow `invitation-enrollment`) and choose their own
+  password; `docs/access.md` has the process. Each `oidcClients` entry in
+  `addons/authentik/values.yaml` is an OIDC provider + application, bound to
+  the three tiers so anyone else is refused: slug =
   client_id = name, issuer `https://auth.skinke.net/application/o/<name>/`,
   groups in the `groups` claim, client secret from OpenBao `mgmt/<name>`
   `oidc_client_secret` (read by both Authentik and the app).

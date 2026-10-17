@@ -8,6 +8,11 @@ data:
     metadata:
       name: homelab - OIDC clients
     entries:
+      # the tier groups the applications are bound to
+      - model: authentik_blueprints.metaapplyblueprint
+        attrs:
+          identifiers:
+            name: homelab - Access control
       - model: authentik_blueprints.metaapplyblueprint
         attrs:
           identifiers:
@@ -57,10 +62,21 @@ data:
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
             - !KeyOf scope-groups
       - model: authentik_core.application
+        id: app-{{ $name }}
         identifiers:
           slug: {{ $name }}
         attrs:
           name: {{ $name }}
           provider: !KeyOf provider-{{ $name }}
           meta_launch_url: {{ $client.launchURL }}
+          policy_engine_mode: any
+      # only the access tiers may use the app; anyone else is refused at Authentik
+      {{- range $i, $group := list "homelab-admins" "homelab-operators" "homelab-viewers" }}
+      - model: authentik_policies.policybinding
+        identifiers:
+          target: !KeyOf app-{{ $name }}
+          group: !Find [authentik_core.group, [name, {{ $group }}]]
+        attrs:
+          order: {{ mul $i 10 }}
+      {{- end }}
       {{- end }}

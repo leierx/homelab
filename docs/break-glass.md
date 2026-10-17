@@ -54,24 +54,33 @@ Revert the flag when done.
 
 ## Authentik itself
 
-`akadmin` is the break-glass account and is never used day to day. If its
-password is lost, reset it directly in the database:
+`akadmin` is the break-glass account and is never used day to day. Its
+password is `bootstrap_password` in OpenBao and its second factor is the TOTP
+secret / recovery codes kept with the age key.
+
+If the password is lost, set a new random one in OpenBao and in the database
+without it ever appearing on a command line:
 
 ```sh
-kubectl -n authentik exec -i deploy/authentik-server -c server -- \
-  ak shell -c "from authentik.core.models import User; \
-  u = User.objects.get(username='akadmin'); u.set_password('<new>'); u.save()"
+new=$(head -c 36 /dev/urandom | base64 | tr '+/' '-_' | tr -d '\n')
+printf '%s' "$new" | just bao kv patch kv/mgmt/authentik bootstrap_password=-
+kubectl -n authentik exec deploy/authentik-server -c server -- env NEWPW="$new" \
+  ak shell -c "import os; from authentik.core.models import User; \
+  u = User.objects.get(username='akadmin'); u.set_password(os.environ['NEWPW']); u.save()"
+unset new
 ```
 
-Then store the new value in OpenBao:
+(`bootstrap_password` is only read on Authentik's first start, so the database
+change is the one that takes effect; OpenBao just keeps the current value.)
+
+If a user lost their second factor, remove their devices so the next login
+makes them enrol a new one:
 
 ```sh
-just bao kv patch kv/mgmt/authentik bootstrap_password='<new>'
+kubectl -n authentik exec deploy/authentik-server -c server -- ak shell -c \
+  "from authentik.core.models import User; from authentik.stages.authenticator import devices_for_user; \
+  u = User.objects.get(username='<user>'); [d.delete() for d in devices_for_user(u, confirmed=None)]"
 ```
-
-`bootstrap_password` is only read by Authentik on first start, so the database
-change is the one that matters; OpenBao is kept in sync so the value in git and
-the value in use never drift.
 
 ## What still works without any login
 

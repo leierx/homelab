@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-enrollment
+data:
+  enrollment.yaml: |
+    version: 1
+    metadata:
+      name: homelab - Invitation enrollment
+    # adapted from authentik's flows-invitation-enrollment-minimal.yaml. No user-login stage: a new
+    # user signs in through the normal flow afterwards, which makes them enrol MFA first.
+    entries:
+      - model: authentik_flows.flow
+        id: flow
+        identifiers:
+          slug: invitation-enrollment
+        attrs:
+          name: Invitation enrollment
+          title: Create your homelab account
+          designation: enrollment
+          authentication: require_unauthenticated
+      - model: authentik_stages_invitation.invitationstage
+        id: invitation
+        identifiers:
+          name: homelab-enrollment-invitation
+        attrs:
+          continue_flow_without_invitation: false
+      - model: authentik_stages_prompt.prompt
+        id: field-username
+        identifiers:
+          name: homelab-enrollment-field-username
+        attrs:
+          field_key: username
+          label: Username
+          type: username
+          required: true
+          placeholder: Username
+          order: 0
+      - model: authentik_stages_prompt.prompt
+        id: field-name
+        identifiers:
+          name: homelab-enrollment-field-name
+        attrs:
+          field_key: name
+          label: Name
+          type: text
+          required: true
+          placeholder: Name
+          order: 1
+      - model: authentik_stages_prompt.prompt
+        id: field-email
+        identifiers:
+          name: homelab-enrollment-field-email
+        attrs:
+          field_key: email
+          label: Email
+          type: email
+          required: true
+          placeholder: Email
+          order: 2
+      - model: authentik_stages_prompt.prompt
+        id: field-password
+        identifiers:
+          name: homelab-enrollment-field-password
+        attrs:
+          field_key: password
+          label: Password
+          type: password
+          required: true
+          placeholder: Password
+          order: 3
+      - model: authentik_stages_prompt.prompt
+        id: field-password-repeat
+        identifiers:
+          name: homelab-enrollment-field-password-repeat
+        attrs:
+          field_key: password_repeat
+          label: Password (repeat)
+          type: password
+          required: true
+          placeholder: Password (repeat)
+          order: 4
+      - model: authentik_stages_prompt.promptstage
+        id: prompt
+        identifiers:
+          name: homelab-enrollment-prompt
+        attrs:
+          fields:
+            - !KeyOf field-username
+            - !KeyOf field-name
+            - !KeyOf field-email
+            - !KeyOf field-password
+            - !KeyOf field-password-repeat
+      - model: authentik_stages_user_write.userwritestage
+        id: user-write
+        identifiers:
+          name: homelab-enrollment-user-write
+        attrs:
+          user_creation_mode: always_create
+          user_type: internal
+          user_path_template: users
+      - model: authentik_flows.flowstagebinding
+        identifiers:
+          target: !KeyOf flow
+          stage: !KeyOf invitation
+          order: 0
+        attrs:
+          evaluate_on_plan: true
+          re_evaluate_policies: true
+      - model: authentik_flows.flowstagebinding
+        identifiers:
+          target: !KeyOf flow
+          stage: !KeyOf prompt
+          order: 10
+      - model: authentik_flows.flowstagebinding
+        identifiers:
+          target: !KeyOf flow
+          stage: !KeyOf user-write
+          order: 20
