@@ -1,11 +1,11 @@
-name: cluster-registrar
+name: capi-argo-bridge
 
 on:
   push:
     branches: [main]
-    paths: ["apps/cluster-registrar/**", ".github/workflows/cluster-registrar.yml"]
+    paths: ["apps/capi-argo-bridge/**", ".github/workflows/capi-argo-bridge.yml"]
   pull_request:
-    paths: ["apps/cluster-registrar/**", ".github/workflows/cluster-registrar.yml"]
+    paths: ["apps/capi-argo-bridge/**", ".github/workflows/capi-argo-bridge.yml"]
   workflow_dispatch:
 
 permissions:
@@ -14,7 +14,7 @@ permissions:
 
 defaults:
   run:
-    working-directory: apps/cluster-registrar
+    working-directory: apps/capi-argo-bridge
 
 jobs:
   build:
@@ -23,8 +23,8 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version-file: apps/cluster-registrar/go.mod
-          cache-dependency-path: apps/cluster-registrar/go.sum
+          go-version-file: apps/capi-argo-bridge/go.mod
+          cache-dependency-path: apps/capi-argo-bridge/go.sum
       - run: gofmt -l . | (! grep .)
       - run: go vet ./...
       - run: go test ./...
@@ -33,6 +33,6 @@ jobs:
         uses: ko-build/setup-ko@v0.10
       - if: github.event_name != 'pull_request'
         run: >
-          KO_DOCKER_REPO=ghcr.io/${{ github.repository_owner }}/cluster-registrar
+          KO_DOCKER_REPO=ghcr.io/${{ github.repository_owner }}/capi-argo-bridge
           ko build . --bare --platform=linux/amd64 --tags=main,${{ github.sha }}
           --image-label=org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}

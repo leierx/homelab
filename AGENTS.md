@@ -48,8 +48,8 @@ programs. `flake.nix` holds only inputs and outputs. Host code lives flat in
   automerges everything, `prod` and `mgmt` automerge minor/patch, majors wait
   for review. Nothing renders the charts in CI.
 - Each `apps/<name>` has its own `.github/workflows/<name>.yml`, triggered by
-  changes to that dir. `cluster-registrar` vets and tests on PRs, and on
-  `main` publishes `ghcr.io/leierx/cluster-registrar:{main,<sha>}` with ko.
+  changes to that dir. `capi-argo-bridge` vets and tests on PRs, and on
+  `main` publishes `ghcr.io/leierx/capi-argo-bridge:{main,<sha>}` with ko.
 
 ## Secrets
 
@@ -92,8 +92,8 @@ There is one Argo CD, on mgmt, and it manages the whole fleet.
 - Argo cluster Secrets carry the labels that decide what a cluster gets:
   `env: <env>` (`mgmt`, `prod` or `test`) plus `addons.homelab/<addon>: "true"`
   per addon. mgmt's is `fleet/clusters/mgmt.yaml` (local cluster, no
-  credentials). Workload clusters are CAPI `Cluster`s; `cluster-registrar`
-  (`apps/cluster-registrar`) turns each one plus its `<name>-kubeconfig`
+  credentials). Workload clusters are CAPI `Cluster`s; `capi-argo-bridge`
+  (`apps/capi-argo-bridge`) turns each one plus its `<name>-kubeconfig`
   Secret into an Argo Secret `cluster-<name>`, copying `env` and
   `addons.homelab/*` from the Cluster's labels, and deletes it with the
   Cluster. So a workload cluster's labels live on its `Cluster` manifest.

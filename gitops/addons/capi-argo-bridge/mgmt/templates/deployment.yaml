@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cluster-registrar
+  name: capi-argo-bridge
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: cluster-registrar
+      app: capi-argo-bridge
   template:
     metadata:
       labels:
-        app: cluster-registrar
+        app: capi-argo-bridge
     spec:
-      serviceAccountName: cluster-registrar
+      serviceAccountName: capi-argo-bridge
       containers:
-        - name: cluster-registrar
-          image: ghcr.io/leierx/cluster-registrar:main
+        - name: capi-argo-bridge
+          image: ghcr.io/leierx/capi-argo-bridge:main
           imagePullPolicy: Always
           args:
             - --argocd-namespace={{ .Release.Namespace }}

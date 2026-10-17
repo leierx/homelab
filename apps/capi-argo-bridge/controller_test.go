@@ -95,7 +95,7 @@ func TestReconcileCreatesSecretWithCopiedLabelsAndConfig(t *testing.T) {
 
 	wantLabels := map[string]string{
 		"argocd.argoproj.io/secret-type": "cluster",
-		"app.kubernetes.io/managed-by":   "cluster-registrar",
+		"app.kubernetes.io/managed-by":   "capi-argo-bridge",
 		"env":                            "test",
 		"addons.homelab/cilium":          "true",
 		"addons.homelab/argocd":          "true",

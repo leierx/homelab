@@ -29,8 +29,8 @@ var clusterGVK = schema.GroupVersionKind{
 
 const (
 	managedByLabel  = "app.kubernetes.io/managed-by"
-	managedByValue  = "cluster-registrar"
-	sourceAnnoKey   = "cluster-registrar.homelab/source"
+	managedByValue  = "capi-argo-bridge"
+	sourceAnnoKey   = "capi-argo-bridge.homelab/source"
 	argoSecretType  = "argocd.argoproj.io/secret-type"
 	argoSecretValue = "cluster"
 	envLabel        = "env"
@@ -102,7 +102,7 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req reconcile.Request
 	}
 	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, secret, func() error {
 		if secret.ResourceVersion != "" && !ownedBy(secret, source) {
-			return fmt.Errorf("secret %s/%s is not managed by cluster-registrar for cluster %s, refusing to overwrite", r.ArgoCDNamespace, argoName, source)
+			return fmt.Errorf("secret %s/%s is not managed by capi-argo-bridge for cluster %s, refusing to overwrite", r.ArgoCDNamespace, argoName, source)
 		}
 		secret.Type = corev1.SecretTypeOpaque
 		secret.Labels = clusterLabels(cluster)

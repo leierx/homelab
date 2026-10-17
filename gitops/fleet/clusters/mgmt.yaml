@@ -7,11 +7,11 @@ metadata:
     argocd.argoproj.io/secret-type: cluster
     env: mgmt
     addons.homelab/argocd: "true"
+    addons.homelab/capi-argo-bridge: "true"
     addons.homelab/cdi: "true"
     addons.homelab/cert-manager: "true"
     addons.homelab/cilium: "true"
     addons.homelab/cluster-api: "true"
-    addons.homelab/cluster-registrar: "true"
     addons.homelab/envoy-gateway: "true"
     addons.homelab/kubevirt: "true"
     addons.homelab/zfs-localpv: "true"

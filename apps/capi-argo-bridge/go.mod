@@ -1,4 +1,4 @@
-module github.com/leierx/homelab/apps/cluster-registrar
+module github.com/leierx/homelab/apps/capi-argo-bridge
 
 go 1.26.8
 
