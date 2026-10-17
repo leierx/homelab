@@ -14,3 +14,29 @@ kubeconfig:
     KUBECONFIG="$new:$HOME/.kube/config" kubectl config view --flatten > "$merged"
     [ -z "$current" ] || kubectl config use-context "$current" --kubeconfig "$merged" > /dev/null
     mv "$merged" ~/.kube/config
+
+# bao CLI as OpenBao admin, e.g. `just bao kv get kv/mgmt/grafana`; logs in with a short-lived
+# token for the openbao-admin ServiceAccount, so kubectl access is all it takes
+[positional-arguments]
+bao *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    jwt=$(kubectl -n openbao create token openbao-admin --duration=10m)
+    kubectl -n openbao exec -i openbao-0 -c openbao -- sh -c \
+      'export BAO_TOKEN=$(bao write -field=token auth/kubernetes/login role=admin jwt="$0") && exec bao "$@"' \
+      "$jwt" "$@"
+
+# give each named property of kv/<key> a random value unless it already has one
+[positional-arguments]
+bao-random key +props:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    key=$1; shift
+    for prop in "$@"; do
+      if just bao kv get -field="$prop" "kv/$key" > /dev/null 2>&1; then
+        echo "kv/$key $prop: kept"; continue
+      fi
+      verb=patch; just bao kv get "kv/$key" > /dev/null 2>&1 || verb=put
+      head -c 36 /dev/urandom | base64 | tr '+/' '-_' | tr -d '\n' | just bao kv "$verb" "kv/$key" "$prop=-" > /dev/null
+      echo "kv/$key $prop: generated"
+    done

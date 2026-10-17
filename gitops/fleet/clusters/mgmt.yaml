@@ -13,7 +13,9 @@ metadata:
     addons.homelab/cilium: "true"
     addons.homelab/cluster-api: "true"
     addons.homelab/envoy-gateway: "true"
+    addons.homelab/external-secrets: "true"
     addons.homelab/kubevirt: "true"
+    addons.homelab/openbao: "true"
     addons.homelab/zfs-localpv: "true"
 type: Opaque
 stringData:

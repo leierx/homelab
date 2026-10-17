@@ -55,9 +55,27 @@ programs. `flake.nix` holds only inputs and outputs. Host code lives flat in
 
 ## Secrets
 
-`sops nixos/secrets.yaml` (age key in `~/.config/sops/age/keys.txt`). On the
-host the age key is `/var/lib/sops-nix/key.txt`. To add a secret, declare it
-in `nixos/sops.nix` and add it to `secrets.yaml`.
+Host: `sops nixos/secrets.yaml` (age key in `~/.config/sops/age/keys.txt`). On
+the host the age key is `/var/lib/sops-nix/key.txt`. To add a secret, declare
+it in `nixos/sops.nix` and add it to `secrets.yaml`. sops holds only what the
+host needs before the cluster is up, plus OpenBao's seal key.
+
+Cluster: everything else lives in OpenBao (`gitops/addons/openbao`), KV v2
+mount `kv`, keys `<cluster>/<app>`. Pods get it through an `ExternalSecret`
+(store `ClusterSecretStore/openbao`, `remoteRef: {key: mgmt/<app>, property:
+<prop>}`); nothing secret is ever in `gitops/`.
+
+- OpenBao auto-unseals with a static key: `openbao/seal_key` in sops, which
+  sops-nix renders into k3s's auto-deploy manifests as Secret
+  `openbao/openbao-seal-key`. Losing it (and the age key) loses every secret.
+- The `initialize` blocks in `openbao/values.yaml` run once, against empty
+  storage: kv mount, Kubernetes auth, the `external-secrets` and `admin`
+  roles. There is no root token; change anything later with `just bao`, which
+  logs in as the `openbao-admin` ServiceAccount (so kubectl is enough).
+- `just bao-random <cluster>/<app> <prop>...` fills missing properties with
+  random values; external credentials go in with `just bao kv patch`.
+- OpenBao serves TLS from its own cert-manager CA (`openbao-tls`), which the
+  store trusts.
 
 ## Backups
 

@@ -1,3 +1,4 @@
+{ config, ... }:
 {
   sops = {
     defaultSopsFile = ./secrets.yaml;
@@ -16,6 +17,25 @@
         mode = "0600";
         path = "/etc/ssh/ssh_host_ed25519_key";
       };
+      "openbao/seal_key" = { };
+    };
+    # OpenBao's static auto-unseal key, handed to the cluster through k3s's auto-deploy manifests
+    templates."openbao-seal-key.yaml" = {
+      path = "/var/lib/rancher/k3s/server/manifests/openbao-seal-key.yaml";
+      content = ''
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: openbao
+        ---
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: openbao-seal-key
+          namespace: openbao
+        stringData:
+          key: ${config.sops.placeholder."openbao/seal_key"}
+      '';
     };
   };
 }

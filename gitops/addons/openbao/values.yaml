@@ -1,0 +1,139 @@
+openbao:
+  global:
+    tlsDisable: false
+  injector:
+    enabled: false
+  server:
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { memory: 512Mi }
+    extraEnvironmentVars:
+      BAO_CACERT: /openbao/tls/ca.crt
+    volumes:
+      - name: tls
+        secret:
+          secretName: openbao-tls
+      # k3s deploys this Secret from sops-nix (nixos/sops.nix), so it survives a rebuilt cluster
+      - name: seal-key
+        secret:
+          secretName: openbao-seal-key
+    volumeMounts:
+      - name: tls
+        mountPath: /openbao/tls
+        readOnly: true
+      - name: seal-key
+        mountPath: /openbao/seal
+        readOnly: true
+    dataStorage:
+      storageClass: zfs-prod
+      size: 2Gi
+    statefulSet:
+      securityContext:
+        container:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          seccompProfile:
+            type: RuntimeDefault
+    ha:
+      enabled: true
+      replicas: 1
+      disruptionBudget:
+        enabled: false
+      raft:
+        enabled: true
+        setNodeId: true
+        config: |
+          ui = true
+          # memory is not swapped to disk here (zram only), and raft wants mlock off
+          disable_mlock = true
+
+          listener "tcp" {
+            address = "[::]:8200"
+            cluster_address = "[::]:8201"
+            tls_cert_file = "/openbao/tls/tls.crt"
+            tls_key_file = "/openbao/tls/tls.key"
+          }
+
+          storage "raft" {
+            path = "/openbao/data"
+          }
+
+          service_registration "kubernetes" {}
+
+          seal "static" {
+            current_key_id = "20261017"
+            current_key = "file:///openbao/seal/key"
+          }
+
+          audit "file" "stdout" {
+            options {
+              file_path = "stdout"
+            }
+          }
+
+          # runs once, on first start against empty storage; later changes go through `just bao`
+          initialize "kv" {
+            request "mount" {
+              operation = "update"
+              path = "sys/mounts/kv"
+              data = {
+                type = "kv"
+                options = { version = "2" }
+              }
+            }
+          }
+
+          initialize "kubernetes-auth" {
+            request "enable" {
+              operation = "update"
+              path = "sys/auth/kubernetes"
+              data = { type = "kubernetes" }
+            }
+            request "config" {
+              operation = "update"
+              path = "auth/kubernetes/config"
+              data = { kubernetes_host = "https://kubernetes.default.svc" }
+            }
+          }
+
+          initialize "external-secrets" {
+            request "policy" {
+              operation = "update"
+              path = "sys/policies/acl/external-secrets"
+              data = {
+                policy = "path \"kv/data/*\" { capabilities = [\"read\"] }\npath \"kv/metadata/*\" { capabilities = [\"read\", \"list\"] }"
+              }
+            }
+            request "role" {
+              operation = "update"
+              path = "auth/kubernetes/role/external-secrets"
+              data = {
+                bound_service_account_names = ["external-secrets"]
+                bound_service_account_namespaces = ["external-secrets"]
+                token_policies = ["external-secrets"]
+                token_ttl = "1h"
+              }
+            }
+          }
+
+          # whoever can mint a token for this ServiceAccount is admin; that is cluster-admin already
+          initialize "admin" {
+            request "policy" {
+              operation = "update"
+              path = "sys/policies/acl/admin"
+              data = {
+                policy = "path \"*\" { capabilities = [\"create\", \"read\", \"update\", \"patch\", \"delete\", \"list\", \"sudo\"] }"
+              }
+            }
+            request "role" {
+              operation = "update"
+              path = "auth/kubernetes/role/admin"
+              data = {
+                bound_service_account_names = ["openbao-admin"]
+                bound_service_account_namespaces = ["openbao"]
+                token_policies = ["admin"]
+                token_ttl = "15m"
+              }
+            }
+          }

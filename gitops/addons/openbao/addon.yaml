@@ -1,0 +1,2 @@
+namespace: openbao
+podSecurity: restricted
