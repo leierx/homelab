@@ -2,7 +2,8 @@ argo-cd:
   configs:
     cm:
       url: https://argocd.skinke.net
-      # the local admin stays enabled as break-glass when Authentik is down
+      # SSO only; the local admin account is disabled (docs/break-glass.md)
+      admin.enabled: "false"
       oidc.config: |
         name: Authentik
         issuer: https://auth.skinke.net/application/o/argocd/
@@ -18,6 +19,8 @@ argo-cd:
     rbac:
       policy.csv: |
         g, homelab-admins, role:admin
+        g, homelab-operators, role:admin
+        g, homelab-viewers, role:readonly
   dex:
     enabled: false
   notifications:

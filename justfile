@@ -26,6 +26,11 @@ bao *args:
       'export BAO_TOKEN=$(bao write -field=token auth/kubernetes/login role=admin jwt="$0") && exec bao "$@"' \
       "$jwt" "$@"
 
+# re-apply Authentik blueprint instances by name, e.g. `just authentik-apply 'homelab - Access control'`
+[positional-arguments]
+authentik-apply +names:
+    kubectl -n authentik exec deploy/authentik-server -c server -- ak apply_blueprint "$@"
+
 # give each named property of kv/<key> a random value unless it already has one
 [positional-arguments]
 bao-random key +props:

@@ -1,54 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: authentik-default-locale
+  name: authentik-oidc-clients
 data:
-  default-locale.yaml: |
-    version: 1
-    metadata:
-      name: homelab - Default locale
-    entries:
-      # editing the default brand before it exists would create a brand without flows
-      - model: authentik_blueprints.metaapplyblueprint
-        attrs:
-          identifiers:
-            name: Default - Brand
-      - model: authentik_brands.brand
-        identifiers:
-          default: true
-        attrs:
-          attributes:
-            settings:
-              locale: en
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: authentik-sso
-data:
-  homelab-admins.yaml: |
-    version: 1
-    metadata:
-      name: homelab - Admins
-    entries:
-      # akadmin must exist first, or this would create it without its bootstrap password
-      - model: authentik_blueprints.metaapplyblueprint
-        attrs:
-          identifiers:
-            name: authentik Bootstrap
-      - model: authentik_core.group
-        id: homelab-admins
-        identifiers:
-          name: homelab-admins
-        attrs:
-          is_superuser: true
-      - model: authentik_core.user
-        identifiers:
-          username: akadmin
-        attrs:
-          groups:
-            - !Find [authentik_core.group, [name, authentik Admins]]
-            - !KeyOf homelab-admins
   oidc-clients.yaml: |
     version: 1
     metadata:

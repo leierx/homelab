@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-access
+data:
+  access.yaml: |
+    version: 1
+    metadata:
+      name: homelab - Access control
+    entries:
+      # akadmin must exist first, or this would create it without its bootstrap password
+      - model: authentik_blueprints.metaapplyblueprint
+        attrs:
+          identifiers:
+            name: authentik Bootstrap
+      # group is_superuser makes every member an Authentik superuser
+      - model: authentik_core.group
+        id: homelab-admins
+        identifiers:
+          name: homelab-admins
+        attrs:
+          is_superuser: true
+      - model: authentik_core.group
+        id: homelab-operators
+        identifiers:
+          name: homelab-operators
+      - model: authentik_core.group
+        id: homelab-viewers
+        identifiers:
+          name: homelab-viewers
+      # break-glass account: still an Authentik admin and in homelab-admins, but not for daily use
+      - model: authentik_core.user
+        identifiers:
+          username: akadmin
+        attrs:
+          groups:
+            - !Find [authentik_core.group, [name, authentik Admins]]
+            - !KeyOf homelab-admins
+      # personal account; password comes from OpenBao mgmt/authentik leier_password
+      - model: authentik_core.user
+        identifiers:
+          username: leier
+        attrs:
+          name: Lars Smith Eier
+          email: larssmitheier@protonmail.com
+          password: !Env LEIER_PASSWORD
+          groups:
+            - !KeyOf homelab-admins

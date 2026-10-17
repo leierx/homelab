@@ -24,7 +24,8 @@ authentik:
   blueprints:
     configMaps:
       - authentik-default-locale
-      - authentik-sso
+      - authentik-access
+      - authentik-oidc-clients
   server:
     resources:
       requests: { cpu: 100m, memory: 512Mi }
