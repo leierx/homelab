@@ -17,6 +17,9 @@ grafana:
       # SSO only; the admin account is break-glass (docs/break-glass.md)
       disable_login_form: true
       signout_redirect_url: https://auth.skinke.net/application/o/grafana/end-session/
+    # the hidden login form alone still left admin:<password> working against the API
+    auth.basic:
+      enabled: false
     auth.generic_oauth:
       enabled: true
       name: Authentik
@@ -66,6 +69,8 @@ grafana:
       enabled: true
       searchNamespace: ALL
       folderAnnotation: grafana_folder
+      # the reload call needs basic auth; Grafana's file provider polls for changes anyway
+      skipReload: true
       provider:
         foldersFromFilesStructure: true
   datasources:

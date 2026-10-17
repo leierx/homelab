@@ -254,9 +254,9 @@ server-side apply manager) means Argo owns every field from the start.
   "authentik_tasks_workerstatus" does not exist` until the migrations finish
   (server and worker both run them under a Postgres lock); it retries every
   10 s. Harmless, don't add sync waves for it.
-- Local logins are off: Argo CD's `admin` account is disabled and Grafana's
-  login form is hidden, so Authentik is the only way in. `docs/break-glass.md`
-  has the recovery steps.
+- Local logins are off: Argo CD's `admin` account is disabled, Grafana's
+  login form is hidden and its basic auth is off, so Authentik is the only way
+  in. `docs/break-glass.md` has the recovery steps.
 - Observability: `observability` (mgmt only, namespace `monitoring`) runs
   Grafana (https://metrics.skinke.net, Authentik OIDC), Mimir and Loki, each a
   single pod on `zfs-prod` (90/30 days retention). Mimir is our own

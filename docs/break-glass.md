@@ -40,9 +40,11 @@ Log in as `admin`, fix whatever is wrong, and set `admin.enabled` back to
 ## Grafana (login form hidden)
 
 Grafana still has its `admin` account, but `disable_login_form: true` hides the
-form. Set it back to `false` in
-`gitops/addons/observability/values.yaml`, commit and push, then log in as
-`admin` with the password in OpenBao:
+form and `auth.basic.enabled: false` turns off `admin:<password>` against the
+API. Set `disable_login_form` back to `false` in
+`gitops/addons/observability/values.yaml` (and `auth.basic.enabled` to `true`
+only if you need to script the API), commit and push, then log in as `admin`
+with the password in OpenBao:
 
 ```sh
 just bao kv get -field=admin_password kv/mgmt/grafana
