@@ -18,8 +18,9 @@ OpenBao gives us:
 - **No secrets in git or in manifests.** Pods pull what they need at runtime.
 - **Least privilege.** A workload authenticates with its Kubernetes
   ServiceAccount and gets a short-lived token scoped to a policy.
-- **Rotation without redeploys of the consumer** (External Secrets refreshes
-  the Kubernetes Secret; the pod picks it up on its own restart/rollout).
+- **Rotate in one place.** Change the value in OpenBao and External Secrets
+  updates the Kubernetes Secret in every namespace that uses it; consumers that
+  read it as env vars still need a restart.
 - **An audit trail** of every secret read (audit device to stdout).
 
 ## How it is deployed
@@ -51,7 +52,7 @@ OpenBao gives us:
 | Policy (ACL) engine | yes | `external-secrets` (read) and `admin` (all) |
 | Static auto-unseal | yes | key from sops, see above |
 | Audit devices | yes | to stdout |
-| Raft / HA storage | yes | single node, auto-snapshot built in |
+| Raft storage | yes | single node; snapshots are manual (`bao operator raft snapshot save`) |
 | Transit (encryption-as-a-service) | no | could encrypt app data without exposing keys |
 | PKI / certificate issuance | no | cert-manager covers cluster certs |
 | Dynamic database credentials | no | would let Postgres hand out short-lived users |
@@ -138,8 +139,31 @@ Secret.
 
 - **Lost unseal key** → OpenBao cannot unseal; restore it from the age key.
 - **Lost age key too** → every secret is unrecoverable.
-- **Data corruption** → raft PVC is snapshotted by sanoid under `zfs-prod`.
-  Off-site reliability comes from the (not yet enabled) borg backup; it should
-  also carry a scheduled `bao operator raft snapshot save`.
-- **OpenBao sealed and key lost from the pod** → unseal is automatic from the
-  mounted Secret, so a pod restart re-unseals.
+- **Data corruption** → the raft PVC is snapshotted by sanoid under
+  `zfs-prod`. OpenBao has no scheduled snapshots of its own; the off-site borg
+  backup (not yet enabled) should also carry a
+  `bao operator raft snapshot save` taken just before it runs.
+- **Pod restarted or rescheduled** → it unseals itself from the mounted
+  `openbao-seal-key` Secret; nothing to do.
+
+## Towards zero touch
+
+Today a new secret still takes a human: `just bao-random mgmt/<app> <prop>`
+before the app's `ExternalSecret` can sync. External Secrets can remove that
+step, and the CRDs are already installed:
+
+- **Generated secrets.** A `Password` generator (`generators.external-secrets.io`)
+  plus a `PushSecret` creates a random value and writes it into OpenBao the
+  first time, so an addon can ship its own secret and stay self-contained. It
+  needs a second OpenBao role that may write `kv/data/<cluster>/*` (the
+  `external-secrets` role is read-only on purpose), and `updatePolicy:
+  IfNotExists` so it never overwrites an existing value.
+- **Dynamic database credentials.** OpenBao's database secrets engine can hand
+  each app a short-lived Postgres user instead of the CNPG `<cluster>-app`
+  password, with External Secrets (or the app) renewing it.
+- **Human logins with OIDC.** OpenBao's OIDC auth against Authentik, with the
+  `homelab-*` tiers mapped to policies, would replace `just bao` for people and
+  make the UI usable.
+
+Generated secrets are the one that removes the manual step for every new
+addon; the other two are only worth it once there are apps that benefit.

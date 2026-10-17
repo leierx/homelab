@@ -14,9 +14,10 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
   app) with long retention.
 - **Choice:** Mimir (monolithic, single pod) as the store, Alloy as the
   scraper, Grafana to query.
-- **Why:** the GLG/grafana ecosystem shares config and datasources; Mimir
-  ingests Prometheus remote-write, so PromQL and existing dashboards work. Its
-  object-storage-first design also snapshots cleanly.
+- **Why:** one vendor's stack (Grafana, Mimir, Loki, Alloy) shares config,
+  labels and datasources; Mimir ingests Prometheus remote-write, so PromQL and
+  community dashboards work unchanged. Here it stores blocks on a local
+  filesystem PVC, and can move to object storage if it ever outgrows one node.
 - **Alternatives:**
   - **Prometheus** — the obvious default, but a single TSDB with no long-term
     story; retention is tied to one PVC. We deliberately do *not* run the
@@ -66,7 +67,7 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
 | `storage-loki-0` | 50 Gi | 30 days |
 | `grafana` | 5 Gi | dashboards, users |
 | `authentik-db-1` | 5 Gi | users, sessions |
-| `openbao-0` | 2 Gi | secrets |
+| `data-openbao-0` | 2 Gi | secrets |
 | `zfs-test` (renovate cache) | 5 Gi | throwaway |
 
 Metrics retention is the lever that moves the 100 Gi: `mimir.retention` in
@@ -115,9 +116,12 @@ and the same with `namespace="authentik"` / `"openbao"`.
   `PrometheusRule`) are the *interface* every chart uses to describe what to
   scrape. Alloy watches those objects and scrapes the targets itself.
 - **External Secrets' webhook.** It validates `ExternalSecret`/`SecretStore`
-  objects on admission and comes with the chart. We keep it: it is ~32 MiB of
-  requests and catches broken references at apply time. It can be disabled with
-  `webhook.enabled: false` if it ever gets in the way.
+  objects on admission, and the `cert-controller` Deployment exists only to
+  issue and rotate the webhook's certificate. We keep both: together they are
+  about 64 MiB of requests and reject a broken manifest at apply time instead
+  of as a sync error later. Dropping them means `webhook.create: false` *and*
+  `certController.create: false`. The operator itself (`external-secrets`) is
+  the only part that is strictly required.
 - **`# renovate:` comments.** They are not config; they tell Renovate where to
   look for a version that is not in a file it parses natively (e.g. the
   Postgres image inside a `Cluster` manifest, Mimir's image tag).
