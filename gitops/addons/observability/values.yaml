@@ -11,11 +11,11 @@ grafana:
         key: oidc-client-secret
   grafana.ini:
     server:
-      domain: grafana.skinke.net
+      domain: metrics.skinke.net
       root_url: https://%(domain)s/
     auth:
-      # keeps the admin password working until SSO is proven
-      disable_login_form: false
+      # SSO only; the admin account is break-glass (docs/break-glass.md)
+      disable_login_form: true
       signout_redirect_url: https://auth.skinke.net/application/o/grafana/end-session/
     auth.generic_oauth:
       enabled: true
@@ -29,7 +29,7 @@ grafana:
       allow_sign_up: true
       allow_assign_grafana_admin: true
       login_attribute_path: preferred_username
-      role_attribute_path: contains(groups, 'homelab-admins') && 'GrafanaAdmin' || 'Viewer'
+      role_attribute_path: contains(groups, 'homelab-admins') && 'GrafanaAdmin' || contains(groups, 'homelab-operators') && 'Editor' || 'Viewer'
   # a second pod can't share the SQLite database on the RWO volume
   deploymentStrategy:
     type: Recreate
@@ -81,68 +81,10 @@ grafana:
             prometheusType: Mimir
             httpMethod: POST
             timeInterval: 60s
-            exemplarTraceIdDestinations:
-              # Tempo's span metrics
-              - name: traceID
-                datasourceUid: tempo
-              # OpenTelemetry SDKs
-              - name: trace_id
-                datasourceUid: tempo
         - name: Loki
           uid: loki
           type: loki
           url: http://loki:3100
-          jsonData:
-            derivedFields:
-              # structured metadata from Loki's OTLP endpoint
-              - name: trace_id
-                matcherType: label
-                matcherRegex: trace_id
-                datasourceUid: tempo
-                url: $${__value.raw}
-              # JSON lines from Alloy's OTLP-to-Loki conversion
-              - name: traceid
-                matcherType: regex
-                matcherRegex: '"traceid":"(\w+)"'
-                datasourceUid: tempo
-                url: $${__value.raw}
-        - name: Tempo
-          uid: tempo
-          type: tempo
-          url: http://tempo:3200
-          jsonData:
-            streamingEnabled:
-              search: true
-              metrics: true
-            serviceMap:
-              datasourceUid: mimir
-            nodeGraph:
-              enabled: true
-            lokiSearch:
-              datasourceUid: loki
-            tracesToLogsV2:
-              datasourceUid: loki
-              spanStartTimeShift: -5m
-              spanEndTimeShift: 5m
-              filterByTraceID: true
-              # pod logs and Alloy-converted app logs both carry namespace; service names don't line up
-              tags:
-                - key: k8s.namespace.name
-                  value: namespace
-            tracesToMetrics:
-              datasourceUid: mimir
-              spanStartTimeShift: -5m
-              spanEndTimeShift: 5m
-              tags:
-                - key: service.name
-                  value: service
-              queries:
-                - name: Request rate
-                  query: sum(rate(traces_spanmetrics_calls_total{$$__tags}[5m]))
-                - name: Error rate
-                  query: sum(rate(traces_spanmetrics_calls_total{$$__tags,status_code="STATUS_CODE_ERROR"}[5m]))
-                - name: Latency p95
-                  query: histogram_quantile(0.95, sum by (le) (rate(traces_spanmetrics_latency_bucket{$$__tags}[5m])))
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
@@ -232,50 +174,6 @@ loki:
     serviceMonitor:
       enabled: true
 
-tempo:
-  fullnameOverride: tempo
-  tempo:
-    reportingEnabled: false
-    # Grafana streams search and TraceQL metrics results
-    streamOverHttpEnabled: true
-    retention: 336h
-    metricsGenerator:
-      enabled: true
-      registry:
-        external_labels:
-          source: tempo
-      storage:
-        path: /var/tempo/generator/wal
-        remote_write:
-          - url: http://mimir:8080/api/v1/push
-            send_exemplars: true
-    overrides:
-      defaults:
-        metrics_generator:
-          processors: [service-graphs, span-metrics]
-    resources:
-      requests: { cpu: 100m, memory: 512Mi }
-      limits: { memory: 2Gi }
-    securityContext:
-      allowPrivilegeEscalation: false
-      readOnlyRootFilesystem: true
-      capabilities:
-        drop: ["ALL"]
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 10001
-    runAsGroup: 10001
-    fsGroup: 10001
-    fsGroupChangePolicy: OnRootMismatch
-    seccompProfile:
-      type: RuntimeDefault
-  persistence:
-    enabled: true
-    storageClassName: zfs-prod
-    size: 50Gi
-  serviceMonitor:
-    enabled: true
-
 mimir:
   image:
     # renovate: datasource=docker depName=grafana/mimir
@@ -286,8 +184,6 @@ mimir:
     ingestion_burst_size: 1000000
     max_global_series_per_user: 3000000
     max_label_names_per_series: 50
-    # exemplars link Tempo's span metrics back to traces
-    max_global_exemplars_per_user: 100000
     otel_metric_suffixes_enabled: true
   storage:
     storageClassName: zfs-prod

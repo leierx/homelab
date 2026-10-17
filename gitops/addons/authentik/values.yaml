@@ -59,6 +59,6 @@ oidcClients:
       - https://argocd.skinke.net/auth/callback
       - http://localhost:8085/auth/callback
   grafana:
-    launchURL: https://grafana.skinke.net
+    launchURL: https://metrics.skinke.net
     redirectURIs:
-      - https://grafana.skinke.net/login/generic_oauth
+      - https://metrics.skinke.net/login/generic_oauth

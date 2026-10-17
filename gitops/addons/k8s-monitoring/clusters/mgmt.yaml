@@ -9,11 +9,3 @@ k8s-monitoring:
     loki:
       type: loki
       url: http://loki.monitoring.svc:3100/loki/api/v1/push
-    tempo:
-      type: otlp
-      url: http://tempo.monitoring.svc:4317
-      tls:
-        insecure: true
-      metrics: { enabled: false }
-      logs: { enabled: false }
-      traces: { enabled: true }
