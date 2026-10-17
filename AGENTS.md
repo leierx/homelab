@@ -187,6 +187,8 @@ kubectl wait --for=condition=Ready node --all --timeout=10m
 # 3. Argo CD
 helm dependency update gitops/addons/argocd/mgmt
 kubectl create namespace argocd
+# the Certificate, ListenerSet, HTTPRoute and ExternalSecret fail until their
+# CRDs exist; Argo applies them later
 helm template argocd gitops/addons/argocd/mgmt -n argocd --include-crds \
   -f gitops/addons/argocd/values.yaml \
   | kubectl apply --server-side --field-manager=argocd-controller -f -
@@ -195,7 +197,7 @@ kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
 # 4. hand over to git
 kubectl apply -f gitops/root.yaml
 
-# 5. UI: https://localhost:8080, user admin
+# 5. UI: http://localhost:8080 (later https://argocd.skinke.net), user admin
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
 kubectl -n argocd port-forward svc/argocd-server 8080:443
 ```

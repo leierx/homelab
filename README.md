@@ -75,7 +75,8 @@ Argo owns Cilium and itself outright: no Helm release Secrets, no
 `meta.helm.sh/*` annotations. From here it syncs everything else from git. Apps
 that need CRDs from another app keep retrying until those CRDs exist.
 
-To open the UI (https://localhost:8080, user `admin`):
+To open the UI (http://localhost:8080 until https://argocd.skinke.net is up,
+user `admin`):
 
 ```sh
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d

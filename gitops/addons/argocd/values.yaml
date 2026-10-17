@@ -1,4 +1,20 @@
 argo-cd:
+  configs:
+    cm:
+      url: https://argocd.skinke.net
+      # the local admin stays enabled as break-glass when Authentik is down
+      oidc.config: |
+        name: Authentik
+        issuer: https://auth.skinke.net/application/o/argocd/
+        clientID: argocd
+        clientSecret: $argocd-oidc:clientSecret
+        requestedScopes: [openid, profile, email, groups]
+    params:
+      # TLS ends at the edge Gateway
+      server.insecure: true
+    rbac:
+      policy.csv: |
+        g, homelab-admins, role:admin
   dex:
     enabled: false
   notifications:
