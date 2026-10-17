@@ -123,9 +123,8 @@ from a workstation checkout of the repo. The k3s node stays NotReady until
 Cilium is in.
 
 ```sh
-# 1. kubeconfig + tunnel (backgrounded; `just untunnel` closes it)
+# 1. kubeconfig
 just kubeconfig   # -> ~/.kube/config (via ssh loft01, 10.0.0.1 over wg0)
-just tunnel
 
 # 2. Cilium
 helm dependency update gitops/addons/cilium/mgmt
