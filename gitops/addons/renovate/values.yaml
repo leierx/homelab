@@ -4,6 +4,8 @@ renovate:
     schedule: "17 * * * *"
     timeZone: Europe/Oslo
     concurrencyPolicy: Forbid
+    # with Forbid, a hung run would block every later one; a run normally takes about a minute
+    activeDeadlineSeconds: 3000
     # a GitHub App installation token lasts an hour, so each run mints its own
     preCommand: |
       RENOVATE_TOKEN=$(node /usr/local/share/github-app-token/token.mjs)
