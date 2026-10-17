@@ -30,7 +30,6 @@
       ];
       interfaces.eno1 = {
         allowedTCPPorts = [
-          22
           30080
           30443
         ];
@@ -52,6 +51,8 @@
     settings.Resolve = {
       DNSSEC = "true";
       DNSOverTLS = "true";
+      LLMNR = "false";
+      MulticastDNS = "false";
     };
   };
 

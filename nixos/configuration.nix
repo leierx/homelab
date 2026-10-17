@@ -26,6 +26,13 @@
   services.openssh = {
     enable = true;
     openFirewall = false;
+    # wg0 only, so sshd never listens on the LAN interface
+    listenAddresses = [
+      {
+        addr = "10.0.0.1";
+        port = 22;
+      }
+    ];
     hostKeys = [
       {
         path = "/etc/ssh/ssh_host_ed25519_key";
@@ -38,6 +45,12 @@
       KbdInteractiveAuthentication = false;
       AllowUsers = [ "leier" ];
     };
+  };
+
+  # wg0 must exist before sshd binds it
+  systemd.services.sshd = {
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
   };
 
   security.sudo.enable = false;
