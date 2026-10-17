@@ -227,3 +227,7 @@ server-side apply manager) means Argo owns every field from the start.
   from a `containerDisk`, which resets on every VM restart (so every weekly
   host reboot). Start from `cluster-template-persistent-storage.yaml`
   (CDI-imported disks on a zfs StorageClass) and drop `evictionStrategy`.
+- Postgres comes from CloudNativePG (`cloudnative-pg` addon, operator in
+  `cnpg-system`): an app ships its own `Cluster` on `zfs-prod` in its addon
+  and reads the password from the operator-made `<cluster>-app` Secret. Pin
+  the image tag in `<env>/values.yaml` with a `# renovate:` comment.

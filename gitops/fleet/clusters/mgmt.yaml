@@ -11,6 +11,7 @@ metadata:
     addons.homelab/cdi: "true"
     addons.homelab/cert-manager: "true"
     addons.homelab/cilium: "true"
+    addons.homelab/cloudnative-pg: "true"
     addons.homelab/cluster-api: "true"
     addons.homelab/envoy-gateway: "true"
     addons.homelab/external-secrets: "true"
