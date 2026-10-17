@@ -150,17 +150,21 @@ Cilium is in.
 # 1. kubeconfig
 just kubeconfig   # merged into ~/.kube/config as context loft01 (via ssh loft01, 10.0.0.1 over wg0)
 kubectl config use-context loft01
+ssh -fN loft01    # forwards 6443 for kubectl
 
 # 2. Cilium
 helm dependency update gitops/addons/cilium/mgmt
-helm install cilium gitops/addons/cilium/mgmt -n kube-system \
-  -f gitops/addons/cilium/values.yaml -f gitops/addons/cilium/clusters/mgmt.yaml
+helm template cilium gitops/addons/cilium/mgmt -n kube-system --include-crds \
+  -f gitops/addons/cilium/values.yaml -f gitops/addons/cilium/clusters/mgmt.yaml \
+  | kubectl apply --server-side --field-manager=argocd-controller -f -
 kubectl wait --for=condition=Ready node --all --timeout=10m
 
 # 3. Argo CD
 helm dependency update gitops/addons/argocd/mgmt
-helm install argocd gitops/addons/argocd/mgmt -n argocd --create-namespace \
-  -f gitops/addons/argocd/values.yaml
+kubectl create namespace argocd
+helm template argocd gitops/addons/argocd/mgmt -n argocd --include-crds \
+  -f gitops/addons/argocd/values.yaml \
+  | kubectl apply --server-side --field-manager=argocd-controller -f -
 kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
 
 # 4. hand over to git
@@ -173,12 +177,12 @@ kubectl -n argocd port-forward svc/argocd-server 8080:443
 
 The release names and namespaces match what the `addons` ApplicationSet
 renders, so Argo adopts both and manages everything from git after step 4.
+`helm template` instead of `helm install` leaves no Helm release Secrets or
+`meta.helm.sh/*` annotations, and applying as `argocd-controller` (Argo's
+server-side apply manager) means Argo owns every field from the start.
 
 ## Kubernetes
 
-- kubectl: `ssh -L 6443:127.0.0.1:6443 leier@192.168.2.50`, then use a copy of
-  `/etc/rancher/k3s/k3s.yaml` (root-only on the host). 6443 is not open on
-  `eno1` or `wg0`.
 - ZFS pools `prod` and `test` back the `zfs-prod`/`zfs-test` StorageClasses
   (zfs-localpv, one zvol per PVC). Nothing mounts them on the host.
 - mgmt is the public edge: the `edge` Gateway (envoy-gateway addon) is NodePort
