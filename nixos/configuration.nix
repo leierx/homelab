@@ -6,8 +6,8 @@
 
   boot.loader.systemd-boot = {
     enable = true;
-    # the 500M ESP; a full one makes every auto-upgrade fail
-    configurationLimit = 10;
+    # a kernel+initrd pair is ~56M and the ESP 500M; a full ESP makes every auto-upgrade fail
+    configurationLimit = 6;
   };
   boot.loader.efi.canTouchEfiVariables = true;
   boot.tmp.cleanOnBoot = true;

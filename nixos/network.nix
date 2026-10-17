@@ -40,6 +40,13 @@
     };
   };
 
+  # all=0 already wins while forwarding is on; default=0 keeps it so if forwarding goes
+  boot.kernel.sysctl = {
+    "net.ipv4.conf.default.accept_redirects" = 0;
+    "net.ipv4.conf.all.secure_redirects" = 0;
+    "net.ipv4.conf.default.secure_redirects" = 0;
+  };
+
   services.resolved = {
     enable = true;
     settings.Resolve = {

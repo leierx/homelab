@@ -24,14 +24,20 @@
     };
   };
 
+  # zfs-localpv's zvols have to exist before kubelet starts pods
+  systemd.services.k3s = {
+    wants = [ "zfs-import.target" ];
+    after = [ "zfs-import.target" ];
+  };
+
   services.logind.settings.Login.InhibitDelayMaxSec =
     config.services.k3s.gracefulNodeShutdown.shutdownGracePeriod;
 
   # admin kubeconfig is readable by wheel, so kubectl works as leier without doas
   environment.variables.KUBECONFIG = "/etc/rancher/k3s/k3s.yaml";
 
+  # kubectl comes with the k3s package, so it always matches the server
   environment.systemPackages = with pkgs; [
-    kubectl
     kubernetes-helm
     cilium-cli
   ];

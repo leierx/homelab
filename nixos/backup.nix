@@ -44,6 +44,8 @@ let
       rm -rf "$stage" && mkdir -p "$stage"
       sqlite3 /var/lib/rancher/k3s/server/db/state.db ".backup '$stage/state.db'"
       cp -a /var/lib/rancher/k3s/server/{token,cred,tls} "$stage"/
+      # state.db holds its hash; without it a reinstalled node is rejected
+      cp -a /etc/rancher/node/password "$stage"/node-password
       "''${create[@]}" "::k3s-{now:%Y-%m-%dT%H:%M}" "$stage"
       borg prune --glob-archives 'k3s-*' --keep-daily 14 --keep-weekly 8 --keep-monthly 6
 
