@@ -43,8 +43,10 @@ programs. `flake.nix` holds only inputs and outputs. Host code lives flat in
   update` never leaves the pinned `nixos-YY.MM`). Then move `nixpkgs` in
   `flake.nix` to the new release, and `services.k3s.package` one Kubernetes
   minor at a time.
-- Renovate (`renovate.json`; the hosted app is removed, a self-hosted one is
-  planned) handles GitHub Actions, the chart dependencies in
+- Renovate (`renovate.json`) runs self-hosted on mgmt (`gitops/addons/renovate`,
+  hourly CronJob) as the GitHub App `leierx-renovate`: each run mints an
+  installation token from the app's key (OpenBao `mgmt/renovate`: `app_id`,
+  `installation_id`, `private_key`). It handles GitHub Actions, the chart dependencies in
   `gitops/addons/*/<env>/Chart.yaml`, versions marked `# renovate:` and GitHub
   release URLs in kustomizations. Each env gets its own PRs: `test`
   automerges everything, `prod` and `mgmt` automerge minor/patch, majors wait

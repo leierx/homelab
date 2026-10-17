@@ -1,0 +1,2 @@
+namespace: renovate
+podSecurity: restricted
