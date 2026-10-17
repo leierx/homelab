@@ -3,6 +3,8 @@
 ## Non-negotiables
 
 - Never `git push` unless told to.
+- Keep history coarse: one commit per logical change, and fold follow-up fixes
+  into the unpushed commit they fix rather than stacking small commits.
 - Never touch live systems (`ssh`, `kubectl`, iLO) without explicit permission.
 - Never `nix build` locally unless asked. Local checks are `nix fmt -- --ci` and
   `nix flake check`.
