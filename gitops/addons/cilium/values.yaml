@@ -18,8 +18,19 @@ cilium:
         - tcp
         - icmp
         - port-distribution
+      serviceMonitor:
+        enabled: true
+      dashboards:
+        enabled: true
+        annotations: { grafana_folder: Cilium }
   prometheus:
     enabled: true
+    metricsService: true
+    serviceMonitor:
+      enabled: true
+  dashboards:
+    enabled: true
+    annotations: { grafana_folder: Cilium }
   # no memory limit on the agent: an OOM kill takes the node's networking down with it
   resources:
     requests: { cpu: 100m, memory: 512Mi }
@@ -30,10 +41,20 @@ cilium:
     resources:
       requests: { cpu: 10m, memory: 64Mi }
       limits: { memory: 1Gi }
+    prometheus:
+      serviceMonitor:
+        enabled: true
   operator:
     resources:
       requests: { cpu: 10m, memory: 64Mi }
       limits: { memory: 256Mi }
+    prometheus:
+      metricsService: true
+      serviceMonitor:
+        enabled: true
+    dashboards:
+      enabled: true
+      annotations: { grafana_folder: Cilium }
   certgen:
     resources:
       requests: { cpu: 10m, memory: 32Mi }
