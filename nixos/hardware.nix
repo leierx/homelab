@@ -28,7 +28,8 @@
   ];
   # iLO resets the box if systemd stops petting the watchdog
   systemd.settings.Manager.RuntimeWatchdogSec = "30s";
-  powerManagement.cpuFreqGovernor = "performance";
+  # the BIOS Power Regulator is in OS Control mode, so this governor alone decides P-states
+  powerManagement.cpuFreqGovernor = "schedutil";
 
   services.smartd = {
     enable = true;
