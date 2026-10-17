@@ -249,3 +249,19 @@ server-side apply manager) means Argo owns every field from the start.
   10 s. Harmless, don't add sync waves for it.
 - Break-glass logins: Authentik's `akadmin` (OpenBao `mgmt/authentik`
   `bootstrap_password`, only read on first start) and Argo CD's local `admin`.
+- Observability: `observability` (mgmt only, namespace `monitoring`) runs
+  Grafana (https://grafana.skinke.net, Authentik OIDC, admin password from
+  OpenBao `mgmt/grafana`), Mimir, Loki and Tempo, each a single pod on
+  `zfs-prod` (90/30/14 days retention). Mimir is our own StatefulSet
+  (`templates/mimir.yaml`): mimir-distributed has no monolithic mode.
+- `k8s-monitoring` (Grafana's chart: Alloy, kube-state-metrics,
+  node-exporter) is meant for every cluster; `clusters/<cluster>.yaml` names
+  the cluster and its destinations. Its namespace is Pod Security privileged
+  for node-exporter and pod logs. Apps send OTLP to
+  `k8s-monitoring-alloy-receiver.k8s-monitoring.svc` on 4317 (gRPC) or 4318
+  (HTTP).
+- Alloy scrapes every ServiceMonitor/PodMonitor (CRDs from
+  `prometheus-operator-crds`, no Prometheus Operator). Grafana loads
+  ConfigMaps labelled `grafana_dashboard: "1"` from any namespace (folder from
+  the `grafana_folder` annotation) plus the grafana.com dashboards pinned in
+  `observability/values.yaml`.

@@ -1,0 +1,298 @@
+grafana:
+  fullnameOverride: grafana
+  testFramework:
+    enabled: false
+  admin:
+    existingSecret: grafana
+  envValueFrom:
+    GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
+      secretKeyRef:
+        name: grafana
+        key: oidc-client-secret
+  grafana.ini:
+    server:
+      domain: grafana.skinke.net
+      root_url: https://%(domain)s/
+    auth:
+      # keeps the admin password working until SSO is proven
+      disable_login_form: false
+      signout_redirect_url: https://auth.skinke.net/application/o/grafana/end-session/
+    auth.generic_oauth:
+      enabled: true
+      name: Authentik
+      client_id: grafana
+      scopes: openid email profile
+      auth_url: https://auth.skinke.net/application/o/authorize/
+      token_url: https://auth.skinke.net/application/o/token/
+      api_url: https://auth.skinke.net/application/o/userinfo/
+      use_pkce: true
+      allow_sign_up: true
+      allow_assign_grafana_admin: true
+      login_attribute_path: preferred_username
+      role_attribute_path: contains(groups, 'homelab-admins') && 'GrafanaAdmin' || 'Viewer'
+  # a second pod can't share the SQLite database on the RWO volume
+  deploymentStrategy:
+    type: Recreate
+  persistence:
+    enabled: true
+    storageClassName: zfs-prod
+    size: 5Gi
+  # runs as root; fsGroup already gives Grafana the volume
+  initChownData:
+    enabled: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 472
+    runAsGroup: 472
+    fsGroup: 472
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile:
+      type: RuntimeDefault
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 1Gi }
+  downloadDashboards:
+    resources:
+      requests: { cpu: 10m, memory: 16Mi }
+      limits: { memory: 64Mi }
+  serviceMonitor:
+    enabled: true
+  sidecar:
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits: { memory: 256Mi }
+    # charts across the cluster ship dashboards as ConfigMaps labelled grafana_dashboard
+    dashboards:
+      enabled: true
+      searchNamespace: ALL
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: true
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Mimir
+          uid: mimir
+          type: prometheus
+          url: http://mimir:8080/prometheus
+          isDefault: true
+          jsonData:
+            prometheusType: Mimir
+            httpMethod: POST
+            timeInterval: 60s
+            exemplarTraceIdDestinations:
+              # Tempo's span metrics
+              - name: traceID
+                datasourceUid: tempo
+              # OpenTelemetry SDKs
+              - name: trace_id
+                datasourceUid: tempo
+        - name: Loki
+          uid: loki
+          type: loki
+          url: http://loki:3100
+          jsonData:
+            derivedFields:
+              # structured metadata from Loki's OTLP endpoint
+              - name: trace_id
+                matcherType: label
+                matcherRegex: trace_id
+                datasourceUid: tempo
+                url: $${__value.raw}
+              # JSON lines from Alloy's OTLP-to-Loki conversion
+              - name: traceid
+                matcherType: regex
+                matcherRegex: '"traceid":"(\w+)"'
+                datasourceUid: tempo
+                url: $${__value.raw}
+        - name: Tempo
+          uid: tempo
+          type: tempo
+          url: http://tempo:3200
+          jsonData:
+            streamingEnabled:
+              search: true
+              metrics: true
+            serviceMap:
+              datasourceUid: mimir
+            nodeGraph:
+              enabled: true
+            lokiSearch:
+              datasourceUid: loki
+            tracesToLogsV2:
+              datasourceUid: loki
+              spanStartTimeShift: -5m
+              spanEndTimeShift: 5m
+              filterByTraceID: true
+              # pod logs and Alloy-converted app logs both carry namespace; service names don't line up
+              tags:
+                - key: k8s.namespace.name
+                  value: namespace
+            tracesToMetrics:
+              datasourceUid: mimir
+              spanStartTimeShift: -5m
+              spanEndTimeShift: 5m
+              tags:
+                - key: service.name
+                  value: service
+              queries:
+                - name: Request rate
+                  query: sum(rate(traces_spanmetrics_calls_total{$$__tags}[5m]))
+                - name: Error rate
+                  query: sum(rate(traces_spanmetrics_calls_total{$$__tags,status_code="STATUS_CODE_ERROR"}[5m]))
+                - name: Latency p95
+                  query: histogram_quantile(0.95, sum by (le) (rate(traces_spanmetrics_latency_bucket{$$__tags}[5m])))
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: kubernetes
+          folder: Kubernetes
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards/kubernetes
+        - name: platform
+          folder: Platform
+          type: file
+          options:
+            path: /var/lib/grafana/dashboards/platform
+  dashboards:
+    kubernetes:
+      k8s-views-global: { gnetId: 15757, revision: 43 }
+      k8s-views-namespaces: { gnetId: 15758, revision: 46 }
+      k8s-views-nodes: { gnetId: 15759, revision: 40 }
+      k8s-views-pods: { gnetId: 15760, revision: 41 }
+      k8s-system-api-server: { gnetId: 15761, revision: 21 }
+      node-exporter-full: { gnetId: 1860, revision: 45 }
+    platform:
+      argocd-operational: { gnetId: 19993, revision: 9 }
+      argocd-application: { gnetId: 19974, revision: 8 }
+      cert-manager: { gnetId: 20842, revision: 3 }
+      envoy-gateway: { gnetId: 24460, revision: 1 }
+
+loki:
+  fullnameOverride: loki
+  deploymentMode: Monolithic
+  loki:
+    auth_enabled: false
+    commonConfig:
+      replication_factor: 1
+    storage:
+      type: filesystem
+    schemaConfig:
+      configs:
+        - from: "2024-04-01"
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: index_
+            period: 24h
+    limits_config:
+      retention_period: 30d
+      allow_structured_metadata: true
+      volume_enabled: true
+    compactor:
+      retention_enabled: true
+      delete_request_store: filesystem
+    # Grafana's Logs Drilldown shows patterns
+    pattern_ingester:
+      enabled: true
+    analytics:
+      reporting_enabled: false
+  singleBinary:
+    replicas: 1
+    persistence:
+      storageClass: zfs-prod
+      size: 50Gi
+    resources:
+      requests: { cpu: 100m, memory: 512Mi }
+      limits: { memory: 2Gi }
+  read:
+    replicas: 0
+  write:
+    replicas: 0
+  backend:
+    replicas: 0
+  gateway:
+    enabled: false
+  chunksCache:
+    enabled: false
+  resultsCache:
+    enabled: false
+  lokiCanary:
+    enabled: false
+  test:
+    enabled: false
+  sidecar:
+    rules:
+      enabled: false
+  monitoring:
+    serviceMonitor:
+      enabled: true
+
+tempo:
+  fullnameOverride: tempo
+  tempo:
+    reportingEnabled: false
+    # Grafana streams search and TraceQL metrics results
+    streamOverHttpEnabled: true
+    retention: 336h
+    metricsGenerator:
+      enabled: true
+      registry:
+        external_labels:
+          source: tempo
+      storage:
+        path: /var/tempo/generator/wal
+        remote_write:
+          - url: http://mimir:8080/api/v1/push
+            send_exemplars: true
+    overrides:
+      defaults:
+        metrics_generator:
+          processors: [service-graphs, span-metrics]
+    resources:
+      requests: { cpu: 100m, memory: 512Mi }
+      limits: { memory: 2Gi }
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: ["ALL"]
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile:
+      type: RuntimeDefault
+  persistence:
+    enabled: true
+    storageClassName: zfs-prod
+    size: 50Gi
+  serviceMonitor:
+    enabled: true
+
+mimir:
+  image:
+    # renovate: datasource=docker depName=grafana/mimir
+    tag: 3.2.2
+  retention: 90d
+  limits:
+    ingestion_rate: 100000
+    ingestion_burst_size: 1000000
+    max_global_series_per_user: 3000000
+    max_label_names_per_series: 50
+    # exemplars link Tempo's span metrics back to traces
+    max_global_exemplars_per_user: 100000
+    otel_metric_suffixes_enabled: true
+  storage:
+    storageClassName: zfs-prod
+    size: 100Gi
+  goMemLimit: 3600MiB
+  resources:
+    requests: { cpu: 200m, memory: 1Gi }
+    limits: { memory: 4Gi }

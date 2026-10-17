@@ -16,8 +16,11 @@ metadata:
     addons.homelab/cluster-api: "true"
     addons.homelab/envoy-gateway: "true"
     addons.homelab/external-secrets: "true"
+    addons.homelab/k8s-monitoring: "true"
     addons.homelab/kubevirt: "true"
+    addons.homelab/observability: "true"
     addons.homelab/openbao: "true"
+    addons.homelab/prometheus-operator-crds: "true"
     addons.homelab/zfs-localpv: "true"
 type: Opaque
 stringData:
