@@ -3,7 +3,6 @@
     defaultSopsFile = ./secrets.yaml;
     age.keyFile = "/var/lib/sops-nix/key.txt";
     age.sshKeyPaths = [ ];
-    gnupg.sshKeyPaths = [ ];
     secrets = {
       "wireguard/private_key" = {
         owner = "systemd-network";

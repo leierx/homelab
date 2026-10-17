@@ -1,7 +1,6 @@
 { pkgs, ... }:
 {
   nixpkgs.hostPlatform = "x86_64-linux";
-  nixpkgs.config.allowUnfree = true;
   system.stateVersion = "26.05";
 
   boot.loader.systemd-boot = {
@@ -47,7 +46,7 @@
     };
   };
 
-  # wg0 must exist before sshd binds it
+  # else sshd can start before 10.0.0.1 is on wg0, fail to bind and hit its start limit
   systemd.services.sshd = {
     wants = [ "network-online.target" ];
     after = [ "network-online.target" ];
