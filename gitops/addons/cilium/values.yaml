@@ -5,10 +5,21 @@ cilium:
   ipv6:
     enabled: false
   hubble:
+    # no Relay or UI: Hubble only feeds the flow metrics below, and `cilium-dbg hubble observe`
+    # in the agent still works over the local socket, so nothing needs a network listener or TLS
+    listenAddress: ""
     tls:
-      auto:
-        # the default (helm) regenerates certs on every render, so Argo would never be in sync
-        method: cronJob
+      enabled: false
+    metrics:
+      enabled:
+        - dns:query;ignoreAAAA
+        - drop:sourceContext=workload-name|reserved-identity;destinationContext=workload-name|reserved-identity
+        - flow:sourceContext=workload-name|reserved-identity;destinationContext=workload-name|reserved-identity
+        - tcp
+        - icmp
+        - port-distribution
+  prometheus:
+    enabled: true
   # no memory limit on the agent: an OOM kill takes the node's networking down with it
   resources:
     requests: { cpu: 100m, memory: 512Mi }
