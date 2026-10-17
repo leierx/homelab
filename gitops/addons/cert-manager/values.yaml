@@ -1,6 +1,11 @@
 cert-manager:
   crds:
     enabled: true
+  # the ACME HTTP-01 solver answers through HTTPRoutes on the edge Gateway;
+  # certificates are explicit Certificate objects, not Gateway annotations
+  config:
+    gatewayAPI:
+      enabled: true
   resources:
     requests: { cpu: 10m, memory: 64Mi }
     limits: { memory: 256Mi }
