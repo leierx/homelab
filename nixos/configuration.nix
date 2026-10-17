@@ -108,6 +108,8 @@
   system.autoUpgrade = {
     enable = true;
     flake = "git+https://github.com/leierx/homelab.git?ref=main#loft01";
+    # --upgrade is a no-op with flakes; nixpkgs moves via the CI flake bump
+    upgrade = false;
     flags = [ "-L" ];
     dates = "Fri 02:00";
     randomizedDelaySec = "30min";
