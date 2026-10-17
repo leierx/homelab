@@ -1,0 +1,63 @@
+authentik:
+  authentik:
+    disable_startup_analytics: true
+    disable_update_check: true
+    web:
+      base_url: https://auth.skinke.net
+    postgresql:
+      host: authentik-db-rw
+  global:
+    # secrets only; the chart's own Secret carries the rest of the config
+    envFrom:
+      - secretRef:
+          name: authentik-env
+    env:
+      - name: AUTHENTIK_POSTGRESQL__PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: authentik-db-app
+            key: password
+    securityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+  blueprints:
+    configMaps:
+      - authentik-default-locale
+      - authentik-sso
+  server:
+    resources:
+      requests: { cpu: 100m, memory: 512Mi }
+      limits: { memory: 2Gi }
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+    route:
+      main:
+        enabled: true
+        hostnames:
+          - auth.skinke.net
+        parentRefs:
+          - group: gateway.networking.k8s.io
+            kind: ListenerSet
+            name: authentik
+  worker:
+    resources:
+      requests: { cpu: 100m, memory: 512Mi }
+      limits: { memory: 2Gi }
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+# one Authentik OIDC provider + application each; client secret from OpenBao mgmt/<name> oidc_client_secret
+oidcClients:
+  argocd:
+    launchURL: https://argocd.skinke.net
+    redirectURIs:
+      - https://argocd.skinke.net/auth/callback
+      - http://localhost:8085/auth/callback
+  grafana:
+    launchURL: https://grafana.skinke.net
+    redirectURIs:
+      - https://grafana.skinke.net/login/generic_oauth

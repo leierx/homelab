@@ -7,6 +7,7 @@ metadata:
     argocd.argoproj.io/secret-type: cluster
     env: mgmt
     addons.homelab/argocd: "true"
+    addons.homelab/authentik: "true"
     addons.homelab/capi-argo-bridge: "true"
     addons.homelab/cdi: "true"
     addons.homelab/cert-manager: "true"

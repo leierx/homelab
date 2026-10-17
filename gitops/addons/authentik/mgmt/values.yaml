@@ -1,0 +1,3 @@
+postgres:
+  # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
+  tag: 18.6-system-trixie

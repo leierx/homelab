@@ -1,0 +1,2 @@
+namespace: authentik
+podSecurity: restricted

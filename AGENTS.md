@@ -231,3 +231,19 @@ server-side apply manager) means Argo owns every field from the start.
   `cnpg-system`): an app ships its own `Cluster` on `zfs-prod` in its addon
   and reads the password from the operator-made `<cluster>-app` Secret. Pin
   the image tag in `<env>/values.yaml` with a `# renovate:` comment.
+- Authentik (https://auth.skinke.net) is the SSO, configured by blueprints in
+  `addons/authentik/mgmt/templates/blueprints.yaml`. Group `homelab-admins`
+  is admin everywhere (`akadmin` is in it). Each `oidcClients` entry in
+  `addons/authentik/values.yaml` is an OIDC provider + application: slug =
+  client_id = name, issuer `https://auth.skinke.net/application/o/<name>/`,
+  groups in the `groups` claim, client secret from OpenBao `mgmt/<name>`
+  `oidc_client_secret` (read by both Authentik and the app).
+- Authentik applies a blueprint only when its file changes. After rotating a
+  client secret, `kubectl -n authentik rollout restart deploy` and re-apply
+  the blueprint under System > Blueprints.
+- On a fresh database the Authentik worker logs `relation
+  "authentik_tasks_workerstatus" does not exist` until the migrations finish
+  (server and worker both run them under a Postgres lock); it retries every
+  10 s. Harmless, don't add sync waves for it.
+- Break-glass logins: Authentik's `akadmin` (OpenBao `mgmt/authentik`
+  `bootstrap_password`, only read on first start) and Argo CD's local `admin`.
