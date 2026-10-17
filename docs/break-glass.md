@@ -76,4 +76,4 @@ the value in use never drift.
 - `kubectl` and `ssh loft01` (host access is key-based, not SSO).
 - `just bao …` — OpenBao admin is a Kubernetes ServiceAccount token, not a
   human login.
-- `just authentik-apply '<name>'` to re-apply a blueprint.
+- `just authentik-apply <file>` to re-apply a blueprint.

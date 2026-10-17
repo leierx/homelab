@@ -26,10 +26,15 @@ bao *args:
       'export BAO_TOKEN=$(bao write -field=token auth/kubernetes/login role=admin jwt="$0") && exec bao "$@"' \
       "$jwt" "$@"
 
-# re-apply Authentik blueprint instances by name, e.g. `just authentik-apply 'homelab - Access control'`
+# re-apply our Authentik blueprints by file name, e.g. `just authentik-apply access oidc-clients`;
+# only the worker mounts them, under mounted/cm-authentik-<name>/<name>.yaml
 [positional-arguments]
 authentik-apply +names:
-    kubectl -n authentik exec deploy/authentik-server -c server -- ak apply_blueprint "$@"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    paths=()
+    for name in "$@"; do paths+=("mounted/cm-authentik-$name/$name.yaml"); done
+    kubectl -n authentik exec deploy/authentik-worker -c worker -- ak apply_blueprint "${paths[@]}"
 
 # give each named property of kv/<key> a random value unless it already has one
 [positional-arguments]

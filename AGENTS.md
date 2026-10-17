@@ -247,8 +247,9 @@ server-side apply manager) means Argo owns every field from the start.
   groups in the `groups` claim, client secret from OpenBao `mgmt/<name>`
   `oidc_client_secret` (read by both Authentik and the app).
 - Authentik applies a blueprint only when its file changes or it is re-applied
-  with `just authentik-apply '<name>'`. After rotating a secret a blueprint
-  reads, restart the deploy, then re-apply. See `docs/access.md`.
+  with `just authentik-apply <file>` (e.g. `access`, `oidc-clients`; only the
+  worker mounts them). After rotating a secret a blueprint reads, restart the
+  deploy, then re-apply. See `docs/access.md`.
 - On a fresh database the Authentik worker logs `relation
   "authentik_tasks_workerstatus" does not exist` until the migrations finish
   (server and worker both run them under a Postgres lock); it retries every

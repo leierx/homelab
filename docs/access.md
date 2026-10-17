@@ -62,7 +62,7 @@ is off), so two accounts sharing an address makes the second login fail with
 
    ```sh
    kubectl -n authentik rollout restart deploy
-   just authentik-apply 'homelab - Access control'
+   just authentik-apply access
    ```
 
 3. Hand them their username and the initial password. Every service they can
@@ -91,5 +91,5 @@ declares).
   default is an empty list, so a provider without it rejects every login with
   `invalid_request`. The blueprint sets `authorization_code` and `refresh_token`.
 - Authentik applies a blueprint only when its file changes, or when
-  `just authentik-apply '<name>'` runs. Rotating a secret a blueprint reads
+  `just authentik-apply <file>` runs. Rotating a secret a blueprint reads
   therefore needs a restart *and* a re-apply.

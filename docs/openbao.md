@@ -124,7 +124,7 @@ Then, depending on the consumer:
   still needs the pod restarted; a volume mount updates in place.
 - **Authentik blueprints** read secrets at apply time, so after rotating one:
   `kubectl -n authentik rollout restart deploy` and
-  `just authentik-apply '<blueprint name>'` (see [access.md](access.md)).
+  `just authentik-apply <file>`, e.g. `oidc-clients` (see [access.md](access.md)).
 
 ## Host-only secrets (sops, not OpenBao)
 
