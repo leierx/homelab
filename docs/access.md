@@ -39,13 +39,20 @@ groups.
   password is read from OpenBao `mgmt/authentik` `leier_password` when the
   access blueprint is applied.
 - `akadmin` — Authentik's built-in admin, kept only as break-glass. Rotate its
-  password in OpenBao `mgmt/authentik` `bootstrap_password`.
+  password in OpenBao `mgmt/authentik` `bootstrap_password`. It carries a
+  placeholder email so the personal address stays free.
+
+Every user needs a **distinct email**. Grafana enforces a unique email per
+user but looks OAuth logins up by username only (`auth.oauth_allow_insecure_email_lookup`
+is off), so two accounts sharing an address makes the second login fail with
+`User sync failed`.
 
 ## Onboarding a person
 
 1. Add them to the right group in
    `gitops/addons/authentik/mgmt/templates/blueprints/access.yaml` — declare the
-   user and its group list, the way `leier` is declared. Put their initial
+   user and its group list, the way `leier` is declared. Give each person a
+   unique email. Put their initial
    password in OpenBao (`just bao-random mgmt/authentik <name>_password`) and
    reference it with `!Env` the way `LEIER_PASSWORD` is; add the matching
    `secretKey` to
