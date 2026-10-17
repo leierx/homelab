@@ -1,6 +1,13 @@
 openbao:
   global:
     tlsDisable: false
+  serverTelemetry:
+    serviceMonitor:
+      enabled: true
+      scheme: https
+      # in-cluster metrics only; the scrape doesn't need to verify OpenBao's private CA
+      tlsConfig:
+        insecureSkipVerify: true
   injector:
     enabled: false
   server:
@@ -53,6 +60,9 @@ openbao:
             cluster_address = "[::]:8201"
             tls_cert_file = "/openbao/tls/tls.crt"
             tls_key_file = "/openbao/tls/tls.key"
+            telemetry {
+              unauthenticated_metrics_access = true
+            }
           }
 
           storage "raft" {
@@ -60,6 +70,11 @@ openbao:
           }
 
           service_registration "kubernetes" {}
+
+          telemetry {
+            prometheus_retention_time = "24h"
+            disable_hostname = true
+          }
 
           seal "static" {
             current_key_id = "20261017"

@@ -23,10 +23,12 @@ argo-cd:
   notifications:
     enabled: false
   controller:
+    metrics: { enabled: true, serviceMonitor: { enabled: true } }
     resources:
       requests: { cpu: 250m, memory: 768Mi }
       limits: { memory: 2Gi }
   repoServer:
+    metrics: { enabled: true, serviceMonitor: { enabled: true } }
     resources:
       requests: { cpu: 50m, memory: 128Mi }
       limits: { memory: 1Gi }
@@ -35,10 +37,12 @@ argo-cd:
         requests: { cpu: 10m, memory: 16Mi }
         limits: { memory: 64Mi }
   server:
+    metrics: { enabled: true, serviceMonitor: { enabled: true } }
     resources:
       requests: { cpu: 20m, memory: 64Mi }
       limits: { memory: 256Mi }
   applicationSet:
+    metrics: { enabled: true, serviceMonitor: { enabled: true } }
     resources:
       requests: { cpu: 10m, memory: 64Mi }
       limits: { memory: 256Mi }
