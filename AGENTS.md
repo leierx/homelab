@@ -15,7 +15,8 @@
 Three parts: `nixos/` is the NixOS flake for the host `loft01` (HPE ProLiant,
 single-node k3s, the management cluster). `gitops/` is the Argo CD fleet that
 runs on that cluster and manages every cluster. `apps/` holds our own Go
-programs. `flake.nix` holds only inputs and outputs. Host code lives flat in
+programs. `docs/` explains access, secrets and the reasoning behind the
+stack. `flake.nix` holds only inputs and outputs. Host code lives flat in
 `nixos/`:
 
 - `configuration.nix`: users (immutable; `leier` is SSH-key only, no password), ssh, doas, locale/ntp, nix, auto-upgrade, packages
@@ -236,32 +237,35 @@ server-side apply manager) means Argo owns every field from the start.
   and reads the password from the operator-made `<cluster>-app` Secret. Pin
   the image tag in `<env>/values.yaml` with a `# renovate:` comment.
 - Authentik (https://auth.skinke.net) is the SSO, configured by blueprints in
-  `addons/authentik/mgmt/templates/blueprints.yaml`. Group `homelab-admins`
-  is admin everywhere (`akadmin` is in it). Each `oidcClients` entry in
+  `addons/authentik/mgmt/templates/blueprints/*.yaml` (one ConfigMap per
+  concern). Access tiers are the groups `homelab-{admins,operators,viewers}`;
+  `homelab-admins` is an Authentik superuser group and admin everywhere. The
+  personal user `leier` gets its password from OpenBao `mgmt/authentik`
+  `leier_password`; `akadmin` is break-glass only. Each `oidcClients` entry in
   `addons/authentik/values.yaml` is an OIDC provider + application: slug =
   client_id = name, issuer `https://auth.skinke.net/application/o/<name>/`,
   groups in the `groups` claim, client secret from OpenBao `mgmt/<name>`
   `oidc_client_secret` (read by both Authentik and the app).
-- Authentik applies a blueprint only when its file changes. After rotating a
-  client secret, `kubectl -n authentik rollout restart deploy` and re-apply
-  the blueprint under System > Blueprints.
+- Authentik applies a blueprint only when its file changes or it is re-applied
+  with `just authentik-apply '<name>'`. After rotating a secret a blueprint
+  reads, restart the deploy, then re-apply. See `docs/access.md`.
 - On a fresh database the Authentik worker logs `relation
   "authentik_tasks_workerstatus" does not exist` until the migrations finish
   (server and worker both run them under a Postgres lock); it retries every
   10 s. Harmless, don't add sync waves for it.
-- Break-glass logins: Authentik's `akadmin` (OpenBao `mgmt/authentik`
-  `bootstrap_password`, only read on first start) and Argo CD's local `admin`.
+- Local logins are off: Argo CD's `admin` account is disabled and Grafana's
+  login form is hidden, so Authentik is the only way in. `docs/break-glass.md`
+  has the recovery steps.
 - Observability: `observability` (mgmt only, namespace `monitoring`) runs
-  Grafana (https://grafana.skinke.net, Authentik OIDC, admin password from
-  OpenBao `mgmt/grafana`), Mimir, Loki and Tempo, each a single pod on
-  `zfs-prod` (90/30/14 days retention). Mimir is our own StatefulSet
-  (`templates/mimir.yaml`): mimir-distributed has no monolithic mode.
+  Grafana (https://metrics.skinke.net, Authentik OIDC), Mimir and Loki, each a
+  single pod on `zfs-prod` (90/30 days retention). Mimir is our own
+  StatefulSet (`templates/mimir.yaml`): mimir-distributed has no monolithic
+  mode. There is no tracing backend; see `docs/tech-choices.md`.
 - `k8s-monitoring` (Grafana's chart: Alloy, kube-state-metrics,
   node-exporter) is meant for every cluster; `clusters/<cluster>.yaml` names
   the cluster and its destinations. Its namespace is Pod Security privileged
-  for node-exporter and pod logs. Apps send OTLP to
-  `k8s-monitoring-alloy-receiver.k8s-monitoring.svc` on 4317 (gRPC) or 4318
-  (HTTP).
+  for node-exporter and pod logs. Nothing sends OTLP today, so the receiver is
+  not deployed; re-add `applicationObservability` to receive it.
 - Alloy scrapes every ServiceMonitor/PodMonitor (CRDs from
   `prometheus-operator-crds`, no Prometheus Operator). Grafana loads
   ConfigMaps labelled `grafana_dashboard: "1"` from any namespace (folder from
