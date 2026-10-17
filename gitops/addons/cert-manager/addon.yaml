@@ -1,1 +1,2 @@
 namespace: cert-manager
+podSecurity: restricted

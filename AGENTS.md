@@ -131,9 +131,14 @@ There is one Argo CD, on mgmt, and it manages the whole fleet.
   `<addon>/clusters/<cluster>.yaml`; missing files are skipped. An addon with
   no Helm chart (KubeVirt, CDI) sets `kustomize: true` in `addon.yaml` and has
   a `<env>/kustomization.yaml` pointing at upstream release manifests.
-- `addon.yaml` sets the namespace. Adding an addon: create `addons/<name>/`
-  with a dir per env that runs it, and label the clusters. An env without a
-  dir for a labelled addon fails to sync.
+- `addon.yaml` sets the namespace and, for Helm addons, optionally
+  `podSecurity: <level>` (the namespace's Pod Security enforce label;
+  kustomize addons label their own Namespace). Adding an addon: create
+  `addons/<name>/` with a dir per env that runs it, and label the clusters.
+  An env without a dir for a labelled addon fails to sync.
+- Every container gets requests and a memory limit, never a CPU limit (it only
+  throttles). The Cilium agent has no memory limit: an OOM kill takes the
+  node's networking down.
 - `preserveResourcesOnDeletion` is on: removing a label or an addon deletes the
   Application but leaves its resources running. Clean those up by hand.
 - `charts/` and `Chart.lock` are gitignored; Argo builds dependencies itself.

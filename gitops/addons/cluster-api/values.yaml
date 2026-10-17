@@ -1,3 +1,16 @@
 cluster-api-operator:
   # as Helm hooks, Argo would neither diff nor prune the provider CRs; sync-waves order them instead
   enableHelmHook: false
+  resources:
+    manager:
+      requests: { cpu: 10m, memory: 64Mi }
+      # null drops the chart's 100m CPU limit, which only throttles
+      limits: { cpu: null, memory: 256Mi }
+  containerSecurityContext:
+    manager:
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+      seccompProfile:
+        type: RuntimeDefault

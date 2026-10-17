@@ -14,3 +14,37 @@ patches:
         value: v1alpha1
       - op: remove
         path: /spec/versions/0
+  - target:
+      kind: Namespace
+      name: cdi
+    patch: |
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1enforce
+        value: restricted
+  - target:
+      kind: CDI
+    patch: |
+      - op: add
+        path: /spec/customizeComponents
+        value:
+          patches:
+            - resourceType: Deployment
+              resourceName: cdi-apiserver
+              type: strategic
+              patch: '{"spec":{"template":{"spec":{"containers":[{"name":"cdi-apiserver","resources":{"limits":{"memory":"512Mi"}}}]}}}}'
+            - resourceType: Deployment
+              resourceName: cdi-deployment
+              type: strategic
+              patch: '{"spec":{"template":{"spec":{"containers":[{"name":"cdi-deployment","resources":{"limits":{"memory":"512Mi"}}}]}}}}'
+            - resourceType: Deployment
+              resourceName: cdi-uploadproxy
+              type: strategic
+              patch: '{"spec":{"template":{"spec":{"containers":[{"name":"cdi-uploadproxy","resources":{"limits":{"memory":"512Mi"}}}]}}}}'
+  - target:
+      kind: Deployment
+      name: cdi-operator
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/resources/limits
+        value:
+          memory: 512Mi

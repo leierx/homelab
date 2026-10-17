@@ -6,3 +6,6 @@ cilium:
   ipam:
     operator:
       clusterPoolIPv4PodCIDRList: ["10.42.0.0/16"]
+  # BPF maps are sized from host RAM and charged to the agent's cgroup, ~2.4Gi on 512G
+  resources:
+    requests: { cpu: 100m, memory: 2560Mi }

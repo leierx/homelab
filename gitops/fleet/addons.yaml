@@ -42,7 +42,8 @@ spec:
           - ServerSideApply=true
         retry:
           limit: -1
-  # addons whose addon.yaml sets `kustomize: true` have a kustomization.yaml instead of a Chart.yaml
+  # addons whose addon.yaml sets `kustomize: true` have a kustomization.yaml instead of a Chart.yaml;
+  # `podSecurity: <level>` labels the namespace (kustomize addons ship their own Namespace and label it there)
   templatePatch: |
     {{- if not (hasKey . "kustomize") }}
     spec:
@@ -54,4 +55,10 @@ spec:
             - values.yaml
             - "../clusters/{{ .name }}.yaml"
           ignoreMissingValueFiles: true
+      {{- if hasKey . "podSecurity" }}
+      syncPolicy:
+        managedNamespaceMetadata:
+          labels:
+            pod-security.kubernetes.io/enforce: "{{ .podSecurity }}"
+      {{- end }}
     {{- end }}
