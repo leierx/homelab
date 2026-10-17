@@ -1,14 +1,19 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
@@ -49,8 +54,10 @@ func main() {
 		Client:          mgr.GetClient(),
 		ArgoCDNamespace: argoCDNamespace,
 	}
-	if err := reconciler.SetupWithManager(mgr); err != nil {
-		ctrl.Log.Error(err, "unable to create controller")
+	if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+		return setupWhenServed(ctx, mgr, reconciler)
+	})); err != nil {
+		ctrl.Log.Error(err, "unable to add controller setup")
 		os.Exit(1)
 	}
 
@@ -58,4 +65,31 @@ func main() {
 		ctrl.Log.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+// CAPI's CRDs arrive from another Argo app in no particular order, so wait for them rather than crash-loop
+func setupWhenServed(ctx context.Context, mgr manager.Manager, r *ClusterReconciler) error {
+	log := ctrl.Log.WithName("setup")
+	waiting := false
+	err := wait.PollUntilContextCancel(ctx, 10*time.Second, true, func(ctx context.Context) (bool, error) {
+		_, err := mgr.GetRESTMapper().RESTMapping(clusterGVK.GroupKind(), clusterGVK.Version)
+		switch {
+		case err == nil:
+			return true, nil
+		case meta.IsNoMatchError(err):
+			if !waiting {
+				log.Info("waiting for the Cluster CRD to be served", "gvk", clusterGVK.String())
+				waiting = true
+			}
+		default:
+			log.Error(err, "looking up the Cluster CRD")
+		}
+		return false, nil
+	})
+	if err != nil {
+		// only fails once the manager is stopping
+		return nil
+	}
+	log.Info("Cluster CRD is served, starting the controller")
+	return r.SetupWithManager(mgr)
 }

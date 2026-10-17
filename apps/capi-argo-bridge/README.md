@@ -34,6 +34,7 @@ controllers are built, even when that costs dependencies.
 | Argo Secrets map back to their Cluster | A managed Secret whose Cluster is gone gets reconciled and deleted on start-up, so a Cluster deleted while this was down is still cleaned up. No finalizer needed. |
 | zap logger from controller-runtime | kubebuilder's default. |
 | `/healthz` and `/readyz` on `:8081` | kubebuilder's default probes. |
+| Controller added only once the `Cluster` CRD is served | CAPI's CRDs come from another Argo app with no ordering. Polling the RESTMapper keeps the probes up while waiting, instead of crash-looping until controller-runtime's cache sync times out. |
 | Metrics off (`BindAddress: "0"`) | Nothing scrapes them. The Prometheus libraries still come in with controller-runtime's client. |
 | No leader election | One replica on a single node. Every write is idempotent, so the brief overlap during a rollout is harmless. |
 | Fake client in tests, not envtest | Avoids downloading etcd and kube-apiserver in CI. envtest would be closer to upstream. |
