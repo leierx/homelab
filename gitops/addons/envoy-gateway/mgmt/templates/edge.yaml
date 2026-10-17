@@ -79,7 +79,9 @@ spec:
       sectionName: http
   rules:
     # ACME HTTP-01 challenges still get through: cert-manager's solver routes match their exact path
-    - filters:
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      filters:
         - type: RequestRedirect
           requestRedirect:
             scheme: https
