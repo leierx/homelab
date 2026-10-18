@@ -126,6 +126,11 @@ Protect `main`).
   goes Ready with no restarts), then `failed to load the certificate` every
   minute for as long as it runs. No Secret is mounted at that path. Find out
   whether KubeVirt v1.9.1 expects one, or report it upstream.
+- dodde's guest gets the search domain `cluster.local` over DHCP although its
+  pod has none: KubeVirt adds it when the pod's resolv.conf has no `search`
+  line (`pkg/network/dns/resolveconf.go`). Unqualified names leak to Quad9 as
+  `<name>.cluster.local`. Harmless while cluster DNS stays blocked; a
+  `dnsConfig.searches` entry or a NetworkManager override would remove it.
 
 ## Node shutdown
 
