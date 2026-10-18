@@ -1,2 +1,4 @@
 namespace: ntfy
 podSecurity: restricted
+# staging shim: adopt ntfy as <addon>-loft01 before the cluster rename; removed in the next commit
+appSuffixOverride: loft01
