@@ -11,6 +11,18 @@ patches:
       - op: add
         path: /spec/configuration/evictionStrategy
         value: None
+  # virt-launcher runs as uid 107 and satisfies Pod Security restricted except
+  # for the seccomp profile, which this is the only lever for in v1.9.1; the
+  # kubelet already defaults to RuntimeDefault, so it only makes it explicit
+  - target:
+      kind: KubeVirt
+    patch: |
+      - op: add
+        path: /spec/configuration/seccompConfiguration
+        value:
+          virtualMachineInstanceProfile:
+            customProfile:
+              runtimeDefaultProfile: true
   # single node: a second replica of the control plane buys nothing
   - target:
       kind: KubeVirt
