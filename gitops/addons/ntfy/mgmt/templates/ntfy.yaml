@@ -1,0 +1,136 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ntfy
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: zfs-prod
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ntfy
+spec:
+  replicas: 1
+  # the SQLite files live on an RWO volume
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ntfy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ntfy
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ntfy
+          image: docker.io/binwiederhier/ntfy:{{ .Values.image.tag }}
+          args: [serve]
+          env:
+            - { name: NTFY_BASE_URL, value: https://ntfy.skinke.net }
+            - { name: NTFY_LISTEN_HTTP, value: ":8080" }
+            - { name: NTFY_BEHIND_PROXY, value: "true" }
+            - { name: NTFY_CACHE_FILE, value: /var/lib/ntfy/cache.db }
+            - { name: NTFY_AUTH_FILE, value: /var/lib/ntfy/user.db }
+            - { name: NTFY_AUTH_DEFAULT_ACCESS, value: deny-all }
+            - { name: NTFY_ENABLE_LOGIN, value: "true" }
+            - { name: NTFY_ENABLE_SIGNUP, value: "false" }
+          envFrom:
+            - secretRef:
+                name: ntfy-auth
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /v1/health, port: http }
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/ntfy
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 256Mi }
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: ntfy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ntfy
+spec:
+  selector:
+    app.kubernetes.io/name: ntfy
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ntfy
+spec:
+  secretName: ntfy-tls
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt
+  dnsNames:
+    - ntfy.skinke.net
+{{- range $gw := list "edge" "wg" }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: ntfy-{{ $gw }}
+spec:
+  parentRef:
+    name: {{ $gw }}
+    namespace: envoy-gateway-system
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: ntfy.skinke.net
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: ntfy-tls
+---
+# public without the edge login: the phone app can't do OIDC, so ntfy's own auth (deny-all by default) guards it
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ntfy-{{ $gw }}
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: ntfy-{{ $gw }}
+  hostnames:
+    - ntfy.skinke.net
+  rules:
+    - backendRefs:
+        - name: ntfy
+          port: 80
+{{- end }}

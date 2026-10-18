@@ -18,6 +18,7 @@ metadata:
     addons.homelab/external-secrets: "true"
     addons.homelab/k8s-monitoring: "true"
     addons.homelab/kubevirt: "true"
+    addons.homelab/ntfy: "true"
     addons.homelab/observability: "true"
     addons.homelab/openbao: "true"
     addons.homelab/prometheus-operator-crds: "true"

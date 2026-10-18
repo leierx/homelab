@@ -18,6 +18,8 @@ cilium:
         - tcp
         - icmp
         - port-distribution
+        # allowed/denied/audited verdicts per workload pair, for writing network policies
+        - policy:sourceContext=workload-name|reserved-identity;destinationContext=workload-name|reserved-identity
       serviceMonitor:
         enabled: true
       dashboards:
