@@ -38,3 +38,14 @@ and the stale `renovate/*` branches from before the rebuild.
   device gate in front of the public sites. Needs in-cluster callers of
   `auth.skinke.net` to use the internal gateway.
 - Service-to-service mTLS, case by case.
+
+## Network policy
+
+- Default-deny for the namespaces not covered yet (kube-system,
+  k8s-monitoring, kubevirt, cdi, capi-*, openebs).
+- Workload clusters: their VMs sit on mgmt's pod network, so before the first
+  one, a policy for its namespace that allows only what CAPI and Argo CD need
+  (Argo's application controller to the cluster's API endpoint) and keeps the
+  VMs away from mgmt's services.
+- Narrow `world:443` egress to FQDNs (`toFQDNs`, needs Cilium's DNS proxy):
+  Renovate, Argo CD, cert-manager, Grafana, Authentik (Gravatar).

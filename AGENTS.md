@@ -170,6 +170,21 @@ There is one Argo CD, on mgmt, and it manages the whole fleet.
 - Every container gets requests and a memory limit, never a CPU limit (it only
   throttles). The Cilium agent has no memory limit: an OOM kill takes the
   node's networking down.
+- Network policy: an addon that owns data, faces the edge or runs third-party
+  code ships `templates/network-policy.yaml`, a CiliumNetworkPolicy `default`
+  selecting its whole namespace (`endpointSelector: {}`, default-deny both
+  ways) with explicit allows: same namespace, `kube-apiserver`, named peers,
+  and `world` on 443 only where needed. The clusterwide `baseline` (cilium
+  addon) allows DNS and Alloy's scraping for every pod without making anyone
+  default-deny; `acme-http01-solver` (cert-manager) lets Envoy reach ACME
+  solvers. A site behind Envoy allows ingress from `envoy-gateway-system`
+  pods on its target port, and the `proxies` policy in envoy-gateway lists
+  each backend namespace and port. Not covered yet: kube-system,
+  k8s-monitoring, KubeVirt, CDI, CAPI and openebs (operators and node agents).
+  To write or change one, set `policyAuditMode: true` in the cilium values
+  (restart the agent), and read `hubble_policy_verdicts_total{action="audit"}`
+  or `hubble observe --verdict AUDIT` in the agent; drops alert via
+  `hubble_drop_total{reason="POLICY_DENIED"}`.
 - `preserveResourcesOnDeletion` is on: removing a label or an addon deletes the
   Application but leaves its resources running. Clean those up by hand.
 - `charts/` and `Chart.lock` are gitignored; Argo builds dependencies itself.

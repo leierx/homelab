@@ -165,7 +165,7 @@ grafana:
               annotations:
                 summary: "The host's system:masters certificate was used: break-glass, or someone who shouldn't have it."
               data:
-                - { refId: A, datasourceUid: loki, relativeTimeRange: { from: 300, to: 0 }, model: { refId: A, queryType: instant, expr: 'sum by (verb, objectRef_resource) (count_over_time({job="kube-audit"} | json | user_username="system:admin" [5m]))' } }
+                - { refId: A, datasourceUid: loki, relativeTimeRange: { from: 300, to: 0 }, model: { refId: A, queryType: instant, expr: 'sum(count_over_time({job="kube-audit"} | json | user_username="system:admin" [5m]))' } }
                 - { refId: C, datasourceUid: __expr__, model: { refId: C, type: threshold, expression: A, conditions: [{ evaluator: { type: gt, params: [0] } }] } }
             - uid: rbac-changed-by-person
               title: RBAC changed outside Argo CD
