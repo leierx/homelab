@@ -46,6 +46,20 @@ and digest automerge once `addon-render` passes and majors wait; decide
 whether `platformAutomerge` should go back on once `main` has rules (see
 Protect `main`).
 
+- `.github/api-versions.txt` is a hand-taken snapshot of `kubectl
+  api-versions` that the render job passes to Helm. Refresh it (`kubectl
+  api-versions > .github/api-versions.txt`) whenever an addon's CRDs change,
+  or a `Capabilities.APIVersions.Has` guard will render differently there
+  than in the cluster.
+
+## Addon rollout
+
+- Addons share one pinned upstream version across clusters; per-cluster
+  version pinning was deliberately not built. If rolling one cluster ahead
+  becomes real, add a cluster label `channel` and, only in the addons that
+  need it, `channels/<channel>/Chart.yaml` selected through the cluster
+  generator's `values` (rationale in `docs/tech-choices.md`).
+
 ## Supply chain
 
 - Renovate pins image digests (`pinDigests`).
