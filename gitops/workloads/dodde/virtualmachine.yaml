@@ -7,7 +7,7 @@ spec:
   runStrategy: Always
   template:
     spec:
-      # 180s for the guest, so the pod gets 210s, inside kubelet's 300s node shutdown
+      # 180s for the guest, so the pod gets 210s, inside the 240s the kubelet gives priority-0 pods on shutdown
       terminationGracePeriodSeconds: 180
       domain:
         resources:

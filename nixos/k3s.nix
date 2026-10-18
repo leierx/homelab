@@ -192,12 +192,21 @@ in
       "--kube-apiserver-arg=audit-log-maxbackup=10"
       "--kube-apiserver-arg=audit-log-maxsize=100"
     ];
-    # kubelet stops pods cleanly before the auto-upgrade reboot
-    gracefulNodeShutdown = {
-      enable = true;
-      # KubeVirt gives a VM 180s to shut down its guest
-      shutdownGracePeriod = "300s";
-    };
+    # lowest priority first: VM pods stop while virt-handler (1e9), which sends the guest its ACPI power-off, still runs
+    extraKubeletConfig.shutdownGracePeriodByPodPriority = [
+      {
+        priority = 0;
+        shutdownGracePeriodSeconds = 240;
+      }
+      {
+        priority = 900000000;
+        shutdownGracePeriodSeconds = 30;
+      }
+      {
+        priority = 2000000000;
+        shutdownGracePeriodSeconds = 10;
+      }
+    ];
   };
 
   systemd.tmpfiles.rules = [ "d /var/log/kubernetes 0700 root root -" ];
@@ -208,8 +217,7 @@ in
     after = [ "zfs-import.target" ];
   };
 
-  # logind has to outlast the kubelet's shutdown window above, not match it: on
-  # 2026-10-18 the two deadlines expired together and a reboot stalled 300s
+  # above the kubelet's 280 s total, so logind never cuts its shutdown short
   services.logind.settings.Login.InhibitDelayMaxSec = "360s";
 
   # admin kubeconfig is readable by wheel, so kubectl works as leier without doas
