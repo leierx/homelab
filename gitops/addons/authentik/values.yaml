@@ -36,15 +36,6 @@ authentik:
       allowPrivilegeEscalation: false
       capabilities:
         drop: ["ALL"]
-    route:
-      main:
-        enabled: true
-        hostnames:
-          - auth.skinke.net
-        parentRefs:
-          - group: gateway.networking.k8s.io
-            kind: ListenerSet
-            name: authentik
   worker:
     resources:
       requests: { cpu: 100m, memory: 512Mi }
@@ -64,3 +55,9 @@ oidcClients:
     launchURL: https://metrics.skinke.net
     redirectURIs:
       - https://metrics.skinke.net/login/generic_oauth
+  # Envoy Gateway's login in front of the public sites (SecurityPolicy edge-oidc); not an app
+  edge:
+    launchURL: blank://blank
+    redirectURIs:
+      - https://argocd.skinke.net/oauth2/callback
+      - https://metrics.skinke.net/oauth2/callback

@@ -10,14 +10,15 @@ spec:
     name: letsencrypt
   dnsNames:
     - {{ $host }}
+{{- range $gw := list "edge" "wg" }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: ListenerSet
 metadata:
-  name: grafana
+  name: grafana-{{ $gw }}
 spec:
   parentRef:
-    name: edge
+    name: {{ $gw }}
     namespace: envoy-gateway-system
   listeners:
     - name: https
@@ -34,15 +35,50 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: grafana
+  name: grafana-{{ $gw }}
 spec:
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: ListenerSet
-      name: grafana
+      name: grafana-{{ $gw }}
   hostnames:
     - {{ $host }}
   rules:
     - backendRefs:
         - name: grafana
           port: 80
+{{- end }}
+---
+# public requests log in to Authentik (client edge) before Grafana sees them; wg peers skip this
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: edge-oidc
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: grafana-edge
+  oidc:
+    provider:
+      issuer: https://auth.skinke.net/application/o/edge/
+    clientID: edge
+    clientSecret:
+      name: edge-oidc
+    redirectURL: https://{{ $host }}/oauth2/callback
+    logoutPath: /oauth2/logout
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: edge-oidc
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: openbao
+  target:
+    name: edge-oidc
+  data:
+    - secretKey: client-secret
+      remoteRef: { key: mgmt/edge, property: oidc_client_secret }
