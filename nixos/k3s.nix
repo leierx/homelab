@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ pkgs, ... }:
 let
   yaml = pkgs.formats.yaml { };
 
@@ -180,6 +180,9 @@ in
       "--kubelet-arg=kube-reserved=cpu=2,memory=16Gi"
       # RuntimeDefault for every container that doesn't ask for another profile
       "--kubelet-arg=seccomp-default=true"
+      # non-root pods need device ownership from their security context: virt-launcher
+      # and CDI's importer run as uid 107 and cannot open a raw block volume otherwise
+      "--nonroot-devices"
       "--kube-apiserver-arg=authentication-config=${authentication}"
       "--kube-apiserver-arg=admission-control-config-file=${admission}"
       "--kube-apiserver-arg=audit-policy-file=${auditPolicy}"
@@ -205,8 +208,9 @@ in
     after = [ "zfs-import.target" ];
   };
 
-  services.logind.settings.Login.InhibitDelayMaxSec =
-    config.services.k3s.gracefulNodeShutdown.shutdownGracePeriod;
+  # logind has to outlast the kubelet's shutdown window above, not match it: on
+  # 2026-10-18 the two deadlines expired together and a reboot stalled 300s
+  services.logind.settings.Login.InhibitDelayMaxSec = "360s";
 
   # admin kubeconfig is readable by wheel, so kubectl works as leier without doas
   environment.variables.KUBECONFIG = "/etc/rancher/k3s/k3s.yaml";
