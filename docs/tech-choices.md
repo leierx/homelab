@@ -150,3 +150,65 @@ and the same with `namespace="authentik"` / `"openbao"`.
 - **The Postgres image tag in `authentik/mgmt/values.yaml`.** It feeds *our*
   CloudNativePG `Cluster` (`imageName: ghcr.io/cloudnative-pg/postgresql:…`),
   not the Authentik chart's bundled PostgreSQL subchart, which is unused.
+
+## Really free software
+
+Principle 5 prefers OSI-licensed software hosted by a neutral foundation, and
+avoids source-available licences and single-vendor open core. This is the
+audit of where the stack stands; the decisions it raises are in `TODO.md`.
+
+Everything we run is OSI-licensed, so the question is vendor control, not
+whether the source is available. (Licence and foundation per component are in
+the README table; this section adds the alternatives and the switching cost.)
+Four components are single-vendor or open core with no neutral foundation:
+
+- **Authentik.** The community edition is MIT, but `authentik/enterprise/`
+  is under a proprietary EE licence (production use needs a subscription), so
+  it is open core. It is our only IdP. The neutral-foundation alternative is
+  **Keycloak** (Apache-2.0, CNCF incubating); **Dex** (CNCF sandbox) is a
+  connector, not a full IdP, and **Zitadel** (AGPL-3.0) is independent.
+  Switching cost is high: every login, the blueprint config-as-code, the
+  `groups` claim, the MFA and recovery flows and the generated `oidcClients`
+  are Authentik-shaped. We use no EE feature.
+- **Grafana, Mimir, Loki and Alloy** (Grafana Labs, not a foundation).
+  Grafana, Mimir and Loki are AGPL-3.0; Alloy and the `k8s-monitoring` chart
+  are Apache-2.0. Foundation alternatives: **Perses** (Apache-2.0, CNCF
+  sandbox) for dashboards, **Prometheus** (Apache-2.0, CNCF graduated) with
+  **Thanos** (CNCF incubating) or **VictoriaMetrics** (Apache-2.0,
+  vendor) for metrics, **OpenSearch** (Apache-2.0, LF) for logs, and the
+  **OpenTelemetry Collector** (Apache-2.0, CNCF graduated) for Alloy.
+  Switching cost is high: the three backends, the dashboards, the alert
+  rules, the contact point and the collector config are one coupled stack.
+- **Renovate** (AGPL-3.0, Mend). It is the one component whose job has no
+  foundation-hosted equivalent: Dependabot is GitHub-hosted and cannot read our
+  `# renovate:` custom managers. Switching technically is easy (drop the
+  addon, run Dependabot), but we would lose the one-PR-per-env grouping and
+  the custom regex managers.
+- **ntfy** (Apache-2.0 / GPL-2.0 dual, one maintainer). No foundation-hosted
+  push service exists. **Gotify** (MIT) is the closest self-hosted drop-in;
+  **Alertmanager** (Apache-2.0, CNCF graduated) routes alerts but does not
+  push to a phone. Switching cost is low: the addon is a Deployment, a PVC
+  and one ExternalSecret.
+
+Lower priority: community projects with no foundation (but no vendor control
+either), or a need with no better alternative:
+
+- **k3s** is a CNCF sandbox project but is developed by SUSE/Rancher. kubeadm
+  (Kubernetes SIG) or Talos (MPL-2.0, Sidero) would replace it; k3s's
+  batteries-included SQLite mode is why `nixos/k3s.nix` is so small.
+- **OpenZFS** is CDDL-1.0, an independent project with no foundation. Its
+  snapshots and `zfs send` carry the storage and backup design; btrfs (GPL)
+  is the only in-kernel alternative, and switching rewrites disko, sanoid and
+  the backup.
+- **NixOS and nixpkgs** are MIT (nixpkgs) and LGPL-2.1 (Nix) under the NixOS
+  Foundation, which is independent of the LF/CNCF. Guix is the only
+  alternative and a different system.
+- **sops-nix** and **disko** are MIT community projects (sops itself is CNCF
+  sandbox); agenix and nixos-anywhere are the alternatives.
+- **prometheus-operator-crds** is Apache-2.0 from the Prometheus community and
+  is not itself a CNCF project (Prometheus core is). It is only the CRD
+  interface, and goes with the backends if those change.
+- **PostgreSQL** is the PostgreSQL License, from the PostgreSQL Global
+  Development Group; there is no foundation-hosted drop-in and none is needed.
+- **WireGuard** is GPL-2.0 with no foundation; there is no drop-in
+  replacement for the host's only remote-access path.

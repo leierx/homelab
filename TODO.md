@@ -52,3 +52,48 @@ and the stale `renovate/*` branches from before the rebuild.
   Renovate, Argo CD, cert-manager, Grafana, Authentik (Gravatar).
 - Check which Pod Security level KubeVirt's virt-launcher pods need in
   `clusters` (it gets the cluster default, baseline).
+
+## Backups
+
+- Add `bao operator raft snapshot save` to the off-site backup run, so the
+  OpenBao raft state is application-consistent and not only a zvol snapshot
+  (see `docs/operations.md`).
+
+## Really free software
+
+The Principle 5 audit is in `docs/tech-choices.md` (Really free software).
+The components that are single-vendor or open core, with no neutral
+foundation, in priority order:
+
+- **Authentik** (open core: MIT community, proprietary EE). Decide whether to
+  keep it or move to Keycloak (Apache-2.0, CNCF incubating) — a full rewrite
+  of SSO, the blueprints, the groups claim and the recovery flow.
+- **Grafana, Mimir, Loki, Alloy** (Grafana Labs). Decide whether to keep the
+  coupled stack or move to Perses + Prometheus/Thanos + OpenSearch +
+  OpenTelemetry Collector.
+- **Renovate** (AGPL-3.0, Mend). No foundation-hosted equivalent; decide
+  whether losing the custom managers and one-PR-per-env grouping is
+  acceptable to drop it for Dependabot.
+- **ntfy** (one maintainer). Low switching cost to Gotify, if a reason
+  appears.
+- Lower priority: k3s (CNCF, but SUSE-developed), OpenZFS (CDDL, no
+  foundation), NixOS Foundation (independent), sops-nix and disko
+  (community), PostgreSQL (PGDG), WireGuard (no foundation).
+
+## Justfile recipes
+
+The Principle 1 audit of the four recipes (`AGENTS.md`: a recipe is usually
+work git should do):
+
+- **`authentik-apply <file>`** — manual work automation should own. Argo
+  updates the blueprint ConfigMap, but Authentik applies a blueprint only
+  when the mounted file changes, so the recipe must force it. Replace with a
+  reconcile on ConfigMap change (a small controller, or a worker restart
+  triggered by the change).
+- **`kubeconfig`** — per-workstation state, not break-glass. The cluster CA
+  is public and valid to 2036, so a committed kubeconfig template plus the
+  `kubelogin` exec plugin would remove the recipe.
+- **`bao`** — legitimate: a short-lived admin token minted from the
+  `openbao-admin` ServiceAccount; git cannot hold a credential. OpenBao OIDC
+  human login (already in `docs/openbao.md`) would replace it.
+- **`authentik-recover <user> [minutes]`** — real break-glass. Keep.
