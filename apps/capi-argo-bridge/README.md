@@ -2,8 +2,8 @@
 
 Registers Cluster API clusters with Argo CD.
 
-For every CAPI `Cluster` (`cluster.x-k8s.io/v1beta2`) that has a
-`<name>-kubeconfig` Secret, it:
+For every CAPI `Cluster` (`cluster.x-k8s.io/v1beta2`) in `--cluster-namespace`
+(default `clusters`) that has a `<name>-kubeconfig` Secret, it:
 
 - writes the Argo CD cluster Secret `cluster-<name>` in `--argocd-namespace`
   with the server and client certs from that kubeconfig,
@@ -36,6 +36,7 @@ controllers are built, even when that costs dependencies.
 | `/healthz` and `/readyz` on `:8081` | kubebuilder's default probes. |
 | Controller added only once the `Cluster` CRD is served | CAPI's CRDs come from another Argo app with no ordering. Polling the RESTMapper keeps the probes up while waiting, instead of crash-looping until controller-runtime's cache sync times out. |
 | Metrics off (`BindAddress: "0"`) | Nothing scrapes them. The Prometheus libraries still come in with controller-runtime's client. |
+| Watches only `--cluster-namespace` and `--argocd-namespace` | The cache (and so RBAC) is limited to those two namespaces: no cluster-wide right to read Secrets, which would include every credential in the cluster. All workload clusters live in one namespace. |
 | No leader election | One replica on a single node. Every write is idempotent, so the brief overlap during a rollout is harmless. |
 | Fake client in tests, not envtest | Avoids downloading etcd and kube-apiserver in CI. envtest would be closer to upstream. |
 | Image built with ko | No Dockerfile to maintain; static Go binary on ko's default static base image. |
