@@ -273,7 +273,7 @@ grafana:
               labels: { severity: warning }
               annotations: { summary: "An ExternalSecret or PushSecret has not been Ready for 15 minutes." }
               data:
-                - { refId: A, datasourceUid: mimir, relativeTimeRange: { from: 600, to: 0 }, model: { refId: A, instant: true, expr: 'max by (namespace, name) ({__name__=~"externalsecret_status_condition|pushsecret_status_condition", condition="Ready", status="False"}) > 0' } }
+                - { refId: A, datasourceUid: mimir, relativeTimeRange: { from: 600, to: 0 }, model: { refId: A, instant: true, expr: 'max by (exported_namespace, name) ({__name__=~"externalsecret_status_condition|pushsecret_status_condition", condition="Ready", status="False"}) > 0' } }
                 - { refId: C, datasourceUid: __expr__, model: { refId: C, type: threshold, expression: A, conditions: [{ evaluator: { type: gt, params: [0] } }] } }
             - uid: openbao-sealed
               title: OpenBao sealed
@@ -282,9 +282,10 @@ grafana:
               noDataState: Alerting
               execErrState: Error
               labels: { severity: critical }
+              # max: OpenBao keeps reporting the 0 from before it unsealed for its 24 h metrics retention
               annotations: { summary: "OpenBao is sealed or not reporting: no secret can be read or generated." }
               data:
-                - { refId: A, datasourceUid: mimir, relativeTimeRange: { from: 600, to: 0 }, model: { refId: A, instant: true, expr: 'min(vault_core_unsealed)' } }
+                - { refId: A, datasourceUid: mimir, relativeTimeRange: { from: 600, to: 0 }, model: { refId: A, instant: true, expr: 'max(vault_core_unsealed)' } }
                 - { refId: C, datasourceUid: __expr__, model: { refId: C, type: threshold, expression: A, conditions: [{ evaluator: { type: lt, params: [1] } }] } }
             - uid: certificate-expiring
               title: Certificate expiring
