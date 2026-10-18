@@ -49,10 +49,11 @@ Devices → Static tokens* and keep them somewhere offline.
   password is read from OpenBao `mgmt/authentik` `leier_password` whenever the
   access blueprint is applied, so change it in OpenBao, not in the UI (see
   [openbao.md](openbao.md)).
-- `akadmin` — Authentik's built-in admin, break-glass only. Password in OpenBao
-  `mgmt/authentik` `bootstrap_password`; enrol a TOTP device for it and keep
-  that secret and its recovery codes next to the age key. It carries a
-  placeholder email so real addresses stay free.
+- `akadmin` — Authentik's built-in admin, disabled (`is_active: false`). It
+  stays in the database because Authentik's bootstrap blueprint would recreate
+  it, and it carries a placeholder email so real addresses stay free.
+  Break-glass is a recovery link instead (`just authentik-recover <user>`, see
+  [break-glass.md](break-glass.md)).
 
 Every user needs a **distinct email**. Grafana enforces a unique email per user
 but looks OAuth logins up by username only

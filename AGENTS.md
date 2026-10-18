@@ -241,7 +241,9 @@ server-side apply manager) means Argo owns every field from the start.
   concern). Access tiers are the groups `homelab-{admins,operators,viewers}`;
   `homelab-admins` is an Authentik superuser group and admin everywhere. The
   personal user `leier` gets its password from OpenBao `mgmt/authentik`
-  `leier_password`; `akadmin` is break-glass only. Every login needs a second
+  `leier_password`; `akadmin` is disabled (kept only because the bootstrap
+  blueprint would recreate it). Break-glass is `just authentik-recover <user>`,
+  a single-use link that skips password and MFA. Every login needs a second
   factor (WebAuthn or TOTP, enrolled on first login). New people join through
   a single-use invitation (flow `invitation-enrollment`) and choose their own
   password; `docs/access.md` has the process. Each `oidcClients` entry in

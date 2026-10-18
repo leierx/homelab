@@ -28,13 +28,13 @@ data:
         id: homelab-viewers
         identifiers:
           name: homelab-viewers
-      # break-glass account: still an Authentik admin and in homelab-admins, but not for daily use.
-      # A placeholder email keeps the personal address free for leier, since Grafana's user table
-      # enforces a unique email but OAuth looks users up by login only.
+      # disabled, not deleted (the bootstrap blueprint would recreate it); break-glass is `just authentik-recover`.
+      # Its own email, since Grafana enforces unique emails but looks OAuth users up by login.
       - model: authentik_core.user
         identifiers:
           username: akadmin
         attrs:
+          is_active: false
           email: akadmin@skinke.net
           groups:
             - !Find [authentik_core.group, [name, authentik Admins]]

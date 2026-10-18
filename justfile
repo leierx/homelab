@@ -36,6 +36,15 @@ authentik-apply +names:
     for name in "$@"; do paths+=("mounted/cm-authentik-$name/$name.yaml"); done
     kubectl -n authentik exec deploy/authentik-worker -c worker -- ak apply_blueprint "${paths[@]}"
 
+# break-glass: print a single-use link that signs in as <user> without password or MFA,
+# e.g. `just authentik-recover leier`; the link expires after <minutes>
+[positional-arguments]
+authentik-recover user minutes="15":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    path=$(kubectl -n authentik exec deploy/authentik-server -c server -- ak create_recovery_key "$2" "$1" | grep '^/recovery/')
+    echo "https://auth.skinke.net$path"
+
 # give each named property of kv/<key> a random value unless it already has one
 [positional-arguments]
 bao-random key +props:

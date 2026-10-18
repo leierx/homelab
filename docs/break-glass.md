@@ -12,15 +12,17 @@ kubectl -n authentik get pods
 kubectl -n authentik logs deploy/authentik-server -c server --tail=50
 ```
 
-If it is up, go to https://auth.skinke.net directly and log in as `akadmin`
-with the password in OpenBao:
+If it is up, sign in with a recovery link: a single-use URL that logs in as
+a user without password or second factor. Getting one takes `kubectl`, which
+is the root of trust anyway:
 
 ```sh
-just bao kv get -field=bootstrap_password kv/mgmt/authentik
+just authentik-recover leier        # valid 15 minutes
+just authentik-recover leier 60
 ```
 
-From there you can fix the broken user, group or OIDC client. The personal
-`leier` password is in the same key as `leier_password`.
+From there you can fix the broken user, group or OIDC client. The `leier`
+password is in OpenBao as `leier_password` in `mgmt/authentik`.
 
 ## Argo CD (local `admin` disabled)
 
@@ -54,24 +56,25 @@ Revert the flag when done.
 
 ## Authentik itself
 
-`akadmin` is the break-glass account and is never used day to day. Its
-password is `bootstrap_password` in OpenBao and its second factor is the TOTP
-secret / recovery codes kept with the age key.
-
-If the password is lost, set a new random one in OpenBao and in the database
-without it ever appearing on a command line:
+`akadmin` exists but is disabled (`is_active: false` in the `access`
+blueprint); nobody needs its password or a second factor. The recovery link
+above is the break-glass. It must be for an active user: Authentik logs
+inactive users straight out again. If `leier` is broken too (deactivated, out
+of `homelab-admins`), re-enable `akadmin` and recover as it:
 
 ```sh
-new=$(head -c 36 /dev/urandom | base64 | tr '+/' '-_' | tr -d '\n')
-printf '%s' "$new" | just bao kv patch kv/mgmt/authentik bootstrap_password=-
-kubectl -n authentik exec deploy/authentik-server -c server -- env NEWPW="$new" \
-  ak shell -c "import os; from authentik.core.models import User; \
-  u = User.objects.get(username='akadmin'); u.set_password(os.environ['NEWPW']); u.save()"
-unset new
+kubectl -n authentik exec deploy/authentik-server -c server -- ak shell -c \
+  "from authentik.core.models import User; User.objects.filter(username='akadmin').update(is_active=True)"
+just authentik-recover akadmin
 ```
 
-(`bootstrap_password` is only read on Authentik's first start, so the database
-change is the one that takes effect; OpenBao just keeps the current value.)
+Fix the cause in git; the next apply of the `access` blueprint disables
+`akadmin` again.
+
+`bootstrap_password` stays set even though nobody uses it: on an empty
+database Authentik only marks its setup as done when a bootstrap credential is
+given, and until then the public `initial-setup` flow lets anyone set
+`akadmin`'s password.
 
 If a user lost their second factor, remove their devices so the next login
 makes them enrol a new one:
@@ -87,4 +90,5 @@ kubectl -n authentik exec deploy/authentik-server -c server -- ak shell -c \
 - `kubectl` and `ssh loft01` (host access is key-based, not SSO).
 - `just bao …` — OpenBao admin is a Kubernetes ServiceAccount token, not a
   human login.
-- `just authentik-apply <file>` to re-apply a blueprint.
+- `just authentik-apply <file>` to re-apply a blueprint, and
+  `just authentik-recover <user>` for a recovery link.
