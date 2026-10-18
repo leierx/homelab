@@ -21,6 +21,7 @@ metadata:
     addons.homelab/observability: "true"
     addons.homelab/openbao: "true"
     addons.homelab/prometheus-operator-crds: "true"
+    addons.homelab/rbac: "true"
     addons.homelab/renovate: "true"
     addons.homelab/zfs-localpv: "true"
 type: Opaque

@@ -1,0 +1,2 @@
+# cluster-scoped RBAC for people; the namespace only hosts the Helm release
+namespace: kube-system

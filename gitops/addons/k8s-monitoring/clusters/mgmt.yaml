@@ -9,3 +9,14 @@ k8s-monitoring:
     loki:
       type: loki
       url: http://loki.monitoring.svc:3100/loki/api/v1/push
+  collectors:
+    alloy-logs:
+      # loft01's API server audit log (nixos/k3s.nix), one JSON event per line
+      extraConfig: |
+        local.file_match "kube_audit" {
+          path_targets = [{"__path__" = "/var/log/kubernetes/audit.log", "job" = "kube-audit"}]
+        }
+        loki.source.file "kube_audit" {
+          targets    = local.file_match.kube_audit.targets
+          forward_to = [loki.write.loki.receiver]
+        }

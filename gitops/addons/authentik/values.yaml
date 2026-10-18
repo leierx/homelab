@@ -44,7 +44,9 @@ authentik:
       allowPrivilegeEscalation: false
       capabilities:
         drop: ["ALL"]
-# one Authentik OIDC provider + application each; client secret from OpenBao mgmt/<name> oidc_client_secret
+# one Authentik OIDC provider + application each; client secret generated into OpenBao mgmt/<name>
+# oidc_client_secret unless `public` (PKCE, no secret). Token validities take Authentik's
+# `hours=1` syntax and default to 1 hour (access) / 30 days (refresh).
 oidcClients:
   argocd:
     launchURL: https://argocd.skinke.net
@@ -61,3 +63,12 @@ oidcClients:
     redirectURIs:
       - https://argocd.skinke.net/oauth2/callback
       - https://metrics.skinke.net/oauth2/callback
+  # kubectl through kubelogin (`just kubeconfig`); the API server trusts this issuer (nixos/k3s.nix)
+  kubernetes:
+    public: true
+    launchURL: blank://blank
+    accessTokenValidity: minutes=15
+    refreshTokenValidity: hours=12
+    redirectURIs:
+      - http://localhost:8000
+      - http://localhost:18000
