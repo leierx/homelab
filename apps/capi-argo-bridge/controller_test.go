@@ -73,7 +73,6 @@ func reconcileRequest(name string) reconcile.Request {
 
 func TestReconcileCreatesSecretWithCopiedLabelsAndConfig(t *testing.T) {
 	cluster := newTestCluster("test", map[string]string{
-		"env":                   "test",
 		"addons.homelab/cilium": "true",
 		"unrelated-label":       "ignored",
 		"addons.homelab/argocd": "true",
@@ -96,7 +95,6 @@ func TestReconcileCreatesSecretWithCopiedLabelsAndConfig(t *testing.T) {
 	wantLabels := map[string]string{
 		"argocd.argoproj.io/secret-type": "cluster",
 		"app.kubernetes.io/managed-by":   "capi-argo-bridge",
-		"env":                            "test",
 		"addons.homelab/cilium":          "true",
 		"addons.homelab/argocd":          "true",
 	}
@@ -139,14 +137,14 @@ func TestReconcileRemovesDroppedLabel(t *testing.T) {
 		Data:       map[string][]byte{"value": testKubeconfig(t, "https://1.2.3.4:6443")},
 	}
 
-	cluster := newTestCluster("test", map[string]string{"env": "test", "addons.homelab/cilium": "true"})
+	cluster := newTestCluster("test", map[string]string{"addons.homelab/cilium": "true"})
 	rec := newReconciler(cluster, kubeconfigSecret)
 	ctx := context.Background()
 	if _, err := rec.Reconcile(ctx, reconcileRequest("test")); err != nil {
 		t.Fatalf("reconcile failed: %v", err)
 	}
 
-	cluster.SetLabels(map[string]string{"env": "test"})
+	cluster.SetLabels(map[string]string{})
 	if err := rec.Update(ctx, cluster); err != nil {
 		t.Fatalf("updating cluster: %v", err)
 	}
@@ -186,32 +184,32 @@ func TestReconcileDeletedClusterDeletesSecret(t *testing.T) {
 }
 
 func TestReconcileDoesNotOverwriteUnmanagedSecret(t *testing.T) {
-	cluster := newTestCluster("mgmt", map[string]string{"env": "mgmt"})
+	cluster := newTestCluster("loft01", map[string]string{})
 	kubeconfigSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: "mgmt-kubeconfig"},
+		ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: "loft01-kubeconfig"},
 		Data:       map[string][]byte{"value": testKubeconfig(t, "https://5.6.7.8:6443")},
 	}
 	handWritten := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: argocdNS,
-			Name:      "cluster-mgmt",
+			Name:      "cluster-loft01",
 			Labels:    map[string]string{"argocd.argoproj.io/secret-type": "cluster"},
 		},
 		Data: map[string][]byte{
-			"name":   []byte("mgmt"),
+			"name":   []byte("loft01"),
 			"server": []byte("https://kubernetes.default.svc"),
 			"config": []byte(`{"tlsClientConfig":{"insecure":false}}`),
 		},
 	}
 
 	rec := newReconciler(cluster, kubeconfigSecret, handWritten)
-	_, err := rec.Reconcile(context.Background(), reconcileRequest("mgmt"))
+	_, err := rec.Reconcile(context.Background(), reconcileRequest("loft01"))
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
 
 	secret := &corev1.Secret{}
-	if err := rec.Get(context.Background(), types.NamespacedName{Namespace: argocdNS, Name: "cluster-mgmt"}, secret); err != nil {
+	if err := rec.Get(context.Background(), types.NamespacedName{Namespace: argocdNS, Name: "cluster-loft01"}, secret); err != nil {
 		t.Fatalf("expected secret to still exist: %v", err)
 	}
 	if string(secret.Data["server"]) != "https://kubernetes.default.svc" {
@@ -220,7 +218,7 @@ func TestReconcileDoesNotOverwriteUnmanagedSecret(t *testing.T) {
 }
 
 func TestReconcileMissingKubeconfigNoError(t *testing.T) {
-	cluster := newTestCluster("test", map[string]string{"env": "test"})
+	cluster := newTestCluster("test", map[string]string{})
 	rec := newReconciler(cluster)
 
 	if _, err := rec.Reconcile(context.Background(), reconcileRequest("test")); err != nil {

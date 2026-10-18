@@ -33,7 +33,6 @@ const (
 	sourceAnnoKey   = "capi-argo-bridge.homelab/source"
 	argoSecretType  = "argocd.argoproj.io/secret-type"
 	argoSecretValue = "cluster"
-	envLabel        = "env"
 	addonLabelPref  = "addons.homelab/"
 )
 
@@ -126,7 +125,7 @@ func clusterLabels(cluster *unstructured.Unstructured) map[string]string {
 		managedByLabel: managedByValue,
 	}
 	for k, v := range cluster.GetLabels() {
-		if k == envLabel || strings.HasPrefix(k, addonLabelPref) {
+		if strings.HasPrefix(k, addonLabelPref) {
 			labels[k] = v
 		}
 	}
