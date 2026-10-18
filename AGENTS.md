@@ -112,7 +112,8 @@ How that plays out here:
 - `justfile`: workstation helpers.
 - `docs/`: `bootstrap.md` (bare metal to first sync), `operations.md`
   (updates, backups, certificates, observability), `access.md` (SSO, tiers,
-  people), `openbao.md` (secrets), `break-glass.md`, `tech-choices.md` (why).
+  people), `openbao.md` (secrets), `break-glass.md`, `dodde.md` (dodde's VM),
+  `tech-choices.md` (why).
   `README.md`: what this is; `TODO.md`: deferred work.
 
 ## What ships, and when

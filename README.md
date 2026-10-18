@@ -46,10 +46,11 @@ real GitOps platform on hardware we own.
 - **Stateful apps.** CloudNativePG runs Postgres as a `Cluster` inside an
   addon; the app reads the operator-made `<cluster>-app` Secret.
 - **Guardrails.** Namespaces without a Pod Security label get `baseline`,
-  images must name a tag other than `latest` or a digest, containers get a
-  memory limit and requests but never a CPU limit, and data/edge addons ship
-  a default-deny `CiliumNetworkPolicy`. Built-in admission policies enforce
-  the rest; there is no policy controller.
+  and data/edge addons ship a default-deny `CiliumNetworkPolicy`. Built-in
+  admission policies deny images without a tag other than `latest` or a
+  digest and Services exposed outside the Gateways, and warn on containers
+  without requests and a memory limit or with a CPU limit; there is no policy
+  controller.
 - **Observability.** Alloy scrapes every ServiceMonitor and PodMonitor into
   Mimir, Loki stores logs, Grafana is the one UI, and alerts go to ntfy.
 
@@ -78,7 +79,7 @@ real GitOps platform on hardware we own.
 | Logs | Loki | indexes labels, not text, so it is cheap on one node | AGPL-3.0 | none (Grafana Labs) |
 | Dashboards and alerts | Grafana | one UI; dashboards as labelled ConfigMaps | AGPL-3.0 | none (Grafana Labs) |
 | Alert notifications | ntfy | self-hosted phone push, deny-all by default | Apache-2.0 / GPL-2.0 | none (one maintainer) |
-| Dependency updates | Renovate | chart deps, Actions and `# renovate:` versions, one PR per env | AGPL-3.0 | none (Mend) |
+| Dependency updates | Renovate | chart deps, Actions and `# renovate:` versions, one PR per addon | AGPL-3.0 | none (Mend) |
 
 ## Docs
 
@@ -88,6 +89,8 @@ real GitOps platform on hardware we own.
 - [access.md](docs/access.md) — who can do what, the tiers, onboarding.
 - [openbao.md](docs/openbao.md) — secrets: the store, the flow, rotation.
 - [break-glass.md](docs/break-glass.md) — getting back in when SSO is broken.
+- [dodde.md](docs/dodde.md) — dodde's Fedora VM: access, handover, isolation,
+  restore.
 - [tech-choices.md](docs/tech-choices.md) — why each piece, what was
   rejected, and the free-software audit.
 
@@ -99,17 +102,4 @@ real GitOps platform on hardware we own.
 
 ## Deferred work
 
-[TODO.md](TODO.md) is the full list. By section:
-
-- **Protect `main`** — branch ruleset, pinned Actions, commit verification
-  (revisit).
-- **Access** — WebAuthn-only for `homelab-admins`.
-- **Renovate configuration** — review the automerge policy and stale branches.
-- **Supply chain** — pin image digests, require signed images, pin chart deps.
-- **mTLS** — a client-certificate device gate and service-to-service mTLS.
-- **Network policy** — cover the remaining namespaces and narrow egress.
-- **Backups** — an OpenBao raft snapshot in the off-site backup run.
-- **Observability** — a duplicate `kubelet_volume_stats_*` series per PVC.
-- **KubeVirt** — virt-handler clientcertificate noise at startup.
-- **Really free software** — single-vendor components to reconsider.
-- **Justfile recipes** — manual steps that automation could own.
+In [TODO.md](TODO.md), which is the only list of it.
