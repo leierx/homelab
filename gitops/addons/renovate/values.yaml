@@ -1,4 +1,8 @@
 renovate:
+  # templates/serviceaccount.yaml: no API token in a pod that runs third-party code
+  serviceAccount:
+    create: false
+    name: renovate
   cronjob:
     # what actually gets updated, and when, is up to renovate.json in the repo
     schedule: "17 * * * *"

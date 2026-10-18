@@ -312,6 +312,9 @@ grafana:
                 - { refId: C, datasourceUid: __expr__, model: { refId: C, type: threshold, expression: A, conditions: [{ evaluator: { type: gt, params: [0] } }] } }
 loki:
   fullnameOverride: loki
+  # Loki never talks to the Kubernetes API (rule sidecar off)
+  defaults:
+    automountServiceAccountToken: false
   deploymentMode: Monolithic
   loki:
     auth_enabled: false

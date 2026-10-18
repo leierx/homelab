@@ -29,6 +29,9 @@ authentik:
       - authentik-enrollment
       - authentik-oidc-clients
   server:
+    # only the worker uses the Kubernetes API (its ServiceAccount `authentik`); the server runs as default
+    serviceAccountName: default
+    automountServiceAccountToken: false
     resources:
       requests: { cpu: 100m, memory: 512Mi }
       limits: { memory: 2Gi }
