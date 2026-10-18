@@ -43,7 +43,9 @@ spec:
         retry:
           limit: -1
   # addons whose addon.yaml sets `kustomize: true` have a kustomization.yaml instead of a Chart.yaml;
-  # `podSecurity: <level>` labels the namespace (kustomize addons ship their own Namespace and label it there)
+  # `podSecurity: <level>` labels the namespace for enforce, warn and audit, so the cluster default
+  # (enforce baseline, warn restricted) doesn't warn about what the addon declared (kustomize addons
+  # ship their own Namespace and label it there)
   templatePatch: |
     {{- if not (hasKey . "kustomize") }}
     spec:
@@ -60,5 +62,7 @@ spec:
         managedNamespaceMetadata:
           labels:
             pod-security.kubernetes.io/enforce: "{{ .podSecurity }}"
+            pod-security.kubernetes.io/warn: "{{ .podSecurity }}"
+            pod-security.kubernetes.io/audit: "{{ .podSecurity }}"
       {{- end }}
     {{- end }}
