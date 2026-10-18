@@ -37,7 +37,7 @@ authentik-apply +names:
     kubectl -n authentik exec deploy/authentik-worker -c worker -- ak apply_blueprint "${paths[@]}"
 
 # break-glass: print a single-use link that signs in as <user> without password or MFA,
-# e.g. `just authentik-recover leier`; the link expires after <minutes>
+# e.g. `just authentik-recover leier`; expires after <minutes>, opens only over WireGuard
 [positional-arguments]
 authentik-recover user minutes="15":
     #!/usr/bin/env bash

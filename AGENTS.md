@@ -223,7 +223,14 @@ server-side apply manager) means Argo owns every field from the start.
 - ZFS pools `prod` and `test` back the `zfs-prod`/`zfs-test` StorageClasses
   (zfs-localpv, one zvol per PVC). Nothing mounts them on the host.
 - mgmt is the public edge: the `edge` Gateway (envoy-gateway addon) is NodePort
-  30080. HTTPS on 30443 still needs a listener and certificates.
+  30080/30443. Each site brings its own Certificate and a ListenerSet per
+  Gateway. A second Gateway `wg` serves the same hostnames on 10.0.0.1:80/443
+  (Service externalIPs), so only WireGuard peers reach it; a workstation maps
+  the hostnames to 10.0.0.1 in `/etc/hosts`. Publicly, Authentik routes only
+  the paths a login needs (`authentik-edge`; admin, user interface, API and
+  recovery links are wg-only), and Argo CD and Grafana sit behind Envoy's
+  OIDC filter (SecurityPolicy `edge-oidc`, Authentik client `edge`). Over wg
+  there is no gate, so the Argo CD CLI and Grafana API work there.
 - Cilium kube-proxy replacement handles NodePorts in BPF before nftables, so
   every NodePort is reachable on `eno1`. The router port forward
   (30080/30443/52820) is the real edge. Traffic for a workload cluster goes

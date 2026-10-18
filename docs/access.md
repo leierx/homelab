@@ -4,6 +4,28 @@ Authentik (https://auth.skinke.net) is the only identity provider. Services
 trust its OIDC tokens and never see a password. Local logins are disabled
 everywhere (see [break-glass.md](break-glass.md)).
 
+## Where the sites are reachable
+
+| | Internet (`edge` Gateway) | WireGuard (`wg` Gateway, 10.0.0.1) |
+| --- | --- | --- |
+| `auth.skinke.net` | only what an app login needs: `/application/o/`, `/flows/`, `/if/flow/`, `/api/v3/flows/executor/`, `/ws/client/`, `/static/`, `/media/` | everything: admin and user interface, API, recovery links |
+| `argocd.skinke.net` | behind an Authentik login at the edge, then Argo CD's own | Argo CD directly (CLI works) |
+| `metrics.skinke.net` | behind an Authentik login at the edge, then Grafana's own | Grafana directly (API works) |
+
+To use the WireGuard side, a workstation on wg0 resolves the hostnames to
+10.0.0.1:
+
+```
+10.0.0.1 auth.skinke.net argocd.skinke.net metrics.skinke.net
+```
+
+The edge login (Envoy Gateway SecurityPolicy `edge-oidc`, Authentik client
+`edge`) is bound to the three tiers like every app, so nobody else gets past
+it. It keeps pre-auth bugs in Argo CD and Grafana off the internet. A new
+public site that needs it gets the same SecurityPolicy, an `ExternalSecret`
+for `mgmt/edge`, and its callback `https://<host>/oauth2/callback` in the
+`edge` client's `redirectURIs`.
+
 ## Groups
 
 Authorization is carried in the OIDC `groups` claim, which Authentik's default

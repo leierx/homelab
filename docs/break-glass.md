@@ -14,7 +14,10 @@ kubectl -n authentik logs deploy/authentik-server -c server --tail=50
 
 If it is up, sign in with a recovery link: a single-use URL that logs in as
 a user without password or second factor. Getting one takes `kubectl`, which
-is the root of trust anyway:
+is the root of trust anyway, and opening it takes WireGuard: `/recovery/` is
+not routed on the public edge (see [access.md](access.md)). With the hosts
+entries in place the link just works; without them, add
+`10.0.0.1 auth.skinke.net` to `/etc/hosts` first.
 
 ```sh
 just authentik-recover leier        # valid 15 minutes
