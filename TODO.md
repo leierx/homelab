@@ -43,9 +43,12 @@ and the stale `renovate/*` branches from before the rebuild.
 
 - Default-deny for the namespaces not covered yet (kube-system,
   k8s-monitoring, kubevirt, cdi, capi-*, openebs).
-- Workload clusters: their VMs sit on mgmt's pod network, so before the first
+- Workload clusters (namespace `clusters`, where capi-argo-bridge looks): their
+  VMs sit on mgmt's pod network, so before the first
   one, a policy for its namespace that allows only what CAPI and Argo CD need
   (Argo's application controller to the cluster's API endpoint) and keeps the
   VMs away from mgmt's services.
 - Narrow `world:443` egress to FQDNs (`toFQDNs`, needs Cilium's DNS proxy):
   Renovate, Argo CD, cert-manager, Grafana, Authentik (Gravatar).
+- Check which Pod Security level KubeVirt's virt-launcher pods need in
+  `clusters` (it gets the cluster default, baseline).

@@ -20,6 +20,7 @@ spec:
           imagePullPolicy: Always
           args:
             - --argocd-namespace={{ .Release.Namespace }}
+            - --cluster-namespace={{ .Values.clusterNamespace }}
           ports:
             - name: health
               containerPort: 8081
