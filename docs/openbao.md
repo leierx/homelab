@@ -70,7 +70,8 @@ Three Kubernetes-auth roles exist:
 
 - `external-secrets` — bound to ServiceAccount `external-secrets` in namespace
   `external-secrets`. Read on `kv/data/*`, list on `kv/metadata/*`. Used by
-  `ClusterSecretStore/openbao`, which every `ExternalSecret` reads from.
+  `ClusterSecretStore/openbao`, which every `ExternalSecret` reads from, but
+  only from the namespaces listed in its `conditions`.
 - `external-secrets-push` — bound to ServiceAccount `external-secrets-push` in
   namespace `external-secrets`. Create, read and update on `kv/data/mgmt/*` and
   `kv/metadata/mgmt/*`. Used by `ClusterSecretStore/openbao-push`, which only
@@ -113,8 +114,10 @@ OpenBao kv/mgmt/<app> ──(ClusterSecretStore/openbao)──▶ ExternalSecret
 3. It writes a normal Kubernetes Secret in the app's namespace.
 4. The pod receives it through `envFrom`, `env.valueFrom` or a volume mount.
 
-Because the fleet shares one `ClusterSecretStore`, adding an app is just an
-`ExternalSecret` referencing a new path.
+Because the fleet shares one `ClusterSecretStore`, adding an app is an
+`ExternalSecret` referencing a new path, plus its namespace in the store's
+`conditions` (`gitops/addons/external-secrets`) if it is not there yet. A
+namespace that is not listed is refused (`denied by spec.condition`).
 
 ## Generated secrets
 

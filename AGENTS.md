@@ -66,7 +66,9 @@ host needs before the cluster is up, plus OpenBao's seal key.
 Cluster: everything else lives in OpenBao (`gitops/addons/openbao`), KV v2
 mount `kv`, keys `<cluster>/<app>`. Pods get it through an `ExternalSecret`
 (store `ClusterSecretStore/openbao`, `remoteRef: {key: mgmt/<app>, property:
-<prop>}`); nothing secret is ever in `gitops/`.
+<prop>}`); nothing secret is ever in `gitops/`. Both stores allow only the
+namespaces listed in their `conditions` (`addons/external-secrets`), so a new
+namespace that reads or generates secrets must be added there.
 
 - OpenBao auto-unseals with a static key: `openbao/seal_key` in sops, which
   sops-nix renders into k3s's auto-deploy manifests as Secret
