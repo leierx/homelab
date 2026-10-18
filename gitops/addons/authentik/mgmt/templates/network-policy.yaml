@@ -25,3 +25,7 @@ spec:
     - toEndpoints: [{}]
     # the Postgres instance manager, and Authentik's Kubernetes integration
     - toEntities: [kube-apiserver]
+    # avatars are looked up on Gravatar (tenant setting `gravatar,initials`, not blueprintable)
+    - toEntities: [world]
+      toPorts:
+        - ports: [{ port: "443", protocol: TCP }]

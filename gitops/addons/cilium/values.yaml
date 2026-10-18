@@ -1,7 +1,5 @@
 cilium:
   kubeProxyReplacement: true
-  # rollout of default-deny policies: verdicts are logged (Hubble AUDIT) but nothing is dropped yet
-  policyAuditMode: true
   bpf:
     masquerade: true
   ipv6:
