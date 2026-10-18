@@ -12,6 +12,9 @@ spec:
         revision: HEAD
         directories:
           - path: gitops/workloads/*
+  syncPolicy:
+    # removing a workload directory leaves its VM and policies running; clean up by hand
+    preserveResourcesOnDeletion: true
   template:
     metadata:
       name: "{{ .path.basename }}"
