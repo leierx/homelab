@@ -1,10 +1,7 @@
 name: addon render
 
-# Gates Renovate's automerge on a real render: every changed addon is rendered
-# with the same value layering and the same API versions Argo CD uses, for
-# every cluster values file. A bad chart bump fails here instead of in the
-# cluster. `.github/api-versions.txt` is a snapshot of `kubectl api-versions`
-# on loft01; refresh it when an addon's CRDs change.
+# Gates Renovate's automerge: renders changed addons (all of them if this file or the API list changes) as Argo CD does.
+# api-versions.txt: what the charts' Capabilities.APIVersions.Has guards test, in Argo's group/version[/Kind] form.
 on:
   pull_request:
     paths:
@@ -29,8 +26,12 @@ jobs:
           helm version --short
           api_versions=$(paste -sd, .github/api-versions.txt)
 
-          addons=$(git diff --name-only "${{ github.event.pull_request.base.sha }}...HEAD" \
-            -- gitops/addons | cut -d/ -f3 | sort -u)
+          base="${{ github.event.pull_request.base.sha }}"
+          if git diff --quiet "$base...HEAD" -- .github/api-versions.txt .github/workflows/addon-render.yml; then
+            addons=$(git diff --name-only "$base...HEAD" -- gitops/addons | cut -d/ -f3 | sort -u)
+          else
+            addons=$(ls gitops/addons)
+          fi
           if [ -z "$addons" ]; then
             echo "no addons changed"
             exit 0

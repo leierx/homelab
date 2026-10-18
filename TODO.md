@@ -52,11 +52,10 @@ and digest automerge once `addon-render` passes and majors wait; decide
 whether `platformAutomerge` should go back on once `main` has rules (see
 Protect `main`).
 
-- `.github/api-versions.txt` is a hand-taken snapshot of `kubectl
-  api-versions` that the render job passes to Helm. Refresh it (`kubectl
-  api-versions > .github/api-versions.txt`) whenever an addon's CRDs change,
-  or a `Capabilities.APIVersions.Has` guard will render differently there
-  than in the cluster.
+- `.github/api-versions.txt` lists only what the charts'
+  `Capabilities.APIVersions.Has` guards test today. A chart bump that adds a
+  guard on a loft01 API renders without the guarded objects in CI, silently.
+  Have the render job grep the charts for guards missing from the list.
 
 ## Addon rollout
 
