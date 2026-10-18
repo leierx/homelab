@@ -1,7 +1,7 @@
 # OpenBao
 
 OpenBao is our cluster secret manager: a fork of HashiCorp Vault, API
-compatible, Apache-2.0. It runs in the `openbao` namespace as a single-node
+compatible, MPL-2.0. It runs in the `openbao` namespace as a single-node
 raft cluster on a `zfs` PVC.
 
 ## Why it exists
