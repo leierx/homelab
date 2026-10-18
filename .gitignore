@@ -1,4 +1,4 @@
 result
 result-*
-gitops/addons/*/*/charts/
-gitops/addons/*/*/Chart.lock
+gitops/addons/*/charts/
+gitops/addons/*/Chart.lock

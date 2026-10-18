@@ -29,7 +29,7 @@ spec:
       source:
         repoURL: https://github.com/leierx/homelab.git
         targetRevision: HEAD
-        path: "{{ .path.path }}/{{ .metadata.labels.env }}"
+        path: "{{ .path.path }}"
       destination:
         server: "{{ .server }}"
         namespace: "{{ .namespace }}"
@@ -53,9 +53,8 @@ spec:
         helm:
           releaseName: "{{ .path.basename }}"
           valueFiles:
-            - ../values.yaml
             - values.yaml
-            - "../clusters/{{ .name }}.yaml"
+            - "clusters/{{ .name }}.yaml"
           ignoreMissingValueFiles: true
       {{- if hasKey . "podSecurity" }}
       syncPolicy:
