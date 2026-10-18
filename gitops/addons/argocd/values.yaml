@@ -9,7 +9,7 @@ argo-cd:
         issuer: https://auth.skinke.net/application/o/argocd/
         clientID: argocd
         clientSecret: $argocd-oidc:clientSecret
-        requestedScopes: [openid, profile, email, groups]
+        requestedScopes: [openid, profile, email]
     params:
       # TLS ends at the edge Gateway
       server.insecure: true

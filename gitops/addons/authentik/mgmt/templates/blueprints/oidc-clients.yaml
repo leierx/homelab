@@ -25,15 +25,6 @@ data:
         attrs:
           identifiers:
             name: System - OAuth2 Provider - Scopes
-      - model: authentik_providers_oauth2.scopemapping
-        id: scope-groups
-        identifiers:
-          name: "homelab: OpenID 'groups'"
-        attrs:
-          scope_name: groups
-          description: Group membership
-          expression: |
-            return {"groups": [group.name for group in request.user.all_groups()]}
       {{- range $name, $client := .Values.oidcClients }}
       - model: authentik_providers_oauth2.oauth2provider
         id: provider-{{ $name }}
@@ -56,11 +47,11 @@ data:
             - matching_mode: strict
               url: {{ . }}
             {{- end }}
+          # the profile scope carries the groups claim (direct memberships)
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
             - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
-            - !KeyOf scope-groups
       - model: authentik_core.application
         id: app-{{ $name }}
         identifiers:

@@ -6,9 +6,12 @@ everywhere (see [break-glass.md](break-glass.md)).
 
 ## Groups
 
-Authorization is carried in the OIDC `groups` claim, produced by the blueprint
-in `gitops/addons/authentik/mgmt/templates/blueprints/oidc-clients.yaml`.
-Membership is declared in `.../blueprints/access.yaml`.
+Authorization is carried in the OIDC `groups` claim, which Authentik's default
+`profile` scope fills with the user's direct group memberships (group
+hierarchy is not resolved). Clients request `openid profile email`; there is
+no separate `groups` scope, since the claims of both would be concatenated and
+list every group twice. Membership is declared in
+`gitops/addons/authentik/mgmt/templates/blueprints/access.yaml`.
 
 | Group | Meaning |
 | --- | --- |
@@ -105,8 +108,10 @@ To change someone's tier, edit their group list and push.
    or wrong host is rejected). The blueprint binds it to the three tiers, and
    the authentik addon generates the client secret into OpenBao `mgmt/<name>`
    `oidc_client_secret` (a PushSecret per client).
-2. Add an `ExternalSecret` for that property in the service's addon. Both
-   Authentik and the service read the same value.
+2. Add an `ExternalSecret` for that property in the service's addon, and the
+   service's namespace to the `openbao` store's `conditions` in
+   `gitops/addons/external-secrets` if it isn't listed. Both Authentik and the
+   service read the same value.
 3. Point the service at the issuer
    `https://auth.skinke.net/application/o/<name>/` and map the three groups to
    its roles.
