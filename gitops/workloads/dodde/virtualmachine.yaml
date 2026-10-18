@@ -1,0 +1,71 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: fedora
+  namespace: dodde
+spec:
+  runStrategy: Always
+  template:
+    spec:
+      # 180s for the guest, so the pod gets 210s, inside kubelet's 300s node shutdown
+      terminationGracePeriodSeconds: 180
+      domain:
+        resources:
+          requests:
+            cpu: 4
+            memory: 24Gi
+          limits:
+            memory: 24Gi
+        devices:
+          disks:
+            - name: rootdisk
+              bootOrder: 1
+              disk: {}
+      volumes:
+        - name: rootdisk
+          persistentVolumeClaim:
+            claimName: fedora-root
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              users:
+                - name: dodde
+                  groups: [wheel]
+                  sudo: "ALL=(ALL) NOPASSWD:ALL"
+                  shell: /bin/bash
+                  lock_passwd: true
+                  ssh_authorized_keys:
+                    - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICKkHlDWS9S4YWSPSah1Pea5Jpt6+zasaPed0cR2FFhh
+              disable_root: true
+              ssh_pwauth: false
+              growpart:
+                mode: auto
+                devices: ['/']
+              # KubeVirt hands out the pod's CoreDNS address over DHCP, which the
+              # network policy blocks; dns=none keeps NetworkManager from pushing
+              # it into resolved, so only Quad9 is used
+              write_files:
+                - path: /etc/NetworkManager/conf.d/90-dns.conf
+                  permissions: '0644'
+                  content: |
+                    [main]
+                    dns=none
+                - path: /etc/systemd/resolved.conf.d/90-dns.conf
+                  permissions: '0644'
+                  content: |
+                    [Resolve]
+                    DNS=9.9.9.9 149.112.112.112
+              yum_repos:
+                tailscale-stable:
+                  name: Tailscale stable
+                  baseurl: https://pkgs.tailscale.com/stable/fedora/$basearch
+                  enabled: true
+                  gpgcheck: true
+                  repo_gpgcheck: true
+                  gpgkey: https://pkgs.tailscale.com/stable/fedora/repo.gpg
+              packages:
+                - tailscale
+              runcmd:
+                - [systemctl, restart, NetworkManager]
+                - [systemctl, restart, systemd-resolved]

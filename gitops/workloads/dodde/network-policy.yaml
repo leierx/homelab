@@ -1,0 +1,34 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default
+  namespace: dodde
+spec:
+  endpointSelector: {}
+  enableDefaultDeny:
+    ingress: true
+    egress: true
+  egress:
+    # every port and protocol to the public internet, and nothing private:
+    # this rule deliberately carries no toPorts
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            # pod + service CIDRs, wg0
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            # the LAN, the iLO and loft01
+            - 192.168.0.0/16
+            - 169.254.0.0/16
+            - 100.64.0.0/10
+  egressDeny:
+    # allow rules are additive: the cluster-wide baseline CCNP allows DNS to
+    # kube-dns, and deny beats allow, so this keeps every in-cluster
+    # destination (pods, services, the API server, the node) shut
+    - toEntities: [cluster]
+  ingress:
+    # the admin channel: SSH from loft01, which is also what virtctl ssh uses
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - { port: "22", protocol: TCP }
