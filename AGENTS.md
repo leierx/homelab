@@ -16,7 +16,8 @@ Three parts: `nixos/` is the NixOS flake for the host `loft01` (HPE ProLiant,
 single-node k3s, the management cluster). `gitops/` is the Argo CD fleet that
 runs on that cluster and manages every cluster. `apps/` holds our own Go
 programs. `docs/` explains access, secrets and the reasoning behind the
-stack. `flake.nix` holds only inputs and outputs. Host code lives flat in
+stack; `TODO.md` lists work deferred on purpose. `flake.nix` holds only
+inputs and outputs. Host code lives flat in
 `nixos/`:
 
 - `configuration.nix`: users (immutable; `leier` is SSH-key only, no password), ssh, doas, locale/ntp, nix, auto-upgrade, packages
