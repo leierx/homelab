@@ -1,6 +1,5 @@
 {
   "extends": ["config:recommended"],
-  "gitAuthor": "Renovate Bot <renovatebot@noreply.com>",
   "rebaseWhen": "behind-base-branch",
   "timezone": "Europe/Oslo",
   "dependencyDashboard": true,
