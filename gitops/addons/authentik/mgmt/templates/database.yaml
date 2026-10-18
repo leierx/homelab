@@ -10,7 +10,7 @@ spec:
       database: authentik
       owner: authentik
   storage:
-    storageClass: zfs-prod
+    storageClass: zfs
     size: 5Gi
   resources:
     requests: { cpu: 50m, memory: 256Mi }

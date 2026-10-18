@@ -49,10 +49,7 @@
     builtins.hashString "sha256" config.networking.hostName
   );
   boot.supportedFilesystems = [ "zfs" ];
-  boot.zfs.extraPools = [
-    "prod"
-    "test"
-  ];
+  boot.zfs.extraPools = [ "tank" ];
   boot.zfs.forceImportRoot = false;
   services.zfs.autoScrub.enable = true;
   services.zfs.trim.enable = true;

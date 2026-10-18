@@ -50,7 +50,7 @@ let
       borg prune --glob-archives 'k3s-*' --keep-daily 14 --keep-weekly 8 --keep-monthly 6
 
       # one archive per zvol per daily snapshot; an interrupted one is redone, dedup skips what's uploaded
-      for vol in $(zfs list -H -t volume -o name -r prod); do
+      for vol in $(zfs list -H -t volume -o name -r tank); do
         snap=$(zfs list -H -t snapshot -o name -s creation -d 1 "$vol" | grep '@autosnap_.*_daily$' | tail -n 1) || continue
         prefix=''${vol//\//_}
         stamp=''${snap##*@autosnap_}
@@ -67,7 +67,7 @@ in
 {
   services.sanoid = {
     enable = true;
-    datasets.prod = {
+    datasets.tank = {
       recursive = "zfs";
       autosnap = true;
       autoprune = true;

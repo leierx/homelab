@@ -32,7 +32,7 @@ openbao:
         mountPath: /openbao/seal
         readOnly: true
     dataStorage:
-      storageClass: zfs-prod
+      storageClass: zfs
       size: 2Gi
     statefulSet:
       securityContext:

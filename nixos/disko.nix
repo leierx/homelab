@@ -13,19 +13,6 @@ let
       };
     };
   };
-
-  zpool = mode: {
-    type = "zpool";
-    inherit mode;
-    options.ashift = "12";
-    rootFsOptions = {
-      compression = "lz4";
-      atime = "off";
-      xattr = "sa";
-      canmount = "off";
-      mountpoint = "none";
-    };
-  };
 in
 {
   disko.devices = {
@@ -58,20 +45,62 @@ in
         };
       };
 
-      prod1 = zfsDisk "prod" "/dev/disk/by-id/wwn-0x5000cca07151ec4c";
-      prod2 = zfsDisk "prod" "/dev/disk/by-id/wwn-0x5000cca07182d44c";
-      prod3 = zfsDisk "prod" "/dev/disk/by-id/wwn-0x5000cca01614fad0";
-      prod4 = zfsDisk "prod" "/dev/disk/by-id/wwn-0x5000cca01614d3f4";
-      prod5 = zfsDisk "prod" "/dev/disk/by-id/wwn-0x5000cca022887c3c";
-      prod6 = zfsDisk "prod" "/dev/disk/by-id/wwn-0x5000cca05729102c";
-
-      test1 = zfsDisk "test" "/dev/disk/by-id/wwn-0x5000c50088728caf";
-      test2 = zfsDisk "test" "/dev/disk/by-id/wwn-0x5000c5007e54bfff";
+      # pair each disk with a different model or build year so a mirror never shares a batch
+      z1 = zfsDisk "tank" "/dev/disk/by-id/wwn-0x5000cca07151ec4c";
+      z2 = zfsDisk "tank" "/dev/disk/by-id/wwn-0x5000cca01614fad0";
+      z3 = zfsDisk "tank" "/dev/disk/by-id/wwn-0x5000cca07182d44c";
+      z4 = zfsDisk "tank" "/dev/disk/by-id/wwn-0x5000cca01614d3f4";
+      z5 = zfsDisk "tank" "/dev/disk/by-id/wwn-0x5000cca022887c3c";
+      z6 = zfsDisk "tank" "/dev/disk/by-id/wwn-0x5000c50088728caf";
+      z7 = zfsDisk "tank" "/dev/disk/by-id/wwn-0x5000cca05729102c";
+      z8 = zfsDisk "tank" "/dev/disk/by-id/wwn-0x5000c5007e54bfff";
     };
 
-    zpool = {
-      prod = zpool "raidz1";
-      test = zpool "mirror";
+    zpool.tank = {
+      type = "zpool";
+      mode = {
+        topology = {
+          type = "topology";
+          vdev = [
+            {
+              mode = "mirror";
+              members = [
+                "z1"
+                "z2"
+              ];
+            }
+            {
+              mode = "mirror";
+              members = [
+                "z3"
+                "z4"
+              ];
+            }
+            {
+              mode = "mirror";
+              members = [
+                "z5"
+                "z6"
+              ];
+            }
+            {
+              mode = "mirror";
+              members = [
+                "z7"
+                "z8"
+              ];
+            }
+          ];
+        };
+      };
+      options.ashift = "12";
+      rootFsOptions = {
+        compression = "lz4";
+        atime = "off";
+        xattr = "sa";
+        canmount = "off";
+        mountpoint = "none";
+      };
     };
   };
 }

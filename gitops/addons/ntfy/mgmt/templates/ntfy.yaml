@@ -4,7 +4,7 @@ metadata:
   name: ntfy
 spec:
   accessModes: [ReadWriteOnce]
-  storageClassName: zfs-prod
+  storageClassName: zfs
   resources:
     requests:
       storage: 1Gi

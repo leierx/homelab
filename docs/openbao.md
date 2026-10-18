@@ -2,7 +2,7 @@
 
 OpenBao is our cluster secret manager: a fork of HashiCorp Vault, API
 compatible, Apache-2.0. It runs in the `openbao` namespace as a single-node
-raft cluster on `zfs-prod`.
+raft cluster on a `zfs` PVC.
 
 ## Why it exists
 
@@ -28,7 +28,7 @@ OpenBao gives us:
 - `gitops/addons/openbao` — the `openbao` Helm chart in HA mode with raft,
   `replicas: 1`, `updateStrategy: OnDelete`. Config changes need
   `kubectl -n openbao delete pod openbao-0`.
-- **Storage:** raft on a `zfs-prod` PVC, 2 GiB.
+- **Storage:** raft on a `zfs` PVC, 2 GiB.
 - **TLS:** cert-manager issues `openbao-tls` from its own CA. The listener uses
   it and the `ClusterSecretStore` trusts that CA.
 - **Auto-unseal:** a `seal "static"` block with the key from the Secret
@@ -210,7 +210,7 @@ Secret.
 - **Lost unseal key** → OpenBao cannot unseal; restore it from the age key.
 - **Lost age key too** → every secret is unrecoverable.
 - **Data corruption** → the raft PVC is snapshotted by sanoid under
-  `zfs-prod`. OpenBao has no scheduled snapshots of its own; the off-site borg
+  `tank` pool. OpenBao has no scheduled snapshots of its own; the off-site borg
   backup (not yet enabled) should also carry a
   `bao operator raft snapshot save` taken just before it runs.
 - **Pod restarted or rescheduled** → it unseals itself from the mounted

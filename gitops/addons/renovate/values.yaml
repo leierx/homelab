@@ -28,7 +28,7 @@ renovate:
     persistence:
       cache:
         enabled: true
-        storageClass: zfs-test
+        storageClass: zfs
         storageSize: 5Gi
     securityContext:
       runAsNonRoot: true

@@ -59,7 +59,7 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
   `applicationObservability` block in k8s-monitoring — cheap to bring back the
   day a real app needs it.
 
-### Storage budget (zfs-prod)
+### Storage budget (zfs pool)
 
 | Volume | Size | Retention |
 | --- | --- | --- |
@@ -68,7 +68,7 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
 | `grafana` | 5 Gi | dashboards, users |
 | `authentik-db-1` | 5 Gi | users, sessions |
 | `data-openbao-0` | 2 Gi | secrets |
-| `zfs-test` (renovate cache) | 5 Gi | throwaway |
+| `renovate-cache` | 5 Gi | throwaway |
 
 Metrics retention is the lever that moves the 100 Gi: `mimir.retention` in
 `observability/values.yaml`. Watch actual usage with
@@ -79,6 +79,28 @@ sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace="monit
 ```
 
 and the same with `namespace="authentik"` / `"openbao"`.
+
+## Local storage
+
+- **Need:** persistent volumes for VMs, databases and the platform's own
+  stateful apps on one node, with per-volume snapshots.
+- **Choice:** one ZFS pool `tank` — four striped mirrors over the eight
+  900 GB SAS disks — with zfs-localpv as the CSI. A single default
+  StorageClass `zfs` provisions ext4 zvols (16 KiB blocks); sanoid snapshots
+  the whole pool.
+- **Why:** the workload is VM disks and databases, i.e. small random I/O.
+  Mirrors give roughly four times the random IOPS of one wide raidz vdev and
+  rebuild a failed disk from its partner in a couple of hours rather than
+  reading the whole pool; on 2012–2016 mechanical disks that short degraded
+  window matters more than the capacity raidz2 would add. 3.3 TiB usable is
+  ample with no prod/test split (see the budget above).
+- **Alternatives:** **raidz2 over all eight** (any two disks, ~4.9 TiB) loses
+  on random-write IOPS and rebuild time; **two 4-wide raidz1 vdevs** gains
+  capacity over mirrors at the cost of redundancy; **raidz1 over eight** has the
+  longest rebuild window on the oldest disks. **democratic-csi** is the other
+  ZFS CSI, but it is not foundation-hosted, whereas zfs-localpv is CNCF
+  (OpenEBS), Apache-2.0 and released regularly. **local-path-provisioner** on a
+  ZFS dataset would lose per-PVC snapshots and online resize.
 
 ## Secrets
 
