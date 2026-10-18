@@ -1,0 +1,26 @@
+# allows every pod needs, without switching anyone to default-deny: namespaces opt in with their own
+# CiliumNetworkPolicy (endpointSelector {}), shipped by their addon
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: baseline
+spec:
+  endpointSelector: {}
+  enableDefaultDeny:
+    ingress: false
+    egress: false
+  ingress:
+    # metrics scraping
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: k8s-monitoring
+            app.kubernetes.io/name: alloy-metrics
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - { port: "53", protocol: UDP }
+            - { port: "53", protocol: TCP }
