@@ -185,6 +185,14 @@ There is one Argo CD, on mgmt, and it manages the whole fleet.
   (restart the agent), and read `hubble_policy_verdicts_total{action="audit"}`
   or `hubble observe --verdict AUDIT` in the agent; drops alert via
   `hubble_drop_total{reason="POLICY_DENIED"}`.
+- Admission (`admission` addon, built-in policies, no controller): only
+  envoy-gateway-system may have NodePorts, load balancers or external IPs;
+  every image names a tag other than `latest` or a digest (both deny); the
+  resource rule above only warns and annotates the audit log (Grafana alerts
+  on it), since KubeVirt and CDI break it. Pods in the namespaces listed in
+  `admission/mgmt/values.yaml` get `hostUsers: false` (user namespaces) from
+  a MutatingAdmissionPolicy; don't add namespaces that read host files or
+  run privileged.
 - `preserveResourcesOnDeletion` is on: removing a label or an addon deletes the
   Application but leaves its resources running. Clean those up by hand.
 - `charts/` and `Chart.lock` are gitignored; Argo builds dependencies itself.
