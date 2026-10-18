@@ -18,8 +18,7 @@ spec:
       toPorts:
         - ports: [{ port: "443", protocol: TCP }]
 ---
-# the proxies take the sites' traffic: the router's port forward and WireGuard peers arrive as world,
-# the host's own requests as host
+# the sites' traffic: the port forward and WireGuard peers arrive as world, the host's own requests as host
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:

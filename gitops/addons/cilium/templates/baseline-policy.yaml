@@ -1,5 +1,4 @@
-# allows every pod needs, without switching anyone to default-deny: namespaces opt in with their own
-# CiliumNetworkPolicy (endpointSelector {}), shipped by their addon
+# what every pod needs, without default-deny: namespaces opt in with their own CiliumNetworkPolicy
 apiVersion: cilium.io/v2
 kind: CiliumClusterwideNetworkPolicy
 metadata:

@@ -1,5 +1,4 @@
-# Our own workloads run in a user namespace (hostUsers: false): root in a container, or an escape from it,
-# is an unprivileged user on the host. Only for these namespaces, and never for host-namespace pods.
+# root in a container, or an escape from it, is an unprivileged user on the host; never for host-namespace pods
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingAdmissionPolicy
 metadata:

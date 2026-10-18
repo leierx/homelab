@@ -1,7 +1,6 @@
 name: addon render
 
-# Gates Renovate's automerge: renders changed addons (all of them if this file or the API list changes) as Argo CD does.
-# api-versions.txt: what the charts' Capabilities.APIVersions.Has guards test, in Argo's group/version[/Kind] form.
+# Gates Renovate's automerge: renders changed addons (all if this file or api-versions.txt changes) as Argo CD does
 on:
   pull_request:
     paths:

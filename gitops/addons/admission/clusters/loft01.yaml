@@ -1,5 +1,4 @@
-# namespaces whose pods get hostUsers: false (templates/user-namespaces.yaml). Not for anything that reads
-# host files (k8s-monitoring's log collector) or runs privileged.
+# pods here get hostUsers: false; nothing privileged or reading host files (k8s-monitoring's log collector)
 userNamespaces:
   - argocd
   - authentik

@@ -29,8 +29,7 @@ spec:
             app.kubernetes.io/name: ntfy
       toPorts:
         - ports: [{ port: "8080", protocol: TCP }]
-    # Grafana: Authentik's token endpoint (auth.skinke.net resolves to the public address) and
-    # grafana.com dashboards
+    # Grafana: Authentik's token endpoint (auth.skinke.net resolves publicly) and grafana.com dashboards
     - toEntities: [world]
       toPorts:
         - ports: [{ port: "443", protocol: TCP }]

@@ -13,8 +13,7 @@ argo-cd:
     params:
       # TLS ends at the edge Gateway
       server.insecure: true
-      # diff against what the API server would store, so CRD defaults (HTTPRoute matches, parentRef
-      # group/kind, ...) don't read as drift
+      # diff against what the API server stores, so CRD defaults (HTTPRoute matches, parentRef group/kind) aren't drift
       controller.diff.server.side: true
     rbac:
       policy.csv: |

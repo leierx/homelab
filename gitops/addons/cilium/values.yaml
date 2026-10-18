@@ -5,8 +5,7 @@ cilium:
   ipv6:
     enabled: false
   hubble:
-    # no Relay or UI: Hubble only feeds the flow metrics below, and `cilium-dbg hubble observe`
-    # in the agent still works over the local socket, so nothing needs a network listener or TLS
+    # no Relay or UI: Hubble only feeds the metrics below; `cilium-dbg hubble observe` uses the local socket
     listenAddress: ""
     tls:
       enabled: false

@@ -24,8 +24,7 @@ data:
         attrs:
           identifiers:
             name: Default - Static MFA setup flow
-      # every password login needs a second factor; anyone without one must enrol WebAuthn or TOTP
-      # first. Static recovery codes are accepted as a fallback once a user has created them.
+      # every password login needs WebAuthn or TOTP (static codes as fallback); without one, enrol first
       - model: authentik_stages_authenticator_validate.authenticatorvalidatestage
         identifiers:
           name: default-authentication-mfa-validation

@@ -28,8 +28,7 @@ data:
         id: homelab-viewers
         identifiers:
           name: homelab-viewers
-      # disabled, not deleted (the bootstrap blueprint would recreate it); break-glass is `just authentik-recover`.
-      # Its own email, since Grafana enforces unique emails but looks OAuth users up by login.
+      # disabled, not deleted (the bootstrap blueprint would recreate it); own email, as Grafana needs unique ones
       - model: authentik_core.user
         identifiers:
           username: akadmin

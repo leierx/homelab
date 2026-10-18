@@ -12,8 +12,7 @@ subjects:
     kind: Group
     name: oidc:homelab-admins
 ---
-# read everything but Secrets, and restart pods by deleting them. Anything that creates or patches
-# workloads could run a pod with any ServiceAccount and read its Secrets, so deploying stays in Argo CD.
+# read all but Secrets, delete pods; creating workloads could mount any ServiceAccount's Secrets, so that stays in Argo
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:

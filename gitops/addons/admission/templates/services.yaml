@@ -1,5 +1,4 @@
-# a NodePort, load balancer or external IP bypasses the Gateways and is reachable on loft01's LAN
-# (and, through Cilium, wg0); only the Envoy Gateway proxies may have one
+# a NodePort, load balancer or external IP bypasses the Gateways onto the LAN and wg0; only the Envoy proxies may have one
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:

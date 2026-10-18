@@ -7,8 +7,7 @@ data:
     version: 1
     metadata:
       name: homelab - Invitation enrollment
-    # adapted from authentik's flows-invitation-enrollment-minimal.yaml. No user-login stage: a new
-    # user signs in through the normal flow afterwards, which makes them enrol MFA first.
+    # from authentik's flows-invitation-enrollment-minimal.yaml, minus user-login, so the next login enrols MFA
     entries:
       - model: authentik_flows.flow
         id: flow

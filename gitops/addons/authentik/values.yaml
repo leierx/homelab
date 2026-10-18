@@ -47,9 +47,7 @@ authentik:
       allowPrivilegeEscalation: false
       capabilities:
         drop: ["ALL"]
-# one Authentik OIDC provider + application each; client secret generated into OpenBao loft01/<name>
-# oidc_client_secret unless `public` (PKCE, no secret). Token validities take Authentik's
-# `hours=1` syntax and default to 1 hour (access) / 30 days (refresh).
+# an OIDC provider + app each; secret in OpenBao loft01/<name> unless `public` (PKCE); validities like `hours=1`
 oidcClients:
   argocd:
     launchURL: https://argocd.skinke.net

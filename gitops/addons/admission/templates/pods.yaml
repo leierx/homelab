@@ -28,8 +28,7 @@ spec:
   policyName: image-versions
   validationActions: [Deny]
 ---
-# the repo's rule: requests and a memory limit, never a CPU limit. Upstream charts and operators (KubeVirt,
-# CDI) don't always comply, so this only warns and annotates the audit log, where an alert picks it up.
+# warn and audit only: upstream (KubeVirt, CDI) doesn't always comply; an alert reads the audit log
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:

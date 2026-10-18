@@ -1,5 +1,4 @@
-# Renovate runs third-party code (package managers, Helm): it may reach the internet over HTTPS and
-# nothing in the cluster
+# Renovate runs third-party code (package managers, Helm): HTTPS to the internet, nothing in the cluster
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:

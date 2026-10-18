@@ -1,5 +1,4 @@
-# the same sites for WireGuard peers only: 10.0.0.1 is loft01 on wg0 (nixos/network.nix), so this
-# gateway is unreachable from the internet. Admin-only paths and ungated routes attach here.
+# the same sites for WireGuard peers only (10.0.0.1 is loft01 on wg0); admin-only and ungated routes attach here
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:

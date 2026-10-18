@@ -1,6 +1,4 @@
-# merge a kubeconfig for loft01 into ~/.kube/config as context loft01: you log in through Authentik
-# (kubelogin, `kubectl oidc-login`); only the cluster CA comes from the host. The API is reached
-# through `ssh -fN loft01`, which forwards 6443. The admin kubeconfig stays on the host (break-glass).
+# kubeconfig context loft01: Authentik login (kubectl oidc-login), API through `ssh -fN loft01`
 kubeconfig:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -27,8 +25,7 @@ kubeconfig:
     [ -z "$current" ] || kubectl config use-context "$current" --kubeconfig "$merged" > /dev/null
     mv "$merged" ~/.kube/config
 
-# bao CLI as OpenBao admin, e.g. `just bao kv get kv/loft01/grafana`; logs in with a short-lived
-# token for the openbao-admin ServiceAccount, so kubectl access is all it takes
+# bao CLI as OpenBao admin via a short-lived openbao-admin token, e.g. `just bao kv get kv/loft01/grafana`
 [positional-arguments]
 bao *args:
     #!/usr/bin/env bash
@@ -38,8 +35,7 @@ bao *args:
       'export BAO_TOKEN=$(bao write -field=token auth/kubernetes/login role=admin jwt="$0") && exec bao "$@"' \
       "$jwt" "$@"
 
-# re-apply our Authentik blueprints by file name, e.g. `just authentik-apply access oidc-clients`;
-# only the worker mounts them, under mounted/cm-authentik-<name>/<name>.yaml
+# re-apply Authentik blueprints by file name, e.g. `just authentik-apply access oidc-clients`
 [positional-arguments]
 authentik-apply +names:
     #!/usr/bin/env bash
@@ -48,8 +44,7 @@ authentik-apply +names:
     for name in "$@"; do paths+=("mounted/cm-authentik-$name/$name.yaml"); done
     kubectl -n authentik exec deploy/authentik-worker -c worker -- ak apply_blueprint "${paths[@]}"
 
-# break-glass: print a single-use link that signs in as <user> without password or MFA,
-# e.g. `just authentik-recover leier`; expires after <minutes>, opens only over WireGuard
+# break-glass: single-use login link for <user>, no password or MFA, expires after <minutes>, WireGuard only
 [positional-arguments]
 authentik-recover user minutes="15":
     #!/usr/bin/env bash

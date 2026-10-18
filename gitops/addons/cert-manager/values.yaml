@@ -1,8 +1,7 @@
 cert-manager:
   crds:
     enabled: true
-  # the ACME HTTP-01 solver answers through HTTPRoutes on the edge Gateway;
-  # certificates are explicit Certificate objects, not Gateway annotations
+  # HTTP-01 is answered through HTTPRoutes on the edge Gateway; certificates are explicit Certificate objects
   config:
     gatewayAPI:
       enabled: true
