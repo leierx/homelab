@@ -11,7 +11,7 @@
   boot.loader.efi.canTouchEfiVariables = true;
   boot.tmp.cleanOnBoot = true;
 
-  # immutable users: leier is SSH-key only, its old /etc/shadow password goes away
+  # immutable users: leier is SSH-key only
   users.mutableUsers = false;
   users.users.root.hashedPassword = "!";
   users.users.leier = {

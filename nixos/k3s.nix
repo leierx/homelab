@@ -2,8 +2,7 @@
 let
   yaml = pkgs.formats.yaml { };
 
-  # kubectl logs in through Authentik (client kubernetes); groups map to RBAC in gitops/addons/rbac.
-  # Until Authentik is up these logins fail; the admin kubeconfig on the host is the way in then.
+  # kubectl logs in through Authentik (client kubernetes); groups map to RBAC in gitops/addons/rbac
   authentication = yaml.generate "k3s-authentication.yaml" {
     apiVersion = "apiserver.config.k8s.io/v1";
     kind = "AuthenticationConfiguration";
@@ -57,9 +56,7 @@ let
     ];
   };
 
-  # Everything people do, plus what any ServiceAccount does that matters most if its token is stolen:
-  # reading Secrets, minting tokens, RBAC changes, exec/port-forward. Controllers' routine work
-  # (Argo CD's applies are in git anyway), nodes, health checks, leases and events are dropped.
+  # everything people do, plus ServiceAccount calls that matter if a token is stolen (Secrets, tokens, RBAC, exec)
   auditPolicy = yaml.generate "k3s-audit-policy.yaml" {
     apiVersion = "audit.k8s.io/v1";
     kind = "Policy";
@@ -180,8 +177,7 @@ in
       "--kubelet-arg=kube-reserved=cpu=2,memory=16Gi"
       # RuntimeDefault for every container that doesn't ask for another profile
       "--kubelet-arg=seccomp-default=true"
-      # non-root pods need device ownership from their security context: virt-launcher
-      # and CDI's importer run as uid 107 and cannot open a raw block volume otherwise
+      # virt-launcher and CDI's importer run as uid 107 and must open raw block volumes
       "--nonroot-devices"
       "--kube-apiserver-arg=authentication-config=${authentication}"
       "--kube-apiserver-arg=admission-control-config-file=${admission}"
