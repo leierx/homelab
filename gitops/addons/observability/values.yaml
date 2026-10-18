@@ -137,6 +137,8 @@ grafana:
                 httpMethod: POST
                 authorization_scheme: Bearer
                 authorization_credentials: $__env{NTFY_TOKEN}
+                # ntfy rejects a templated body over 128 KiB, which drops the whole notification
+                maxAlerts: "10"
     policies.yaml:
       apiVersion: 1
       policies:
@@ -177,7 +179,7 @@ grafana:
               annotations:
                 summary: "A role or binding was created, changed or deleted by something other than a ServiceAccount."
               data:
-                - { refId: A, datasourceUid: loki, relativeTimeRange: { from: 300, to: 0 }, model: { refId: A, queryType: instant, expr: 'sum by (user_username, objectRef_resource, objectRef_name) (count_over_time({job="kube-audit"} | json | objectRef_apiGroup="rbac.authorization.k8s.io" | verb=~"create|update|patch|delete" | user_username!~"system:serviceaccount:.*" [5m]))' } }
+                - { refId: A, datasourceUid: loki, relativeTimeRange: { from: 300, to: 0 }, model: { refId: A, queryType: instant, expr: 'sum by (user_username, objectRef_resource, objectRef_name) (count_over_time({job="kube-audit"} | json | objectRef_apiGroup="rbac.authorization.k8s.io" | verb=~"create|update|patch|delete" | user_username!~"system:serviceaccount:.*" | requestURI!~".*dryRun=All.*" [5m]))' } }
                 - { refId: C, datasourceUid: __expr__, model: { refId: C, type: threshold, expression: A, conditions: [{ evaluator: { type: gt, params: [0] } }] } }
             - uid: secrets-or-exec-by-person
               title: Secrets read or pods entered by a person
