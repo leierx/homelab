@@ -129,7 +129,7 @@ How that plays out here:
   `services.k3s.package` (one Kubernetes minor at a time).
 - Renovate (self-hosted, `gitops/addons/renovate`) bumps Actions, chart deps,
   `# renovate:`-annotated versions, release URLs in kustomizations and the
-  digests of our own `ghcr.io/leierx` images, one PR per addon. Patch, minor
+  versions of our own `ghcr.io/leierx` images, one PR per addon. Patch, minor
   and digest automerge once the `addon-render` workflow passes; majors wait
   for review. Policy is in `renovate.json`. Go modules are bumped by hand.
 
