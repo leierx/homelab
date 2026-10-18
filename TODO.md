@@ -104,6 +104,10 @@ Protect `main`).
 - Add `bao operator raft snapshot save` to the off-site backup run, so the
   OpenBao raft state is application-consistent and not only a zvol snapshot
   (see `docs/operations.md`).
+- dodde's VM disk snapshots are crash-consistent only (a probe lost a file
+  written just before a snapshot). The guest agent is connected, so a
+  `virtctl freeze`/`unfreeze` around sanoid's run would make them
+  filesystem-consistent; decide before the rebuild.
 
 ## Observability
 
@@ -124,11 +128,12 @@ Protect `main`).
 
 ## Node shutdown
 
-- Every node shutdown leaves ~95 `Failed` cilium-operator pods (plus a few
-  Cilium, Alloy and node-exporter ones): the ReplicaSet keeps replacing the
-  operator while the kubelet rejects new pods with `NodeShutdown`. The
-  priority-ordered shutdown did not change that (115 rejections in a 71 s
-  shutdown). They pile up until kube-controller-manager's
+- Every node shutdown leaves the old pods behind: each Deployment's and
+  StatefulSet's pre-shutdown pod as `Failed` or `Succeeded` (~100 per reboot),
+  plus ~95 `Failed` cilium-operator pods, because the ReplicaSet keeps
+  replacing the operator while the kubelet rejects new pods with
+  `NodeShutdown`. The priority-ordered shutdown did not change that (115
+  rejections in a 71 s shutdown). They pile up until kube-controller-manager's
   `terminated-pod-gc-threshold` (12500). Decide between a low threshold
   (`--kube-controller-manager-arg`) and leaving them.
 
