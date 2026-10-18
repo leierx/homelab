@@ -102,10 +102,11 @@ To change someone's tier, edit their group list and push.
 
 1. Add an entry to `oidcClients` in `gitops/addons/authentik/values.yaml` with
    its `launchURL` and exact `redirectURIs` (strict matching — a trailing slash
-   or wrong host is rejected). The blueprint binds it to the three tiers.
-2. Put the client secret in OpenBao `mgmt/<name>` `oidc_client_secret` and add
-   an `ExternalSecret` in the service's addon. Both Authentik and the service
-   read the same property.
+   or wrong host is rejected). The blueprint binds it to the three tiers, and
+   the authentik addon generates the client secret into OpenBao `mgmt/<name>`
+   `oidc_client_secret` (a PushSecret per client).
+2. Add an `ExternalSecret` for that property in the service's addon. Both
+   Authentik and the service read the same value.
 3. Point the service at the issuer
    `https://auth.skinke.net/application/o/<name>/` and map the three groups to
    its roles.

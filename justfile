@@ -44,18 +44,3 @@ authentik-recover user minutes="15":
     set -euo pipefail
     path=$(kubectl -n authentik exec deploy/authentik-server -c server -- ak create_recovery_key "$2" "$1" | grep '^/recovery/')
     echo "https://auth.skinke.net$path"
-
-# give each named property of kv/<key> a random value unless it already has one
-[positional-arguments]
-bao-random key +props:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    key=$1; shift
-    for prop in "$@"; do
-      if just bao kv get -field="$prop" "kv/$key" > /dev/null 2>&1; then
-        echo "kv/$key $prop: kept"; continue
-      fi
-      verb=patch; just bao kv get "kv/$key" > /dev/null 2>&1 || verb=put
-      head -c 36 /dev/urandom | base64 | tr '+/' '-_' | tr -d '\n' | just bao kv "$verb" "kv/$key" "$prop=-" > /dev/null
-      echo "kv/$key $prop: generated"
-    done
