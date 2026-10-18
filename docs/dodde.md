@@ -14,15 +14,13 @@ rebuilt for real use (see `TODO.md`); until then resets are cheap.
 | VM | `fedora` — 4 vCPU, 24 GiB, `runStrategy: Always`, TGPS 180 s |
 | Guest | Fedora Cloud Base Generic 44 (Bios/UEFI hybrid image, Btrfs root) |
 | Disk | DataVolume `fedora-root`, **200 Gi Block** on StorageClass `zfs` (pool `tank`), imported once from Fedora's qcow2 with the sha256 pinned |
-| Network | KubeVirt masquerade on the pod network; no cluster service, no NodePort |
+| Network | KubeVirt bridge binding on the pod network (the guest gets the pod IP over KubeVirt's DHCP); no cluster service, no NodePort |
 | Policy | `gitops/workloads/dodde/network-policy.yaml` |
 
 The namespace and the DataVolume carry
 `argocd.argoproj.io/sync-options: Delete=false,Prune=false`, so deleting the
-workload (or its directory) never deletes the disk or its snapshots. The
-DataVolume also sets `cdi.kubevirt.io/storage.bind.immediate.requested`
-because `HonorWaitForFirstConsumer` is on by default and, on one node, waiting
-for a consumer before the import buys nothing.
+workload (or its directory) never deletes the disk or its snapshots, and the
+workloads ApplicationSet keeps a removed workload's resources running.
 
 ## Getting in
 
@@ -43,8 +41,8 @@ internet: the only ingress allowed is TCP 22 from `loft01` itself.
 ## Handover (what still has to happen by hand)
 
 1. **His key.** Add dodde's public key to `/home/dodde/.ssh/authorized_keys`.
-2. **His tailnet.** `sudo systemctl enable --now tailscaled` is done by
-   cloud-init, but joining is deliberate: `sudo tailscale up`, then he signs
+2. **His tailnet.** cloud-init installs tailscale and enables `tailscaled`,
+   but joining is deliberate: `sudo tailscale up`, then he signs
    in through the login URL. Nothing about his key or his tailnet lives in git.
 3. **Remove leier's key** from `/home/dodde/.ssh/authorized_keys` once his own
    works, and drop the `ssh -J` habit for his devices.
@@ -58,16 +56,16 @@ The guest can reach **every port and protocol on the public internet** and
 - egress `0.0.0.0/0` except `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`,
   `169.254.0.0/16`, `100.64.0.0/10` — no pod or service CIDR, no loft01, no
   LAN, no iLO, no WireGuard;
-- `egressDeny: toEntities: [cluster]` on the guest's own pod, because allow
-  rules are additive and the cluster-wide baseline policy would otherwise let
-  it query cluster DNS;
+- `egressDeny: toEntities: [cluster]` on every VM pod (`kubevirt.io:
+  virt-launcher`), because allow rules are additive and the cluster-wide
+  baseline policy would otherwise let it query cluster DNS;
 - ingress only TCP 22 from `loft01`.
 
-The guest's DNS is Quad9 (`9.9.9.9`, `149.112.112.112`), set by cloud-init
-(NetworkManager `dns=none` plus a systemd-resolved drop-in), so it cannot
-resolve internal names even before Cilium has its say. Cilium's rules are
-scoped to the guest's pod, not the namespace, so CDI's importer can still do
-its job.
+The guest's DNS is Quad9 (`9.9.9.9`, `149.112.112.112`): the VM's pod sets
+`dnsPolicy: None` with Quad9 in `dnsConfig`, and KubeVirt's DHCP hands that to
+the guest, so it cannot resolve internal names even before Cilium has its say.
+The deny is scoped to VM pods, not the namespace, so CDI's importer can still
+resolve the image URL.
 
 Proven from inside the guest: blocked to `10.43.0.10` (cluster DNS),
 `10.43.0.1:443`, `192.168.2.50:6443`, `192.168.2.50:22`, `192.168.2.1:80`,
@@ -112,26 +110,16 @@ while the VM runs.
 
 ## Rebooting loft01
 
-**A reboot takes several minutes. That is expected, not a hang.** The kubelet
-first stops every pod: the VM gets its 180 s to power off, so the shutdown
-phase alone runs ~3.5 minutes before the machine goes down. The measured
-window on 2026-10-18 was 220 s of kubelet work, then ~2.5 minutes of reboot
-and k3s start. `InhibitDelayMaxSec` (360 s) is deliberately higher than the
-kubelet's `shutdownGracePeriod` (300 s) so logind can always push the reboot
-through; before that, both deadlines expired together and a reboot sat for the
-full 300 s.
+The kubelet stops pods by priority (`nixos/k3s.nix`): regular pods first, the
+VM's included, with up to 240 s; then KubeVirt's own components and the ZFS
+CSI driver (30 s); then Cilium and CoreDNS (10 s). The order matters:
+virt-handler is what sends the guest its ACPI power-off, so it has to outlive
+the VM's pod. The guest powers off within seconds, and a test reboot took 71 s
+of kubelet work before the machine went down.
 
-**Known issue:** after a node reboot the VM has come back **down** — the
-launcher pod ends `Failed` while the VMI still reports Running/Ready, and
-KubeVirt does not replace it on its own. Recover with:
-
-```sh
-kubectl -n dodde delete pod -l vm.kubevirt.io/name=fedora
-```
-
-and expect a new pod, the same disk and the same machine-id. This is in
-`TODO.md` and must be understood before the real rebuild, because the host
-reboots unattended on Fridays.
+While the node shuts down, KubeVirt (`runStrategy: Always`) already creates
+the next launcher pod. It waits as Pending until the node is back and boots
+the guest about a minute after k3s is up, with nothing to do by hand.
 
 ## What the admin can and cannot see
 
