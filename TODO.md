@@ -46,8 +46,8 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
 
 ## Renovate configuration
 
-Review `renovate.json` and `gitops/addons/renovate`: grouping, schedules, and
-the stale `renovate/*` branches from before the rebuild. Today patch, minor
+Review `renovate.json` and `gitops/addons/renovate`: grouping and schedules.
+Today patch, minor
 and digest automerge once `addon-render` passes and majors wait; decide
 whether `platformAutomerge` should go back on once `main` has rules (see
 Protect `main`).
@@ -116,22 +116,33 @@ Protect `main`).
 
 ## KubeVirt
 
-- **A node reboot left dodde's VM down.** On 2026-10-18 23:06 the kubelet's
-  graceful shutdown killed the launcher pod (the VM's 180 s included), the pod
-  ended `Failed`, and after the reboot virt-controller did **not** replace it:
-  the VMI kept reporting `Running`/`Ready` with a stale IP while no pod
-  existed. Deleting the failed pod made virt-controller start a new one and the
-  guest came back with the same disk and machine-id. The host reboots itself
-  unattended on Fridays, so this must be understood (a KubeVirt bug, a missing
-  `pod` finalizer, or the k3s `KillMode=process` leaving the pod half-dead) or
-  worked around — an alert on "VMI Running with no running launcher pod" plus
-  the `delete pod -l vm.kubevirt.io/name=fedora` step at minimum. See
-  `docs/dodde.md`.
 - virt-handler logs `Failed to establish a watch on
-  /etc/virt-handler/clientcertificates/tls.crt` (a fatal and then an error)
-  for its first ~2 minutes, then goes Ready with no restarts. Still present
-  right after the pool rebuild. Decide whether to silence it or wait for the
-  certificate before starting the watch.
+  /etc/virt-handler/clientcertificates/tls.crt` once at start (fatal, then it
+  goes Ready with no restarts), then `failed to load the certificate` every
+  minute for as long as it runs. No Secret is mounted at that path. Find out
+  whether KubeVirt v1.9.1 expects one, or report it upstream.
+
+## Node shutdown
+
+- Every node shutdown leaves ~95 `Failed` cilium-operator pods (plus a few
+  Cilium, Alloy and node-exporter ones): the ReplicaSet keeps replacing the
+  operator while the kubelet rejects new pods with `NodeShutdown`. The
+  priority-ordered shutdown did not change that (115 rejections in a 71 s
+  shutdown). They pile up until kube-controller-manager's
+  `terminated-pod-gc-threshold` (12500). Decide between a low threshold
+  (`--kube-controller-manager-arg`) and leaving them.
+
+## Workloads
+
+- A hand-deleted workload namespace was not recreated by Argo CD: the sync
+  failed with `namespaces "dodde" not found` despite `CreateNamespace=true`,
+  until the namespace was applied by hand. Not reproduced or explained.
+
+## Pod security
+
+- The admission addon's `userNamespaces` (pods get `hostUsers: false`) omits
+  `cdi` and `capi-operator-system`, both `restricted`. Check that their pods
+  run in user namespaces, then add them.
 
 ## Really free software
 
@@ -139,14 +150,14 @@ The Principle 5 audit is in `docs/tech-choices.md` (Really free software).
 The components that are single-vendor or open core, with no neutral
 foundation, in priority order:
 
-- **Authentik** (open core: MIT community, proprietary EE). Decide whether to
-  keep it or move to Keycloak (Apache-2.0, CNCF incubating) — a full rewrite
-  of SSO, the blueprints, the groups claim and the recovery flow.
+- **Authentik** (open core: MIT community, proprietary EE). Being replaced by
+  Keycloak (Apache-2.0, CNCF incubating): SSO, the blueprints, the groups
+  claim and the recovery flow all change.
 - **Grafana, Mimir, Loki, Alloy** (Grafana Labs). Decide whether to keep the
   coupled stack or move to Perses + Prometheus/Thanos + OpenSearch +
   OpenTelemetry Collector.
 - **Renovate** (AGPL-3.0, Mend). No foundation-hosted equivalent; decide
-  whether losing the custom managers and one-PR-per-env grouping is
+  whether losing the custom managers and one-PR-per-addon grouping is
   acceptable to drop it for Dependabot.
 - **ntfy** (one maintainer). Low switching cost to Gotify, if a reason
   appears.
