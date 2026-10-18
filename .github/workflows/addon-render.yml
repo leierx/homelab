@@ -1,0 +1,65 @@
+name: addon render
+
+# Gates Renovate's automerge on a real render: every changed addon is rendered
+# with the same value layering and the same API versions Argo CD uses, for
+# every cluster values file. A bad chart bump fails here instead of in the
+# cluster. `.github/api-versions.txt` is a snapshot of `kubectl api-versions`
+# on loft01; refresh it when an addon's CRDs change.
+on:
+  pull_request:
+    paths:
+      - "gitops/addons/**"
+      - ".github/api-versions.txt"
+      - ".github/workflows/addon-render.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: render changed addons
+        run: |
+          set -euo pipefail
+          helm version --short
+          api_versions=$(paste -sd, .github/api-versions.txt)
+
+          addons=$(git diff --name-only "${{ github.event.pull_request.base.sha }}...HEAD" \
+            -- gitops/addons | cut -d/ -f3 | sort -u)
+          if [ -z "$addons" ]; then
+            echo "no addons changed"
+            exit 0
+          fi
+
+          for addon in $addons; do
+            dir="gitops/addons/$addon"
+            [ -f "$dir/addon.yaml" ] || continue
+            ns=$(yq -r '.namespace // "default"' "$dir/addon.yaml")
+
+            if [ "$(yq -r '.kustomize // false' "$dir/addon.yaml")" = "true" ]; then
+              kubectl kustomize "$dir" > /dev/null
+              echo "rendered (kustomize) $addon"
+              continue
+            fi
+
+            args=(-n "$ns" --release-name "$addon" --api-versions "$api_versions")
+            [ -f "$dir/values.yaml" ] && args+=(-f "$dir/values.yaml")
+
+            (cd "$dir" && helm dependency update > /dev/null)
+            rendered=0
+            for values in "$dir"/clusters/*.yaml; do
+              [ -e "$values" ] || continue
+              helm template "${args[@]}" -f "$values" "$dir" > /dev/null
+              echo "rendered (helm) $addon with $(basename "$values")"
+              rendered=1
+            done
+            if [ "$rendered" = "0" ]; then
+              helm template "${args[@]}" "$dir" > /dev/null
+              echo "rendered (helm) $addon"
+            fi
+          done

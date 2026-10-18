@@ -16,6 +16,11 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
   and give each job only the `permissions` it needs.
 - Commits stay unsigned, so the GitHub account and its tokens are the root of
   trust: passkey 2FA, no stale PATs.
+- The two CI workflows are path-filtered (`flake-bump` is Nix-only,
+  `addon-render` is gitops-only), so they don't fit "required status checks":
+  a required context that never runs leaves the PR blocked forever. Either
+  require only checks that always run, or add an always-running job that
+  gates on the path-filtered ones.
 - Argo CD 3.5 can only verify GPG signatures and Nix only SSH ones; revisit
   verifying commits on the cluster and host only if that changes.
 
