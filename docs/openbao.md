@@ -209,10 +209,11 @@ Secret.
 
 - **Lost unseal key** → OpenBao cannot unseal; restore it from the age key.
 - **Lost age key too** → every secret is unrecoverable.
-- **Data corruption** → the raft PVC is snapshotted by sanoid under
-  `tank` pool. OpenBao has no scheduled snapshots of its own; the off-site borg
-  backup (not yet enabled) should also carry a
-  `bao operator raft snapshot save` taken just before it runs.
+- **Data corruption** → the raft PVC is snapshotted by sanoid like every
+  other PVC, but OpenBao takes no raft snapshots of its own. Snapshots and the
+  off-site backup are in [operations.md](operations.md); a
+  `bao operator raft snapshot save` should be added to that run
+  (`TODO.md`).
 - **Pod restarted or rescheduled** → it unseals itself from the mounted
   `openbao-seal-key` Secret; nothing to do.
 

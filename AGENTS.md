@@ -20,7 +20,9 @@ permission.
 
 - Never print a secret. Compare sha256 prefixes; pipe values straight into
   `just bao kv patch … <prop>=-`.
-- Never `nix build` locally; CI builds. Local checks below.
+- Never `nix build` locally to check config; CI builds it. Local checks below.
+  The one exception is the install ISO, which embeds the age key
+  (`docs/bootstrap.md`).
 - Never invent identifiers (NixOS options, Helm values, CRD fields, Renovate
   keys, action versions). Check the pinned nixpkgs, the chart's `values.yaml`
   or upstream docs first. Ask rather than assume.
@@ -107,9 +109,10 @@ How that plays out here:
   cluster Secrets) → `addons/<addon>/`.
 - `apps/<name>/`: our own Go programs, each with its own workflow and README.
 - `justfile`: workstation helpers.
-- `docs/`: `access.md` (SSO, tiers, people), `break-glass.md`, `openbao.md`
-  (secrets), `tech-choices.md` (why), `operations.md` (updates, backups,
-  certificates, install, bootstrap). `README.md`: what this is.
+- `docs/`: `bootstrap.md` (bare metal to first sync), `operations.md`
+  (updates, backups, certificates, observability), `access.md` (SSO, tiers,
+  people), `openbao.md` (secrets), `break-glass.md`, `tech-choices.md` (why).
+  `README.md`: what this is; `TODO.md`: deferred work.
 
 ## What ships, and when
 
