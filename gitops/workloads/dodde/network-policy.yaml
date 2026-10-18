@@ -9,20 +9,17 @@ spec:
     ingress: true
     egress: true
   egress:
-    # every port and protocol to the public internet, and nothing private:
-    # this rule deliberately carries no toPorts
+    # every port and protocol to the public internet, nothing private (pod/service CIDRs, wg0, LAN, iLO, loft01)
     - toCIDRSet:
         - cidr: 0.0.0.0/0
           except:
-            # pod + service CIDRs, wg0
             - 10.0.0.0/8
             - 172.16.0.0/12
-            # the LAN, the iLO and loft01
             - 192.168.0.0/16
             - 169.254.0.0/16
             - 100.64.0.0/10
   ingress:
-    # the admin channel: SSH from loft01, which is also what virtctl ssh uses
+    # SSH from loft01, which is also what virtctl ssh uses
     - fromEntities: [host]
       toPorts:
         - ports:
@@ -34,12 +31,10 @@ metadata:
   name: vm-isolation
   namespace: dodde
 spec:
-  # the guest's own pod only: CDI's importer is platform code and needs cluster
-  # DNS to resolve the image URL, while the VM must resolve nothing internal
+  # every VM's pod, not CDI's importer, which needs cluster DNS for the image URL
   endpointSelector:
     matchLabels:
-      vm.kubevirt.io/name: fedora
+      kubevirt.io: virt-launcher
   egressDeny:
-    # allow rules are additive, so the cluster-wide baseline CCNP would otherwise
-    # let the guest query cluster DNS; deny beats allow
+    # the baseline CCNP allows cluster DNS to every pod; deny beats allow
     - toEntities: [cluster]
