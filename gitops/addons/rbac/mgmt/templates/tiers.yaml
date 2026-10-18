@@ -18,13 +18,13 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: homelab-operator
+# no `rules`: the aggregation controller fills them in, and declaring them would show as drift
 aggregationRule:
   clusterRoleSelectors:
     - matchLabels:
         rbac.authorization.k8s.io/aggregate-to-view: "true"
     - matchLabels:
         rbac.homelab/aggregate-to-operator: "true"
-rules: []
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
