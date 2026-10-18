@@ -34,5 +34,5 @@ jobs:
       - if: github.event_name != 'pull_request'
         run: >
           KO_DOCKER_REPO=ghcr.io/${{ github.repository_owner }}/capi-argo-bridge
-          ko build . --bare --platform=linux/amd64 --tags=main,${{ github.sha }}
+          ko build . --bare --platform=linux/amd64 --tags=main,0.1.${{ github.run_number }}
           --image-label=org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
