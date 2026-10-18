@@ -193,6 +193,9 @@ How that plays out here:
 - ntfy is public without the edge login (the phone app can't do OIDC); its
   own deny-all auth guards it.
 - Argo CD operators are `role:admin` until someone needs the distinction.
+- CPU limits set upstream (virt-template-*, Cilium's init containers,
+  virt-launcher's `guest-console-log`) are not patched away;
+  `container-resources` only warns about them.
 
 ## Gotchas
 
