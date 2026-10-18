@@ -9,6 +9,10 @@ spec:
     spec:
       # 180s for the guest, so the pod gets 210s, inside the 240s the kubelet gives priority-0 pods on shutdown
       terminationGracePeriodSeconds: 180
+      # KubeVirt's DHCP hands the guest the pod's DNS; cluster DNS is blocked by the network policy
+      dnsPolicy: None
+      dnsConfig:
+        nameservers: [9.9.9.9, 149.112.112.112]
       domain:
         resources:
           requests:
@@ -42,20 +46,6 @@ spec:
               growpart:
                 mode: auto
                 devices: ['/']
-              # KubeVirt hands out the pod's CoreDNS address over DHCP, which the
-              # network policy blocks; dns=none keeps NetworkManager from pushing
-              # it into resolved, so only Quad9 is used
-              write_files:
-                - path: /etc/NetworkManager/conf.d/90-dns.conf
-                  permissions: '0644'
-                  content: |
-                    [main]
-                    dns=none
-                - path: /etc/systemd/resolved.conf.d/90-dns.conf
-                  permissions: '0644'
-                  content: |
-                    [Resolve]
-                    DNS=9.9.9.9 149.112.112.112
               yum_repos:
                 tailscale-stable:
                   name: Tailscale stable
@@ -64,11 +54,6 @@ spec:
                   gpgcheck: true
                   repo_gpgcheck: true
                   gpgkey: https://pkgs.tailscale.com/stable/fedora/repo.gpg
-              # cloud-init installs packages: before it runs the runcmd script, so dnf
-              # would run while the guest still has cluster DNS (which the policy
-              # blocks); install after the DNS switch instead
+              packages: [tailscale]
               runcmd:
-                - [systemctl, restart, NetworkManager]
-                - [systemctl, restart, systemd-resolved]
-                - [dnf, -y, install, tailscale]
                 - [systemctl, enable, --now, tailscaled]
