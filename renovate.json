@@ -6,6 +6,7 @@
   "dependencyDashboard": true,
   "enabledManagers": ["github-actions", "helmv3", "custom.regex"],
   "automergeStrategy": "merge-commit",
+  "platformAutomerge": false,
   "customManagers": [
     {
       "customType": "regex",
@@ -27,24 +28,25 @@
   ],
   "packageRules": [
     {
+      "description": "one PR per addon: everything under gitops/addons/<addon>/ shares a group",
+      "matchFileNames": ["gitops/addons/**"],
+      "groupName": "{{ lookup (split packageFileDir '/') 2 }}",
+      "commitMessageSuffix": "({{ lookup (split packageFileDir '/') 2 }})"
+    },
+    {
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
       "automerge": true
     },
     {
-      "description": "one PR per env, so test, prod and mgmt move independently",
       "matchFileNames": ["gitops/addons/**"],
-      "additionalBranchPrefix": "{{parentDir}}-",
-      "commitMessageSuffix": "({{parentDir}})"
-    },
-    {
-      "matchFileNames": ["gitops/addons/*/test/**"],
-      "automerge": true
-    },
-    {
-      "matchFileNames": ["gitops/addons/*/prod/**", "gitops/addons/*/mgmt/**"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
       "automerge": true
+    },
+    {
+      "matchFileNames": ["gitops/addons/**"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false
     }
   ]
 }
