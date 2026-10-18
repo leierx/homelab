@@ -18,8 +18,7 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
   PRs required for everyone except the owner (bypass), so "push, test, push"
   keeps working but bots can't push directly.
 - `flake-bump` opens an auto-merging PR instead of `git push origin HEAD:main`.
-- Pin GitHub Actions to commit SHAs (Renovate `helpers:pinGitHubActionDigests`)
-  and give each job only the `permissions` it needs.
+- Give each job only the `permissions` it needs.
 - Commits stay unsigned, so the GitHub account and its tokens are the root of
   trust: passkey 2FA, no stale PATs.
 - The two CI workflows are path-filtered (`flake-bump` is Nix-only,
