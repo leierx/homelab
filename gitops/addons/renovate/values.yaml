@@ -37,7 +37,7 @@ renovate:
         drop: ["ALL"]
       seccompProfile:
         type: RuntimeDefault
-  # GITHUB_APP_ID, GITHUB_APP_INSTALLATION_ID, GITHUB_APP_PRIVATE_KEY from OpenBao mgmt/renovate
+  # GITHUB_APP_ID, GITHUB_APP_INSTALLATION_ID, GITHUB_APP_PRIVATE_KEY from OpenBao loft01/renovate
   existingSecret: renovate-github-app
   extraVolumes:
     - name: github-app-token

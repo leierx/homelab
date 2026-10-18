@@ -85,4 +85,4 @@ spec:
     name: edge-oidc
   data:
     - secretKey: client-secret
-      remoteRef: { key: mgmt/edge, property: oidc_client_secret }
+      remoteRef: { key: loft01/edge, property: oidc_client_secret }

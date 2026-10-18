@@ -11,11 +11,11 @@ spec:
     name: renovate-github-app
   data:
     - secretKey: GITHUB_APP_ID
-      remoteRef: { key: mgmt/renovate, property: app_id }
+      remoteRef: { key: loft01/renovate, property: app_id }
     - secretKey: GITHUB_APP_INSTALLATION_ID
-      remoteRef: { key: mgmt/renovate, property: installation_id }
+      remoteRef: { key: loft01/renovate, property: installation_id }
     - secretKey: GITHUB_APP_PRIVATE_KEY
-      remoteRef: { key: mgmt/renovate, property: private_key }
+      remoteRef: { key: loft01/renovate, property: private_key }
 ---
 apiVersion: v1
 kind: ConfigMap

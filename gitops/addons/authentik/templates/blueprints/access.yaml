@@ -39,7 +39,7 @@ data:
           groups:
             - !Find [authentik_core.group, [name, authentik Admins]]
             - !KeyOf homelab-admins
-      # personal account; password comes from OpenBao mgmt/authentik leier_password
+      # personal account; password comes from OpenBao loft01/authentik leier_password
       - model: authentik_core.user
         identifiers:
           username: leier
