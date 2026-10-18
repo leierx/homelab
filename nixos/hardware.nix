@@ -37,7 +37,6 @@
     defaults.monitored = "-a -s (S/../.././05|L/../../3/03)";
   };
   environment.systemPackages = [ pkgs.smartmontools ];
-  services.fstrim.enable = true;
   services.irqbalance.enable = true;
 
   zramSwap = {
@@ -52,7 +51,6 @@
   boot.zfs.extraPools = [ "tank" ];
   boot.zfs.forceImportRoot = false;
   services.zfs.autoScrub.enable = true;
-  services.zfs.trim.enable = true;
   # kubelet doesn't count ARC as reclaimable, so an uncapped ARC triggers pod evictions
   boot.kernelParams = [ "zfs.zfs_arc_max=68719476736" ];
 }
