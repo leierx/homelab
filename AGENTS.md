@@ -70,6 +70,9 @@ How that plays out here:
 - Honest about one node: one replica, no HA theatre, no leader election, no
   eviction or migration.
 - Bots keep everything up to date; CI gates it.
+- Versions live where they’re used, as exact versions: no separate version
+  files or indirection. Digests and signatures only where built-in tooling
+  does it for free; never custom regex or bespoke automation.
 - Every component has a reason and a rejected alternative in
   `docs/tech-choices.md`. Deferred work goes in `TODO.md`, not in comments.
 
