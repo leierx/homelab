@@ -40,7 +40,9 @@ check before automerging.
 Each `apps/<name>` has its own `.github/workflows/<name>.yml`, triggered by
 changes to that directory. `capi-argo-bridge` vets and tests on pull
 requests, and on `main` publishes
-`ghcr.io/leierx/capi-argo-bridge:{main,<sha>}` with ko.
+`ghcr.io/leierx/capi-argo-bridge:{main,<sha>}` with ko. The Deployment pins
+`main@sha256:…`; Renovate opens a digest PR for each new build, and it
+automerges once `addon-render` passes.
 
 ### Deploying now
 

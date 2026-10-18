@@ -16,8 +16,7 @@ spec:
       serviceAccountName: capi-argo-bridge
       containers:
         - name: capi-argo-bridge
-          image: ghcr.io/leierx/capi-argo-bridge:main
-          imagePullPolicy: Always
+          image: ghcr.io/leierx/capi-argo-bridge:main@sha256:8b858ddddc7d6c1c2faab46e9d810608f0bff271d416e2c5f5aa82146e7151f5
           args:
             - --argocd-namespace={{ .Release.Namespace }}
             - --cluster-namespace={{ .Values.clusterNamespace }}

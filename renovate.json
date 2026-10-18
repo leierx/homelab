@@ -23,6 +23,15 @@
         "https://github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/(?<currentValue>[^/]+)/"
       ],
       "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "description": "our own images, pinned as <tag>@<digest>; CI pushes a new digest under the same tag",
+      "managerFilePatterns": ["/^gitops/addons/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "image: (?<depName>ghcr\\.io/leierx/[^:\\s]+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker"
     }
   ],
   "packageRules": [
