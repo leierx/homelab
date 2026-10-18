@@ -88,6 +88,8 @@ Three Kubernetes-auth roles exist:
 | `mgmt/argocd` | `oidc_client_secret` | generated (authentik addon) | Authentik provider and Argo CD (`argocd-oidc`) |
 | `mgmt/grafana` | `oidc_client_secret` | generated (authentik addon) | Authentik provider and Grafana (`grafana`) |
 | `mgmt/grafana` | `admin_password` | generated (observability addon) | Grafana (`grafana`) |
+| `mgmt/edge` | `oidc_client_secret` | generated (authentik addon) | Authentik provider and Envoy Gateway's login gate (`edge-oidc` in argocd and monitoring) |
+| `mgmt/ntfy` | `leier_password`, `grafana_password`, `grafana_token` | generated (ntfy addon) | ntfy (`ntfy-auth`), Grafana's contact point (`grafana`) |
 | `mgmt/renovate` | `app_id`, `installation_id`, `private_key` | entered by hand | the Renovate CronJob (`renovate-github-app`) |
 
 `bootstrap_password` is never used to log in (`akadmin` is disabled), but it

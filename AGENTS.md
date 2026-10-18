@@ -289,3 +289,14 @@ server-side apply manager) means Argo owns every field from the start.
   ConfigMaps labelled `grafana_dashboard: "1"` from any namespace (folder from
   the `grafana_folder` annotation) plus the grafana.com dashboards pinned in
   `observability/values.yaml`.
+- Alerts are Grafana-managed rules in `observability/values.yaml`
+  (`grafana.alerting`, folder `homelab`; Grafana loads them at startup and the
+  chart rolls the pod when they change) and go to ntfy
+  (https://ntfy.skinke.net, addon `ntfy`, topic `alerts`). ntfy denies
+  everything by default; its users (`leier` admin, `grafana` write-only on
+  `alerts`) and Grafana's token are generated into OpenBao `mgmt/ntfy` and
+  provisioned from the environment on each start. Subscribe the phone app with
+  user `leier` and `just bao kv get -field=leier_password kv/mgmt/ntfy`.
+  Security rules read the API audit log (`{job="kube-audit"}`) and OpenBao's
+  audit log; expect "Admin kubeconfig used" whenever the break-glass
+  kubeconfig is used.
