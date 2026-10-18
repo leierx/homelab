@@ -69,6 +69,8 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
 | `authentik-db-1` | 5 Gi | users, sessions |
 | `data-openbao-0` | 2 Gi | secrets |
 | `renovate-cache` | 5 Gi | throwaway |
+| `ntfy` | 1 Gi | notifications, users |
+| `fedora-root` (`dodde`) | 200 Gi | dodde's VM disk |
 
 Metrics retention is the lever that moves the 100 Gi: `mimir.retention` in
 `observability/values.yaml`. Watch actual usage with
@@ -92,8 +94,8 @@ and the same with `namespace="authentik"` / `"openbao"`.
   Mirrors give roughly four times the random IOPS of one wide raidz vdev and
   rebuild a failed disk from its partner in a couple of hours rather than
   reading the whole pool; on 2012–2016 mechanical disks that short degraded
-  window matters more than the capacity raidz2 would add. 3.3 TiB usable is
-  ample with no prod/test split (see the budget above).
+  window matters more than the capacity raidz2 would add. About 3.25 TiB
+  usable is ample (see the budget above).
 - **Alternatives:** **raidz2 over all eight** (any two disks, ~4.9 TiB) loses
   on random-write IOPS and rebuild time; **two 4-wide raidz1 vdevs** gains
   capacity over mirrors at the cost of redundancy; **raidz1 over eight** has the
@@ -130,13 +132,146 @@ and the same with `namespace="authentik"` / `"openbao"`.
   chart, per-cluster values in `clusters/<cluster>.yaml`), and one more
   generating an Application per `gitops/workloads/*` directory.
 - **Why:** a push is a deploy; addons and clusters are labelled, not wired
-  together by hand. Flattening the addon directories removed the per-env copy
-  that the dropped test/prod split required, without losing per-cluster
-  overrides. Details in `AGENTS.md`.
+  together by hand. The addon root is the chart itself, with no per-env copy;
+  per-cluster differences go in `clusters/<cluster>.yaml`. Details in
+  `AGENTS.md`.
 - **Alternatives:** **Flux** is equivalent for one cluster; the promotion
   layers (**Kargo**, **Sveltos**, **OCM**, Cluster API Addon Provider Helm)
   and the Flux Operator's ResourceSets each add a second control plane — or,
   for ResourceSets, an AGPL single-vendor one — that this fleet does not need.
+  Argo CD's own extras were rejected too: the **Source Hydrator** (beta) needs
+  a commit server and a git write credential and never deletes stale output;
+  **argocd-agent** (pre-1.0) is built for hundreds of clusters and cannot
+  carry a hydrator spec; **progressive syncs** and sync waves turn off
+  automated sync and impose the ordering we avoid. If one cluster ever has to
+  run ahead, a cluster label `channel` and a `channels/<channel>/Chart.yaml`
+  in only the addons that need it is the planned extension (`TODO.md`).
+
+## Networking
+
+- **Need:** pod networking, Services without kube-proxy, network policy that
+  can default-deny a namespace, and flow metrics to write policies from.
+- **Choice:** Cilium as CNI and kube-proxy replacement (eBPF masquerade,
+  Hubble flow metrics without Relay or UI); k3s runs without Flannel, its
+  network-policy controller and kube-proxy. A cluster-wide baseline policy
+  allows DNS and metrics scraping; namespaces opt into default-deny with their
+  own `CiliumNetworkPolicy`.
+- **Why:** one component for CNI, Services and policy. Cilium's policies add
+  entities (`host`, `cluster`, `world`), CIDR sets with exceptions, deny rules
+  and cluster-wide policies, which plain `NetworkPolicy` lacks; dodde's
+  isolation uses all four. CNCF graduated, Apache-2.0.
+- **Alternatives:** **k3s's defaults** (Flannel, kube-proxy, kube-router
+  policy) give only standard `NetworkPolicy`, with no deny rules or flow
+  metrics. **Calico** is comparable but single-vendor (Tigera) with an
+  enterprise tier.
+
+## Edge
+
+- **Need:** HTTPS for a few sites on two entry points, the internet (the
+  router's port forward) and WireGuard, with an SSO gate in front of the public
+  admin UIs.
+- **Choice:** Envoy Gateway with two Gateways, `edge` (NodePort 30080/30443)
+  and `wg` (`10.0.0.1`); each site brings its own ListenerSet and HTTPRoute per
+  Gateway, and public admin routes carry the OIDC `SecurityPolicy` `edge-oidc`.
+- **Why:** the Gateway API is the standard routing API, and Envoy Gateway adds
+  OIDC as a policy on a route, so the SSO gate needs no oauth2-proxy. It is a
+  project of Envoy (CNCF graduated), Apache-2.0.
+- **Alternatives:** **Traefik** (k3s's default) is single-vendor and configures
+  auth through its own middleware CRDs. **ingress-nginx** plus
+  **oauth2-proxy** is two components on the older Ingress API. **Cilium's
+  Gateway API implementation** would save a component, but `edge-oidc` would
+  need another way to do OIDC.
+
+## Certificates
+
+- **Need:** publicly trusted certificates for the sites, and private CAs for
+  in-cluster TLS (OpenBao).
+- **Choice:** cert-manager: ClusterIssuer `letsencrypt` with HTTP-01 answered
+  through the `edge` Gateway, and self-signed CA Issuers for OpenBao.
+- **Why:** the standard way, renews by itself, and HTTP-01 needs only the port
+  forward that exists anyway. CNCF graduated, Apache-2.0.
+- **Alternatives:** **DNS-01** would need a DNS provider API credential in the
+  cluster. **A proxy's built-in ACME** (Traefik) ties certificates to one
+  proxy and leaves the private CAs uncovered.
+
+## Admission policy
+
+- **Need:** a few cluster-wide rules (pinned image tags, no Service exposed
+  outside the Gateways, requests and memory limits) and user namespaces for
+  the platform pods.
+- **Choice:** the `admission` addon: built-in `ValidatingAdmissionPolicy`
+  (`image-versions` and `services-not-exposed` deny, `container-resources`
+  warns and audits) and a `MutatingAdmissionPolicy` that sets
+  `hostUsers: false` in the namespaces listed in `clusters/loft01.yaml`; Pod
+  Security Admission with k3s defaults (enforce baseline, warn and audit
+  restricted) and per-namespace labels.
+- **Why:** Kubernetes built-ins: CEL rules in git, no controller or webhook to
+  keep running.
+- **Alternatives:** **Kyverno** (CNCF incubating) is a controller plus
+  webhooks; it stays the candidate for image signature verification
+  (`TODO.md`). **OPA Gatekeeper** (CNCF graduated) adds Rego and the same
+  webhook machinery.
+
+## Kubernetes access
+
+- **Need:** give people cluster permissions by group, without per-user
+  kubeconfigs or long-lived credentials.
+- **Choice:** k3s trusts Authentik's `kubernetes` client as a JWT issuer
+  (`nixos/k3s.nix`); the `rbac` addon binds `oidc:homelab-admins` to
+  `cluster-admin`, `oidc:homelab-operators` to the aggregated
+  `homelab-operator` role (view plus deleting pods) and `oidc:homelab-viewers`
+  to `view`.
+- **Why:** one place to add a person, 15-minute tokens, and only built-in
+  RBAC and ClusterRole aggregation. See [access.md](access.md).
+- **Alternatives:** **Pinniped** or **Dex** as a token broker is another
+  component for what the API server's authentication config does itself.
+  **Client certificates** cannot be revoked and carry no group changes.
+
+## Postgres
+
+- **Need:** Postgres for apps, with the credentials and upgrades handled.
+- **Choice:** CloudNativePG; each app's addon owns a `Cluster`, with the image
+  tag pinned by `# renovate:`, and the app reads the operator's `<cluster>-app`
+  Secret.
+- **Why:** declarative clusters and no database password made by hand. CNCF
+  sandbox, Apache-2.0.
+- **Alternatives:** **an app chart's bundled PostgreSQL subchart** is a
+  different way to run Postgres for every app. **Zalando's postgres-operator**
+  is single-company. **A plain StatefulSet** leaves upgrades and backups to us.
+
+## Virtual machines
+
+- **Need:** VMs (dodde's server, workload-cluster nodes) on the same node and
+  through the same git flow as everything else.
+- **Choice:** KubeVirt, with CDI to import disk images, both from upstream
+  release manifests through kustomize (neither ships a Helm chart). VM disks
+  are Block zvols on `zfs`; `evictionStrategy: None` cluster-wide, because one
+  node has nowhere to migrate to.
+- **Why:** a VM becomes Kubernetes objects: Argo applies it, Cilium polices
+  it, sanoid snapshots its zvol, and Cluster API has a KubeVirt provider. CNCF
+  incubating, Apache-2.0.
+- **Alternatives:** **libvirt VMs on NixOS** sit outside GitOps, the network
+  policy and the backup. **Proxmox** replaces the host OS. **Harvester** is
+  KubeVirt plus a whole distribution (RKE2, Longhorn) on top.
+
+## Workload clusters
+
+- **Need:** disposable Kubernetes clusters, created and removed from git, that
+  get addons the same way loft01 does.
+- **Choice:** Cluster API through the cluster-api-operator (core, kubeadm
+  bootstrap and control plane, the KubeVirt provider CAPK); clusters are CAPI
+  `Cluster`s in namespace `clusters`. `capi-argo-bridge`, our own ~200-line
+  controller (`apps/capi-argo-bridge`), copies a `Cluster`'s
+  `addons.homelab/*` labels onto an Argo CD cluster Secret, so the addons
+  ApplicationSet selects workload clusters like loft01.
+- **Why:** Cluster API is the Kubernetes SIG standard, and CAPK puts the nodes
+  on KubeVirt on this host. The bridge is the one piece Argo CD lacks: its
+  cluster generator needs a cluster Secret.
+- **Alternatives:** **kind** or **k3d** clusters are containers, not VMs, and
+  not declarative from git. **vcluster** and **Kamaji** host control planes
+  inside loft01, each from a single vendor. **Sveltos** or **Cluster API
+  Addon Provider Helm** would replace the bridge with a second addon-delivery
+  control plane (see GitOps).
 
 ## Things that look redundant but are not
 
@@ -189,7 +324,7 @@ Four components are single-vendor or open core with no neutral foundation:
 - **Renovate** (AGPL-3.0, Mend). It is the one component whose job has no
   foundation-hosted equivalent: Dependabot is GitHub-hosted and cannot read our
   `# renovate:` custom managers. Switching technically is easy (drop the
-  addon, run Dependabot), but we would lose the one-PR-per-env grouping and
+  addon, run Dependabot), but we would lose the one-PR-per-addon grouping and
   the custom regex managers.
 - **ntfy** (Apache-2.0 / GPL-2.0 dual, one maintainer). No foundation-hosted
   push service exists. **Gotify** (MIT) is the closest self-hosted drop-in;
