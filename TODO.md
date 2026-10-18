@@ -27,6 +27,12 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
   passkey or security key for admins, and decide whether the static recovery
   codes stay; the other tiers keep TOTP.
 
+## Storage
+
+- Benchmark the four-mirror pool under the first real VM and database load,
+  and confirm the 16K zvol and `lz4` defaults are right. The layout came from
+  upstream guidance, not from measurements on these disks.
+
 ## Renovate configuration
 
 Review `renovate.json` and `gitops/addons/renovate`: which updates automerge
@@ -63,6 +69,10 @@ and the stale `renovate/*` branches from before the rebuild.
 
 ## Backups
 
+- Borg is still disabled after the storage rebuild. When rsync.net credentials
+  exist, add `borg/ssh_key` and `borg/passphrase` to `nixos/secrets.yaml`, flip
+  `offsite.enable` in `nixos/backup.nix`, and check the first real run covers
+  `tank` and the k3s state.
 - Add `bao operator raft snapshot save` to the off-site backup run, so the
   OpenBao raft state is application-consistent and not only a zvol snapshot
   (see `docs/operations.md`).
