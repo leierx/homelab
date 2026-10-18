@@ -117,7 +117,7 @@ openbao:
               operation = "update"
               path = "sys/policies/acl/external-secrets"
               data = {
-                policy = "path \"kv/data/*\" { capabilities = [\"read\"] }\npath \"kv/metadata/*\" { capabilities = [\"read\", \"list\"] }"
+                policy = "path \"kv/data/loft01/*\" { capabilities = [\"read\"] }\npath \"kv/metadata/loft01/*\" { capabilities = [\"read\", \"list\"] }"
               }
             }
             request "role" {

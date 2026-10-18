@@ -69,9 +69,10 @@ workload clusters in the same store.
 Three Kubernetes-auth roles exist:
 
 - `external-secrets` — bound to ServiceAccount `external-secrets` in namespace
-  `external-secrets`. Read on `kv/data/*`, list on `kv/metadata/*`. Used by
-  `ClusterSecretStore/openbao`, which every `ExternalSecret` reads from, but
-  only from the namespaces listed in its `conditions`.
+  `external-secrets`. Read on `kv/data/loft01/*`, read and list on
+  `kv/metadata/loft01/*`. Used by `ClusterSecretStore/openbao`, which every
+  `ExternalSecret` reads from, but only from the namespaces listed in its
+  `conditions`.
 - `external-secrets-push` — bound to ServiceAccount `external-secrets-push` in
   namespace `external-secrets`. Create, read and update on `kv/data/loft01/*` and
   `kv/metadata/loft01/*`. Used by `ClusterSecretStore/openbao-push`, which only
