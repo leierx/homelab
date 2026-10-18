@@ -42,5 +42,7 @@ authentik-apply +names:
 authentik-recover user minutes="15":
     #!/usr/bin/env bash
     set -euo pipefail
-    path=$(kubectl -n authentik exec deploy/authentik-server -c server -- ak create_recovery_key "$2" "$1" | grep '^/recovery/')
+    # stderr without Authentik's JSON startup logs, so errors like an unknown user still show
+    path=$(kubectl -n authentik exec deploy/authentik-server -c server -- ak create_recovery_key "$2" "$1" \
+      2> >(grep -vE '^\{|^Switching to schema' >&2) | grep '^/recovery/')
     echo "https://auth.skinke.net$path"
