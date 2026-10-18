@@ -131,6 +131,17 @@ let
           }
         ];
       }
+      # every pod, so admission policies' audit annotations (gitops/addons/admission) reach the log
+      {
+        level = "Metadata";
+        resources = [
+          {
+            group = "";
+            resources = [ "pods" ];
+          }
+        ];
+        verbs = [ "create" ];
+      }
       # the full object, so the log shows what a role or binding grants
       {
         level = "Request";

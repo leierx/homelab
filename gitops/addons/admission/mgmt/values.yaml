@@ -1,0 +1,3 @@
+# namespaces whose pods get hostUsers: false (templates/user-namespaces.yaml)
+userNamespaces:
+  - ntfy

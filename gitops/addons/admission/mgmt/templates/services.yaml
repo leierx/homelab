@@ -1,0 +1,31 @@
+# a NodePort, load balancer or external IP bypasses the Gateways and is reachable on loft01's LAN
+# (and, through Cilium, wg0); only the Envoy Gateway proxies may have one
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: services-not-exposed
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [services]
+  validations:
+    - expression: >-
+        !(has(object.spec.type) && object.spec.type in ['NodePort', 'LoadBalancer'])
+        && !(has(object.spec.externalIPs) && size(object.spec.externalIPs) > 0)
+      message: only envoy-gateway-system may expose NodePorts, load balancers or external IPs; route through the edge or wg Gateway
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: services-not-exposed
+spec:
+  policyName: services-not-exposed
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+        - { key: kubernetes.io/metadata.name, operator: NotIn, values: [envoy-gateway-system] }

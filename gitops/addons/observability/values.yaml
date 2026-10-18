@@ -203,6 +203,18 @@ grafana:
               data:
                 - { refId: A, datasourceUid: loki, relativeTimeRange: { from: 300, to: 0 }, model: { refId: A, queryType: instant, expr: 'sum(count_over_time({namespace="openbao", container="openbao"} |= "\"type\":\"response\"" | json | auth_metadata_role="admin" [5m]))' } }
                 - { refId: C, datasourceUid: __expr__, model: { refId: C, type: threshold, expression: A, conditions: [{ evaluator: { type: gt, params: [0] } }] } }
+            - uid: admission-policy-warning
+              title: Pod breaks an admission policy
+              condition: C
+              for: 0s
+              noDataState: OK
+              execErrState: Error
+              labels: { severity: info }
+              annotations:
+                summary: "A pod was admitted despite a Warn/Audit policy (gitops/addons/admission), e.g. a CPU limit or a missing memory limit."
+              data:
+                - { refId: A, datasourceUid: loki, relativeTimeRange: { from: 300, to: 0 }, model: { refId: A, queryType: instant, expr: 'sum by (objectRef_namespace) (count_over_time({job="kube-audit"} |= "validation.policy.admission.k8s.io/validation_failure" | json [5m]))' } }
+                - { refId: C, datasourceUid: __expr__, model: { refId: C, type: threshold, expression: A, conditions: [{ evaluator: { type: gt, params: [0] } }] } }
             - uid: network-policy-drops
               title: Traffic dropped by network policy
               condition: C

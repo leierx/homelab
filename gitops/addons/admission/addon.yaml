@@ -1,0 +1,2 @@
+# cluster-scoped admission policies; the namespace only hosts the Helm release
+namespace: kube-system
