@@ -64,8 +64,10 @@ spec:
                   gpgcheck: true
                   repo_gpgcheck: true
                   gpgkey: https://pkgs.tailscale.com/stable/fedora/repo.gpg
-              packages:
-                - tailscale
+              # cloud-init installs packages: before it runs the runcmd script, so dnf
+              # would run while the guest still has cluster DNS (which the policy
+              # blocks); install after the DNS switch instead
               runcmd:
                 - [systemctl, restart, NetworkManager]
                 - [systemctl, restart, systemd-resolved]
+                - [dnf, -y, install, tailscale]
