@@ -98,10 +98,13 @@ real GitOps platform on hardware we own.
 
 - **Protect `main`** — branch ruleset, pinned Actions, commit verification
   (revisit).
+- **Access** — WebAuthn-only for `homelab-admins`.
 - **Renovate configuration** — review the automerge policy and stale branches.
 - **Supply chain** — pin image digests, require signed images, pin chart deps.
 - **mTLS** — a client-certificate device gate and service-to-service mTLS.
 - **Network policy** — cover the remaining namespaces and narrow egress.
 - **Backups** — an OpenBao raft snapshot in the off-site backup run.
+- **Observability** — a duplicate `kubelet_volume_stats_*` series per PVC.
+- **KubeVirt** — virt-handler clientcertificate noise at startup.
 - **Really free software** — single-vendor components to reconsider.
 - **Justfile recipes** — manual steps that automation could own.

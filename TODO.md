@@ -19,6 +19,14 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
 - Argo CD 3.5 can only verify GPG signatures and Nix only SSH ones; revisit
   verifying commits on the cluster and host only if that changes.
 
+## Access
+
+- WebAuthn-only for `homelab-admins`: the MFA validate stage allows
+  `[webauthn, totp, static]` for every tier
+  (`gitops/addons/authentik/mgmt/templates/blueprints/mfa.yaml`). Require a
+  passkey or security key for admins, and decide whether the static recovery
+  codes stay; the other tiers keep TOTP.
+
 ## Renovate configuration
 
 Review `renovate.json` and `gitops/addons/renovate`: which updates automerge
@@ -58,6 +66,23 @@ and the stale `renovate/*` branches from before the rebuild.
 - Add `bao operator raft snapshot save` to the off-site backup run, so the
   OpenBao raft state is application-consistent and not only a zvol snapshot
   (see `docs/operations.md`).
+
+## Observability
+
+- Every PVC's `kubelet_volume_stats_*` has a second series from the API-server
+  integration in `k8s-monitoring`
+  (`job=integrations/kubernetes/kube-apiserver`, `namespace="default"`, the
+  real namespace in `exported_namespace`) next to the kubelet one
+  (`job=integrations/kubernetes/kubelet`). Still present right after the pool
+  rebuild. Drop or relabel the duplicate so one PVC is one series.
+
+## KubeVirt
+
+- virt-handler logs `Failed to establish a watch on
+  /etc/virt-handler/clientcertificates/tls.crt` (a fatal and then an error)
+  for its first ~2 minutes, then goes Ready with no restarts. Still present
+  right after the pool rebuild. Decide whether to silence it or wait for the
+  certificate before starting the watch.
 
 ## Really free software
 
