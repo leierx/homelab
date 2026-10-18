@@ -5,6 +5,7 @@ metadata:
   namespace: zz-probe
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
+    cdi.kubevirt.io/storage.bind.immediate.requested: "true"
 spec:
   source:
     http:
