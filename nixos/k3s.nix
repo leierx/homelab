@@ -57,8 +57,9 @@ let
     ];
   };
 
-  # who did what; health checks, leases, events and controllers' reads are dropped as noise,
-  # except reads of Secrets, which are always logged (metadata only)
+  # Everything people do, plus what any ServiceAccount does that matters most if its token is stolen:
+  # reading Secrets, minting tokens, RBAC changes, exec/port-forward. Controllers' routine work
+  # (Argo CD's applies are in git anyway), nodes, health checks, leases and events are dropped.
   auditPolicy = yaml.generate "k3s-audit-policy.yaml" {
     apiVersion = "audit.k8s.io/v1";
     kind = "Policy";
@@ -97,6 +98,23 @@ let
         ];
       }
       {
+        level = "None";
+        userGroups = [ "system:nodes" ];
+      }
+      {
+        level = "None";
+        users = [
+          "system:apiserver"
+          "system:kube-controller-manager"
+          "system:kube-scheduler"
+          "system:k3s-controller"
+        ];
+      }
+      {
+        level = "None";
+        verbs = [ "watch" ];
+      }
+      {
         level = "Metadata";
         resources = [
           {
@@ -104,38 +122,13 @@ let
             resources = [
               "secrets"
               "serviceaccounts/token"
+              "pods/exec"
+              "pods/attach"
+              "pods/portforward"
+              "nodes/proxy"
+              "services/proxy"
             ];
           }
-          {
-            group = "authentication.k8s.io";
-            resources = [ "tokenreviews" ];
-          }
-        ];
-      }
-      {
-        level = "None";
-        verbs = [
-          "get"
-          "list"
-          "watch"
-        ];
-        userGroups = [
-          "system:serviceaccounts"
-          "system:nodes"
-        ];
-      }
-      {
-        level = "None";
-        verbs = [
-          "get"
-          "list"
-          "watch"
-        ];
-        users = [
-          "system:apiserver"
-          "system:kube-controller-manager"
-          "system:kube-scheduler"
-          "system:k3s-controller"
         ];
       }
       # the full object, so the log shows what a role or binding grants
@@ -148,6 +141,10 @@ let
           "patch"
           "delete"
         ];
+      }
+      {
+        level = "None";
+        userGroups = [ "system:serviceaccounts" ];
       }
       { level = "Metadata"; }
     ];
