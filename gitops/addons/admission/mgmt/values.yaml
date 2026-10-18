@@ -1,3 +1,13 @@
-# namespaces whose pods get hostUsers: false (templates/user-namespaces.yaml)
+# namespaces whose pods get hostUsers: false (templates/user-namespaces.yaml). Not for anything that reads
+# host files (k8s-monitoring's log collector) or runs privileged.
 userNamespaces:
+  - argocd
+  - authentik
+  - cert-manager
+  - cnpg-system
+  - envoy-gateway-system
+  - external-secrets
+  - monitoring
   - ntfy
+  - openbao
+  - renovate
