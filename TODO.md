@@ -105,9 +105,10 @@ Protect `main`).
   OpenBao raft state is application-consistent and not only a zvol snapshot
   (see `docs/operations.md`).
 - dodde's VM disk snapshots are crash-consistent only (a probe lost a file
-  written just before a snapshot). The guest agent is connected, so a
-  `virtctl freeze`/`unfreeze` around sanoid's run would make them
-  filesystem-consistent; decide before the rebuild.
+  written just before a snapshot). The guest agent is connected, so calling
+  the VMI's `freeze` and `unfreeze` subresources (subresources.kubevirt.io)
+  around sanoid's run would make them filesystem-consistent; decide before the
+  rebuild.
 
 ## Observability
 
