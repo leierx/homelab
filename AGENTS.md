@@ -146,7 +146,8 @@ There is one Argo CD, on mgmt, and it manages the whole fleet.
 - Argo cluster Secrets carry the labels that decide what a cluster gets:
   `env: <env>` (`mgmt`, `prod` or `test`) plus `addons.homelab/<addon>: "true"`
   per addon. mgmt's is `fleet/clusters/mgmt.yaml` (local cluster, no
-  credentials). Workload clusters are CAPI `Cluster`s; `capi-argo-bridge`
+  credentials). Workload clusters are CAPI `Cluster`s in namespace `clusters` (the only
+  place the bridge looks); `capi-argo-bridge`
   (`apps/capi-argo-bridge`) turns each one plus its `<name>-kubeconfig`
   Secret into an Argo Secret `cluster-<name>`, copying `env` and
   `addons.homelab/*` from the Cluster's labels, and deletes it with the
