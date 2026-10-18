@@ -1,14 +1,26 @@
-# merge the k3s kubeconfig into ~/.kube/config as context loft01
+# merge a kubeconfig for loft01 into ~/.kube/config as context loft01: you log in through Authentik
+# (kubelogin, `kubectl oidc-login`); only the cluster CA comes from the host. The API is reached
+# through `ssh -fN loft01`, which forwards 6443. The admin kubeconfig stays on the host (break-glass).
 kubeconfig:
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p ~/.kube
     new=$(mktemp ~/.kube/loft01.XXXXXX)
     merged=$(mktemp ~/.kube/config.XXXXXX)
-    trap 'rm -f "$new" "$merged"' EXIT
-    # k3s names its cluster, user and context "default"
-    ssh -o ClearAllForwardings=yes loft01 doas cat /etc/rancher/k3s/k3s.yaml \
-      | sed -E 's/^( *-? *(name|cluster|user|current-context): )default$/\1loft01/' > "$new"
+    ca=$(mktemp)
+    trap 'rm -f "$new" "$merged" "$ca"' EXIT
+    ssh -o ClearAllForwardings=yes loft01 kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml config view --raw \
+      -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d > "$ca"
+    export KUBECONFIG="$new"
+    kubectl config set-cluster loft01 --server=https://127.0.0.1:6443 --certificate-authority="$ca" --embed-certs > /dev/null
+    kubectl config set-credentials loft01 --exec-api-version=client.authentication.k8s.io/v1 \
+      --exec-interactive-mode=IfAvailable --exec-command=kubectl --exec-arg=oidc-login --exec-arg=get-token \
+      --exec-arg=--oidc-issuer-url=https://auth.skinke.net/application/o/kubernetes/ \
+      --exec-arg=--oidc-client-id=kubernetes \
+      --exec-arg=--oidc-extra-scope=profile --exec-arg=--oidc-extra-scope=email \
+      --exec-arg=--oidc-extra-scope=offline_access > /dev/null
+    kubectl config set-context loft01 --cluster=loft01 --user=loft01 > /dev/null
+    unset KUBECONFIG
     current=$(kubectl config current-context --kubeconfig ~/.kube/config 2>/dev/null || true)
     # the first file wins on name clashes, so the fresh loft01 entries replace stale ones
     KUBECONFIG="$new:$HOME/.kube/config" kubectl config view --flatten > "$merged"

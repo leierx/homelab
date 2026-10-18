@@ -25,7 +25,7 @@ inputs and outputs. Host code lives flat in
 - `disko.nix`: NVMe ESP + ext4 root, ZFS pools `prod` (raidz1) and `test` (mirror)
 - `network.nix`: networkd, WireGuard `wg0`, resolved (DNSSEC + DoT), nftables firewall, NAT
 - `k3s.nix`: k3s without a CNI (Cilium comes from `gitops/`), graceful node
-  shutdown (300 s, so KubeVirt VMs get their 180 s to shut down), Secrets encrypted at rest; admin kubeconfig is group `wheel` (0640) and `KUBECONFIG` points at it, so kubectl works on the host without doas
+  shutdown (300 s, so KubeVirt VMs get their 180 s to shut down), Secrets encrypted at rest; admin kubeconfig is group `wheel` (0640) and `KUBECONFIG` points at it, so kubectl works on the host without doas (the break-glass when Authentik is down). The API server trusts Authentik (client `kubernetes`) for kubectl logins, writes an audit log to `/var/log/kubernetes/audit.log` (Alloy ships it to Loki as `{job="kube-audit"}`), and gives namespaces without a pod-security label `baseline`; kubelet defaults every container to the `RuntimeDefault` seccomp profile
 - `backup.nix`: sanoid snapshots of `prod`; off-site borg to rsync.net (off until its secrets exist)
 - `sops.nix` + `secrets.yaml`: WireGuard keys and the SSH host key
 - `installer.nix`: offline auto-install ISO
@@ -163,7 +163,8 @@ There is one Argo CD, on mgmt, and it manages the whole fleet.
   a `<env>/kustomization.yaml` pointing at upstream release manifests.
 - `addon.yaml` sets the namespace and, for Helm addons, optionally
   `podSecurity: <level>` (the namespace's Pod Security enforce label;
-  kustomize addons label their own Namespace). Adding an addon: create
+  kustomize addons label their own Namespace; unlabelled namespaces get
+  `baseline` on mgmt, so anything privileged must say so). Adding an addon: create
   `addons/<name>/` with a dir per env that runs it, and label the clusters.
   An env without a dir for a labelled addon fails to sync.
 - Every container gets requests and a memory limit, never a CPU limit (it only
@@ -178,23 +179,20 @@ There is one Argo CD, on mgmt, and it manages the whole fleet.
   cluster-api, arrive via endless retry).
 
 Bootstrap is the only imperative step: install from the ISO, then run this once
-from a workstation checkout of the repo. The k3s node stays NotReady until
-Cilium is in.
+on loft01 itself (`ssh loft01`, `git clone` the repo): workstations log in to
+kubectl through Authentik, which doesn't exist yet, while the host's admin
+kubeconfig works as is (`KUBECONFIG` is set, helm is installed). The k3s node
+stays NotReady until Cilium is in.
 
 ```sh
-# 1. kubeconfig
-just kubeconfig   # merged into ~/.kube/config as context loft01 (via ssh loft01, 10.0.0.1 over wg0)
-kubectl config use-context loft01
-ssh -fN loft01    # forwards 6443 for kubectl
-
-# 2. Cilium
+# 1. Cilium
 helm dependency update gitops/addons/cilium/mgmt
 helm template cilium gitops/addons/cilium/mgmt -n kube-system --include-crds \
   -f gitops/addons/cilium/values.yaml -f gitops/addons/cilium/clusters/mgmt.yaml \
   | kubectl apply --server-side --field-manager=argocd-controller -f -
 kubectl wait --for=condition=Ready node --all --timeout=10m
 
-# 3. Argo CD
+# 2. Argo CD
 helm dependency update gitops/addons/argocd/mgmt
 kubectl create namespace argocd
 # the Certificate, ListenerSet, HTTPRoute and ExternalSecret fail until their
@@ -204,16 +202,14 @@ helm template argocd gitops/addons/argocd/mgmt -n argocd --include-crds \
   | kubectl apply --server-side --field-manager=argocd-controller -f -
 kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
 
-# 4. hand over to git
+# 3. hand over to git
 kubectl apply -f gitops/root.yaml
-
-# 5. UI: http://localhost:8080 (later https://argocd.skinke.net), user admin
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
-kubectl -n argocd port-forward svc/argocd-server 8080:443
 ```
 
 The release names and namespaces match what the `addons` ApplicationSet
-renders, so Argo adopts both and manages everything from git after step 4.
+renders, so Argo adopts both and manages everything from git after step 3.
+Once Authentik is up, Argo CD and everything else is reached through SSO, and
+`just kubeconfig` sets up kubectl on a workstation (see `docs/access.md`).
 `helm template` instead of `helm install` leaves no Helm release Secrets or
 `meta.helm.sh/*` annotations, and applying as `argocd-controller` (Argo's
 server-side apply manager) means Argo owns every field from the start.

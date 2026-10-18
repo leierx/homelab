@@ -1,9 +1,26 @@
 # Break-glass
 
 Authentik is the only login path, so an Authentik outage (or a bad OIDC
-change) means no Argo CD, no Grafana and no Authentik UI. This page is the way
-back in. Everything here works with only `kubectl` access — which is all you
-need, since `kubectl` is not behind SSO.
+change) means no Argo CD, no Grafana, no Authentik UI and no kubectl from a
+workstation. This page is the way back in. It all starts from `ssh loft01`
+(key-based over WireGuard, not SSO): on the host, `kubectl` uses the admin
+kubeconfig, which stays there outside of an outage.
+
+```sh
+ssh loft01
+kubectl get pods -A        # admin, no login
+```
+
+The `just` recipes below need kubectl on the workstation. While Authentik is
+down, borrow the admin kubeconfig for the session and delete it afterwards
+(the API goes through `ssh -fN loft01` as usual):
+
+```sh
+export KUBECONFIG=$(mktemp)
+ssh loft01 cat /etc/rancher/k3s/k3s.yaml > "$KUBECONFIG"
+just authentik-recover leier
+rm "$KUBECONFIG"; unset KUBECONFIG
+```
 
 ## First: is Authentik actually down?
 
@@ -90,7 +107,7 @@ kubectl -n authentik exec deploy/authentik-server -c server -- ak shell -c \
 
 ## What still works without any login
 
-- `kubectl` and `ssh loft01` (host access is key-based, not SSO).
+- `ssh loft01` (key-based, not SSO) and kubectl on the host.
 - `just bao …` — OpenBao admin is a Kubernetes ServiceAccount token, not a
   human login.
 - `just authentik-apply <file>` to re-apply a blueprint, and

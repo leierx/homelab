@@ -53,13 +53,37 @@ add a group and bind it to that application; do not grow the tiers.
 | Argo CD | `role:admin` | `role:admin` | `role:readonly` |
 | Grafana | `GrafanaAdmin` | `Editor` | `Viewer` |
 | Authentik | superuser | user | user |
-| OpenBao (planned) | `admin` policy | `admin` policy | read-only policy |
+| Kubernetes (kubectl) | `cluster-admin` | `homelab-operator`: view, delete pods | `view` |
+| OpenBao | `admin` policy, via `just bao` (needs cluster-admin) | none | none |
 
 Argo CD has no built-in role between admin and read-only, so operators are
 admins there for now; a custom `role:operator` (sync and actions, no settings)
 can be added to `policy.csv` once someone actually needs the distinction.
 Argo CD's mapping is `policy.csv` in `gitops/addons/argocd/values.yaml`,
-Grafana's is `role_attribute_path` in `gitops/addons/observability/values.yaml`.
+Grafana's is `role_attribute_path` in `gitops/addons/observability/values.yaml`,
+Kubernetes' is `gitops/addons/rbac`. Neither `view` nor the operator role can
+read Secrets, and the operator role can't create or patch workloads either:
+that would let it run a pod as any ServiceAccount. Operators deploy through
+Argo CD.
+
+## kubectl
+
+The API server trusts Authentik's `kubernetes` client (a public client with
+PKCE, `nixos/k3s.nix`). People appear as `oidc:<username>` in groups
+`oidc:<tier>`, so every action is attributable in the audit log
+(`{job="kube-audit"}` in Loki). Tokens last 15 minutes, refresh tokens 12
+hours; after that the next kubectl command opens a browser login.
+
+On a workstation (needs `kubectl-oidc_login`, from `kubelogin` in nixpkgs):
+
+```sh
+just kubeconfig                  # context loft01, only the cluster CA comes from the host
+kubectl config use-context loft01
+ssh -fN loft01                   # forwards 6443
+```
+
+The admin client certificate stays on loft01; it is the break-glass for
+when Authentik is down (see [break-glass.md](break-glass.md)).
 
 ## Signing in
 
