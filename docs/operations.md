@@ -25,17 +25,17 @@ Then move `nixpkgs.url` in `flake.nix` to the new release and
 
 Renovate (`gitops/addons/renovate`) runs self-hosted as a CronJob at 17 past
 every hour, as the GitHub App `leierx-renovate`. Each run mints an
-installation token from the app key in OpenBao `mgmt/renovate` (`app_id`,
+installation token from the app key in OpenBao `loft01/renovate` (`app_id`,
 `installation_id`, `private_key`). It updates GitHub Actions, the Helm chart
-dependencies in `gitops/addons/*/<env>/Chart.yaml`, versions marked with a
+dependencies in `gitops/addons/*/Chart.yaml`, versions marked with a
 `# renovate:` comment, and GitHub release URLs in kustomizations. Policy is
-`renovate.json`: one PR per env, `test` automerges everything, `prod` and
-`mgmt` automerge minor, patch and digest updates, majors wait for review. Go
-modules are not managed; bump `k8s.io/*` and controller-runtime together by
-hand.
+`renovate.json`: one PR per addon; patch, minor and digest automerge, majors
+wait for review. Go modules are not managed; bump `k8s.io/*` and
+controller-runtime together by hand.
 
-Nothing renders the charts in CI; a bump is a version in `Chart.yaml` and
-Argo installs it.
+`.github/workflows/addon-render.yml` renders every changed addon with Argo's
+value layering and the cluster's API versions, and Renovate waits for that
+check before automerging.
 
 Each `apps/<name>` has its own `.github/workflows/<name>.yml`, triggered by
 changes to that directory. `capi-argo-bridge` vets and tests on pull
@@ -195,12 +195,12 @@ folder; repeats every 12 hours.
 
 ntfy denies everything by default. The users `leier` (admin) and `grafana`
 (write-only on `alerts`) and Grafana's token are generated into OpenBao
-`mgmt/ntfy` and provisioned from the environment whenever ntfy starts. In the
+`loft01/ntfy` and provisioned from the environment whenever ntfy starts. In the
 ntfy app, add the server `https://ntfy.skinke.net`, sign in as `leier`, and
 subscribe to `alerts`. The password is:
 
 ```sh
-just bao kv get -field=leier_password kv/mgmt/ntfy
+just bao kv get -field=leier_password kv/loft01/ntfy
 ```
 
 Grafana publishes with its own token and never uses the password.

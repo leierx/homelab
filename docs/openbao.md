@@ -13,7 +13,7 @@ every consumer.
 
 OpenBao gives us:
 
-- **One source of truth per secret**, addressed by path (`mgmt/grafana`
+- **One source of truth per secret**, addressed by path (`loft01/grafana`
   `admin_password`), not by a copy in each namespace.
 - **No secrets in git or in manifests.** Pods pull what they need at runtime.
 - **Least privilege.** A workload authenticates with its Kubernetes
@@ -50,7 +50,7 @@ OpenBao gives us:
 | --- | --- | --- |
 | KV v2 secrets engine | yes | the `kv` mount, the only store we use |
 | Kubernetes auth | yes | pods authenticate with their ServiceAccount |
-| Policy (ACL) engine | yes | `external-secrets` (read), `external-secrets-push` (write `mgmt/*`), `admin` (all) |
+| Policy (ACL) engine | yes | `external-secrets` (read), `external-secrets-push` (write `loft01/*`), `admin` (all) |
 | Static auto-unseal | yes | key from sops, see above |
 | Audit devices | yes | to stdout |
 | Raft storage | yes | single node; snapshots are manual (`bao operator raft snapshot save`) |
@@ -62,9 +62,9 @@ OpenBao gives us:
 
 ## KV layout and the auth roles
 
-All data lives in the KV v2 mount `kv`, at `<cluster>/<app>` — `mgmt/grafana`,
-`mgmt/authentik`, `mgmt/renovate`. The cluster prefix leaves room for
-`test/…` and future workload clusters in the same store.
+All data lives in the KV v2 mount `kv`, at `<cluster>/<app>` — `loft01/grafana`,
+`loft01/authentik`, `loft01/renovate`. The cluster prefix leaves room for
+workload clusters in the same store.
 
 Three Kubernetes-auth roles exist:
 
@@ -73,8 +73,8 @@ Three Kubernetes-auth roles exist:
   `ClusterSecretStore/openbao`, which every `ExternalSecret` reads from, but
   only from the namespaces listed in its `conditions`.
 - `external-secrets-push` — bound to ServiceAccount `external-secrets-push` in
-  namespace `external-secrets`. Create, read and update on `kv/data/mgmt/*` and
-  `kv/metadata/mgmt/*`. Used by `ClusterSecretStore/openbao-push`, which only
+  namespace `external-secrets`. Create, read and update on `kv/data/loft01/*` and
+  `kv/metadata/loft01/*`. Used by `ClusterSecretStore/openbao-push`, which only
   PushSecrets in the namespaces listed in its `conditions` may use.
 - `admin` — bound to ServiceAccount `openbao-admin` in namespace `openbao`.
   Full access, 15-minute token TTL. Anyone who can mint a token for that
@@ -84,13 +84,13 @@ Three Kubernetes-auth roles exist:
 
 | Path | Properties | Source | Consumed by |
 | --- | --- | --- | --- |
-| `mgmt/authentik` | `secret_key`, `bootstrap_password`, `leier_password` | generated (authentik addon) | Authentik (`authentik-env` ExternalSecret) |
-| `mgmt/argocd` | `oidc_client_secret` | generated (authentik addon) | Authentik provider and Argo CD (`argocd-oidc`) |
-| `mgmt/grafana` | `oidc_client_secret` | generated (authentik addon) | Authentik provider and Grafana (`grafana`) |
-| `mgmt/grafana` | `admin_password` | generated (observability addon) | Grafana (`grafana`) |
-| `mgmt/edge` | `oidc_client_secret` | generated (authentik addon) | Authentik provider and Envoy Gateway's login gate (`edge-oidc` in argocd and monitoring) |
-| `mgmt/ntfy` | `leier_password`, `grafana_password`, `grafana_token` | generated (ntfy addon) | ntfy (`ntfy-auth`), Grafana's contact point (`grafana`) |
-| `mgmt/renovate` | `app_id`, `installation_id`, `private_key` | entered by hand | the Renovate CronJob (`renovate-github-app`) |
+| `loft01/authentik` | `secret_key`, `bootstrap_password`, `leier_password` | generated (authentik addon) | Authentik (`authentik-env` ExternalSecret) |
+| `loft01/argocd` | `oidc_client_secret` | generated (authentik addon) | Authentik provider and Argo CD (`argocd-oidc`) |
+| `loft01/grafana` | `oidc_client_secret` | generated (authentik addon) | Authentik provider and Grafana (`grafana`) |
+| `loft01/grafana` | `admin_password` | generated (observability addon) | Grafana (`grafana`) |
+| `loft01/edge` | `oidc_client_secret` | generated (authentik addon) | Authentik provider and Envoy Gateway's login gate (`edge-oidc` in argocd and monitoring) |
+| `loft01/ntfy` | `leier_password`, `grafana_password`, `grafana_token` | generated (ntfy addon) | ntfy (`ntfy-auth`), Grafana's contact point (`grafana`) |
+| `loft01/renovate` | `app_id`, `installation_id`, `private_key` | entered by hand | the Renovate CronJob (`renovate-github-app`) |
 
 `bootstrap_password` is never used to log in (`akadmin` is disabled), but it
 must exist: see [break-glass.md](break-glass.md).
@@ -98,7 +98,7 @@ must exist: see [break-glass.md](break-glass.md).
 ## How a secret reaches a pod (the zero-touch path)
 
 ```
-OpenBao kv/mgmt/<app> ──(ClusterSecretStore/openbao)──▶ ExternalSecret
+OpenBao kv/loft01/<app> ──(ClusterSecretStore/openbao)──▶ ExternalSecret
         │                                                      │
         │  Kubernetes-auth token for the                       ▼
         │  external-secrets ServiceAccount              Kubernetes Secret
@@ -110,7 +110,7 @@ OpenBao kv/mgmt/<app> ──(ClusterSecretStore/openbao)──▶ ExternalSecret
 ```
 
 1. An `ExternalSecret` names `ClusterSecretStore/openbao` and a
-   `remoteRef: {key: mgmt/<app>, property: <prop>}`.
+   `remoteRef: {key: loft01/<app>, property: <prop>}`.
 2. External Secrets authenticates to OpenBao with the
    `external-secrets` ServiceAccount token and reads the value.
 3. It writes a normal Kubernetes Secret in the app's namespace.
@@ -145,7 +145,7 @@ spec:
   data:
     - match:
         secretKey: some_property
-        remoteRef: { remoteKey: mgmt/<app>, property: some_property }
+        remoteRef: { remoteKey: loft01/<app>, property: some_property }
 ```
 
 - The generator makes new values on every reconcile; `IfNotExists` (checked
@@ -155,13 +155,13 @@ spec:
   the Secret or the cluster is recreated.
 - The app reads it back with a normal `ExternalSecret`. Until the first push
   lands, that `ExternalSecret` errors and retries.
-- `remoteKey` is `mgmt/<app>` without the mount (with it, ESO doubles the
+- `remoteKey` is `loft01/<app>` without the mount (with it, ESO doubles the
   mount in the metadata path). The push store uses check-and-set, because ESO
   writes a property by reading the whole path and writing it back.
 - ESO refuses to write into a path whose metadata lacks
   `custom_metadata.managed-by=external-secrets`, which it sets on paths it
   creates. To generate into a path created by hand, mark it first:
-  `just bao kv metadata patch -custom-metadata=managed-by=external-secrets kv/mgmt/<app>`.
+  `just bao kv metadata patch -custom-metadata=managed-by=external-secrets kv/loft01/<app>`.
 - A new namespace that generates secrets must be added to the `conditions` of
   `ClusterSecretStore/openbao-push` (`gitops/addons/external-secrets`).
 
@@ -175,16 +175,16 @@ credential:
 
 ```sh
 # new app secret (kv v2 puts a whole version)
-just bao kv put kv/mgmt/<app> some_property='<value>'
+just bao kv put kv/loft01/<app> some_property='<value>'
 # or patch a single property, keeping the rest
-just bao kv patch kv/mgmt/<app> some_property='<value>'
+just bao kv patch kv/loft01/<app> some_property='<value>'
 ```
 
 To rotate a generated secret, overwrite it with a fresh random value; its
 PushSecret leaves an existing value alone:
 
 ```sh
-head -c 48 /dev/urandom | base64 | tr -d '+/=\n' | just bao kv patch kv/mgmt/<app> some_property=-
+head -c 48 /dev/urandom | base64 | tr -d '+/=\n' | just bao kv patch kv/loft01/<app> some_property=-
 ```
 
 Then, depending on the consumer:

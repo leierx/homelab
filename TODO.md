@@ -28,7 +28,7 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
 
 - WebAuthn-only for `homelab-admins`: the MFA validate stage allows
   `[webauthn, totp, static]` for every tier
-  (`gitops/addons/authentik/mgmt/templates/blueprints/mfa.yaml`). Require a
+  (`gitops/addons/authentik/templates/blueprints/mfa.yaml`). Require a
   passkey or security key for admins, and decide whether the static recovery
   codes stay; the other tiers keep TOTP.
 
@@ -40,9 +40,11 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
 
 ## Renovate configuration
 
-Review `renovate.json` and `gitops/addons/renovate`: which updates automerge
-per env (mgmt and prod automerge minor/patch unreviewed), grouping, schedules,
-and the stale `renovate/*` branches from before the rebuild.
+Review `renovate.json` and `gitops/addons/renovate`: grouping, schedules, and
+the stale `renovate/*` branches from before the rebuild. Today patch, minor
+and digest automerge once `addon-render` passes and majors wait; decide
+whether `platformAutomerge` should go back on once `main` has rules (see
+Protect `main`).
 
 ## Supply chain
 
@@ -63,10 +65,10 @@ and the stale `renovate/*` branches from before the rebuild.
 - Default-deny for the namespaces not covered yet (kube-system,
   k8s-monitoring, kubevirt, cdi, capi-*, openebs).
 - Workload clusters (namespace `clusters`, where capi-argo-bridge looks): their
-  VMs sit on mgmt's pod network, so before the first
+  VMs sit on loft01's pod network, so before the first
   one, a policy for its namespace that allows only what CAPI and Argo CD need
   (Argo's application controller to the cluster's API endpoint) and keeps the
-  VMs away from mgmt's services.
+  VMs away from loft01's services.
 - Narrow `world:443` egress to FQDNs (`toFQDNs`, needs Cilium's DNS proxy):
   Renovate, Argo CD, cert-manager, Grafana, Authentik (Gravatar).
 - Check which Pod Security level KubeVirt's virt-launcher pods need in

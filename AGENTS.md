@@ -105,8 +105,9 @@ How that plays out here:
   resolved, nftables), `k3s.nix` (k3s without CNI, OIDC, audit log, pod
   security defaults), `backup.nix`, `sops.nix` + `secrets.yaml`,
   `installer.nix`.
-- `gitops/`: the Argo CD fleet. `root.yaml` → `fleet/` (ApplicationSet +
-  cluster Secrets) → `addons/<addon>/`.
+- `gitops/`: the Argo CD fleet. `root.yaml` → `fleet/` (the addon and
+  workload ApplicationSets + cluster Secrets) → `addons/<addon>/` and
+  `workloads/<name>/`.
 - `apps/<name>/`: our own Go programs, each with its own workflow and README.
 - `justfile`: workstation helpers.
 - `docs/`: `bootstrap.md` (bare metal to first sync), `operations.md`
@@ -124,23 +125,29 @@ How that plays out here:
   `services.k3s.package` (one Kubernetes minor at a time).
 - Renovate (self-hosted, `gitops/addons/renovate`) bumps Actions, chart deps,
   `# renovate:`-annotated versions and release URLs in kustomizations, one PR
-  per env. Policy is in `renovate.json`. Go modules are bumped by hand.
+  per addon. Patch, minor and digest automerge once the `addon-render`
+  workflow passes; majors wait for review. Policy is in `renovate.json`. Go
+  modules are bumped by hand.
 
 ## GitOps contract
 
-- A cluster's Argo Secret labels decide what it runs: `env: mgmt|prod|test`
-  and `addons.homelab/<addon>: "true"`. mgmt's is
-  `fleet/clusters/mgmt.yaml`; workload clusters get theirs from
-  `capi-argo-bridge`, which copies the labels from their CAPI `Cluster`.
+- A cluster's Argo Secret labels decide what it runs: `addons.homelab/<addon>:
+  "true"`. loft01's is `fleet/clusters/loft01.yaml`; workload clusters get
+  theirs from `capi-argo-bridge`, which copies those labels from their CAPI
+  `Cluster`.
 - `fleet/addons.yaml` crosses every `addons/*/addon.yaml` with every cluster
-  carrying its label → app `<addon>-<cluster>` from `addons/<addon>/<env>/`.
-  An env without a dir for a labelled addon fails to sync.
-- `<env>/` is usually an umbrella chart (`Chart.yaml` pins upstream for that
-  env, `templates/` holds extras). Values layer `<addon>/values.yaml` →
-  `<env>/values.yaml` → `<addon>/clusters/<cluster>.yaml`. No Helm chart:
-  `kustomize: true` in `addon.yaml` and an `<env>/kustomization.yaml`.
+  carrying its label → app `<addon>-<cluster>` from `addons/<addon>`, the
+  addon root.
+- The addon root is an umbrella chart (`Chart.yaml` pins the upstream version,
+  `templates/` holds extras). Values layer `<addon>/values.yaml` →
+  `<addon>/clusters/<cluster>.yaml`. No Helm chart: `kustomize: true` in
+  `addon.yaml` and a `kustomization.yaml` at the addon root.
 - `addon.yaml`: `namespace`, optional `podSecurity` (Helm addons; kustomize
   addons label their own Namespace), optional `kustomize`.
+- `fleet/workloads.yaml` generates one Application per `gitops/workloads/*`
+  directory, applied to loft01. A workload (a CAPI `Cluster`, a KubeVirt VM)
+  is not an addon and lives there; data-bearing objects carry
+  `argocd.argoproj.io/sync-options: Delete=false,Prune=false`.
 
 ## Every addon
 
@@ -156,7 +163,7 @@ How that plays out here:
   `default`, default-deny both ways, explicit allows. Write it with
   `policyAuditMode` first.
 - Secrets: never in `gitops/`. Read through an `ExternalSecret` from
-  `ClusterSecretStore/openbao` (`mgmt/<app>`); generate with a `Password` +
+  `ClusterSecretStore/openbao` (`loft01/<app>`); generate with a `Password` +
   `PushSecret` to `openbao-push`. Add the namespace to the store's
   `conditions`. Pattern: `docs/openbao.md`.
 - Postgres: a CloudNativePG `Cluster` in the addon, image tag pinned with

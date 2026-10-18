@@ -70,9 +70,9 @@ cd homelab
 ### Cilium
 
 ```sh
-helm dependency update gitops/addons/cilium/mgmt
-helm template cilium gitops/addons/cilium/mgmt -n kube-system --include-crds \
-  -f gitops/addons/cilium/values.yaml -f gitops/addons/cilium/clusters/mgmt.yaml \
+helm dependency update gitops/addons/cilium
+helm template cilium gitops/addons/cilium -n kube-system --include-crds \
+  -f gitops/addons/cilium/values.yaml -f gitops/addons/cilium/clusters/loft01.yaml \
   --set cilium.prometheus.serviceMonitor.trustCRDsExist=true \
   | kubectl apply --server-side --field-manager=argocd-controller -f -
 kubectl wait --for=condition=Ready node --all --timeout=10m
@@ -90,9 +90,9 @@ apply normally.
 ### Argo CD
 
 ```sh
-helm dependency update gitops/addons/argocd/mgmt
+helm dependency update gitops/addons/argocd
 kubectl create namespace argocd
-helm template argocd gitops/addons/argocd/mgmt -n argocd --include-crds \
+helm template argocd gitops/addons/argocd -n argocd --include-crds \
   -f gitops/addons/argocd/values.yaml \
   | kubectl apply --server-side --field-manager=argocd-controller -f -
 kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m

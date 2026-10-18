@@ -42,7 +42,7 @@ just authentik-recover leier 60
 ```
 
 From there you can fix the broken user, group or OIDC client. The `leier`
-password is in OpenBao as `leier_password` in `mgmt/authentik`.
+password is in OpenBao as `leier_password` in `loft01/authentik`.
 
 ## Argo CD (local `admin` disabled)
 
@@ -69,7 +69,7 @@ only if you need to script the API), commit and push, then log in as `admin`
 with the password in OpenBao:
 
 ```sh
-just bao kv get -field=admin_password kv/mgmt/grafana
+just bao kv get -field=admin_password kv/loft01/grafana
 ```
 
 Revert the flag when done.

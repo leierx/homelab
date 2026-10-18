@@ -23,7 +23,7 @@ The edge login (Envoy Gateway SecurityPolicy `edge-oidc`, Authentik client
 `edge`) is bound to the three tiers like every app, so nobody else gets past
 it. It keeps pre-auth bugs in Argo CD and Grafana off the internet. A new
 public site that needs it gets the same SecurityPolicy, an `ExternalSecret`
-for `mgmt/edge`, and its callback `https://<host>/oauth2/callback` in the
+for `loft01/edge`, and its callback `https://<host>/oauth2/callback` in the
 `edge` client's `redirectURIs`.
 
 ## Groups
@@ -33,7 +33,7 @@ Authorization is carried in the OIDC `groups` claim, which Authentik's default
 hierarchy is not resolved). Clients request `openid profile email`; there is
 no separate `groups` scope, since the claims of both would be concatenated and
 list every group twice. Membership is declared in
-`gitops/addons/authentik/mgmt/templates/blueprints/access.yaml`.
+`gitops/addons/authentik/templates/blueprints/access.yaml`.
 
 | Group | Meaning |
 | --- | --- |
@@ -95,7 +95,7 @@ Devices → Static tokens* and keep them somewhere offline.
 ## Accounts
 
 - `leier` — the personal account, superuser through `homelab-admins`. Its
-  password is read from OpenBao `mgmt/authentik` `leier_password` whenever the
+  password is read from OpenBao `loft01/authentik` `leier_password` whenever the
   access blueprint is applied, so change it in OpenBao, not in the UI (see
   [openbao.md](openbao.md)).
 - `akadmin` — Authentik's built-in admin, disabled (`is_active: false`). It
@@ -119,7 +119,7 @@ People choose their own password; nobody else ever knows it.
 2. They pick a username, name, email and password, then sign in at
    https://auth.skinke.net and enrol their second factor. At this point they
    can reach nothing: they are in no group.
-3. Give them a tier in `gitops/addons/authentik/mgmt/templates/blueprints/access.yaml`:
+3. Give them a tier in `gitops/addons/authentik/templates/blueprints/access.yaml`:
 
    ```yaml
    - model: authentik_core.user
@@ -152,7 +152,7 @@ To change someone's tier, edit their group list and push.
 1. Add an entry to `oidcClients` in `gitops/addons/authentik/values.yaml` with
    its `launchURL` and exact `redirectURIs` (strict matching — a trailing slash
    or wrong host is rejected). The blueprint binds it to the three tiers, and
-   the authentik addon generates the client secret into OpenBao `mgmt/<name>`
+   the authentik addon generates the client secret into OpenBao `loft01/<name>`
    `oidc_client_secret` (a PushSecret per client).
 2. Add an `ExternalSecret` for that property in the service's addon, and the
    service's namespace to the `openbao` store's `conditions` in

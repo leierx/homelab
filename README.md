@@ -24,8 +24,11 @@ real GitOps platform on hardware we own.
 - **Cluster.** k3s runs without its own CNI and kube-proxy; Cilium provides
   both and the network policy engine. Argo CD tracks `HEAD` of `main`, and an
   ApplicationSet renders each addon for each cluster whose Argo Secret carries
-  that addon's label. `fleet/` is the root app, `addons/<addon>/<env>/` what
-  an environment runs.
+  that addon's label. `fleet/` is the root app: the addon ApplicationSet, one
+  more per `workloads/<name>/` directory, and the cluster Secrets. An addon
+  is a directory whose root is the umbrella chart
+  (`addons/<addon>/Chart.yaml`), with per-cluster values in
+  `addons/<addon>/clusters/<cluster>.yaml`.
 - **Edge.** Envoy Gateway terminates TLS on two Gateways: `edge` (NodePort
   30080/30443, reached through the router's port forward) and `wg` (the
   `10.0.0.1` address on WireGuard). Public traffic passes an Authentik OIDC
@@ -35,9 +38,11 @@ real GitOps platform on hardware we own.
   `tank` pool; the host does not mount it. sanoid snapshots the pool, and an
   off-site borg backup is ready to enable.
 - **Workloads.** The management side runs Cluster API, KubeVirt and CDI, so a
-  workload cluster is a VM on this node. Their pod and service CIDRs must not
-  overlap `10.42.0.0/16` and `10.43.0.0/16`, and they boot from a persistent
-  disk (`cluster-template-persistent-storage.yaml`), never a containerDisk.
+  workload cluster is a VM on this node; each one is a directory under
+  `gitops/workloads/` that `fleet/workloads.yaml` turns into an Application.
+  Their pod and service CIDRs must not overlap `10.42.0.0/16` and
+  `10.43.0.0/16`, and they boot from a persistent disk
+  (`cluster-template-persistent-storage.yaml`), never a containerDisk.
 - **Stateful apps.** CloudNativePG runs Postgres as a `Cluster` inside an
   addon; the app reads the operator-made `<cluster>-app` Secret.
 - **Guardrails.** Namespaces without a Pod Security label get `baseline`,

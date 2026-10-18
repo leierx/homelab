@@ -125,11 +125,18 @@ and the same with `namespace="authentik"` / `"openbao"`.
 ## GitOps
 
 - **Need:** one control plane that manages itself and the fleet.
-- **Choice:** Argo CD tracking `HEAD` of `main`, ApplicationSets crossing
-  `addons/*/addon.yaml` with cluster labels.
+- **Choice:** Argo CD tracking `HEAD` of `main`; one ApplicationSet crossing
+  `addons/*/addon.yaml` with cluster labels (the addon root is the umbrella
+  chart, per-cluster values in `clusters/<cluster>.yaml`), and one more
+  generating an Application per `gitops/workloads/*` directory.
 - **Why:** a push is a deploy; addons and clusters are labelled, not wired
-  together by hand. Details in `AGENTS.md`.
-- **Alternatives:** **Flux** is equivalent; the choice is mostly familiarity.
+  together by hand. Flattening the addon directories removed the per-env copy
+  that the dropped test/prod split required, without losing per-cluster
+  overrides. Details in `AGENTS.md`.
+- **Alternatives:** **Flux** is equivalent for one cluster; the promotion
+  layers (**Kargo**, **Sveltos**, **OCM**, Cluster API Addon Provider Helm)
+  and the Flux Operator's ResourceSets each add a second control plane — or,
+  for ResourceSets, an AGPL single-vendor one — that this fleet does not need.
 
 ## Things that look redundant but are not
 
@@ -147,7 +154,7 @@ and the same with `namespace="authentik"` / `"openbao"`.
 - **`# renovate:` comments.** They are not config; they tell Renovate where to
   look for a version that is not in a file it parses natively (e.g. the
   Postgres image inside a `Cluster` manifest, Mimir's image tag).
-- **The Postgres image tag in `authentik/mgmt/values.yaml`.** It feeds *our*
+- **The Postgres image tag in `authentik/clusters/loft01.yaml`.** It feeds *our*
   CloudNativePG `Cluster` (`imageName: ghcr.io/cloudnative-pg/postgresql:…`),
   not the Authentik chart's bundled PostgreSQL subchart, which is unused.
 
