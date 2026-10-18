@@ -1,18 +1,15 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: cluster-mgmt
+  name: cluster-loft01
   namespace: argocd
   labels:
     argocd.argoproj.io/secret-type: cluster
-    env: mgmt
     addons.homelab/admission: "true"
-    addons.homelab/argocd: "true"
     addons.homelab/authentik: "true"
     addons.homelab/capi-argo-bridge: "true"
     addons.homelab/cdi: "true"
     addons.homelab/cert-manager: "true"
-    addons.homelab/cilium: "true"
     addons.homelab/cloudnative-pg: "true"
     addons.homelab/cluster-api: "true"
     addons.homelab/envoy-gateway: "true"
@@ -28,6 +25,6 @@ metadata:
     addons.homelab/zfs-localpv: "true"
 type: Opaque
 stringData:
-  name: mgmt
+  name: loft01
   server: https://kubernetes.default.svc
   config: '{"tlsClientConfig":{"insecure":false}}'

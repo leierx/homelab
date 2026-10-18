@@ -23,8 +23,7 @@ spec:
     preserveResourcesOnDeletion: true
   template:
     metadata:
-      # appSuffixOverride is a one-commit staging shim (ntfy first); the cluster rename removes it
-      name: "{{ .path.basename }}-{{ if hasKey . \"appSuffixOverride\" }}{{ .appSuffixOverride }}{{ else }}{{ .name }}{{ end }}"
+      name: "{{ .path.basename }}-{{ .name }}"
     spec:
       project: default
       source:

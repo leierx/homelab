@@ -1,6 +1,6 @@
 k8s-monitoring:
   cluster:
-    name: mgmt
+    name: loft01
   # the observability addon's backends, in-cluster
   destinations:
     mimir:
