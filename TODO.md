@@ -3,6 +3,12 @@
 Things we decided to look into later. Remove an entry when it's done or
 dropped.
 
+## Lab phase
+
+- **The lab phase ends when dodde's VM is rebuilt for real use.** Until then
+the standing permissions at the top of `AGENTS.md` still apply; that rebuild
+is the point at which they have to be rewritten.
+
 ## Protect `main`
 
 Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
@@ -93,7 +99,9 @@ Protect `main`).
 - Borg is still disabled after the storage rebuild. When rsync.net credentials
   exist, add `borg/ssh_key` and `borg/passphrase` to `nixos/secrets.yaml`, flip
   `offsite.enable` in `nixos/backup.nix`, and check the first real run covers
-  `tank` and the k3s state.
+  `tank` and the k3s state. **Do this before dodde's VM holds anything that
+  cannot be lost** — today the only copy of its disk is the pool's own zvol
+  and sanoid snapshots.
 - Add `bao operator raft snapshot save` to the off-site backup run, so the
   OpenBao raft state is application-consistent and not only a zvol snapshot
   (see `docs/operations.md`).
@@ -109,6 +117,17 @@ Protect `main`).
 
 ## KubeVirt
 
+- **A node reboot left dodde's VM down.** On 2026-10-18 23:06 the kubelet's
+  graceful shutdown killed the launcher pod (the VM's 180 s included), the pod
+  ended `Failed`, and after the reboot virt-controller did **not** replace it:
+  the VMI kept reporting `Running`/`Ready` with a stale IP while no pod
+  existed. Deleting the failed pod made virt-controller start a new one and the
+  guest came back with the same disk and machine-id. The host reboots itself
+  unattended on Fridays, so this must be understood (a KubeVirt bug, a missing
+  `pod` finalizer, or the k3s `KillMode=process` leaving the pod half-dead) or
+  worked around — an alert on "VMI Running with no running launcher pod" plus
+  the `delete pod -l vm.kubevirt.io/name=fedora` step at minimum. See
+  `docs/dodde.md`.
 - virt-handler logs `Failed to establish a watch on
   /etc/virt-handler/clientcertificates/tls.crt` (a fatal and then an error)
   for its first ~2 minutes, then goes Ready with no restarts. Still present

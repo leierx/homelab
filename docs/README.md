@@ -5,6 +5,8 @@ the binding operational contract; these pages add the *why* and the procedures
 that do not fit there. `README.md` at the repo root is the overview.
 
 - [bootstrap.md](bootstrap.md) — bare metal to a synced cluster.
+- [dodde.md](dodde.md) — dodde's Fedora VM: what runs, how to get in, the
+  handover, its isolation, and how to restore it.
 - [operations.md](operations.md) — updates, backups and restore, certificates,
   observability and alerting.
 - [access.md](access.md) — identity, the `homelab-*` groups, per-service roles
