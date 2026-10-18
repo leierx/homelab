@@ -71,3 +71,4 @@ spec:
                 - [systemctl, restart, NetworkManager]
                 - [systemctl, restart, systemd-resolved]
                 - [dnf, -y, install, tailscale]
+                - [systemctl, enable, --now, tailscaled]
