@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: probe
-  namespace: probe
-data:
-  purpose: e2e test of the workloads ApplicationSet
