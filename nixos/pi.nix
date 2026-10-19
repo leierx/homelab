@@ -54,6 +54,10 @@ in
 {
   environment.systemPackages = [ pi ];
   programs.tmux.enable = true;
+  programs.tmux.extraConfig = ''
+    set -s extended-keys on
+    set -s extended-keys-format csi-u
+  '';
 
   systemd.tmpfiles.rules = [
     "d /home/leier/.pi 0700 leier users -"
