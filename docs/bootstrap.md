@@ -164,6 +164,17 @@ that is also how you watch it converge:
 watch kubectl -n argocd get applications
 ```
 
+Much of the wait is External Secrets backing off: the `openbao` store and the
+ExternalSecrets that read generated values fail until OpenBao and the
+PushSecrets are up, and then retry on an exponential backoff of up to about
+17 minutes. To hurry it along:
+
+```sh
+kubectl annotate clustersecretstore openbao openbao-push force-sync="$(date +%s)" --overwrite
+kubectl get externalsecret,pushsecret -A --no-headers | while read ns n _; do
+  kubectl -n "$ns" annotate "$n" force-sync="$(date +%s)" --overwrite; done
+```
+
 Once Keycloak (and its `keycloak-config-*` Job) and the `wg` Gateway are
 up, the UI is at https://argocd.skinke.net over WireGuard, behind Keycloak.
 On a workstation that means `just kubeconfig` for kubectl and the hosts

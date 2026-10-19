@@ -130,6 +130,11 @@ Protect `main`).
   real namespace in `exported_namespace`) next to the kubelet one
   (`job=integrations/kubernetes/kubelet`). Still present right after the pool
   rebuild. Drop or relabel the duplicate so one PVC is one series.
+- cert-manager's HTTP-01 solver pods carry a CPU limit, so every issuance trips
+  the "Pod breaks an admission policy" alert in the Certificate's namespace.
+  cert-manager's `--acme-http01-solver-resource-limits-cpu` (controller flag)
+  or the issuer's solver `podTemplate` could drop it; check which one the
+  pinned chart supports.
 
 ## KubeVirt
 
@@ -154,6 +159,16 @@ Protect `main`).
   rejections in a 71 s shutdown). They pile up until kube-controller-manager's
   `terminated-pod-gc-threshold` (12500). Decide between a low threshold
   (`--kube-controller-manager-arg`) and leaving them.
+
+## Bootstrap
+
+- External Secrets needs nudges to converge quickly on a fresh cluster (see
+  `docs/bootstrap.md`, section 3): a `ClusterSecretStore` validated before
+  OpenBao was up, and ExternalSecrets that ran before their PushSecret, retry
+  on controller-runtime's backoff (up to ~17 minutes). Decide whether that is
+  acceptable or worth a shorter requeue.
+- `capi-argo-bridge` crash-loops until the Cluster API CRDs exist. Harmless,
+  but it could wait for them instead of failing to start.
 
 ## Workloads
 
