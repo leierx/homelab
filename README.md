@@ -105,6 +105,8 @@ real GitOps platform on hardware we own.
 - [break-glass.md](docs/break-glass.md) — getting back in when SSO is broken.
 - [immich.md](docs/immich.md) — photos: what runs, logins and the phone app,
   bulk upload, restore, upgrades.
+- [pi.md](docs/pi.md) — the pi coding agent on loft01: connect, login,
+  settings.
 - [tech-choices.md](docs/tech-choices.md) — why each piece, what was
   rejected, and the free-software audit.
 

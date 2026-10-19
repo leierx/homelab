@@ -111,8 +111,8 @@ How that plays out here:
   auto-upgrade), `hardware.nix` (kernel, watchdog, ZFS, disk health),
   `disko.nix` (NVMe root, ZFS pools), `network.nix` (networkd, `wg0`,
   resolved, nftables), `k3s.nix` (k3s without CNI, OIDC, audit log, pod
-  security defaults), `backup.nix`, `sops.nix` + `secrets.yaml`,
-  `installer.nix`.
+  security defaults), `backup.nix`, `sops.nix` + `secrets.yaml`, `pi.nix`
+  (the pi coding agent and tmux), `installer.nix`.
 - `gitops/`: the Argo CD fleet. `root.yaml` → `fleet/` (the addon and
   workload ApplicationSets + cluster Secrets) → `addons/<addon>/` and
   `workloads/<name>/`.
@@ -122,7 +122,7 @@ How that plays out here:
   (updates, backups, certificates, observability), `access.md` (SSO, tiers,
   people), `openbao.md` (secrets), `break-glass.md`,
   `immich.md` (photos: logins, bulk upload, restore, upgrades),
-  `tech-choices.md` (why).
+  `pi.md` (the coding agent on loft01), `tech-choices.md` (why).
   `README.md`: what this is; `TODO.md`: deferred work.
 
 ## What ships, and when
@@ -215,6 +215,8 @@ How that plays out here:
 - CPU limits set upstream (virt-template-*, Cilium's init containers,
   virt-launcher's `guest-console-log`) are not patched away;
   `container-resources` only warns about them.
+- pi runs on loft01 as leier with full access (doas, the admin kubeconfig),
+  by choice, unsandboxed.
 
 ## Gotchas
 
