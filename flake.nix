@@ -26,6 +26,7 @@
           ./nixos/k3s.nix
           ./nixos/sops.nix
           ./nixos/backup.nix
+          ./nixos/pi.nix
         ];
       };
 
