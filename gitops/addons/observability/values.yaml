@@ -123,16 +123,11 @@ grafana:
 
   # Grafana-managed alerts, visible in Grafana's alert list; no notification channel (TODO.md)
   alerting:
-    # Grafana's built-in contact point: the DB's policy still named the removed webhook
+    # reset to Grafana's own default tree: the stored policy still named the removed webhook
     policies.yaml:
       apiVersion: 1
-      policies:
-        - orgId: 1
-          receiver: grafana-default-email
-          group_by: [alertname, grafana_folder]
-          group_wait: 30s
-          group_interval: 5m
-          repeat_interval: 12h
+      resetPolicies:
+        - 1
     rules.yaml:
       apiVersion: 1
       groups:
