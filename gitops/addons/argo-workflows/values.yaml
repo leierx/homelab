@@ -1,0 +1,66 @@
+argo-workflows:
+  crds:
+    upgradeJob:
+      podSecurityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests: { cpu: 10m, memory: 64Mi }
+        limits: { memory: 128Mi }
+  controller:
+    # where the chart puts the default workflow ServiceAccount; the keycloak CronWorkflow brings its own
+    workflowNamespaces: [argo]
+    podSecurityContext:
+      seccompProfile:
+        type: RuntimeDefault
+    # no Postgres archive and no artifact repository: logs go to Loki
+    persistence: {}
+    # finished workflows go after three days; a successful run's pods after an hour (logs are in
+    # Loki), a failed run's pods stay with the workflow for debugging
+    workflowDefaults:
+      spec:
+        ttlStrategy:
+          secondsAfterCompletion: 259200
+        podGC:
+          strategy: OnWorkflowSuccess
+          deleteDelayDuration: 1h
+    metricsConfig:
+      enabled: true
+    serviceMonitor:
+      enabled: true
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { memory: 1Gi }
+  executor:
+    # restricted: the stock argoexec image runs as root
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 8737
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+    resources:
+      requests: { cpu: 10m, memory: 64Mi }
+      limits: { memory: 256Mi }
+  server:
+    authModes: [sso]
+    podSecurityContext:
+      seccompProfile:
+        type: RuntimeDefault
+    sso:
+      enabled: true
+      issuer: https://auth.skinke.net/realms/homelab
+      clientId:
+        name: argo-server-sso
+        key: client-id
+      clientSecret:
+        name: argo-server-sso
+        key: client-secret
+      redirectUrl: https://workflows.skinke.net/oauth2/callback
+      # the group claim the SSO RBAC rules read
+      scopes: [groups]
+      rbac:
+        enabled: true
+    resources:
+      requests: { cpu: 20m, memory: 128Mi }
+      limits: { memory: 512Mi }

@@ -1,5 +1,6 @@
 # pods here get hostUsers: false; nothing privileged or reading host files (k8s-monitoring's log collector)
 userNamespaces:
+  - argo
   - argocd
   - cert-manager
   - cnpg-system

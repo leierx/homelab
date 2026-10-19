@@ -242,6 +242,17 @@ grafana:
               data:
                 - { refId: A, datasourceUid: mimir, relativeTimeRange: { from: 600, to: 0 }, model: { refId: A, instant: true, expr: 'max by (node) (kube_node_status_condition{condition="Ready", status="true"} == 0) + 1' } }
                 - { refId: C, datasourceUid: __expr__, model: { refId: C, type: threshold, expression: A, conditions: [{ evaluator: { type: gt, params: [0] } }] } }
+            - uid: workflow-failed
+              title: Workflow started by a CronWorkflow failed
+              condition: C
+              for: 0s
+              noDataState: OK
+              execErrState: Error
+              labels: { severity: warning }
+              annotations: { summary: "A workflow entered the Failed phase in the last 15 minutes. Every standing workflow here is started by a CronWorkflow (the controller's counter has no cron label)." }
+              data:
+                - { refId: A, datasourceUid: mimir, relativeTimeRange: { from: 900, to: 0 }, model: { refId: A, instant: true, expr: 'sum by (namespace) (increase(argo_workflows_total_count{phase="Failed"}[15m])) > 0' } }
+                - { refId: C, datasourceUid: __expr__, model: { refId: C, type: threshold, expression: A, conditions: [{ evaluator: { type: gt, params: [0] } }] } }
             - uid: argocd-app-unhealthy
               title: Argo CD application unhealthy
               condition: C

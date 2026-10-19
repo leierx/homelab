@@ -1,0 +1,121 @@
+# the UI's OIDC client secret: generated once, kept in OpenBao, read by the server
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: argo-workflows-sso
+spec:
+  length: 64
+  symbols: 0
+  allowRepeat: true
+  secretKeys: [oidc_client_secret]
+---
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: argo-workflows-sso
+spec:
+  refreshInterval: 1h
+  updatePolicy: IfNotExists
+  secretStoreRefs:
+    - kind: ClusterSecretStore
+      name: openbao-push
+  selector:
+    generatorRef:
+      apiVersion: generators.external-secrets.io/v1alpha1
+      kind: Password
+      name: argo-workflows-sso
+  data:
+    - match:
+        secretKey: oidc_client_secret
+        remoteRef: { remoteKey: loft01/argo-workflows, property: oidc_client_secret }
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: argo-server-sso
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: openbao
+  target:
+    name: argo-server-sso
+    template:
+      engineVersion: v2
+      data:
+        client-id: argo-workflows
+        client-secret: "{{ .oidc_client_secret }}"
+  data:
+    - secretKey: oidc_client_secret
+      remoteRef: { key: loft01/argo-workflows, property: oidc_client_secret }
+---
+# SSO RBAC: a user in homelab-admins maps to this ServiceAccount (argo-server-sso.md, "SSO RBAC")
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: homelab-admins
+  annotations:
+    workflows.argoproj.io/rbac-rule: "'homelab-admins' in groups"
+    workflows.argoproj.io/rbac-rule-precedence: "10"
+---
+# the server reads the account's token; Kubernetes no longer creates one for a ServiceAccount
+apiVersion: v1
+kind: Secret
+metadata:
+  name: homelab-admins.service-account-token
+  annotations:
+    kubernetes.io/service-account.name: homelab-admins
+type: kubernetes.io/service-account-token
+---
+# the workflows the group may read and run, here and in the keycloak namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: homelab-admins-workflows
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argo-workflows-admin
+subjects:
+  - kind: ServiceAccount
+    name: homelab-admins
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: homelab-admins-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: homelab-admins
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: homelab-admins-workflows
+  namespace: keycloak
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argo-workflows-admin
+subjects:
+  - kind: ServiceAccount
+    name: homelab-admins
+    namespace: argo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: homelab-admins-view
+  namespace: keycloak
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: homelab-admins
+    namespace: argo
