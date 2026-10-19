@@ -1,7 +1,7 @@
 # Immich
 
 Immich is the photo library at https://photos.skinke.net: phone backup,
-timeline, map, faces and smart search. It is the addon
+timeline, faces and smart search. It is the addon
 `gitops/addons/immich`, namespace `immich`, our own manifests (why: see
 [tech-choices.md](tech-choices.md), Photos).
 
@@ -28,6 +28,10 @@ Settings live in `templates/_config.tpl`, rendered with the OIDC client
 secret into a Secret by External Secrets. With a config file Immich's admin
 UI shows the settings but can't change them; change them in git. The Secret
 is named after the content, so a change starts a new server pod.
+
+The map is off (`map.enabled`): its tiles come from `tiles.immich.cloud`,
+which would see which areas people look at. Reverse geocoding stays on; it
+runs locally.
 
 Metrics: a ServiceMonitor for the API (`:8081`) and the job workers
 (`:8082`), a PodMonitor for Postgres. Upstream publishes no Grafana
@@ -127,7 +131,7 @@ Takeout keeps its metadata in JSON files the CLI ignores; use
    run on CPU; for a large library that takes hours to days. Concurrency per
    queue is `job.<queue>.concurrency` in the config file if it needs to go
    up for the import.
-6. Check the timeline (dates) and the map (GPS), then delete the API key.
+6. Check the timeline (dates), then delete the API key.
 
 Space: `kubectl -n immich exec deploy/immich-server -- df -h /data`, or
 `zfs get used,refquota` on the dataset. Grow the library by raising

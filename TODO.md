@@ -113,10 +113,8 @@ Protect `main`).
   `app.immich:///oauth-callback`, the server exchanging the code), not with
   the app on a phone. Do one real login from a phone before telling people
   to use it.
-- The map loads its tiles in the browser and the app from
-  `tiles.immich.cloud`, so that service sees which areas people look at.
-  Decide whether to accept it, turn the map off (`map.enabled`) or host
-  tiles ourselves (`map.lightStyle`/`darkStyle`).
+- Self-hosted map tiles, if the map is wanted back (`map.lightStyle` and
+  `map.darkStyle` in Immich's config file).
 - The library may grow to 770 Gi, and the off-site backup sends it whole
   the first time: size the rsync.net plan for it before enabling borg.
 - `/api/server/version` tells anyone the exact Immich version (the phone
