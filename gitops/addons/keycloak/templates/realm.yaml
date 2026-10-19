@@ -106,6 +106,10 @@ data:
         config:
           condUserRole: homelab-access
           negate: "true"
+      - alias: homelab-no-second-factor
+        config:
+          flow_to_check: homelab-browser second factor
+          check_result: not-executed
     authenticationFlows:
       # signed in (cookie, or password plus a second factor), then refused without a tier
       - alias: homelab-browser
@@ -145,26 +149,49 @@ data:
             priority: 10
           - flowAlias: homelab-browser second factor
             authenticatorFlow: true
-            requirement: REQUIRED
+            requirement: CONDITIONAL
             priority: 20
-      # a user with none of these is made to set up the first (TOTP) before going on
+          - flowAlias: homelab-browser enrol
+            authenticatorFlow: true
+            requirement: CONDITIONAL
+            priority: 30
+      # whichever second factor the user has set up (Keycloak's "2FA all alternative with OTP default")
       - alias: homelab-browser second factor
         providerId: basic-flow
         topLevel: false
         builtIn: false
         authenticationExecutions:
+          - authenticator: conditional-user-configured
+            authenticatorFlow: false
+            requirement: REQUIRED
+            priority: 10
           - authenticator: auth-otp-form
             authenticatorFlow: false
             requirement: ALTERNATIVE
-            priority: 10
+            priority: 20
           - authenticator: webauthn-authenticator
             authenticatorFlow: false
             requirement: ALTERNATIVE
-            priority: 20
+            priority: 30
           - authenticator: auth-recovery-authn-code-form
             authenticatorFlow: false
             requirement: ALTERNATIVE
-            priority: 30
+            priority: 40
+      # none set up yet: TOTP setup before going on; a passkey can be added later in the account console
+      - alias: homelab-browser enrol
+        providerId: basic-flow
+        topLevel: false
+        builtIn: false
+        authenticationExecutions:
+          - authenticator: conditional-sub-flow-executed
+            authenticatorConfig: homelab-no-second-factor
+            authenticatorFlow: false
+            requirement: REQUIRED
+            priority: 10
+          - authenticator: auth-otp-form
+            authenticatorFlow: false
+            requirement: REQUIRED
+            priority: 20
       - alias: homelab-browser tier
         providerId: basic-flow
         topLevel: false
