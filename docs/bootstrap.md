@@ -60,7 +60,9 @@ To rebuild everything above NixOS (the cluster, every PVC, OpenBao's data)
 without reinstalling: stop k3s, wipe its state and every volume on `tank`,
 and reboot into the configuration from `main`. The pool, the NVMe root, sops
 and the age key stay. Save what was entered by hand first (see Secrets
-entered by hand, below).
+entered by hand, below). This also wipes OpenTofu's realm state with the
+database, which is the consistent pair (see "The Keycloak realm and its
+state" below).
 
 ```sh
 ssh loft01
@@ -175,14 +177,34 @@ kubectl get externalsecret,pushsecret -A --no-headers | while read ns n _; do
   kubectl -n "$ns" annotate "$n" force-sync="$(date +%s)" --overwrite; done
 ```
 
-Once Keycloak (and its `keycloak-config-*` Job) and the `wg` Gateway are
-up, the UI is at https://argocd.skinke.net over WireGuard, behind Keycloak.
-On a workstation that means `just kubeconfig` for kubectl and the hosts
-entries in [access.md](access.md) for the sites. `leier` starts from a
-temporary password in OpenBao, which only the admin kubeconfig on loft01 can
-read at this point: the commands are under "First login after a rebuild" in
+Once Keycloak and the `wg` Gateway are up, the UI is at
+https://argocd.skinke.net over WireGuard, behind Keycloak. On a workstation
+that means `just kubeconfig` for kubectl and the hosts entries in
+[access.md](access.md) for the sites. `leier` starts from a temporary
+password in OpenBao, which only the admin kubeconfig on loft01 can read at
+this point: the commands are under "First login after a rebuild" in
 [access.md](access.md). That first login registers a security key or passkey
 and sets your own password.
+
+### The Keycloak realm and its state
+
+The realm is not a Job any more: the CronWorkflow `keycloak-realm` in the
+`keycloak` namespace runs `tofu/keycloak/` every 10 minutes. On a rebuilt
+cluster it creates the realm on its first run after Keycloak is Ready (or
+trigger it as in [access.md](access.md)). A fresh master realm also gets a
+`temp-admin` from the operator; delete it ([break-glass.md](break-glass.md)).
+
+The rule that keeps a rebuild safe: **an empty database needs empty state.**
+OpenTofu's state is the Secret `tfstate-default-keycloak` and the Lease
+`lock-tfstate-default-keycloak`, both in `keycloak` and both inside the k3s
+state that the procedures above wipe. So "new database + new k3s state" is
+consistent: the first run creates everything.
+
+If the realm exists but the state Secret is lost, the next plan wants to
+create the realm again and fails on the existing one. **`tofu import` is the
+way back**, one resource at a time (`keycloak_realm` first, then groups,
+clients, flows, users), not a database wipe. Never import into a fresh
+database: there is nothing to import from, and the tables are empty.
 
 To use the Argo CD UI while Keycloak is still down, temporarily set
 `admin.enabled: "true"` and push; Argo reconciles itself, and

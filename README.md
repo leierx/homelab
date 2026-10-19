@@ -76,7 +76,8 @@ real GitOps platform on hardware we own.
 | TLS certificates | cert-manager | Let's Encrypt issuance and renewal from one `ClusterIssuer` | Apache-2.0 | CNCF (graduated) |
 | Edge and routing | Envoy Gateway (Gateway API) | two Gateways, OIDC filter, HTTP-01 solver | Apache-2.0 | CNCF (Envoy, graduated) |
 | Identity and SSO | Keycloak (Keycloak Operator) | OIDC with a groups claim, mandatory second factor | Apache-2.0 | CNCF (incubating) |
-| IdP config as code | keycloak-config-cli | the realm in git, re-applied when it changes | Apache-2.0 | none (adorsys) |
+| IdP config as code | OpenTofu + the Keycloak provider | the realm in flat files, applied every 10 minutes by a CronWorkflow | MPL-2.0, Apache-2.0 | Linux Foundation (OpenTofu, CNCF sandbox); Keycloak org (provider) |
+| Workflow engine | Argo Workflows | runs the realm reconcile on a schedule; UI over WireGuard only | Apache-2.0 | CNCF (graduated) |
 | Secret store | OpenBao | the Vault API without the BUSL licence; KV v2 + Kubernetes auth | MPL-2.0 | Linux Foundation (OpenSSF) |
 | Secret delivery | External Secrets Operator | `ExternalSecret` and `PushSecret` against one store | Apache-2.0 | CNCF (sandbox) |
 | Pre-cluster secrets | SOPS + sops-nix | an age-encrypted file in git, rendered at boot | MPL-2.0, MIT | CNCF (sops, sandbox) |

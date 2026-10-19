@@ -85,8 +85,8 @@ Three Kubernetes-auth roles exist:
 
 | Path | Properties | Source | Consumed by |
 | --- | --- | --- | --- |
-| `loft01/keycloak` | `admin_password`, `admin_client_secret` | generated (keycloak addon) | Keycloak's bootstrap `admin` user and `bootstrap-admin` client in realm `master` (`keycloak-bootstrap-admin`); the config Job (`keycloak-config`) |
-| `loft01/keycloak` | `leier_password` | generated (keycloak addon) | the config Job, as `leier`'s temporary first password when it creates the account (`keycloak-config`); not current afterwards |
+| `loft01/keycloak` | `admin_client_secret` | generated (keycloak addon) | the `bootstrap-admin` service client in realm `master` (`keycloak-bootstrap-admin` for the operator, `keycloak-tofu` for the reconcile) |
+| `loft01/keycloak` | `leier_password` | generated (keycloak addon) | the reconcile, as `leier`'s temporary first password when it creates the account (`keycloak-tofu`); not current afterwards |
 | `loft01/argocd` | `oidc_client_secret` | generated (keycloak addon) | Keycloak client `argocd` and Argo CD (`argocd-oidc`) |
 | `loft01/grafana` | `oidc_client_secret` | generated (keycloak addon) | Keycloak client `grafana` and Grafana (`grafana`) |
 | `loft01/grafana` | `admin_password` | generated (observability addon) | Grafana (`grafana`) |
@@ -192,12 +192,14 @@ Then, depending on the consumer:
   (1 h) or immediately after `kubectl -n <ns> annotate externalsecret <name>
   force-sync="$(date +%s)" --overwrite`. A secret consumed with `envFrom`
   still needs the pod restarted; a volume mount updates in place.
-- **The Keycloak config Job** reads the client secrets when it runs, so after
-  rotating one, force-sync `keycloak-config` and delete the `keycloak-config-*`
-  Job; Argo recreates it and it applies the new value.
-  The bootstrap `admin_password` and `admin_client_secret` are only read when
-  the master realm is created; rotate those in Keycloak first (kcadm), then in
-  OpenBao.
+- **The Keycloak reconcile** reads the client secrets on every run (the
+  `keycloak-tofu` ExternalSecret). To rotate a client secret, change it in
+  Keycloak too (kcadm), then bump that client's `client_secret_wo_version` in
+  `tofu/keycloak/clients.tf`; the next run writes the new value from OpenBao
+  and the service's ExternalSecret follows. The `bootstrap-admin` secret is
+  only read when the master realm is created and by the reconcile: rotate it
+  in Keycloak first (kcadm), then in OpenBao, then restart the reconcile's
+  next run.
 
 ## Host-only secrets (sops, not OpenBao)
 

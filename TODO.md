@@ -34,7 +34,7 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
 
 - WebAuthn-only for `homelab-admins`: everyone registers a security key or
   passkey first, but the second-factor sub-flow of `homelab-browser`
-  (`gitops/addons/keycloak/templates/realm.yaml`) still accepts TOTP and
+  (`tofu/keycloak/flows.tf`) still accepts TOTP and
   recovery codes as fallbacks for every tier. Decide whether admins lose the
   TOTP fallback (a sub-flow conditional on their role) and whether recovery
   codes stay.
@@ -46,24 +46,23 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
   working password: clean those up by hand (`docs/access.md`, Onboarding),
   until something expires them.
 - The `master` realm has Keycloak's defaults (no brute-force detection, no
-  second factor for `admin`). It is WireGuard-only; decide whether to manage
-  it from git too.
-- Replace keycloak-config-cli with the official OpenTofu provider
-  (`keycloak/terraform-provider-keycloak`, in the Keycloak organisation and
-  tracking current releases). keycloak-config-cli is single-company and its
-  image trails Keycloak (built for 26.5.5, we run 26.8.1, and its tag carries
-  the Keycloak version, so Renovate never moves it).
-  - Run tofu from a pod: a `tofu/` directory at the repo root holds the
-    config, and the keycloak addon runs it in a Job named after a hash of
-    that config, like the current one. Argo CD then still sees only a Job.
-  - Decide where state lives (an OpenBao KV entry, a PVC or a Secret) and
-    how a plan/drift becomes visible before an apply changes the realm.
-- Keycloak bumps never automerge (the `keycloak-operator` rule in
-  `renovate.json`, which covers the operator and the Keycloak image it pins),
-  because keycloak-config-cli is built for an older Keycloak. Drop that rule
-  when the realm moves to the OpenTofu provider above.
+  second factor for the operator's temporary `temp-admin` on a fresh database).
+  It is WireGuard-only; decide whether to manage it from git too.
 - Keycloak's `KeycloakOIDCClient` CR (operator, preview) could replace the
-  `oidcClients` part of the config once it is stable.
+  clients in `tofu/keycloak/clients.tf` once it is stable.
+- Refresh tokens are reusable: decide whether `revokeRefreshToken: true`
+  breaks any client (Argo CD, Grafana, Immich, kubectl) before enabling it,
+  or record why not (research F4).
+- Keycloak has no dashboard and no alert of its own in Grafana: add the two
+  upstream dashboards (`keycloak/keycloak-grafana-dashboard`, >= 26.3) and
+  set `http-metrics-histograms-enabled: "true"`, plus an absent-metrics alert
+  and a `LOGIN_ERROR` rate alert (research F7).
+- The Keycloak database has no application-consistent backup off the host:
+  enable borg's `offsite` and add a `pg_dump` to the nightly run, so a
+  restore does not need `zfs recv` (research F10).
+- Keycloak upgrades have no runbook and no pre-upgrade snapshot: write one,
+  with the database dump, the operator's recreate-on-image-change strategy
+  and the upgrading guide for the target minor (research F11).
 
 ## Storage
 
@@ -239,8 +238,14 @@ foundation, in priority order:
   replace VectorChord (`docs/tech-choices.md`, Photos).
 - Lower priority: k3s (CNCF, but SUSE-developed), OpenZFS (CDDL, no
   foundation), NixOS Foundation (independent), sops-nix and disko
-  (community), PostgreSQL (PGDG), WireGuard (no foundation),
-  keycloak-config-cli (adorsys).
+  (community), PostgreSQL (PGDG), WireGuard (no foundation).
+
+## CI
+
+- Move the Nix CI (`nix fmt`, `nix flake check`, the toplevel build and the
+  installer eval) from GitHub Actions to an Argo Workflows workflow, so the
+  cluster that the push deploys is the one that checks it and `main` does not
+  depend on a hosted runner.
 
 ## Justfile recipes
 

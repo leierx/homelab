@@ -4,12 +4,14 @@ Keycloak (https://auth.skinke.net, realm `homelab`) is the only identity
 provider. Services trust its OIDC tokens and never see a password. Local
 logins are disabled everywhere (see [break-glass.md](break-glass.md)).
 
-Everything about the realm is in git: `gitops/addons/keycloak/values.yaml`
-(people and OIDC clients) and `templates/realm.yaml` (groups, flows, session
-lengths). keycloak-config-cli applies it as a Job named after a hash of the
-config, so a change in git runs it again, and each run puts back hand-made
-changes to anything it manages. Deleting the Job makes Argo CD recreate it
-and re-run the same config.
+Everything about the realm is in git: `tofu/keycloak/` (the realm, groups,
+flows, clients, users). The CronWorkflow `keycloak-realm` in the `keycloak`
+namespace runs OpenTofu there every 10 minutes, logging in as the `master`
+realm's `bootstrap-admin` service client. A push is a realm change within 10
+minutes, and each run puts back hand-made changes to anything it manages. Its
+state is the Secret `tfstate-default-keycloak` and the Lease
+`lock-tfstate-default-keycloak`; what happens when they are lost is in
+[bootstrap.md](bootstrap.md).
 
 ## Where the sites are reachable
 
@@ -64,7 +66,7 @@ Authorization is carried in the OIDC `groups` claim: the user's direct group
 names (`full.path` off), from the client scope `groups` that every client
 gets as a default scope. Clients request `openid profile email`; nothing has
 to ask for `groups`. Membership is declared per user in
-`gitops/addons/keycloak/values.yaml`.
+`tofu/keycloak/users.tf` (the groups themselves in `groups.tf`).
 
 | Group | Meaning |
 | --- | --- |
@@ -99,7 +101,7 @@ can be added to `policy.csv` once someone actually needs the distinction.
 Argo CD's mapping is `policy.csv` in `gitops/addons/argocd/values.yaml`,
 Grafana's is `role_attribute_path` in `gitops/addons/observability/values.yaml`,
 Immich's is the `immich` client roles on each group in
-`gitops/addons/keycloak/templates/realm.yaml` (the `immich_role` claim),
+`tofu/keycloak/groups.tf` (the `immich_role` claim),
 Kubernetes' is `gitops/addons/rbac`. Neither `view` nor the operator role can
 read Secrets, and the operator role can't create or patch workloads either:
 that would let it run a pod as any ServiceAccount. Operators deploy through
@@ -156,47 +158,67 @@ a fallback, more keys, and recovery codes. At login Keycloak asks for the key
 first; *Try another way* switches to TOTP or a recovery code. Keep the
 recovery codes somewhere offline. The flow is Keycloak's "2FA all
 alternative with OTP default" with WebAuthn in OTP's place
-(`homelab-browser` in `templates/realm.yaml`).
+(`homelab-browser` in `tofu/keycloak/flows.tf`).
 
-Brute-force detection is on for the realm (Keycloak's defaults: temporary
-lockouts after repeated failures).
+Brute-force detection is on for the realm: ten failures, then a temporary
+lockout that grows (`tofu/keycloak/realm.tf`).
 
 ## Accounts
 
 - `leier` — the personal account, `homelab-admins`. Its first password comes
-  from OpenBao `loft01/keycloak` `leier_password` and is temporary: the config
-  Job sets it only when it creates the account (after a rebuild), and the
-  first login replaces it with one leier chooses. From then on the password
-  is leier's own; OpenBao's copy is no longer current.
-- `admin` in realm `master` — Keycloak's bootstrap admin, password in OpenBao
-  `loft01/keycloak` `admin_password`. Break-glass only; the `master` realm is
-  reachable over WireGuard only.
-- `bootstrap-admin`, a service client in realm `master` — what the config Job
-  logs in with, secret `admin_client_secret` in the same path.
+  from OpenBao `loft01/keycloak` `leier_password` and is temporary: the
+  reconcile writes it only when it creates the account (after a rebuild),
+  and Keycloak asks for a new password at the first login. From then on the
+  password is leier's own; OpenBao's copy is no longer current.
+- `bootstrap-admin`, a service client in realm `master` — what the reconcile
+  workflow logs in with, secret `admin_client_secret` in the same path.
 
-Keycloak marks both bootstrap accounts as temporary and shows a banner in
-the admin console; that is expected.
+There is no standing `master`-realm admin user. The operator creates a
+`temp-admin` when the master realm is first created (a fresh database), and
+the rebuild removes it; [break-glass.md](break-glass.md) has the recovery
+procedure.
 
 Every user needs a **distinct email**. Grafana enforces a unique email per user
 but looks OAuth logins up by username only
 (`auth.oauth_allow_insecure_email_lookup` is off), so two accounts sharing an
 address make the second login fail with `User sync failed`.
 
-## Passwords and the config Job
+## Passwords and the reconcile
 
-What a run of the config Job does with passwords (tested on 26.8.1 with
-keycloak-config-cli 6.5.1):
+What a run of the CronWorkflow does with passwords:
 
-- A password declared in git **without** `userLabel: initial` is written on
-  every run, so a password changed in the account console goes back at the
-  next run. Nothing declares one that way any more.
-- A password declared **with** `userLabel: initial` (only `leier`'s) is
-  written when the run creates the account, never again. Changed passwords
-  stay.
-- A user declared without credentials keeps whatever Keycloak has: a run
-  leaves a temporary password and its *Update password* step in place, and
-  leaves the password the person chose afterwards alone.
-- Users the config doesn't declare are not touched at all.
+- `leier`'s `initial_password` is a write-only argument from OpenBao, and the
+  provider writes it only when it creates the account. Bumping
+  `value_wo_version` is the only thing that would write it again; don't.
+  Keycloak marks it temporary, and `required_actions` is ignored so the run
+  does not remove the forced password change.
+- A user declared in `users.tf` without an `initial_password` keeps whatever
+  Keycloak has: a temporary password set in the console, and the password the
+  person chose afterwards, both stay.
+- Users the config doesn't declare are not touched at all. The same is true of
+  fields it doesn't declare: the provider ignores hand-made changes there.
+- A password changed in the account console stays changed.
+
+Run it now: wait for the next 10-minute tick, or create a Workflow from the
+CronWorkflow's own spec (this is also what the morning instruction after a
+rebuild does):
+
+```sh
+kubectl -n keycloak get cronwf keycloak-realm -o json \
+  | jq '{apiVersion:"argoproj.io/v1alpha1", kind:"Workflow",
+         metadata:{generateName:"keycloak-realm-manual-", namespace:"keycloak"},
+         spec:.spec.workflowSpec}' \
+  | kubectl create -f -
+kubectl -n keycloak get wf --watch       # follow it
+kubectl -n keycloak logs -f <workflow-pod> -c main
+```
+
+With the `argo` CLI from nixpkgs, `argo submit --from cronwf/keycloak-realm -n
+keycloak` does the same against the server. A failed run also shows in
+Grafana's `Workflow started by a CronWorkflow failed` alert; a plan that is not
+empty is in the workflow's log (and the next one applies it). A run that dies
+mid-apply leaves the Lease locked; the unlock is in
+[break-glass.md](break-glass.md).
 
 ## First login after a rebuild
 
@@ -241,12 +263,14 @@ kubectl then fails with `oidc discovery error: 404 Not Found`.
 There is no SMTP, so Keycloak's email invitations (Organizations) and
 email-driven required actions are out. Instead:
 
-1. Add them under `users` in `gitops/addons/keycloak/values.yaml` with a
-   username, names, a distinct email and their tier, and push. The config Job
-   creates the account without a password.
+1. Add a `keycloak_user` and a `keycloak_user_groups` in
+   `tofu/keycloak/users.tf` (or copy `leier`'s blocks) with a username, names,
+   a distinct email and their tier group, and push. The reconcile creates the
+   account without a password within 10 minutes.
 2. Over WireGuard, in the admin console (*Users → <user> → Credentials →
    Set password*), set a random password with *Temporary* on, and send it to
-   them over a channel you trust. Config runs leave it in place.
+   them over a channel you trust. The reconcile doesn't manage credentials it
+   doesn't declare, so it stays.
 3. They sign in at https://auth.skinke.net/realms/homelab/account/, register a
    security key or passkey, and choose their own password; the temporary one
    is gone after that.
@@ -259,12 +283,12 @@ wait for their first login with
 (`kcadm` as in [break-glass.md](break-glass.md)) and look for
 `UPDATE_PASSWORD`.
 
-To change someone's tier, edit their `groups` and push.
+To change someone's tier, edit their `group_ids` in `users.tf` and push.
 
 ## Offboarding
 
-1. Set `enabled: false` on their entry in `values.yaml` and push. They can no
-   longer sign in, so no new sessions anywhere.
+1. Set `enabled = false` on their `keycloak_user` in `users.tf` and push.
+   They can no longer sign in, so no new sessions anywhere.
 2. Revoke what is already issued: in the admin console *Users → <user> →
    Sessions*, sign them out; in Grafana *Administration → Users*, delete the
    user. Argo CD cannot revoke a single SSO session; it lapses when its
@@ -273,26 +297,29 @@ To change someone's tier, edit their `groups` and push.
    Users*, delete the user. That ends their sessions at once; their photos
    are deleted 7 days later unless an admin restores the user first, so
    export what should be kept.
-3. Later, delete the entry and the user (the config Job never deletes users
-   it stops declaring).
+3. Later, delete the `keycloak_user` and `keycloak_user_groups` blocks (the
+   reconcile never deletes users it stops declaring).
 
 ## Adding a new service to SSO
 
-1. Add an entry to `oidcClients` in `gitops/addons/keycloak/values.yaml`:
-   `baseURL`, the exact `redirectURIs` (Keycloak matches them exactly unless
-   they end in `*`; a phone app's custom scheme such as
-   `app.immich:///oauth-callback` is fine), `postLogoutRedirectURIs` if it
-   logs out through Keycloak, and `public: true` for a client that can't keep
-   a secret (it then has to use PKCE). `roleClaim: <claim>` adds a mapper
-   that puts the user's roles on this client into that claim (Immich reads
-   `immich_role`). The client gets the `groups` scope and the tier gate like
-   every other.
-2. A confidential client's secret is generated by the keycloak addon into
-   OpenBao `loft01/<name>` `oidc_client_secret` (a PushSecret per client).
-   Add an `ExternalSecret` for that property in the service's addon, and the
+1. Add a `keycloak_openid_client` in `tofu/keycloak/clients.tf` with its
+   `client_id`, `name`, `base_url`, the exact `valid_redirect_uris` (Keycloak
+   matches them exactly unless they end in `*`; a phone app's custom scheme
+   such as `app.immich:///oauth-callback` is fine),
+   `valid_post_logout_redirect_uris` if it logs out through Keycloak, and
+   `access_type = "PUBLIC"` (plus `pkce_code_challenge_method = "S256"`) for
+   a client that can't keep a secret. A confidential client gets
+   `client_secret_wo = var.<name>_client_secret` with
+   `client_secret_wo_version = "1"`, the variable in `variables.tf`, and its
+   name in the keycloak addon's `clientSecrets` list (that is the PushSecret
+   that generates the value into OpenBao `loft01/<name>`). Add a
+   `keycloak_openid_client_default_scopes` with `local.default_client_scopes`
+   like the others; a role claim is a `keycloak_generic_protocol_mapper` (see
+   Immich).
+2. Add an `ExternalSecret` for that property in the service's addon, and the
    service's namespace to the `openbao` store's `conditions` in
    `gitops/addons/external-secrets`. Both Keycloak and the service read the
-   same value.
+   same value. For a public client, nothing goes to OpenBao.
 3. Point the service at the issuer `https://auth.skinke.net/realms/homelab`
    (no trailing slash) and map the three groups to its roles.
 4. If people log in to it from the internet (a public site, a phone app),
@@ -304,6 +331,6 @@ To change someone's tier, edit their `groups` and push.
 - A user without a tier is refused only after the password: the tier check
   comes after sign-in, so a wrong password and a missing tier look different.
   The refusal comes before they set up a second factor.
-- keycloak-config-cli is built against an older Keycloak than the one we run
-  (see [tech-choices.md](tech-choices.md)); check the Job's log after a
-  Keycloak upgrade.
+- The realm's first password is written only at creation. If it is lost before
+  the person logs in, set a new temporary one in the console; the reconcile
+  will not overwrite it.

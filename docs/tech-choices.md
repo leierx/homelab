@@ -228,32 +228,61 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 ### Keycloak configuration as code
 
 - **Need:** the realm (groups, users, clients, flows, session lengths)
-  declared in git and re-applied when git changes.
-- **Choice:** keycloak-config-cli as a Job (`keycloak/templates/config-job.yaml`)
-  whose name carries a hash of the rendered realm, so Argo CD creates a new
-  Job on every change; the config is a Helm-templated YAML realm, with
-  secrets substituted from the environment (`$(env:…)`). It authenticates
-  with the operator-created `bootstrap-admin` service client.
-- **Why:** it reconciles an existing realm (create, update, and delete what
-  it created before), which is what "git is the source of truth" needs; it
-  is a plain container, so no state backend and no second controller.
-  Apache-2.0.
-- **Caveats:** single-company (adorsys) with one main maintainer, and it
-  trails Keycloak releases: the newest image is built against Keycloak
-  26.5.5 while we run 26.8.1. It works against 26.8.1 for everything we use
-  (tested); a Keycloak bump should be followed by a look at the Job's log.
+  declared in git and re-applied, so a hand-made change is undone and a
+  rebuild recreates the same realm.
+- **Choice:** OpenTofu (`tofu/keycloak/`) with the Keycloak project's own
+  provider (`keycloak/terraform-provider-keycloak`), run by the Argo
+  Workflows CronWorkflow `keycloak-realm` every 10 minutes. The state is a
+  Secret and a Lease in `keycloak` (OpenTofu's `kubernetes` backend); client
+  secrets and `leier`'s first password are write-only arguments fed from
+  OpenBao as `TF_VAR_…`.
+- **Why:** the provider lives in the Keycloak GitHub organisation, is
+  Apache-2.0, and its CI runs the Keycloak minors we run (26.8 is supported;
+  the newest tested image is 26.8.0), which is the one thing the old tool did
+  not do. OpenTofu is MPL-2.0 under the Linux Foundation (CNCF sandbox), and
+  its `kubernetes` backend needs no new storage. A plain container per run,
+  no controller and no CRDs.
+- **Caveats:** the state must travel with the database (an empty database
+  needs empty state; see [bootstrap.md](bootstrap.md)), a crashed run can
+  leave the Lease locked (`tofu force-unlock`), and the write-only arguments
+  need OpenTofu ≥ 1.11.
 - **Alternatives:**
+  - **keycloak-config-cli** (what this replaced) is Apache-2.0 from one
+    company (adorsys), with one main maintainer, no release since 2026-05,
+    and its newest image is built against Keycloak 26.5.5 while we run
+    26.8.1 — the compatibility problem the change fixes.
+  - **Crossplane + `crossplane-contrib/provider-keycloak`** reconciles
+    continuously, but adds a control plane (two pods) and ~250 CRDs, and its
+    provider is a community port of the same Terraform provider, so it has
+    the same dependency without the governance benefit.
   - **`KeycloakRealmImport`** (the operator's own CR) only creates a realm
     that doesn't exist and never updates it; Keycloak's docs say to delete
     the CR after the import.
-  - **`KeycloakOIDCClient`** (operator, v2alpha1, preview, needs the
-    `client-admin-api:v2` feature) manages clients only, not groups, flows
-    or users. Worth revisiting once it leaves preview.
-  - **The OpenTofu/Terraform provider** (`keycloak/terraform-provider-keycloak`,
-    Apache-2.0, in the Keycloak organisation, tracks current releases) is
-    the better-maintained tool, but needs a runner and a state: Flux's
-    tofu-controller (a second GitOps controller) or a hand-built Job and a
-    state Secret. More moving parts than a Job that applies a file.
+  - **`KeycloakOIDCClient`** (operator, preview) manages clients only, not
+    groups, flows or users. Worth revisiting once it leaves preview.
+  - **Flux's tofu-controller** would reconcile continuously but needs Flux,
+    a second GitOps controller.
+  - **A hand-written kcadm reconcile script** is bespoke automation nobody
+    else would recognise; AGENTS.md disclaims it.
+
+### Job engine
+
+- **Need:** run the realm reconcile (and later the Nix CI) inside the cluster
+  on a schedule, visibly, with logs in Loki.
+- **Choice:** Argo Workflows, upstream chart, one controller and one server,
+  the UI on WireGuard behind Keycloak with SSO RBAC for `homelab-admins`; a
+  `CronWorkflow` with `concurrencyPolicy: Forbid` and no artifact repository
+  or archive.
+- **Why:** it is the standard Kubernetes-native workflow engine (CNCF
+  graduated, Apache-2.0), the chart is upstream and maintained, and a failed
+  run is a first-class object with a log and a metric. It also gives the
+  future Nix CI a home without a second CI system.
+- **Alternatives:** a **Kubernetes `CronJob`** would be one object less but
+  has no run history, no log retention beyond a pod and no UI; **Tekton** is
+  a heavier pipeline CRD set for the same one-step job; **GitHub Actions**
+  cannot reach the in-cluster Keycloak service; **Jenkins** is a whole
+  server to keep alive.
+
 ## GitOps
 
 - **Need:** one control plane that manages itself and the fleet.
@@ -481,9 +510,12 @@ either), or a need with no better alternative:
 - **prometheus-operator-crds** is Apache-2.0 from the Prometheus community and
   is not itself a CNCF project (Prometheus core is). It is only the CRD
   interface, and goes with the backends if those change.
-- **keycloak-config-cli** is Apache-2.0 from one company (adorsys). It only
-  applies the realm; the OpenTofu provider in the Keycloak organisation is
-  the replacement if it stalls (see Identity).
+- **OpenTofu** is MPL-2.0 under the Linux Foundation (CNCF sandbox) and
+  **Argo Workflows** is Apache-2.0 and CNCF graduated, so the realm's tooling
+  is foundation-hosted. The Keycloak provider is Apache-2.0 from the Keycloak
+  GitHub organisation with its own maintainers (a Keycloak-org project, not
+  an enumerated sub-project under its `GOVERNANCE.md`), which is still the
+  project's own maintenance rather than one company's.
 - **PostgreSQL** is the PostgreSQL License, from the PostgreSQL Global
   Development Group; there is no foundation-hosted drop-in and none is needed.
 - **WireGuard** is GPL-2.0 with no foundation; there is no drop-in

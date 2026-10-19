@@ -50,7 +50,7 @@ refused at Keycloak, before Immich sees them.
 | `homelab-operators`, `homelab-viewers` | user |
 
 The role comes from the `immich_role` claim (the client's roles, granted per
-tier in `keycloak/templates/realm.yaml`) and is synced at every login, so
+tier in `tofu/keycloak/groups.tf`) and is synced at every login, so
 moving someone between tiers promotes or demotes them at their next login.
 
 - **Web:** https://photos.skinke.net goes straight to Keycloak.

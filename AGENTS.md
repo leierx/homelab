@@ -83,8 +83,9 @@ How that plays out here:
 - An addon: `helm dependency update` + `helm template` with Argo's value
   layering (see GitOps contract), `kubectl apply --dry-run=server` on the
   render, then delete `charts/` and `Chart.lock`.
-- The Keycloak realm (`keycloak/templates/realm.yaml`): render it; the check
-  that counts is the log of the `keycloak-config-*` Job the push creates.
+- The Keycloak realm (`tofu/keycloak/`): `tofu fmt -check` and `tofu validate`
+  (`nix shell nixpkgs#opentofu`); the check that counts is the next
+  `keycloak-realm` CronWorkflow run's plan (`kubectl -n keycloak get wf`).
 
 ## Working live
 
@@ -117,6 +118,8 @@ How that plays out here:
   workload ApplicationSets + cluster Secrets) → `addons/<addon>/` and
   `workloads/<name>/`.
 - `apps/<name>/`: our own Go programs, each with its own workflow and README.
+- `tofu/keycloak/`: realm `homelab` as OpenTofu with the Keycloak provider,
+  run by the `keycloak-realm` CronWorkflow (addon `keycloak`).
 - `justfile`: workstation helpers.
 - `docs/`: `bootstrap.md` (bare metal to first sync), `operations.md`
   (updates, backups, certificates, observability), `access.md` (SSO, tiers,
@@ -138,8 +141,8 @@ How that plays out here:
   release URLs in kustomizations and the versions of our own
   `ghcr.io/leierx` images, one PR per addon. Patch, minor and digest
   automerge once the `addon-render` workflow passes; majors, Keycloak
-  (while keycloak-config-cli lags it) and Immich (upgrades can need manual
-  steps, `docs/immich.md`) wait for review.
+  (operator, image, provider and reconcile image) and Immich (upgrades can
+  need manual steps, `docs/immich.md`) wait for review.
   Policy is in `renovate.json`. Go modules are bumped by hand.
 
 ## GitOps contract
@@ -186,7 +189,7 @@ How that plays out here:
 - A site: a `Certificate`, a ListenerSet + HTTPRoute per Gateway (`edge` and
   `wg`), an ingress allow from Envoy plus an entry in envoy-gateway's
   `proxies` policy. Public admin UIs sit behind SecurityPolicy `edge-oidc`.
-  SSO: an `oidcClients` entry (`docs/access.md`).
+  SSO: a client in `tofu/keycloak/clients.tf` (`docs/access.md`).
 
 ## Deliberate, don't "fix"
 
@@ -205,11 +208,14 @@ How that plays out here:
 - Immich's `immich` Postgres role is not a superuser: a `Database` resource
   creates its extensions, and a VectorChord bump goes through it.
 - Argo CD operators are `role:admin` until someone needs the distinction.
-- Keycloak's `admin` in realm `master` has a password (OpenBao) and no second
-  factor; it is break-glass, and `/admin/` and `/realms/master/` are reachable
-  over WireGuard only. Keycloak flags it and `bootstrap-admin` as temporary.
-- keycloak-config-cli is built against an older Keycloak than we run; it
-  works, and nothing newer exists.
+- Keycloak has no standing `master`-realm admin user: the `bootstrap-admin`
+  service client is the automation's login, and `/admin/` and
+  `/realms/master/` are reachable over WireGuard only. The operator creates a
+  `temp-admin` on a fresh database, and the rebuild deletes it
+  (`docs/break-glass.md`).
+- The realm is reconciled every 10 minutes by a CronWorkflow; its state
+  (a Secret and a Lease in `keycloak`) travels with the database. Losing the
+  state while the realm exists needs `tofu import` (`docs/bootstrap.md`).
 - CPU limits set upstream (virt-template-*, Cilium's init containers,
   virt-launcher's `guest-console-log`) are not patched away;
   `container-resources` only warns about them.
@@ -227,9 +233,10 @@ How that plays out here:
   (the `containerDisk` templates reset on every VM restart).
 - OpenBao's `initialize` blocks run once on empty storage. Change a live
   OpenBao with `just bao` and mirror it there.
-- keycloak-config-cli runs when the rendered realm changes (the Job is named
-  after its hash). To re-apply the same config (a rotated secret it reads),
-  delete the Job; Argo recreates it.
+- The Keycloak reconcile runs every 10 minutes (CronWorkflow `keycloak-realm`,
+  namespace `keycloak`) and a failed run or a non-empty plan shows in Grafana.
+  A run killed mid-apply can leave the state Lease locked: unlock it with
+  `tofu force-unlock` (`docs/break-glass.md`).
 - Envoy Gateway fetches an OIDC issuer's discovery once and never retries, so
   `edge-oidc` names Keycloak's endpoints explicitly.
 - The Keycloak Operator only watches its own namespace: the operator

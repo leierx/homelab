@@ -18,38 +18,27 @@ through `ssh -fN loft01` as usual):
 ```sh
 export KUBECONFIG=$(mktemp)
 ssh loft01 cat /etc/rancher/k3s/k3s.yaml > "$KUBECONFIG"
-just bao kv get -field=admin_password kv/loft01/keycloak
+just bao kv get -field=admin_client_secret kv/loft01/keycloak
 rm "$KUBECONFIG"; unset KUBECONFIG
 ```
 
 ## First: is Keycloak actually down?
 
 ```sh
-kubectl -n keycloak get keycloak,pods,jobs
+kubectl -n keycloak get keycloak,pods,cronwf
 kubectl -n keycloak logs keycloak-0 --tail=50
-kubectl -n keycloak logs job/<keycloak-config-…>     # the last realm apply
+kubectl -n keycloak get wf                  # the last realm applies
+kubectl -n keycloak logs <workflow-pod> -c main
 ```
 
-If it is up, there are two ways in, both without the `homelab` realm's
-login, its tier check or a second factor.
-
-### The master realm's `admin`
-
-Over WireGuard (with the hosts entries from [access.md](access.md)), open
-https://auth.skinke.net/admin/master/console/ and sign in as `admin` with the
-password from OpenBao:
-
-```sh
-just bao kv get -field=admin_password kv/loft01/keycloak
-```
-
-Switch to realm `homelab` and fix the user, group, client or flow. The
-`master` realm and `/admin/` are not routed on the public edge.
+If it is up, the way in without the `homelab` realm's login, its tier check
+or a second factor is the `master` realm's service client.
 
 ### kcadm in the pod
 
-The config Job's service client `bootstrap-admin` is also in the pod's
-environment, so kcadm needs nothing from a workstation:
+There is no standing master-realm admin user. The `master` realm's service
+client `bootstrap-admin` is in the pod's environment, so kcadm needs nothing
+from a workstation:
 
 ```sh
 kubectl -n keycloak exec -it keycloak-0 -- bash
@@ -70,16 +59,29 @@ kcadm delete users/<id>/credentials/<credential id> -r homelab
 A user locked out by brute-force detection:
 `kcadm delete attack-detection/brute-force/users/<id> -r homelab`.
 A forgotten password: `kcadm set-password -r homelab --username <user>
---new-password '<random>' --temporary` and hand it over; config runs leave it
-alone (`leier` too: OpenBao's `leier_password` is only the first password
+--new-password '<random>' --temporary` and hand it over; the reconcile leaves
+it alone (`leier` too: OpenBao's `leier_password` is only the first password
 after a rebuild).
 
-Whatever you change by hand in something the config manages (a client, a
-flow, a user's groups) is put back by its next run; fix the cause in git.
+Whatever you change by hand in something `tofu/keycloak` declares (a client,
+a flow, a user's groups) is put back by the next run; fix the cause in git.
+A run that dies while holding the state lock leaves the Lease behind; unlock
+it with the same state:
 
-## Both bootstrap accounts are gone
+```sh
+kubectl -n keycloak get lease lock-tfstate-default-keycloak \
+  -o jsonpath='{.spec.holderIdentity}'; echo
+kubectl -n keycloak exec <reconcile-pod> -c main -- \
+  tofu force-unlock <lock-id>
+```
 
-If `admin` and `bootstrap-admin` were deleted or broken, create a new
+`<lock-id>` is the Lease's `holderIdentity`; if the pod is gone, create a
+Workflow from the CronWorkflow spec ([access.md](access.md)) and run the
+command there.
+
+## The service client is gone
+
+If `bootstrap-admin` was deleted or its secret is lost, create a new
 temporary admin with Keycloak's own command, in the running pod. It needs
 its own management port and a local cache, or it collides with the server:
 
@@ -92,20 +94,27 @@ read -rs RECOVERY_SECRET; export RECOVERY_SECRET
 ```
 
 Then use kcadm as above with `--client recovery --secret "$RECOVERY_SECRET"`,
-repair `bootstrap-admin` (the config Job needs it, with the secret in
+repair `bootstrap-admin` (the reconcile needs it, with the secret in
 OpenBao), and delete the `recovery` client. Keycloak's guide says to stop
 every node first; on this single node the two settings above were enough
 (tested on 26.8.1).
+
+A fresh master realm also comes with a generated `temp-admin` user (the
+operator's `keycloak-initial-admin` Secret says so) even though the CR
+declares no bootstrap user. It has the master `admin` role: delete it as soon
+as the realm exists, or it stays a password-only admin. `kcadm get users -r
+master` must be empty afterwards; `keycloak-initial-admin` is recreated by the
+operator and its password is then inert.
 
 ## Keycloak is down
 
 Everything that needs a login waits; use the admin kubeconfig on loft01.
 Look at the pod, the operator (`kubectl -n keycloak logs deploy/keycloak-operator`)
-and the database (`kubectl -n keycloak get cluster keycloak-db`). The realm
-lives in Postgres, so a Keycloak pod can be deleted freely; a lost database
-is a restore of its zvol ([operations.md](operations.md)), or an empty one
-that the config Job fills again (people then set up passwords and second
-factors anew).
+and the database (`kubectl -n keycloak get clusters.postgresql.cnpg.io`). The
+realm lives in Postgres, so a Keycloak pod can be deleted freely; a lost
+database is a restore of its dump ([operations.md](operations.md)), or an
+empty one that the reconcile fills again (people then set up passwords and
+second factors anew).
 
 ## Argo CD (local `admin` disabled)
 
