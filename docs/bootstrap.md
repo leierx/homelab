@@ -105,7 +105,7 @@ helm dependency update gitops/addons/cilium
 helm template cilium gitops/addons/cilium -n kube-system --include-crds \
   -f gitops/addons/cilium/values.yaml -f gitops/addons/cilium/clusters/loft01.yaml \
   --set cilium.prometheus.serviceMonitor.trustCRDsExist=true \
-  | kubectl apply --server-side --field-manager=argocd-controller -f -
+  | kubectl apply -n kube-system --server-side --field-manager=argocd-controller -f -
 kubectl wait --for=condition=Ready node --all --timeout=10m
 ```
 
@@ -128,14 +128,17 @@ helm dependency update gitops/addons/argocd
 kubectl create namespace argocd
 helm template argocd gitops/addons/argocd -n argocd --include-crds \
   -f gitops/addons/argocd/values.yaml \
-  | kubectl apply --server-side --field-manager=argocd-controller -f -
+  | kubectl apply -n argocd --server-side --field-manager=argocd-controller -f -
 kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
 ```
 
 Some objects in that render need CRDs that arrive with the fleet (a
 `Certificate`, a `ListenerSet`, an `HTTPRoute` and an `ExternalSecret`). The
 apply reports them and Argo applies them later, once the addons that own the
-CRDs exist.
+CRDs exist. Our own templates carry no namespace, hence `-n` on both applies;
+without it they land in `default`. Argo CD's `CiliumNetworkPolicy` is applied
+here already, and it allows cluster DNS itself: the cluster-wide baseline that
+allows DNS for everyone only arrives once Argo CD can sync Cilium.
 
 ### Hand over to git
 
