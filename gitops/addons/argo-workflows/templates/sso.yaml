@@ -44,7 +44,7 @@ spec:
       engineVersion: v2
       data:
         client-id: argo-workflows
-        client-secret: "{{ .oidc_client_secret }}"
+        client-secret: '{{ `{{ .oidc_client_secret }}` }}'
   data:
     - secretKey: oidc_client_secret
       remoteRef: { key: loft01/argo-workflows, property: oidc_client_secret }
