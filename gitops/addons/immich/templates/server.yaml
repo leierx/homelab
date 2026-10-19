@@ -14,9 +14,6 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: immich-server
-      annotations:
-        # Immich reads its config file only at start
-        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -70,7 +67,7 @@ spec:
             claimName: library
         - name: config
           secret:
-            secretName: immich-config
+            secretName: {{ include "immich.configName" . }}
 ---
 apiVersion: v1
 kind: Service

@@ -1,39 +1,19 @@
-# Immich's settings, locked: with a config file the admin UI can't change them. The file can't read
-# the environment, so ESO renders it with the client secret; templates/server.yaml rolls on a change.
+# the file can't read the environment, so ESO renders it with the client secret
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
-  name: immich-config
+  name: {{ include "immich.configName" . }}
 spec:
   refreshInterval: 1h
   secretStoreRef:
     kind: ClusterSecretStore
     name: openbao
   target:
-    name: immich-config
     template:
       engineVersion: v2
       data:
         immich-config.yaml: |
-          # only SSO: Keycloak client immich, accounts created at first login, admin from the immich_role claim
-          oauth:
-            enabled: true
-            issuerUrl: https://auth.skinke.net/realms/homelab
-            clientId: immich
-            clientSecret: {{ `{{ .oidc_client_secret | quote }}` }}
-            autoLaunch: true
-          passwordLogin:
-            enabled: false
-          server:
-            externalDomain: https://photos.skinke.net
-          machineLearning:
-            urls: [http://immich-machine-learning:3003]
-          # Renovate brings new versions
-          newVersionCheck:
-            enabled: false
-          # originals land under library/<user>/<year>/<date>/<file>, readable without Immich
-          storageTemplate:
-            enabled: true
+          {{- include "immich.config" . | nindent 10 }}
   data:
     - secretKey: oidc_client_secret
       remoteRef: { key: loft01/immich, property: oidc_client_secret }
