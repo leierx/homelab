@@ -47,9 +47,11 @@ spec:
     - auth.skinke.net
   rules:
     - matches:
-        {{- range list "/realms/homelab/" "/resources/" "/.well-known/" }}
+        {{- range list "/realms/homelab/" "/resources/" }}
         - path: { type: PathPrefix, value: {{ . }} }
         {{- end }}
+        # RFC 8414 metadata, for realm homelab only (the master realm stays internal)
+        - path: { type: RegularExpression, value: "/\\.well-known/[^/]+/realms/homelab" }
       backendRefs:
         - name: keycloak-service
           port: 8080

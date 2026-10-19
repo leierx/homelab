@@ -15,7 +15,7 @@ and re-run the same config.
 
 | | Internet (`edge` Gateway) | WireGuard (`wg` Gateway, 10.0.0.1) |
 | --- | --- | --- |
-| `auth.skinke.net` | only what a login to realm `homelab` needs: `/realms/homelab/`, `/resources/`, `/.well-known/` | everything: admin console and API (`/admin/`), the `master` realm |
+| `auth.skinke.net` | only what a login to realm `homelab` needs: `/realms/homelab/`, `/resources/`, and its RFC 8414 metadata (`/.well-known/*/realms/homelab`) | everything: admin console and API (`/admin/`), the `master` realm |
 | `argocd.skinke.net` | nothing | Argo CD (UI and CLI) |
 | `metrics.skinke.net` | behind a Keycloak login at the edge, then Grafana's own | Grafana directly (API works) |
 
