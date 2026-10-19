@@ -30,8 +30,9 @@ installation token from the app key in OpenBao `loft01/renovate` (`app_id`,
 dependencies in `gitops/addons/*/Chart.yaml`, versions marked with a
 `# renovate:` comment, and GitHub release URLs in kustomizations. Policy is
 `renovate.json`: one PR per addon; patch, minor and digest automerge, majors
-wait for review. Go modules are not managed; bump `k8s.io/*` and
-controller-runtime together by hand.
+wait for review, and so does everything for Keycloak and Immich (their
+upgrades can need a manual step). Go modules are not managed; bump
+`k8s.io/*` and controller-runtime together by hand.
 
 `.github/workflows/addon-render.yml` renders every changed addon with Argo's
 value layering and the cluster's API versions, and Renovate waits for that
@@ -53,9 +54,13 @@ deploy. To run either by hand, see "Working live" in `AGENTS.md`.
 
 ### Snapshots
 
-sanoid snapshots the whole `tank` pool recursively, so every PVC zvol is
-included, atomically: 24 hourly, 14 daily and 3 monthly. zfs-localpv destroys
-a PVC's zvol with `-r`, so that volume's snapshots go with the PVC.
+sanoid snapshots the whole `tank` pool recursively, so every PVC (a zvol, or
+a ZFS filesystem for `zfs-media`) is included, atomically: 24 hourly, 14 daily
+and 3 monthly. A new volume gets its first daily snapshot the next day.
+zfs-localpv destroys a PVC's volume with `-r`, so its snapshots go with the
+PVC. A filesystem's snapshot can be mounted read-only on the host to copy
+files out (`mount -t zfs -o ro <dataset>@<snapshot> /mnt/x`; see
+[immich.md](immich.md)).
 
 ### Off-site backup
 
@@ -65,13 +70,14 @@ an encrypted borg repo (`repokey-blake2`) on rsync.net:
 
 - a `sqlite3 .backup` of the k3s state database plus `server/{token,cred,tls}`
   and the node password, in one `k3s-<timestamp>` archive;
-- each zvol's newest sanoid daily snapshot as `zfs send`, one archive per
-  zvol per daily snapshot.
+- each PVC volume's newest sanoid daily snapshot as `zfs send -L` (zvols and
+  `zfs-media` filesystems; `-L` keeps 1M records whole), one archive per
+  volume per daily snapshot.
 
 It never modifies the pools. An archive that already exists is skipped, so a
 run cut off by a reboot resumes on the next one (borg checkpoints and dedup).
 It prunes the k3s archives to 14 daily, 8 weekly and 6 monthly, and each
-zvol's to 7 daily, 4 weekly and 6 monthly.
+volume's to 7 daily, 4 weekly and 6 monthly.
 
 To enable it: add `borg/ssh_key` and `borg/passphrase` to
 `nixos/secrets.yaml`, set `offsite.repo`, check `offsite.remotePath`
@@ -88,11 +94,15 @@ state backup without it cannot decrypt a single Secret. The CAs under
 
 List the archives (`borg list`), then restore the newest daily snapshot for
 the volume and recreate its Kubernetes objects from the matching k3s archive,
-so the PVC binds to the restored zvol:
+so the PVC binds to the restored volume:
 
 ```sh
 borg extract --stdout ::<pool>_pvc-<uuid>-<timestamp>_daily | zfs recv <pool>/pvc-<uuid>
 ```
+
+The stream carries no properties: for a `zfs-media` filesystem add
+`-o mountpoint=legacy -o recordsize=1M -o refquota=<size> -o refreservation=<size>`
+to `zfs recv`, as zfs-localpv would have set them.
 
 ## Certificates
 

@@ -1,10 +1,10 @@
 # Break-glass
 
 Keycloak is the only login path, so a Keycloak outage (or a bad realm
-change) means no Argo CD, no Grafana and no kubectl from a workstation. This
-page is the way back in. It all starts from `ssh loft01` (key-based over
-WireGuard, not SSO): on the host, `kubectl` uses the admin kubeconfig, which
-stays there outside of an outage.
+change) means no Argo CD, no Grafana, no new Immich logins and no kubectl
+from a workstation. This page is the way back in. It all starts from
+`ssh loft01` (key-based over WireGuard, not SSO): on the host, `kubectl`
+uses the admin kubeconfig, which stays there outside of an outage.
 
 ```sh
 ssh loft01
@@ -137,6 +137,34 @@ just bao kv get -field=admin_password kv/loft01/grafana
 ```
 
 Revert the flag when done.
+
+## Immich (password login off)
+
+Immich has no local accounts in use: everyone signs in through Keycloak,
+and `passwordLogin` is off in its config file. Phones that are already
+signed in keep their own Immich session and keep backing up while Keycloak
+is down; only new logins need it. If someone must get in anyway:
+
+1. Set `passwordLogin.enabled` to `true` in
+   `gitops/addons/immich/templates/_config.tpl`, commit and push. The config
+   Secret is named after its content, so a new server pod starts with it.
+2. Give an admin a password, interactively (it prompts; leave the password
+   empty to get a random one printed):
+
+   ```sh
+   ssh loft01
+   kubectl -n immich exec -it deploy/immich-server -- immich-admin reset-admin-password
+   ```
+
+   It names the admin it picked; with several admins it is whichever
+   Postgres returns first. `immich-admin list-users` shows them.
+3. Sign in at https://photos.skinke.net/auth/login?autoLaunch=0 with that
+   admin's email and the password, over WireGuard or publicly.
+4. Set `passwordLogin.enabled` back to `false` and push. The password stays
+   on the account but no longer works.
+
+Tested end to end with a test admin (the password was set through the admin
+API rather than the interactive command).
 
 ## What still works without any login
 

@@ -71,6 +71,9 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
 | `renovate-cache` | 5 Gi | throwaway |
 | `ntfy` | 1 Gi | notifications, users |
 | `fedora-root` (`dodde`) | 200 Gi | dodde's VM disk |
+| `library` (`immich`) | 770 Gi | photos and videos, thumbnails, Immich's database dumps (a ZFS filesystem, `zfs-media`) |
+| `immich-db-1` | 20 Gi | Immich's metadata and embeddings |
+| `model-cache` (`immich`) | 10 Gi | machine-learning models; throwaway |
 
 Metrics retention is the lever that moves the 100 Gi: `mimir.retention` in
 `observability/values.yaml`. Watch actual usage with
@@ -88,8 +91,9 @@ and the same with `namespace="keycloak"` / `"openbao"`.
   stateful apps on one node, with per-volume snapshots.
 - **Choice:** one ZFS pool `tank` — four striped mirrors over the eight
   900 GB SAS disks — with zfs-localpv as the CSI. A single default
-  StorageClass `zfs` provisions ext4 zvols (16 KiB blocks); sanoid snapshots
-  the whole pool.
+  StorageClass `zfs` provisions ext4 zvols (16 KiB blocks); `zfs-media`
+  provisions ZFS filesystems with 1M records for large files (Immich). sanoid
+  snapshots the whole pool.
 - **Why:** the workload is VM disks and databases, i.e. small random I/O.
   Mirrors give roughly four times the random IOPS of one wide raidz vdev and
   rebuild a failed disk from its partner in a couple of hours rather than
@@ -103,6 +107,87 @@ and the same with `namespace="keycloak"` / `"openbao"`.
   ZFS CSI, but it is not foundation-hosted, whereas zfs-localpv is CNCF
   (OpenEBS), Apache-2.0 and released regularly. **local-path-provisioner** on a
   ZFS dataset would lose per-PVC snapshots and online resize.
+
+## Photos
+
+- **Need:** a photo library for the family: phone backup, timeline, map,
+  faces and search, reachable from phones on the internet, signing in
+  through Keycloak.
+- **Choice:** Immich (addon `immich`, our own manifests), Postgres on
+  CloudNativePG with VectorChord, Valkey for the job queues, machine
+  learning on CPU. Public at `photos.skinke.net` without the `edge-oidc`
+  gate; Immich's own Keycloak login, with password login off, is the guard.
+- **Why:** the most complete self-hosted Google Photos replacement, with
+  OIDC built in (a role claim for admins, mobile redirect, PKCE) and a
+  settings file that locks the admin UI. AGPL-3.0, but single-vendor
+  (FUTO); see Really free software.
+- **Alternatives:** **PhotoPrism** (AGPL-3.0, single vendor, sold in
+  paid editions; no phone backup app of its own), **Ente** (AGPL-3.0,
+  end-to-end encrypted, so search and faces run on the clients, and it needs
+  S3-compatible storage), **LibrePhotos** (MIT, community, much smaller),
+  **Nextcloud Memories** (a whole Nextcloud for a photo app).
+
+### Packaging
+
+- **Choice:** our own manifests in the addon root, like ntfy.
+- **Why not the official chart** (`oci://ghcr.io/immich-app/immich-charts/immich`,
+  principle 2 says upstream first): its config file comes either from
+  inline values (which can't hold the OIDC client secret, and Immich's file
+  can't read the environment) or from an existing Secret, for which it has
+  no restart on change. It sets no security context and no resources, so
+  every container would be overridden through the bjw-s common library's
+  values anyway. And its `appVersion` trails Immich (v3.2.0 in chart 0.13.4
+  while Immich was at v3.3.3), so the image tag needs its own Renovate
+  annotation either way. Switching later is cheap: the stateful parts
+  (PVCs, the CNPG cluster) don't depend on how the Deployments are made.
+- **Not a workload:** `gitops/workloads/` is for VMs and CAPI clusters; an
+  app with a Helm-templated config is an addon.
+
+### Storage
+
+- **Choice:** the library on `zfs-media`, a ZFS filesystem per PVC with
+  `recordsize=1M`, sized by `refquota` with a matching `refreservation`;
+  the database and the model cache on the usual `zfs` zvols.
+- **Why:** photos and videos are large files read whole, the case OpenZFS's
+  tuning guide gives 1M records for. Files sit on ZFS directly, checksummed
+  and compressed per record without an ext4 layer, a snapshot can be
+  mounted and read file by file, and growing it is a quota change.
+  `refquota` keeps snapshots out of the visible size, as on a zvol, and the
+  reservation holds Immich's share of the pool like a thick zvol does.
+  Postgres stays on a zvol like Keycloak's: small random writes, and one
+  layout for every database.
+- **Costs:** a second StorageClass; the off-site backup had to learn to
+  send filesystems (`zfs send -L`); `.zfs/snapshot` is not reachable inside
+  the pod (user namespaces), only by mounting on the host.
+- **Alternatives:** an ext4 zvol on `zfs` (one StorageClass, but snapshots
+  only as a block device and a fixed-size disk).
+
+### Database
+
+- **Choice:** `ghcr.io/cloudnative-pg/postgresql:<18.x>-standard-trixie`
+  (it ships pgvector) with VectorChord mounted from TensorChord's
+  `vchord-scratch` image through CloudNativePG's image-volume extensions,
+  `shared_preload_libraries: [vchord]`, and every extension created by a
+  `Database` resource as `postgres`. The `immich` role is a plain owner.
+- **Why:** that is CloudNativePG's own way to add extensions (Kubernetes
+  1.36 has ImageVolume GA, containerd 2.3 supports it) and the shape
+  Immich's chart repository ships as its CloudNativePG example. Postgres
+  and VectorChord update independently, both from upstream images, and
+  Immich runs without superuser, which CloudNativePG recommends.
+- **Costs:** Immich can't update VectorChord itself, so a bump goes through
+  the `Database` resource (same commit, one value) plus a reindex
+  ([immich.md](immich.md)). The extension image is built on Debian bookworm
+  while the Postgres image is trixie; it only needs glibc and Postgres 18's
+  ABI, and works (`\dx`: vchord 1.1.1, vector 0.8.7).
+- **Alternatives:** **TensorChord's `cloudnative-vectorchord`** image (one
+  image, but built on the legacy `system-bookworm` flavour, one community
+  repo with no releases, and a tag Renovate can't split into two versions);
+  **making `immich` a superuser** (what Immich's docs expect: it then updates
+  VectorChord by itself, but a compromised server becomes code execution in
+  the database pod); **Immich's own Postgres image** (not CloudNativePG
+  compatible); **pgvector only** (in the standard image already, PostgreSQL
+  licence, still supported by Immich's code, but its docs present it as the
+  thing to migrate from, to VectorChord).
 
 ## Secrets
 
@@ -278,7 +363,9 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 - **Need:** Postgres for apps, with the credentials and upgrades handled.
 - **Choice:** CloudNativePG; each app's addon owns a `Cluster`, with the image
   tag pinned by `# renovate:`, and the app reads the operator's `<cluster>-app`
-  Secret.
+  Secret. Extensions the image lacks come in as image volumes
+  (`.spec.postgresql.extensions`) and are created by a `Database` resource,
+  so app roles stay non-superuser (Immich, see Photos).
 - **Why:** declarative clusters and no database password made by hand. CNCF
   sandbox, Apache-2.0.
 - **Alternatives:** **an app chart's bundled PostgreSQL subchart** is a
@@ -345,8 +432,8 @@ audit of where the stack stands; the decisions it raises are in `TODO.md`.
 Everything we run is OSI-licensed, so the question is vendor control, not
 whether the source is available. (Licence and foundation per component are in
 the README table; this section adds the alternatives and the switching cost.)
-Three components are single-vendor or open core with no neutral foundation
-(the IdP was a fourth until Keycloak replaced it; see Identity):
+Five components are single-vendor or open core with no neutral foundation
+(the IdP was one more until Keycloak replaced it; see Identity):
 
 - **Grafana, Mimir, Loki and Alloy** (Grafana Labs, not a foundation).
   Grafana, Mimir and Loki are AGPL-3.0; Alloy and the `k8s-monitoring` chart
@@ -367,6 +454,18 @@ Three components are single-vendor or open core with no neutral foundation
   **Alertmanager** (Apache-2.0, CNCF graduated) routes alerts but does not
   push to a phone. Switching cost is low: the addon is a Deployment, a PVC
   and one ExternalSecret.
+- **Immich** (AGPL-3.0, FUTO). No foundation hosts a photo library; every
+  serious alternative (PhotoPrism, Ente) is single-vendor too, and
+  LibrePhotos is a much smaller community project. Accepted for that
+  reason. Switching cost is high once the library is in: the originals are
+  plain files under `library/<user>/<year>/…` and leave easily, but albums,
+  faces, sharing and the phones' backup setup do not.
+- **VectorChord** (AGPL-3.0 or Elastic License 2.0 at our choice,
+  TensorChord). ELv2 is source-available; we use it under the AGPL. It is
+  there only for Immich, which recommends it. Immich still runs on plain
+  pgvector (PostgreSQL licence, `DB_VECTOR_EXTENSION=pgvector`), but its
+  docs treat that as the path to migrate away from; switching would mean
+  a reindex and following upstream less closely. It goes if Immich goes.
 
 Lower priority: community projects with no foundation (but no vendor control
 either), or a need with no better alternative:

@@ -105,6 +105,31 @@ Protect `main`).
   `auth.skinke.net` to use the internal gateway.
 - Service-to-service mTLS, case by case.
 
+## Immich
+
+- The phone app's login was proven with a script that does what the app
+  does (its own state and PKCE, Keycloak redirecting to
+  `app.immich:///oauth-callback`, the server exchanging the code), not with
+  the app on a phone. Do one real login from a phone before telling people
+  to use it.
+- The map loads its tiles in the browser and the app from
+  `tiles.immich.cloud`, so that service sees which areas people look at.
+  Decide whether to accept it, turn the map off (`map.enabled`) or host
+  tiles ourselves (`map.lightStyle`/`darkStyle`).
+- The library may grow to 770 Gi, and the off-site backup sends it whole
+  the first time: size the rsync.net plan for it before enabling borg.
+- `/api/server/version` tells anyone the exact Immich version (the phone
+  app needs the endpoint). Upgrades wait for review; decide whether security
+  releases get a faster path than the usual PR.
+
+## Edge timeouts
+
+- Envoy cuts any route's response at 15 s unless the HTTPRoute sets
+  `timeouts.request`. Only Immich's routes do. On the others (Keycloak,
+  Grafana, Argo CD, ntfy) a slow client can't finish a large response: a
+  1 MB Keycloak stylesheet at 20 kB/s was cut at 15 s. Decide whether they
+  should get a longer timeout or `0s`.
+
 ## Network policy
 
 - Default-deny for the namespaces not covered yet (kube-system,
@@ -115,7 +140,8 @@ Protect `main`).
   (Argo's application controller to the cluster's API endpoint) and keeps the
   VMs away from loft01's services.
 - Narrow `world:443` egress to FQDNs (`toFQDNs`, needs Cilium's DNS proxy):
-  Renovate, Argo CD, cert-manager, Grafana.
+  Renovate, Argo CD, cert-manager, Grafana, Immich's server (only
+  Keycloak) and machine learning (only Hugging Face).
 - Check which Pod Security level KubeVirt's virt-launcher pods need in
   `clusters` (it gets the cluster default, baseline).
 
@@ -210,6 +236,9 @@ foundation, in priority order:
   acceptable to drop it for Dependabot.
 - **ntfy** (one maintainer). Low switching cost to Gotify, if a reason
   appears.
+- **Immich** (FUTO) and **VectorChord** (TensorChord, AGPL or ELv2).
+  Accepted: no foundation-hosted photo library exists; plain pgvector could
+  replace VectorChord (`docs/tech-choices.md`, Photos).
 - Lower priority: k3s (CNCF, but SUSE-developed), OpenZFS (CDDL, no
   foundation), NixOS Foundation (independent), sops-nix and disko
   (community), PostgreSQL (PGDG), WireGuard (no foundation),

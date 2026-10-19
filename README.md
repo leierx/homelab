@@ -33,11 +33,15 @@ real GitOps platform on hardware we own.
   30080/30443, reached through the router's port forward) and `wg` (the
   `10.0.0.1` address on WireGuard). Argo CD and Keycloak's admin side are on
   WireGuard only; publicly, Keycloak serves only its login paths and Grafana
-  sits behind a Keycloak OIDC filter. The WireGuard side has no filter, so
-  the Argo CD and Grafana CLIs and APIs work there.
+  sits behind a Keycloak OIDC filter. Immich (`photos.skinke.net`) and ntfy
+  are public without the filter, because their phone apps can't pass it;
+  their own logins guard them. The WireGuard side has no filter, so the Argo
+  CD and Grafana CLIs and APIs work there.
 - **Storage.** OpenEBS zfs-localpv turns each PVC into an ext4 zvol on the
-  `tank` pool; the host does not mount it. sanoid snapshots the pool, and an
-  off-site borg backup is ready to enable.
+  `tank` pool (StorageClass `zfs`), or into a ZFS filesystem with 1M records
+  for large files (`zfs-media`, Immich's library); the host does not mount
+  them. sanoid snapshots the pool, and an off-site borg backup is ready to
+  enable.
 - **Workloads.** The management side runs Cluster API, KubeVirt and CDI, so a
   workload cluster is a VM on this node; each one is a directory under
   `gitops/workloads/` that `fleet/workloads.yaml` turns into an Application.
@@ -70,17 +74,20 @@ real GitOps platform on hardware we own.
 | Secret store | OpenBao | the Vault API without the BUSL licence; KV v2 + Kubernetes auth | MPL-2.0 | Linux Foundation (OpenSSF) |
 | Secret delivery | External Secrets Operator | `ExternalSecret` and `PushSecret` against one store | Apache-2.0 | CNCF (sandbox) |
 | Pre-cluster secrets | SOPS + sops-nix | an age-encrypted file in git, rendered at boot | MPL-2.0, MIT | CNCF (sops, sandbox) |
-| Storage | zfs-localpv (OpenEBS) | one zvol per PVC on ZFS, with snapshots | Apache-2.0 | CNCF (OpenEBS, sandbox) |
+| Storage | zfs-localpv (OpenEBS) | a zvol or ZFS filesystem per PVC, with snapshots | Apache-2.0 | CNCF (OpenEBS, sandbox) |
 | Filesystem | OpenZFS | snapshots and `zfs send` carry the backup design | CDDL-1.0 | none (OpenZFS community) |
 | Cluster lifecycle | Cluster API | upstream cluster templates, KubeVirt provider | Apache-2.0 | Kubernetes SIG (CNCF) |
 | Virtual machines | KubeVirt + CDI | workload clusters are VMs on this node | Apache-2.0 | CNCF (incubating) |
 | Postgres | CloudNativePG + PostgreSQL | an app ships a `Cluster`; the operator manages it | Apache-2.0, PostgreSQL | CNCF (sandbox), none (PGDG) |
+| Vector search | VectorChord + pgvector | Immich's embeddings in Postgres, mounted as an image volume | AGPL-3.0 or ELv2 (we use AGPL), PostgreSQL | none (TensorChord), none (pgvector) |
 | Metrics | Mimir | PromQL and remote-write, blocks on a local PVC | AGPL-3.0 | none (Grafana Labs) |
 | Scrape interface | prometheus-operator-crds | `ServiceMonitor` is the interface every chart writes | Apache-2.0 | none (operator; Prometheus core is CNCF) |
 | Scraping | Alloy (k8s-monitoring) | one collector that reads ServiceMonitors | Apache-2.0 | none (Grafana Labs) |
 | Logs | Loki | indexes labels, not text, so it is cheap on one node | AGPL-3.0 | none (Grafana Labs) |
 | Dashboards and alerts | Grafana | one UI; dashboards as labelled ConfigMaps | AGPL-3.0 | none (Grafana Labs) |
 | Alert notifications | ntfy | self-hosted phone push, deny-all by default | Apache-2.0 / GPL-2.0 | none (one maintainer) |
+| Photos | Immich | phone backup, timeline, map, faces and search, Keycloak SSO | AGPL-3.0 | none (FUTO; single vendor, see principle 5) |
+| Job queue | Valkey | Immich's job queues | BSD-3-Clause | Linux Foundation |
 | Dependency updates | Renovate | chart deps, Actions and `# renovate:` versions, one PR per addon | AGPL-3.0 | none (Mend) |
 
 ## Docs
@@ -93,6 +100,8 @@ real GitOps platform on hardware we own.
 - [break-glass.md](docs/break-glass.md) — getting back in when SSO is broken.
 - [dodde.md](docs/dodde.md) — dodde's Fedora VM: access, handover, isolation,
   restore.
+- [immich.md](docs/immich.md) — photos: what runs, logins and the phone app,
+  bulk upload, restore, upgrades.
 - [tech-choices.md](docs/tech-choices.md) — why each piece, what was
   rejected, and the free-software audit.
 

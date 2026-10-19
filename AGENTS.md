@@ -120,6 +120,7 @@ How that plays out here:
 - `docs/`: `bootstrap.md` (bare metal to first sync), `operations.md`
   (updates, backups, certificates, observability), `access.md` (SSO, tiers,
   people), `openbao.md` (secrets), `break-glass.md`, `dodde.md` (dodde's VM),
+  `immich.md` (photos: logins, bulk upload, restore, upgrades),
   `tech-choices.md` (why).
   `README.md`: what this is; `TODO.md`: deferred work.
 
@@ -135,8 +136,9 @@ How that plays out here:
   digests and bumps them, chart deps, `# renovate:`-annotated versions,
   release URLs in kustomizations and the versions of our own
   `ghcr.io/leierx` images, one PR per addon. Patch, minor and digest
-  automerge once the `addon-render` workflow passes; majors and Keycloak
-  (while keycloak-config-cli lags it) wait for review.
+  automerge once the `addon-render` workflow passes; majors, Keycloak
+  (while keycloak-config-cli lags it) and Immich (upgrades can need manual
+  steps, `docs/immich.md`) wait for review.
   Policy is in `renovate.json`. Go modules are bumped by hand.
 
 ## GitOps contract
@@ -199,6 +201,10 @@ How that plays out here:
 - `prometheus-operator-crds` without the operator: Alloy reads the CRDs.
 - ntfy is public without the edge login (the phone app can't do OIDC); its
   own deny-all auth guards it.
+- Immich is public without the edge login for the same reason; its own
+  Keycloak login guards it (password login and admin sign-up off).
+- Immich's `immich` Postgres role is not a superuser: a `Database` resource
+  creates its extensions, and a VectorChord bump goes through it.
 - Argo CD operators are `role:admin` until someone needs the distinction.
 - Keycloak's `admin` in realm `master` has a password (OpenBao) and no second
   factor; it is break-glass, and `/admin/` and `/realms/master/` are reachable
@@ -229,3 +235,7 @@ How that plays out here:
   (addon `keycloak-operator`, which owns the Namespace) and the `Keycloak` CR
   (addon `keycloak`) share `keycloak`.
 - The admin kubeconfig exists only on loft01 (`KUBECONFIG` is set there).
+- Envoy cuts a route's response at 15 s unless the HTTPRoute sets
+  `timeouts.request` (Immich sets `0s` for large downloads).
+- A ZFS filesystem PVC (`zfs-media`) can't show `.zfs/snapshot` inside a pod
+  with user namespaces; mount the snapshot read-only on the host instead.

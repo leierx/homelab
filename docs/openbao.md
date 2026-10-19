@@ -91,6 +91,7 @@ Three Kubernetes-auth roles exist:
 | `loft01/grafana` | `oidc_client_secret` | generated (keycloak addon) | Keycloak client `grafana` and Grafana (`grafana`) |
 | `loft01/grafana` | `admin_password` | generated (observability addon) | Grafana (`grafana`) |
 | `loft01/edge` | `oidc_client_secret` | generated (keycloak addon) | Keycloak client `edge` and Envoy Gateway's login gate (`edge-oidc` in monitoring) |
+| `loft01/immich` | `oidc_client_secret` | generated (keycloak addon) | Keycloak client `immich` and Immich's config file (`immich-config-<hash>`) |
 | `loft01/ntfy` | `leier_password`, `grafana_password`, `grafana_token` | generated (ntfy addon) | ntfy (`ntfy-auth`), Grafana's contact point (`grafana`) |
 | `loft01/renovate` | `app_id`, `installation_id`, `private_key` | entered by hand | the Renovate CronJob (`renovate-github-app`) |
 
