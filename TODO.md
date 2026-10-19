@@ -47,6 +47,10 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
   and its tag carries the Keycloak version as a suffix, so Renovate never
   moves it to a build for a newer Keycloak. Bump it by hand when one
   appears; switch to the OpenTofu provider if it stops keeping up.
+- Keycloak bumps never automerge (the `keycloak-operator` rule in
+  `renovate.json`, which covers the operator and the Keycloak image it pins),
+  because keycloak-config-cli is built for an older Keycloak. Drop that rule
+  once a config-cli image built for the Keycloak we run exists.
 - Keycloak's `KeycloakOIDCClient` CR (operator, preview) could replace the
   `oidcClients` part of the config once it is stable.
 

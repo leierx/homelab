@@ -49,6 +49,11 @@
       "matchFileNames": ["gitops/addons/**"],
       "matchUpdateTypes": ["major"],
       "automerge": false
+    },
+    {
+      "description": "Keycloak (operator and the image it runs) waits for review while keycloak-config-cli is built for an older Keycloak; TODO.md",
+      "matchFileNames": ["gitops/addons/keycloak-operator/**"],
+      "automerge": false
     }
   ]
 }

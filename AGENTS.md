@@ -134,7 +134,8 @@ How that plays out here:
   digests and bumps them, chart deps, `# renovate:`-annotated versions,
   release URLs in kustomizations and the versions of our own
   `ghcr.io/leierx` images, one PR per addon. Patch, minor and digest
-  automerge once the `addon-render` workflow passes; majors wait for review.
+  automerge once the `addon-render` workflow passes; majors and Keycloak
+  (while keycloak-config-cli lags it) wait for review.
   Policy is in `renovate.json`. Go modules are bumped by hand.
 
 ## GitOps contract
