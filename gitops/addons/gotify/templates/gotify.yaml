@@ -50,10 +50,10 @@ spec:
             - { name: GOTIFY_OIDC_REDIRECTURL, value: https://gotify.skinke.net/auth/oidc/callback }
             - { name: GOTIFY_OIDC_IDP_NAME, value: Keycloak }
             # groups is a default client scope in Keycloak, but Gotify only reads the claim it asked for
-            - { name: GOTIFY_OIDC_SCOPES, value: openid,profile,email,groups }
+            - { name: GOTIFY_OIDC_SCOPES, value: "openid,profile,email,groups" }
             - { name: GOTIFY_OIDC_GROUPS_CLAIM, value: groups }
             - { name: GOTIFY_OIDC_GROUPS_ADMIN, value: homelab-admins }
-            - { name: GOTIFY_OIDC_GROUPS_USER, value: homelab-operators,homelab-viewers }
+            - { name: GOTIFY_OIDC_GROUPS_USER, value: "homelab-operators,homelab-viewers" }
           envFrom:
             - secretRef:
                 name: gotify
