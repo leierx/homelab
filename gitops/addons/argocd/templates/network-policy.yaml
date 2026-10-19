@@ -21,6 +21,15 @@ spec:
   egress:
     - toEndpoints: [{}]
     - toEntities: [kube-apiserver]
+    # cluster DNS; the cluster-wide baseline allows it too, but Argo CD is what delivers that policy
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - { port: "53", protocol: UDP }
+            - { port: "53", protocol: TCP }
     # GitHub for the repo, and auth.skinke.net (public address) for SSO
     - toEntities: [world]
       toPorts:
