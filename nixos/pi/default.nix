@@ -46,6 +46,10 @@ let
         lib.makeBinPath [
           pkgs.git
           pkgs.nodejs
+          pkgs.opentofu
+          pkgs.postgresql_18
+          pkgs.renovate
+          pkgs.sqlite
         ]
       }
     '';
