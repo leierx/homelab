@@ -67,6 +67,8 @@ in
     serviceConfig = {
       Type = "forking";
       Restart = "always";
+      # ssh's login shell sets TMUX_TMPDIR from /etc/set-environment; match its socket
+      Environment = [ "TMUX_TMPDIR=%t" ];
       ExecStart = "${lib.getExe pkgs.tmux} new-session -d -s pi -c /home/leier ${lib.getExe pkgs.bash} -lc pi";
       ExecStop = "${lib.getExe pkgs.tmux} kill-session -t pi";
     };
