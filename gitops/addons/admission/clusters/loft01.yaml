@@ -5,6 +5,7 @@ userNamespaces:
   - cnpg-system
   - envoy-gateway-system
   - external-secrets
+  - gotify
   - immich
   - keycloak
   - monitoring

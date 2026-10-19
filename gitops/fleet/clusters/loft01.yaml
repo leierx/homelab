@@ -15,6 +15,7 @@ metadata:
     addons.homelab/cluster-api: "true"
     addons.homelab/envoy-gateway: "true"
     addons.homelab/external-secrets: "true"
+    addons.homelab/gotify: "true"
     addons.homelab/immich: "true"
     addons.homelab/k8s-monitoring: "true"
     addons.homelab/keycloak: "true"

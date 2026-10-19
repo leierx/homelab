@@ -1,0 +1,145 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gotify
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: zfs
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gotify
+spec:
+  replicas: 1
+  # the SQLite database and the uploaded images live on an RWO volume
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gotify
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gotify
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gotify
+          image: docker.io/gotify/server:{{ .Values.image.tag }}
+          env:
+            # unprivileged port; the image's default is 80, which restricted pods can't bind
+            - { name: GOTIFY_SERVER_PORT, value: "8080" }
+            # the session cookie is only ever set over the Gateway's TLS
+            - { name: GOTIFY_SERVER_SECURECOOKIE, value: "true" }
+            - { name: GOTIFY_LOCALAUTH_ENABLED, value: "false" }
+            - { name: GOTIFY_OIDC_ENABLED, value: "true" }
+            - { name: GOTIFY_OIDC_ISSUER, value: https://auth.skinke.net/realms/homelab }
+            - { name: GOTIFY_OIDC_CLIENTID, value: gotify }
+            - { name: GOTIFY_OIDC_REDIRECTURL, value: https://gotify.skinke.net/auth/oidc/callback }
+            - { name: GOTIFY_OIDC_IDP_NAME, value: Keycloak }
+            # groups is a default client scope in Keycloak, but Gotify only reads the claim it asked for
+            - { name: GOTIFY_OIDC_SCOPES, value: openid,profile,email,groups }
+            - { name: GOTIFY_OIDC_GROUPS_CLAIM, value: groups }
+            - { name: GOTIFY_OIDC_GROUPS_ADMIN, value: homelab-admins }
+            - { name: GOTIFY_OIDC_GROUPS_USER, value: homelab-operators,homelab-viewers }
+          envFrom:
+            - secretRef:
+                name: gotify
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 10m, memory: 64Mi }
+            limits: { memory: 256Mi }
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: gotify
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gotify
+spec:
+  selector:
+    app.kubernetes.io/name: gotify
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: gotify
+spec:
+  secretName: gotify-tls
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt
+  dnsNames:
+    - gotify.skinke.net
+{{- range $gw := list "edge" "wg" }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: gotify-{{ $gw }}
+spec:
+  parentRef:
+    name: {{ $gw }}
+    namespace: envoy-gateway-system
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: gotify.skinke.net
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: gotify-tls
+---
+# public without the edge login: the phone app can't pass it, so Gotify's own Keycloak login guards it
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: gotify-{{ $gw }}
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: gotify-{{ $gw }}
+  hostnames:
+    - gotify.skinke.net
+  rules:
+    - backendRefs:
+        - name: gotify
+          port: 80
+      # the Android app holds /stream open as a WebSocket; no request timeout on it
+      timeouts:
+        request: 0s
+{{- end }}
