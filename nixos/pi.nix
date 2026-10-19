@@ -1,4 +1,9 @@
-{ pkgs, lib, ... }:
+{
+  pkgs,
+  lib,
+  nixpkgs-unstable,
+  ...
+}:
 let
   agent = "/home/leier/.pi/agent";
 
@@ -33,7 +38,8 @@ let
 
   pi = pkgs.symlinkJoin {
     name = "pi-wrapped";
-    paths = [ pkgs.pi-coding-agent ];
+    # nixos-26.05's pi is 0.75.4; the pinned extensions need >= 1.1.0
+    paths = [ nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.pi-coding-agent ];
     nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
       wrapProgram $out/bin/pi --suffix PATH : ${
