@@ -31,15 +31,19 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
 
 ## Access
 
-- WebAuthn-only for `homelab-admins`: the second-factor sub-flow of
-  `homelab-browser` (`gitops/addons/keycloak/templates/realm.yaml`) accepts
-  TOTP, WebAuthn or recovery codes for every tier. Require a passkey or
-  security key for admins (a sub-flow conditional on their role), and decide
-  whether recovery codes stay; the other tiers keep TOTP.
+- WebAuthn-only for `homelab-admins`: everyone registers a security key or
+  passkey first, but the second-factor sub-flow of `homelab-browser`
+  (`gitops/addons/keycloak/templates/realm.yaml`) still accepts TOTP and
+  recovery codes as fallbacks for every tier. Decide whether admins lose the
+  TOTP fallback (a sub-flow conditional on their role) and whether recovery
+  codes stay.
 - Invitations: Keycloak can only email them, and there is no SMTP, so a new
   person starts from a temporary password set by an admin, which never
   expires (`docs/access.md`). An SMTP relay would allow Organizations
   invitations or execute-actions emails; decide whether that is worth it.
+- Temporary passwords never expire, so an invitation nobody used stays a
+  working password: clean those up by hand (`docs/access.md`, Onboarding),
+  until something expires them.
 - The `master` realm has Keycloak's defaults (no brute-force detection, no
   second factor for `admin`). It is WireGuard-only; decide whether to manage
   it from git too.

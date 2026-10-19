@@ -86,7 +86,7 @@ Three Kubernetes-auth roles exist:
 | Path | Properties | Source | Consumed by |
 | --- | --- | --- | --- |
 | `loft01/keycloak` | `admin_password`, `admin_client_secret` | generated (keycloak addon) | Keycloak's bootstrap `admin` user and `bootstrap-admin` client in realm `master` (`keycloak-bootstrap-admin`); the config Job (`keycloak-config`) |
-| `loft01/keycloak` | `leier_password` | generated (keycloak addon) | the config Job, which sets it on `leier` (`keycloak-config`) |
+| `loft01/keycloak` | `leier_password` | generated (keycloak addon) | the config Job, as `leier`'s temporary first password when it creates the account (`keycloak-config`); not current afterwards |
 | `loft01/argocd` | `oidc_client_secret` | generated (keycloak addon) | Keycloak client `argocd` and Argo CD (`argocd-oidc`) |
 | `loft01/grafana` | `oidc_client_secret` | generated (keycloak addon) | Keycloak client `grafana` and Grafana (`grafana`) |
 | `loft01/grafana` | `admin_password` | generated (observability addon) | Grafana (`grafana`) |
@@ -192,9 +192,9 @@ Then, depending on the consumer:
   (1 h) or immediately after `kubectl -n <ns> annotate externalsecret <name>
   force-sync="$(date +%s)" --overwrite`. A secret consumed with `envFrom`
   still needs the pod restarted; a volume mount updates in place.
-- **The Keycloak config Job** reads secrets (client secrets, `leier_password`)
-  when it runs, so after rotating one, force-sync `keycloak-config` and delete
-  the `keycloak-config-*` Job; Argo recreates it and it applies the new value.
+- **The Keycloak config Job** reads the client secrets when it runs, so after
+  rotating one, force-sync `keycloak-config` and delete the `keycloak-config-*`
+  Job; Argo recreates it and it applies the new value.
   The bootstrap `admin_password` and `admin_client_secret` are only read when
   the master realm is created; rotate those in Keycloak first (kcadm), then in
   OpenBao.

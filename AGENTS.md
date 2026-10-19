@@ -97,9 +97,10 @@ How that plays out here:
   user's refresh token is valid. Otherwise run it on loft01 (admin
   kubeconfig); that fires the "Admin kubeconfig used" alert, as expected.
 - Logins without a browser: create a test user in the tier you need with
-  kcadm (`docs/break-glass.md`), script the login form and TOTP setup over
-  WireGuard, then delete the user. Keycloak itself: `admin` in realm
-  `master`, password in OpenBao.
+  kcadm (`docs/break-glass.md`), script the login form and the security-key
+  registration (a software WebAuthn authenticator) over WireGuard, then
+  delete the user. Keycloak itself: `admin` in realm `master`, password in
+  OpenBao.
 
 ## Map
 

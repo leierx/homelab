@@ -60,7 +60,7 @@ kcadm get users -r homelab -q username=leier --fields id,username,enabled
 ```
 
 A user who lost their second factor: delete it, and the next login makes them
-set up TOTP again.
+register a security key again.
 
 ```sh
 kcadm get users/<id>/credentials -r homelab        # find the otp / webauthn one
@@ -70,9 +70,9 @@ kcadm delete users/<id>/credentials/<credential id> -r homelab
 A user locked out by brute-force detection:
 `kcadm delete attack-detection/brute-force/users/<id> -r homelab`.
 A forgotten password: `kcadm set-password -r homelab --username <user>
---new-password '<random>' --temporary` and hand it over. `leier`'s comes
-from OpenBao (`leier_password` in `loft01/keycloak`) and is put back by the
-next run of the config Job.
+--new-password '<random>' --temporary` and hand it over; config runs leave it
+alone (`leier` too: OpenBao's `leier_password` is only the first password
+after a rebuild).
 
 Whatever you change by hand in something the config manages (a client, a
 flow, a user's groups) is put back by its next run; fix the cause in git.

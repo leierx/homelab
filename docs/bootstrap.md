@@ -178,9 +178,11 @@ kubectl get externalsecret,pushsecret -A --no-headers | while read ns n _; do
 Once Keycloak (and its `keycloak-config-*` Job) and the `wg` Gateway are
 up, the UI is at https://argocd.skinke.net over WireGuard, behind Keycloak.
 On a workstation that means `just kubeconfig` for kubectl and the hosts
-entries in [access.md](access.md) for the sites. `leier`'s first password is
-in OpenBao (`just bao kv get -field=leier_password kv/loft01/keycloak`), and
-the first login makes you set up TOTP.
+entries in [access.md](access.md) for the sites. `leier` starts from a
+temporary password in OpenBao, which only the admin kubeconfig on loft01 can
+read at this point: the commands are under "First login after a rebuild" in
+[access.md](access.md). That first login registers a security key or passkey
+and sets your own password.
 
 To use the Argo CD UI while Keycloak is still down, temporarily set
 `admin.enabled: "true"` and push; Argo reconciles itself, and

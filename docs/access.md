@@ -120,22 +120,25 @@ when Keycloak is down (see [break-glass.md](break-glass.md)).
 ## Signing in
 
 Every login is a password plus a second factor. A user with none set up is
-made to set up TOTP (an authenticator app) on their first login: the flow
-follows Keycloak's "2FA all alternative with OTP default". Afterwards, in the
-account console (https://auth.skinke.net/realms/homelab/account/, *Account
-security → Signing in*) they can add a passkey or security key (WebAuthn) and
-recovery codes; at login Keycloak offers whichever they have, with *Try
-another way* to switch. Keep the recovery codes somewhere offline.
+made to register a security key or passkey (WebAuthn) at their first login;
+Keycloak calls it a *Passkey*. Afterwards, in the account console
+(https://auth.skinke.net/realms/homelab/account/) they can add a TOTP app as
+a fallback, more keys, and recovery codes. At login Keycloak asks for the key
+first; *Try another way* switches to TOTP or a recovery code. Keep the
+recovery codes somewhere offline. The flow is Keycloak's "2FA all
+alternative with OTP default" with WebAuthn in OTP's place
+(`homelab-browser` in `templates/realm.yaml`).
 
 Brute-force detection is on for the realm (Keycloak's defaults: temporary
 lockouts after repeated failures).
 
 ## Accounts
 
-- `leier` — the personal account, `homelab-admins`. Its password is read from
-  OpenBao `loft01/keycloak` `leier_password` on every run of the config Job,
-  so change it in OpenBao, not in the UI (see [openbao.md](openbao.md)), and
-  delete the Job to apply it.
+- `leier` — the personal account, `homelab-admins`. Its first password comes
+  from OpenBao `loft01/keycloak` `leier_password` and is temporary: the config
+  Job sets it only when it creates the account (after a rebuild), and the
+  first login replaces it with one leier chooses. From then on the password
+  is leier's own; OpenBao's copy is no longer current.
 - `admin` in realm `master` — Keycloak's bootstrap admin, password in OpenBao
   `loft01/keycloak` `admin_password`. Break-glass only; the `master` realm is
   reachable over WireGuard only.
@@ -150,6 +153,60 @@ but looks OAuth logins up by username only
 (`auth.oauth_allow_insecure_email_lookup` is off), so two accounts sharing an
 address make the second login fail with `User sync failed`.
 
+## Passwords and the config Job
+
+What a run of the config Job does with passwords (tested on 26.8.1 with
+keycloak-config-cli 6.5.1):
+
+- A password declared in git **without** `userLabel: initial` is written on
+  every run, so a password changed in the account console goes back at the
+  next run. Nothing declares one that way any more.
+- A password declared **with** `userLabel: initial` (only `leier`'s) is
+  written when the run creates the account, never again. Changed passwords
+  stay.
+- A user declared without credentials keeps whatever Keycloak has: a run
+  leaves a temporary password and its *Update password* step in place, and
+  leaves the password the person chose afterwards alone.
+- Users the config doesn't declare are not touched at all.
+
+## First login after a rebuild
+
+A rebuilt cluster has a new Keycloak database, so `leier` starts again from
+the temporary password in OpenBao, with no second factor. A workstation's
+kubectl logs in through Keycloak, so it can't read that password yet; use
+the admin kubeconfig on loft01:
+
+```sh
+ssh loft01
+jwt=$(kubectl -n openbao create token openbao-admin --duration=10m)
+kubectl -n openbao exec openbao-0 -c openbao -- sh -c \
+  'BAO_TOKEN=$(bao write -field=token auth/kubernetes/login role=admin jwt="$0") bao kv get -field=leier_password kv/loft01/keycloak' "$jwt"
+```
+
+or, from a workstation, borrow that kubeconfig for `just bao` (the API goes
+through `ssh -fN loft01`):
+
+```sh
+export KUBECONFIG=$(mktemp)
+ssh loft01 cat /etc/rancher/k3s/k3s.yaml > "$KUBECONFIG"
+just bao kv get -field=leier_password kv/loft01/keycloak
+rm "$KUBECONFIG"; unset KUBECONFIG
+```
+
+Then sign in at https://auth.skinke.net/realms/homelab/account/ as `leier`,
+register a security key or passkey, and choose a new password. On every
+workstation, update the clone and rewrite the kubeconfig, because the cluster
+CA is new:
+
+```sh
+git pull
+just kubeconfig
+kubectl get nodes        # opens the Keycloak login
+```
+
+A kubeconfig written by an old clone still names the previous issuer, and
+kubectl then fails with `oidc discovery error: 404 Not Found`.
+
 ## Onboarding a person
 
 There is no SMTP, so Keycloak's email invitations (Organizations) and
@@ -160,11 +217,18 @@ email-driven required actions are out. Instead:
    creates the account without a password.
 2. Over WireGuard, in the admin console (*Users → <user> → Credentials →
    Set password*), set a random password with *Temporary* on, and send it to
-   them over a channel you trust. It never expires, so do this just before
-   they sign in.
-3. They sign in at https://auth.skinke.net/realms/homelab/account/, are made to
-   choose their own password (the temporary one is gone after that) and to
-   set up TOTP, and can then add a passkey.
+   them over a channel you trust. Config runs leave it in place.
+3. They sign in at https://auth.skinke.net/realms/homelab/account/, register a
+   security key or passkey, and choose their own password; the temporary one
+   is gone after that.
+
+A temporary password **never expires**. An invitation nobody used stays a
+working password until you remove it: delete the user's password credential
+in the admin console (*Credentials*), or the user. List accounts that still
+wait for their first login with
+`kcadm get users -r homelab -q enabled=true --fields username,requiredActions`
+(`kcadm` as in [break-glass.md](break-glass.md)) and look for
+`UPDATE_PASSWORD`.
 
 To change someone's tier, edit their `groups` and push.
 
