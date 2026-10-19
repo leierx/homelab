@@ -19,6 +19,9 @@ newVersionCheck:
 # originals land under library/<user>/<year>/<date>/<file>, readable without Immich
 storageTemplate:
   enabled: true
+# no map tile requests to tiles.immich.cloud; reverse geocoding stays on
+map:
+  enabled: false
 {{- end }}
 {{/* named after the content: a change makes a new Secret, and the server waits for it and restarts */}}
 {{- define "immich.configName" -}}
