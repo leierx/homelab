@@ -15,14 +15,30 @@ and re-run the same config.
 
 | | Internet (`edge` Gateway) | WireGuard (`wg` Gateway, 10.0.0.1) |
 | --- | --- | --- |
-| `auth.skinke.net` | only what a login to realm `homelab` needs: `/realms/homelab/`, `/resources/`, and its RFC 8414 metadata (`/.well-known/*/realms/homelab`) | everything: admin console and API (`/admin/`), the `master` realm |
+| `auth.skinke.net` | only the paths a login to realm `homelab` needs (table below) | everything, admin console and `master` realm included |
 | `argocd.skinke.net` | nothing | Argo CD (UI and CLI) |
 | `metrics.skinke.net` | behind a Keycloak login at the edge, then Grafana's own | Grafana directly (API works) |
 | `photos.skinke.net` | Immich, ungated: its own Keycloak login is the guard ([immich.md](immich.md)) | Immich |
 
-The public paths follow Keycloak's reverse-proxy guide ("exposed path
+What Keycloak exposes, following its reverse-proxy guide ("Exposed path
 recommendations"), narrowed from `/realms/` to `/realms/homelab/` so the
-`master` realm stays internal as the guide asks.
+`master` realm stays internal as the guide asks. Tested 2026-10-19 against
+Keycloak 26.8.1, from the internet and over WireGuard:
+
+| Path | Public (`edge`) | WireGuard (`wg`) |
+| --- | --- | --- |
+| `/realms/homelab/…` | yes | yes |
+| `/resources/…` | yes | yes |
+| `/.well-known/*/realms/homelab` (RFC 8414) | yes | yes |
+| `/admin/…` | no | yes |
+| `/realms/master/…` | no | yes |
+| `/metrics`, `/health…` | no | no |
+| `/` and anything else | no | yes |
+
+"No" means 404 from the Gateway, except `/metrics` and `/health…`: those are
+served on the management port (9000) only, and both routes point at the HTTP
+port (8080), so Keycloak answers 404. `/lb-check` exists only with the
+`stateless` or `multi-site` feature, which we don't enable.
 
 To use the WireGuard side, a workstation on wg0 resolves the hostnames to
 10.0.0.1:
