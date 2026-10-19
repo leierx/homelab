@@ -42,10 +42,12 @@ data:
         emailVerified: true
         groups: {{ $user.groups | toJson }}
         {{- if eq $name "leier" }}
-        # from OpenBao loft01/keycloak leier_password, re-applied on every run
+        # first password only (OpenBao loft01/keycloak leier_password): userLabel initial is set at creation, never again
         credentials:
           - type: password
+            userLabel: initial
             value: $(env:LEIER_PASSWORD)
+            temporary: true
         {{- end }}
       {{- end }}
     clientScopes:
