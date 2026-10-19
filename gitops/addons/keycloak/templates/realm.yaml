@@ -16,6 +16,8 @@ data:
     ssoSessionIdleTimeout: 43200
     ssoSessionMaxLifespan: 43200
     browserFlow: homelab-browser
+    # the name a security key or passkey shows for this site
+    webAuthnPolicyRpEntityName: homelab
     roles:
       realm:
         # what the tier check in homelab-browser looks for; every tier group grants it
@@ -155,7 +157,7 @@ data:
             authenticatorFlow: true
             requirement: CONDITIONAL
             priority: 30
-      # whichever second factor the user has set up (Keycloak's "2FA all alternative with OTP default")
+      # whichever second factor the user has set up (Keycloak's "2FA all alternative with OTP default", WebAuthn first)
       - alias: homelab-browser second factor
         providerId: basic-flow
         topLevel: false
@@ -165,11 +167,11 @@ data:
             authenticatorFlow: false
             requirement: REQUIRED
             priority: 10
-          - authenticator: auth-otp-form
+          - authenticator: webauthn-authenticator
             authenticatorFlow: false
             requirement: ALTERNATIVE
             priority: 20
-          - authenticator: webauthn-authenticator
+          - authenticator: auth-otp-form
             authenticatorFlow: false
             requirement: ALTERNATIVE
             priority: 30
@@ -177,7 +179,7 @@ data:
             authenticatorFlow: false
             requirement: ALTERNATIVE
             priority: 40
-      # none set up yet: TOTP setup before going on; a passkey can be added later in the account console
+      # none set up yet: register a security key or passkey before going on; TOTP is an optional extra (account console)
       - alias: homelab-browser enrol
         providerId: basic-flow
         topLevel: false
@@ -188,7 +190,7 @@ data:
             authenticatorFlow: false
             requirement: REQUIRED
             priority: 10
-          - authenticator: auth-otp-form
+          - authenticator: webauthn-authenticator
             authenticatorFlow: false
             requirement: REQUIRED
             priority: 20
