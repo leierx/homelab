@@ -37,6 +37,9 @@ spec:
     # the Envoy proxies, on the pod network
     - name: proxy-trusted-addresses
       value: 10.42.0.0/16
+    # the database's max_connections is 60; Keycloak's default pool of 100 never fits
+    - name: db-pool-max-size
+      value: "20"
     # the operator then creates a ServiceMonitor for the management port's /metrics
     - name: metrics-enabled
       value: "true"

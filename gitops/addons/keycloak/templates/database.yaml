@@ -12,6 +12,10 @@ spec:
   storage:
     storageClass: zfs
     size: 5Gi
+  postgresql:
+    parameters:
+      # Keycloak asks for at most 20 connections; the server keeps headroom for the operator and pg_dump
+      max_connections: "60"
   resources:
     requests: { cpu: 50m, memory: 256Mi }
     limits: { memory: 1Gi }
