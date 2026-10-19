@@ -54,6 +54,35 @@ nix run github:nix-community/nixos-anywhere -- \
 rm -rf "$tmp"
 ```
 
+### Or: start the cluster over, keep the host
+
+To rebuild everything above NixOS (the cluster, every PVC, OpenBao's data)
+without reinstalling: stop k3s, wipe its state and every volume on `tank`,
+and reboot into the configuration from `main`. The pool, the NVMe root, sops
+and the age key stay. Save what was entered by hand first (see Secrets
+entered by hand, below).
+
+```sh
+ssh loft01
+doas systemctl stop k3s
+doas k3s-killall.sh
+for m in $(mount | awk '$3 ~ "^/var/lib/kubelet" {print $3}'); do doas umount -l "$m"; done
+doas rm -rf /var/lib/rancher/k3s /var/lib/kubelet /etc/rancher/k3s /var/lib/cni \
+  /etc/cni/net.d/05-cilium.conflist /opt/cni/bin/cilium-cni
+doas sh -c 'rm -f /var/log/kubernetes/audit*'
+for d in $(zfs list -H -o name -d 1 tank | tail -n +2); do doas zfs destroy -r "$d"; done
+doas nixos-rebuild boot --flake 'git+https://github.com/leierx/homelab.git?ref=main&rev=<full sha>#loft01'
+doas systemctl reboot
+```
+
+`k3s-killall.sh` (packaged with k3s in nixpkgs) stops the containers and
+unmounts the pods, but knows nothing of Cilium: its CNI config and binary go
+by hand, and the reboot clears its BPF programs, interfaces and `/run/cilium`.
+A zvol still held by a lazily unmounted block device reports `dataset is
+busy`; destroy it after the reboot, before section 2. The old audit log goes
+so that Alloy does not ship it again as new events. k3s starts on boot with
+an empty datastore and a new CA; carry on with section 2.
+
 ## 2. Cilium, then Argo CD, then git
 
 k3s runs with `--flannel-backend=none` and `--disable-kube-proxy`
@@ -70,6 +99,8 @@ cd homelab
 ### Cilium
 
 ```sh
+kubectl label namespace kube-system pod-security.kubernetes.io/enforce=privileged \
+  pod-security.kubernetes.io/warn=privileged pod-security.kubernetes.io/audit=privileged
 helm dependency update gitops/addons/cilium
 helm template cilium gitops/addons/cilium -n kube-system --include-crds \
   -f gitops/addons/cilium/values.yaml -f gitops/addons/cilium/clusters/loft01.yaml \
@@ -78,7 +109,10 @@ helm template cilium gitops/addons/cilium -n kube-system --include-crds \
 kubectl wait --for=condition=Ready node --all --timeout=10m
 ```
 
-The `trustCRDsExist` override is only for this first apply: without it
+The label comes first because k3s enforces Pod Security `baseline` in every
+unlabelled namespace (`nixos/k3s.nix`) and the Cilium agent is privileged;
+later, Argo sets the same labels from the addon's `podSecurity`. The
+`trustCRDsExist` override is only for this first apply: without it
 `helm template` fails, because the chart will not render its ServiceMonitors
 before the Prometheus Operator CRDs exist, and those arrive later with the
 `prometheus-operator-crds` addon. The four `ServiceMonitor`s and the
@@ -99,9 +133,9 @@ kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
 ```
 
 Some objects in that render need CRDs that arrive with the fleet (a
-`Certificate`, a `ListenerSet`, an `HTTPRoute`, an `ExternalSecret` and an
-Envoy `SecurityPolicy`). The apply reports them and Argo applies them later,
-once the addons that own the CRDs exist.
+`Certificate`, a `ListenerSet`, an `HTTPRoute` and an `ExternalSecret`). The
+apply reports them and Argo applies them later, once the addons that own the
+CRDs exist.
 
 ### Hand over to git
 
