@@ -1,4 +1,4 @@
-# the Authentik tiers, as the API server sees them through OIDC (`oidc:` prefix, nixos/k3s.nix)
+# the Keycloak tiers, as the API server sees them through OIDC (`oidc:` prefix, nixos/k3s.nix)
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:

@@ -1,11 +1,11 @@
 # pods here get hostUsers: false; nothing privileged or reading host files (k8s-monitoring's log collector)
 userNamespaces:
   - argocd
-  - authentik
   - cert-manager
   - cnpg-system
   - envoy-gateway-system
   - external-secrets
+  - keycloak
   - monitoring
   - ntfy
   - openbao

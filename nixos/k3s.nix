@@ -2,14 +2,14 @@
 let
   yaml = pkgs.formats.yaml { };
 
-  # kubectl logs in through Authentik (client kubernetes); groups map to RBAC in gitops/addons/rbac
+  # kubectl logs in through Keycloak (realm homelab, client kubernetes); groups map to RBAC in gitops/addons/rbac
   authentication = yaml.generate "k3s-authentication.yaml" {
     apiVersion = "apiserver.config.k8s.io/v1";
     kind = "AuthenticationConfiguration";
     jwt = [
       {
         issuer = {
-          url = "https://auth.skinke.net/application/o/kubernetes/";
+          url = "https://auth.skinke.net/realms/homelab";
           audiences = [ "kubernetes" ];
         };
         claimMappings = {

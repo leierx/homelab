@@ -1,0 +1,42 @@
+postgres:
+  # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
+  tag: 18.6-system-trixie
+configCli:
+  # renovate: datasource=docker depName=docker.io/adorsys/keycloak-config-cli
+  tag: 6.5.1-26.5.5
+# people in realm homelab; a tier group is what lets them log in anywhere (docs/access.md)
+users:
+  leier:
+    firstName: Lars
+    lastName: Smith Eier
+    email: larssmitheier@protonmail.com
+    groups: [homelab-admins]
+# a client each in realm homelab; secret in OpenBao loft01/<name> unless `public` (PKCE)
+oidcClients:
+  argocd:
+    baseURL: https://argocd.skinke.net
+    redirectURIs:
+      - https://argocd.skinke.net/auth/callback
+  # `argocd login --sso` (Argo CD's cliClientID); the CLI can't keep a secret
+  argocd-cli:
+    public: true
+    redirectURIs:
+      - http://localhost:8085/auth/callback
+  grafana:
+    baseURL: https://metrics.skinke.net
+    redirectURIs:
+      - https://metrics.skinke.net/login/generic_oauth
+    postLogoutRedirectURIs:
+      - https://metrics.skinke.net/login
+  # Envoy Gateway's login in front of the public sites (SecurityPolicy edge-oidc); not an app
+  edge:
+    redirectURIs:
+      - https://metrics.skinke.net/oauth2/callback
+  # kubectl through kubelogin (`just kubeconfig`); the API server trusts this issuer (nixos/k3s.nix)
+  kubernetes:
+    public: true
+    accessTokenLifespan: 900
+    sessionLifespan: 43200
+    redirectURIs:
+      - http://localhost:8000
+      - http://localhost:18000

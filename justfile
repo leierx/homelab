@@ -1,4 +1,4 @@
-# kubeconfig context loft01: Authentik login (kubectl oidc-login), API through `ssh -fN loft01`
+# kubeconfig context loft01: Keycloak login (kubectl oidc-login), API through `ssh -fN loft01`
 kubeconfig:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -13,10 +13,9 @@ kubeconfig:
     kubectl config set-cluster loft01 --server=https://127.0.0.1:6443 --certificate-authority="$ca" --embed-certs > /dev/null
     kubectl config set-credentials loft01 --exec-api-version=client.authentication.k8s.io/v1 \
       --exec-interactive-mode=IfAvailable --exec-command=kubectl --exec-arg=oidc-login --exec-arg=get-token \
-      --exec-arg=--oidc-issuer-url=https://auth.skinke.net/application/o/kubernetes/ \
+      --exec-arg=--oidc-issuer-url=https://auth.skinke.net/realms/homelab \
       --exec-arg=--oidc-client-id=kubernetes \
-      --exec-arg=--oidc-extra-scope=profile --exec-arg=--oidc-extra-scope=email \
-      --exec-arg=--oidc-extra-scope=offline_access > /dev/null
+      --exec-arg=--oidc-extra-scope=profile --exec-arg=--oidc-extra-scope=email > /dev/null
     kubectl config set-context loft01 --cluster=loft01 --user=loft01 > /dev/null
     unset KUBECONFIG
     current=$(kubectl config current-context --kubeconfig ~/.kube/config 2>/dev/null || true)
@@ -34,22 +33,3 @@ bao *args:
     kubectl -n openbao exec -i openbao-0 -c openbao -- sh -c \
       'export BAO_TOKEN=$(bao write -field=token auth/kubernetes/login role=admin jwt="$0") && exec bao "$@"' \
       "$jwt" "$@"
-
-# re-apply Authentik blueprints by file name, e.g. `just authentik-apply access oidc-clients`
-[positional-arguments]
-authentik-apply +names:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    paths=()
-    for name in "$@"; do paths+=("mounted/cm-authentik-$name/$name.yaml"); done
-    kubectl -n authentik exec deploy/authentik-worker -c worker -- ak apply_blueprint "${paths[@]}"
-
-# break-glass: single-use login link for <user>, no password or MFA, expires after <minutes>, WireGuard only
-[positional-arguments]
-authentik-recover user minutes="15":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    # stderr without Authentik's JSON startup logs, so errors like an unknown user still show
-    path=$(kubectl -n authentik exec deploy/authentik-server -c server -- ak create_recovery_key "$2" "$1" \
-      2> >(grep -vE '^\{|^Switching to schema' >&2) | grep '^/recovery/')
-    echo "https://auth.skinke.net$path"

@@ -1,0 +1,59 @@
+apiVersion: k8s.keycloak.org/v2beta1
+kind: Keycloak
+metadata:
+  name: keycloak
+  annotations:
+    # the CRD comes from the keycloak-operator addon
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  instances: 1
+  # Keycloak never calls the Kubernetes API (JGroups finds peers through the headless Service's DNS)
+  automountServiceAccountToken: false
+  # used only when the master realm is first created
+  bootstrapAdmin:
+    user:
+      secret: keycloak-bootstrap-admin
+    service:
+      secret: keycloak-bootstrap-admin
+  db:
+    vendor: postgres
+    host: keycloak-db-rw
+    database: keycloak
+    usernameSecret: { name: keycloak-db-app, key: username }
+    passwordSecret: { name: keycloak-db-app, key: password }
+  # TLS ends at the Gateways
+  http:
+    httpEnabled: true
+  hostname:
+    hostname: https://auth.skinke.net
+  proxy:
+    headers: xforwarded
+  ingress:
+    enabled: false
+  # the operator's own policy opens 8080 and 9000 to every pod; templates/network-policy.yaml replaces it
+  networkPolicy:
+    enabled: false
+  additionalOptions:
+    # the Envoy proxies, on the pod network
+    - name: proxy-trusted-addresses
+      value: 10.42.0.0/16
+    # the operator then creates a ServiceMonitor for the management port's /metrics
+    - name: metrics-enabled
+      value: "true"
+    - name: event-metrics-user-enabled
+      value: "true"
+  resources:
+    requests: { cpu: 200m, memory: 1Gi }
+    limits: { memory: 2Gi }
+  unsupported:
+    podTemplate:
+      spec:
+        securityContext:
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+        containers:
+          - securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]

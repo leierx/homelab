@@ -1,14 +1,14 @@
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
-  name: authentik-db
+  name: keycloak-db
 spec:
   instances: 1
   imageName: ghcr.io/cloudnative-pg/postgresql:{{ .Values.postgres.tag }}
   bootstrap:
     initdb:
-      database: authentik
-      owner: authentik
+      database: keycloak
+      owner: keycloak
   storage:
     storageClass: zfs
     size: 5Gi
@@ -21,11 +21,11 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: authentik-db
+  name: keycloak-db
 spec:
   selector:
     matchLabels:
-      cnpg.io/cluster: authentik-db
+      cnpg.io/cluster: keycloak-db
   podMetricsEndpoints:
     - port: metrics
 {{- end }}

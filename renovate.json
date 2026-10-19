@@ -3,7 +3,7 @@
   "rebaseWhen": "behind-base-branch",
   "timezone": "Europe/Oslo",
   "dependencyDashboard": true,
-  "enabledManagers": ["github-actions", "helmv3", "kubernetes", "custom.regex"],
+  "enabledManagers": ["github-actions", "helmv3", "kubernetes", "kustomize", "custom.regex"],
   "automergeStrategy": "merge-commit",
   "platformAutomerge": false,
   "kubernetes": {

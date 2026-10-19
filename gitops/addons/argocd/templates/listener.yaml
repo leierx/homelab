@@ -10,15 +10,15 @@ spec:
     name: letsencrypt
   dnsNames:
     - argocd.skinke.net
-{{- range $gw := list "edge" "wg" }}
 ---
+# WireGuard only; nothing of Argo CD is on the internet
 apiVersion: gateway.networking.k8s.io/v1
 kind: ListenerSet
 metadata:
-  name: argocd-{{ $gw }}
+  name: argocd-wg
 spec:
   parentRef:
-    name: {{ $gw }}
+    name: wg
     namespace: envoy-gateway-system
   listeners:
     - name: https
@@ -35,54 +35,15 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: argocd-{{ $gw }}
+  name: argocd-wg
 spec:
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: ListenerSet
-      name: argocd-{{ $gw }}
+      name: argocd-wg
   hostnames:
     - argocd.skinke.net
   rules:
     - backendRefs:
         - name: argocd-server
           port: 80
-{{- end }}
----
-# public requests log in to Authentik (client edge) before Argo CD sees them; wg peers skip this
-apiVersion: gateway.envoyproxy.io/v1alpha1
-kind: SecurityPolicy
-metadata:
-  name: edge-oidc
-  annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-spec:
-  targetRefs:
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
-      name: argocd-edge
-  oidc:
-    provider:
-      issuer: https://auth.skinke.net/application/o/edge/
-    clientID: edge
-    clientSecret:
-      name: edge-oidc
-    redirectURL: https://argocd.skinke.net/oauth2/callback
-    logoutPath: /oauth2/logout
----
-apiVersion: external-secrets.io/v1
-kind: ExternalSecret
-metadata:
-  name: edge-oidc
-  annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-spec:
-  refreshInterval: 1h
-  secretStoreRef:
-    kind: ClusterSecretStore
-    name: openbao
-  target:
-    name: edge-oidc
-  data:
-    - secretKey: client-secret
-      remoteRef: { key: loft01/edge, property: oidc_client_secret }

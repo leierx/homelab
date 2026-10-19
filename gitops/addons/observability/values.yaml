@@ -20,23 +20,26 @@ grafana:
     auth:
       # SSO only; the admin account is break-glass (docs/break-glass.md)
       disable_login_form: true
-      signout_redirect_url: https://auth.skinke.net/application/o/grafana/end-session/
+      # Grafana adds the id_token_hint
+      signout_redirect_url: https://auth.skinke.net/realms/homelab/protocol/openid-connect/logout?post_logout_redirect_uri=https%3A%2F%2Fmetrics.skinke.net%2Flogin
     # the hidden login form alone still left admin:<password> working against the API
     auth.basic:
       enabled: false
     auth.generic_oauth:
       enabled: true
-      name: Authentik
+      name: Keycloak
       client_id: grafana
       scopes: openid email profile
-      auth_url: https://auth.skinke.net/application/o/authorize/
-      token_url: https://auth.skinke.net/application/o/token/
-      api_url: https://auth.skinke.net/application/o/userinfo/
+      auth_url: https://auth.skinke.net/realms/homelab/protocol/openid-connect/auth
+      token_url: https://auth.skinke.net/realms/homelab/protocol/openid-connect/token
+      api_url: https://auth.skinke.net/realms/homelab/protocol/openid-connect/userinfo
       use_pkce: true
       allow_sign_up: true
       allow_assign_grafana_admin: true
       login_attribute_path: preferred_username
-      role_attribute_path: contains(groups, 'homelab-admins') && 'GrafanaAdmin' || contains(groups, 'homelab-operators') && 'Editor' || 'Viewer'
+      role_attribute_path: contains(groups, 'homelab-admins') && 'GrafanaAdmin' || contains(groups, 'homelab-operators') && 'Editor' || contains(groups, 'homelab-viewers') && 'Viewer' || ''
+      # no tier, no login; Keycloak refuses such users first, this holds if that ever changes
+      role_attribute_strict: true
   # a second pod can't share the SQLite database on the RWO volume
   deploymentStrategy:
     type: Recreate
@@ -189,7 +192,7 @@ grafana:
               execErrState: Error
               labels: { severity: info }
               annotations:
-                summary: "Someone logged in through Authentik read a Secret or used exec, attach or port-forward."
+                summary: "Someone logged in through Keycloak read a Secret or used exec, attach or port-forward."
               data:
                 - { refId: A, datasourceUid: loki, relativeTimeRange: { from: 300, to: 0 }, model: { refId: A, queryType: instant, expr: 'sum by (user_username, objectRef_namespace, objectRef_resource, objectRef_subresource) (count_over_time({job="kube-audit"} | json | user_username=~"oidc:.*" | objectRef_resource="secrets" or objectRef_subresource=~"exec|attach|portforward" [5m]))' } }
                 - { refId: C, datasourceUid: __expr__, model: { refId: C, type: threshold, expression: A, conditions: [{ evaluator: { type: gt, params: [0] } }] } }

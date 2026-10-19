@@ -1,9 +1,9 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: authentik
+  name: keycloak
 spec:
-  secretName: authentik-tls
+  secretName: keycloak-tls
   issuerRef:
     group: cert-manager.io
     kind: ClusterIssuer
@@ -15,7 +15,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: ListenerSet
 metadata:
-  name: authentik-{{ $gw }}
+  name: keycloak-{{ $gw }}
 spec:
   parentRef:
     name: {{ $gw }}
@@ -30,42 +30,42 @@ spec:
         certificateRefs:
           - group: ""
             kind: Secret
-            name: authentik-tls
+            name: keycloak-tls
 {{- end }}
 ---
-# public: only the OIDC endpoints and flow interface; admin, user UI, the rest of the API and recovery are wg-only
+# public: what a login to realm homelab needs (Keycloak's reverse-proxy guide); admin and the master realm are wg-only
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: authentik-edge
+  name: keycloak-edge
 spec:
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: ListenerSet
-      name: authentik-edge
+      name: keycloak-edge
   hostnames:
     - auth.skinke.net
   rules:
     - matches:
-        {{- range list "/application/o/" "/flows/" "/if/flow/" "/api/v3/flows/executor/" "/ws/client/" "/static/" "/media/" }}
+        {{- range list "/realms/homelab/" "/resources/" "/.well-known/" }}
         - path: { type: PathPrefix, value: {{ . }} }
         {{- end }}
       backendRefs:
-        - name: authentik-server
-          port: 80
+        - name: keycloak-service
+          port: 8080
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: authentik-wg
+  name: keycloak-wg
 spec:
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: ListenerSet
-      name: authentik-wg
+      name: keycloak-wg
   hostnames:
     - auth.skinke.net
   rules:
     - backendRefs:
-        - name: authentik-server
-          port: 80
+        - name: keycloak-service
+          port: 8080

@@ -7,7 +7,6 @@ metadata:
     argocd.argoproj.io/secret-type: cluster
     addons.homelab/admission: "true"
     addons.homelab/argocd: "true"
-    addons.homelab/authentik: "true"
     addons.homelab/capi-argo-bridge: "true"
     addons.homelab/cdi: "true"
     addons.homelab/cert-manager: "true"
@@ -17,6 +16,8 @@ metadata:
     addons.homelab/envoy-gateway: "true"
     addons.homelab/external-secrets: "true"
     addons.homelab/k8s-monitoring: "true"
+    addons.homelab/keycloak: "true"
+    addons.homelab/keycloak-operator: "true"
     addons.homelab/kubevirt: "true"
     addons.homelab/ntfy: "true"
     addons.homelab/observability: "true"

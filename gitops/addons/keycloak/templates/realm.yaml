@@ -1,0 +1,181 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm
+data:
+  homelab.yaml: |
+    realm: homelab
+    enabled: true
+    displayName: homelab
+    # no SMTP: no self-service registration, password reset or email verification
+    registrationAllowed: false
+    resetPasswordAllowed: false
+    verifyEmail: false
+    bruteForceProtected: true
+    # 12 h, so kubectl's refresh token (client kubernetes) lives that long
+    ssoSessionIdleTimeout: 43200
+    ssoSessionMaxLifespan: 43200
+    browserFlow: homelab-browser
+    roles:
+      realm:
+        # what the tier check in homelab-browser looks for; every tier group grants it
+        - name: homelab-access
+          description: Member of a homelab tier
+    groups:
+      - name: homelab-admins
+        realmRoles: [homelab-access]
+        clientRoles:
+          realm-management: [realm-admin]
+      - name: homelab-operators
+        realmRoles: [homelab-access]
+      - name: homelab-viewers
+        realmRoles: [homelab-access]
+    users:
+      {{- range $name, $user := .Values.users }}
+      - username: {{ $name }}
+        enabled: {{ dig "enabled" true $user }}
+        firstName: {{ $user.firstName | quote }}
+        lastName: {{ $user.lastName | quote }}
+        email: {{ $user.email }}
+        emailVerified: true
+        groups: {{ $user.groups | toJson }}
+        {{- if eq $name "leier" }}
+        # from OpenBao loft01/keycloak leier_password, re-applied on every run
+        credentials:
+          - type: password
+            value: $(env:LEIER_PASSWORD)
+        {{- end }}
+      {{- end }}
+    clientScopes:
+      # direct memberships by name, the shape Argo CD, Grafana, Envoy and the API server read
+      - name: groups
+        protocol: openid-connect
+        attributes:
+          include.in.token.scope: "true"
+        protocolMappers:
+          - name: groups
+            protocol: openid-connect
+            protocolMapper: oidc-group-membership-mapper
+            config:
+              claim.name: groups
+              full.path: "false"
+              id.token.claim: "true"
+              access.token.claim: "true"
+              userinfo.token.claim: "true"
+              introspection.token.claim: "true"
+    clients:
+      {{- range $name, $client := .Values.oidcClients }}
+      - clientId: {{ $name }}
+        name: {{ $name }}
+        enabled: true
+        protocol: openid-connect
+        {{- with $client.baseURL }}
+        baseUrl: {{ . }}
+        {{- end }}
+        standardFlowEnabled: true
+        directAccessGrantsEnabled: false
+        implicitFlowEnabled: false
+        serviceAccountsEnabled: false
+        {{- if $client.public }}
+        publicClient: true
+        {{- else }}
+        publicClient: false
+        clientAuthenticatorType: client-secret
+        secret: $(env:OIDC_{{ $name | upper | replace "-" "_" }}_CLIENT_SECRET)
+        {{- end }}
+        redirectUris: {{ $client.redirectURIs | toJson }}
+        defaultClientScopes: [basic, acr, profile, email, roles, web-origins, groups]
+        {{- $attributes := dict }}
+        {{- if $client.public }}
+        {{- $_ := set $attributes "pkce.code.challenge.method" "S256" }}
+        {{- end }}
+        {{- with $client.postLogoutRedirectURIs }}
+        {{- $_ := set $attributes "post.logout.redirect.uris" (join "##" .) }}
+        {{- end }}
+        {{- with $client.accessTokenLifespan }}
+        {{- $_ := set $attributes "access.token.lifespan" (toString .) }}
+        {{- end }}
+        {{- with $client.sessionLifespan }}
+        {{- $_ := set $attributes "client.session.idle.timeout" (toString .) }}
+        {{- $_ := set $attributes "client.session.max.lifespan" (toString .) }}
+        {{- end }}
+        attributes: {{ $attributes | toJson }}
+      {{- end }}
+    authenticatorConfig:
+      - alias: homelab-no-tier
+        config:
+          condUserRole: homelab-access
+          negate: "true"
+    authenticationFlows:
+      # signed in (cookie, or password plus a second factor), then refused without a tier
+      - alias: homelab-browser
+        providerId: basic-flow
+        topLevel: true
+        builtIn: false
+        authenticationExecutions:
+          - flowAlias: homelab-browser sign-in
+            authenticatorFlow: true
+            requirement: REQUIRED
+            priority: 10
+          - flowAlias: homelab-browser tier
+            authenticatorFlow: true
+            requirement: CONDITIONAL
+            priority: 20
+      - alias: homelab-browser sign-in
+        providerId: basic-flow
+        topLevel: false
+        builtIn: false
+        authenticationExecutions:
+          - authenticator: auth-cookie
+            authenticatorFlow: false
+            requirement: ALTERNATIVE
+            priority: 10
+          - flowAlias: homelab-browser forms
+            authenticatorFlow: true
+            requirement: ALTERNATIVE
+            priority: 20
+      - alias: homelab-browser forms
+        providerId: basic-flow
+        topLevel: false
+        builtIn: false
+        authenticationExecutions:
+          - authenticator: auth-username-password-form
+            authenticatorFlow: false
+            requirement: REQUIRED
+            priority: 10
+          - flowAlias: homelab-browser second factor
+            authenticatorFlow: true
+            requirement: REQUIRED
+            priority: 20
+      # a user with none of these is made to set up the first (TOTP) before going on
+      - alias: homelab-browser second factor
+        providerId: basic-flow
+        topLevel: false
+        builtIn: false
+        authenticationExecutions:
+          - authenticator: auth-otp-form
+            authenticatorFlow: false
+            requirement: ALTERNATIVE
+            priority: 10
+          - authenticator: webauthn-authenticator
+            authenticatorFlow: false
+            requirement: ALTERNATIVE
+            priority: 20
+          - authenticator: auth-recovery-authn-code-form
+            authenticatorFlow: false
+            requirement: ALTERNATIVE
+            priority: 30
+      - alias: homelab-browser tier
+        providerId: basic-flow
+        topLevel: false
+        builtIn: false
+        authenticationExecutions:
+          - authenticator: conditional-user-role
+            authenticatorConfig: homelab-no-tier
+            authenticatorFlow: false
+            requirement: REQUIRED
+            priority: 10
+          - authenticator: deny-access-authenticator
+            authenticatorFlow: false
+            requirement: REQUIRED
+            priority: 20
