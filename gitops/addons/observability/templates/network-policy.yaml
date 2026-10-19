@@ -25,8 +25,8 @@ spec:
     - toEntities: [kube-apiserver]
     - toEndpoints:
         - matchLabels:
-            k8s:io.kubernetes.pod.namespace: ntfy
-            app.kubernetes.io/name: ntfy
+            k8s:io.kubernetes.pod.namespace: gotify
+            app.kubernetes.io/name: gotify
       toPorts:
         - ports: [{ port: "8080", protocol: TCP }]
     # Grafana: Keycloak's token endpoint (auth.skinke.net resolves publicly) and grafana.com dashboards
