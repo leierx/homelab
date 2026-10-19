@@ -123,11 +123,6 @@ grafana:
 
   # Grafana-managed alerts, visible in Grafana's alert list; no notification channel (TODO.md)
   alerting:
-    # reset to Grafana's own default tree: the stored policy still named the removed webhook
-    policies.yaml:
-      apiVersion: 1
-      resetPolicies:
-        - 1
     rules.yaml:
       apiVersion: 1
       groups:
