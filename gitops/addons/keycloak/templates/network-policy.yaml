@@ -8,7 +8,7 @@ spec:
     ingress: true
     egress: true
   ingress:
-    # keycloak-config-cli to Keycloak, Keycloak to Postgres, JGroups
+    # the reconcile pod and Keycloak's own traffic: Postgres, JGroups
     - fromEndpoints: [{}]
     - fromEndpoints:
         - matchLabels:

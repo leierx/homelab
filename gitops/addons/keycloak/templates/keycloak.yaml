@@ -9,10 +9,9 @@ spec:
   instances: 1
   # Keycloak never calls the Kubernetes API (JGroups finds peers through the headless Service's DNS)
   automountServiceAccountToken: false
-  # used only when the master realm is first created
+  # the master realm's service client OpenTofu logs in with, created only when the master realm is
+  # first created. No standing admin user: break-glass is kc.sh bootstrap-admin (docs/break-glass.md)
   bootstrapAdmin:
-    user:
-      secret: keycloak-bootstrap-admin
     service:
       secret: keycloak-bootstrap-admin
   db:
