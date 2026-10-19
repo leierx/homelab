@@ -23,7 +23,7 @@ spec:
             clientSecret: {{ `{{ .oidc_client_secret | quote }}` }}
             autoLaunch: true
           passwordLogin:
-            enabled: false
+            enabled: true
           server:
             externalDomain: https://photos.skinke.net
           machineLearning:
