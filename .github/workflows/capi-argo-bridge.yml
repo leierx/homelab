@@ -20,8 +20,8 @@ jobs:
   build:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: apps/capi-argo-bridge/go.mod
           cache-dependency-path: apps/capi-argo-bridge/go.sum
@@ -30,7 +30,7 @@ jobs:
       - run: go test ./...
 
       - if: github.event_name != 'pull_request'
-        uses: ko-build/setup-ko@v0.10
+        uses: ko-build/setup-ko@61b4d1d396f5b2e7d6bb6fefdce3dc38d1a13445 # v0.10
       - if: github.event_name != 'pull_request'
         run: >
           KO_DOCKER_REPO=ghcr.io/${{ github.repository_owner }}/capi-argo-bridge
