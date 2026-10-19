@@ -82,7 +82,8 @@ How that plays out here:
 - An addon: `helm dependency update` + `helm template` with Argo's value
   layering (see GitOps contract), `kubectl apply --dry-run=server` on the
   render, then delete `charts/` and `Chart.lock`.
-- Authentik blueprints: validate in `ak shell` with the blueprint Importer.
+- The Keycloak realm (`keycloak/templates/realm.yaml`): render it; the check
+  that counts is the log of the `keycloak-config-*` Job the push creates.
 
 ## Working live
 
@@ -92,11 +93,13 @@ How that plays out here:
 - Host: push, then
   `ssh loft01 "doas nixos-rebuild switch --flake 'git+https://github.com/leierx/homelab.git?ref=main&rev=<full sha>#loft01'"`.
   Always pin `rev`: without it the host has fetched a stale `main`.
-- kubectl on a workstation logs in through Authentik and only works while the
+- kubectl on a workstation logs in through Keycloak and only works while the
   user's refresh token is valid. Otherwise run it on loft01 (admin
   kubeconfig); that fires the "Admin kubeconfig used" alert, as expected.
-- Logins without a browser: `just authentik-recover leier 5`, open the link
-  over WireGuard, then curl the app's OIDC login with the cookie jar.
+- Logins without a browser: create a test user in the tier you need with
+  kcadm (`docs/break-glass.md`), script the login form and TOTP setup over
+  WireGuard, then delete the user. Keycloak itself: `admin` in realm
+  `master`, password in OpenBao.
 
 ## Map
 
@@ -185,8 +188,6 @@ How that plays out here:
 - Every app uses the `default` AppProject and tracks `HEAD` of `main`.
 - Argo CD and Cilium manage themselves.
 - No ordering between apps; CRDs from another app arrive via endless retry.
-  Authentik's worker logging a missing `authentik_tasks_workerstatus` on a
-  fresh database is the same thing.
 - `preserveResourcesOnDeletion`: removing a label or addon leaves its
   resources running. Clean up by hand.
 - `charts/` and `Chart.lock` are gitignored; Argo builds dependencies.
@@ -197,6 +198,11 @@ How that plays out here:
 - ntfy is public without the edge login (the phone app can't do OIDC); its
   own deny-all auth guards it.
 - Argo CD operators are `role:admin` until someone needs the distinction.
+- Keycloak's `admin` in realm `master` has a password (OpenBao) and no second
+  factor; it is break-glass, and `/admin/` and `/realms/master/` are reachable
+  over WireGuard only. Keycloak flags it and `bootstrap-admin` as temporary.
+- keycloak-config-cli is built against an older Keycloak than we run; it
+  works, and nothing newer exists.
 - CPU limits set upstream (virt-template-*, Cilium's init containers,
   virt-launcher's `guest-console-log`) are not patched away;
   `container-resources` only warns about them.
@@ -212,6 +218,12 @@ How that plays out here:
   (the `containerDisk` templates reset on every VM restart).
 - OpenBao's `initialize` blocks run once on empty storage. Change a live
   OpenBao with `just bao` and mirror it there.
-- Authentik applies a blueprint only when its file changes or on
-  `just authentik-apply <file>`.
+- keycloak-config-cli runs when the rendered realm changes (the Job is named
+  after its hash). To re-apply the same config (a rotated secret it reads),
+  delete the Job; Argo recreates it.
+- Envoy Gateway fetches an OIDC issuer's discovery once and never retries, so
+  `edge-oidc` names Keycloak's endpoints explicitly.
+- The Keycloak Operator only watches its own namespace: the operator
+  (addon `keycloak-operator`, which owns the Namespace) and the `Keycloak` CR
+  (addon `keycloak`) share `keycloak`.
 - The admin kubeconfig exists only on loft01 (`KUBECONFIG` is set there).

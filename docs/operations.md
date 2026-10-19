@@ -152,7 +152,7 @@ days, which means renewal is failing.
 ### What runs
 
 `observability` (namespace `monitoring`, management cluster only) runs
-Grafana at https://metrics.skinke.net behind Authentik, plus Mimir for
+Grafana at https://metrics.skinke.net behind Keycloak, plus Mimir for
 metrics and Loki for logs, each a single pod with a PVC on the `tank`
 pool. Retention is 90 days for metrics and 30 for logs. Mimir is our own
 StatefulSet (`templates/mimir.yaml`), because mimir-distributed has no

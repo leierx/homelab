@@ -31,9 +31,10 @@ real GitOps platform on hardware we own.
   `addons/<addon>/clusters/<cluster>.yaml`.
 - **Edge.** Envoy Gateway terminates TLS on two Gateways: `edge` (NodePort
   30080/30443, reached through the router's port forward) and `wg` (the
-  `10.0.0.1` address on WireGuard). Public traffic passes an Authentik OIDC
-  filter in front of the admin UIs; the WireGuard side does not, so the Argo
-  CD and Grafana CLIs and APIs work there.
+  `10.0.0.1` address on WireGuard). Argo CD and Keycloak's admin side are on
+  WireGuard only; publicly, Keycloak serves only its login paths and Grafana
+  sits behind a Keycloak OIDC filter. The WireGuard side has no filter, so
+  the Argo CD and Grafana CLIs and APIs work there.
 - **Storage.** OpenEBS zfs-localpv turns each PVC into an ext4 zvol on the
   `tank` pool; the host does not mount it. sanoid snapshots the pool, and an
   off-site borg backup is ready to enable.
@@ -64,7 +65,8 @@ real GitOps platform on hardware we own.
 | GitOps | Argo CD + Helm | a push to `main` is a deploy; charts render in-cluster | Apache-2.0 | CNCF (graduated) |
 | TLS certificates | cert-manager | Let's Encrypt issuance and renewal from one `ClusterIssuer` | Apache-2.0 | CNCF (graduated) |
 | Edge and routing | Envoy Gateway (Gateway API) | two Gateways, OIDC filter, HTTP-01 solver | Apache-2.0 | CNCF (Envoy, graduated) |
-| Identity and SSO | Authentik | OIDC with a groups claim; config as code (blueprints) | MIT community, proprietary EE | none (vendor) |
+| Identity and SSO | Keycloak (Keycloak Operator) | OIDC with a groups claim, mandatory second factor | Apache-2.0 | CNCF (incubating) |
+| IdP config as code | keycloak-config-cli | the realm in git, re-applied when it changes | Apache-2.0 | none (adorsys) |
 | Secret store | OpenBao | the Vault API without the BUSL licence; KV v2 + Kubernetes auth | MPL-2.0 | Linux Foundation (OpenSSF) |
 | Secret delivery | External Secrets Operator | `ExternalSecret` and `PushSecret` against one store | Apache-2.0 | CNCF (sandbox) |
 | Pre-cluster secrets | SOPS + sops-nix | an age-encrypted file in git, rendered at boot | MPL-2.0, MIT | CNCF (sops, sandbox) |

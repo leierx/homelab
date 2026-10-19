@@ -63,7 +63,7 @@ OpenBao gives us:
 ## KV layout and the auth roles
 
 All data lives in the KV v2 mount `kv`, at `<cluster>/<app>` — `loft01/grafana`,
-`loft01/authentik`, `loft01/renovate`. The cluster prefix leaves room for
+`loft01/keycloak`, `loft01/renovate`. The cluster prefix leaves room for
 workload clusters in the same store.
 
 Three Kubernetes-auth roles exist:
@@ -85,16 +85,14 @@ Three Kubernetes-auth roles exist:
 
 | Path | Properties | Source | Consumed by |
 | --- | --- | --- | --- |
-| `loft01/authentik` | `secret_key`, `bootstrap_password`, `leier_password` | generated (authentik addon) | Authentik (`authentik-env` ExternalSecret) |
-| `loft01/argocd` | `oidc_client_secret` | generated (authentik addon) | Authentik provider and Argo CD (`argocd-oidc`) |
-| `loft01/grafana` | `oidc_client_secret` | generated (authentik addon) | Authentik provider and Grafana (`grafana`) |
+| `loft01/keycloak` | `admin_password`, `admin_client_secret` | generated (keycloak addon) | Keycloak's bootstrap `admin` user and `bootstrap-admin` client in realm `master` (`keycloak-bootstrap-admin`); the config Job (`keycloak-config`) |
+| `loft01/keycloak` | `leier_password` | generated (keycloak addon) | the config Job, which sets it on `leier` (`keycloak-config`) |
+| `loft01/argocd` | `oidc_client_secret` | generated (keycloak addon) | Keycloak client `argocd` and Argo CD (`argocd-oidc`) |
+| `loft01/grafana` | `oidc_client_secret` | generated (keycloak addon) | Keycloak client `grafana` and Grafana (`grafana`) |
 | `loft01/grafana` | `admin_password` | generated (observability addon) | Grafana (`grafana`) |
-| `loft01/edge` | `oidc_client_secret` | generated (authentik addon) | Authentik provider and Envoy Gateway's login gate (`edge-oidc` in argocd and monitoring) |
+| `loft01/edge` | `oidc_client_secret` | generated (keycloak addon) | Keycloak client `edge` and Envoy Gateway's login gate (`edge-oidc` in monitoring) |
 | `loft01/ntfy` | `leier_password`, `grafana_password`, `grafana_token` | generated (ntfy addon) | ntfy (`ntfy-auth`), Grafana's contact point (`grafana`) |
 | `loft01/renovate` | `app_id`, `installation_id`, `private_key` | entered by hand | the Renovate CronJob (`renovate-github-app`) |
-
-`bootstrap_password` is never used to log in (`akadmin` is disabled), but it
-must exist: see [break-glass.md](break-glass.md).
 
 ## How a secret reaches a pod (the zero-touch path)
 
@@ -194,9 +192,12 @@ Then, depending on the consumer:
   (1 h) or immediately after `kubectl -n <ns> annotate externalsecret <name>
   force-sync="$(date +%s)" --overwrite`. A secret consumed with `envFrom`
   still needs the pod restarted; a volume mount updates in place.
-- **Authentik blueprints** read secrets at apply time, so after rotating one:
-  `kubectl -n authentik rollout restart deploy` and
-  `just authentik-apply <file>`, e.g. `oidc-clients` (see [access.md](access.md)).
+- **The Keycloak config Job** reads secrets (client secrets, `leier_password`)
+  when it runs, so after rotating one, force-sync `keycloak-config` and delete
+  the `keycloak-config-*` Job; Argo recreates it and it applies the new value.
+  The bootstrap `admin_password` and `admin_client_secret` are only read when
+  the master realm is created; rotate those in Keycloak first (kcadm), then in
+  OpenBao.
 
 ## Host-only secrets (sops, not OpenBao)
 
@@ -223,7 +224,7 @@ Secret.
 - **Dynamic database credentials.** OpenBao's database secrets engine can hand
   each app a short-lived Postgres user instead of the CNPG `<cluster>-app`
   password, with External Secrets (or the app) renewing it.
-- **Human logins with OIDC.** OpenBao's OIDC auth against Authentik, with the
+- **Human logins with OIDC.** OpenBao's OIDC auth against Keycloak, with the
   `homelab-*` tiers mapped to policies, would replace `just bao` for people and
   make the UI usable.
 

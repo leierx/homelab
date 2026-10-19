@@ -31,11 +31,24 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
 
 ## Access
 
-- WebAuthn-only for `homelab-admins`: the MFA validate stage allows
-  `[webauthn, totp, static]` for every tier
-  (`gitops/addons/authentik/templates/blueprints/mfa.yaml`). Require a
-  passkey or security key for admins, and decide whether the static recovery
-  codes stay; the other tiers keep TOTP.
+- WebAuthn-only for `homelab-admins`: the second-factor sub-flow of
+  `homelab-browser` (`gitops/addons/keycloak/templates/realm.yaml`) accepts
+  TOTP, WebAuthn or recovery codes for every tier. Require a passkey or
+  security key for admins (a sub-flow conditional on their role), and decide
+  whether recovery codes stay; the other tiers keep TOTP.
+- Invitations: Keycloak can only email them, and there is no SMTP, so a new
+  person starts from a temporary password set by an admin, which never
+  expires (`docs/access.md`). An SMTP relay would allow Organizations
+  invitations or execute-actions emails; decide whether that is worth it.
+- The `master` realm has Keycloak's defaults (no brute-force detection, no
+  second factor for `admin`). It is WireGuard-only; decide whether to manage
+  it from git too.
+- keycloak-config-cli trails Keycloak (image built for 26.5.5, we run 26.8.1),
+  and its tag carries the Keycloak version as a suffix, so Renovate never
+  moves it to a build for a newer Keycloak. Bump it by hand when one
+  appears; switch to the OpenTofu provider if it stops keeping up.
+- Keycloak's `KeycloakOIDCClient` CR (operator, preview) could replace the
+  `oidcClients` part of the config once it is stable.
 
 ## Storage
 
@@ -88,7 +101,7 @@ Protect `main`).
   (Argo's application controller to the cluster's API endpoint) and keeps the
   VMs away from loft01's services.
 - Narrow `world:443` egress to FQDNs (`toFQDNs`, needs Cilium's DNS proxy):
-  Renovate, Argo CD, cert-manager, Grafana, Authentik (Gravatar).
+  Renovate, Argo CD, cert-manager, Grafana.
 - Check which Pod Security level KubeVirt's virt-launcher pods need in
   `clusters` (it gets the cluster default, baseline).
 
@@ -160,9 +173,6 @@ The Principle 5 audit is in `docs/tech-choices.md` (Really free software).
 The components that are single-vendor or open core, with no neutral
 foundation, in priority order:
 
-- **Authentik** (open core: MIT community, proprietary EE). Being replaced by
-  Keycloak (Apache-2.0, CNCF incubating): SSO, the blueprints, the groups
-  claim and the recovery flow all change.
 - **Grafana, Mimir, Loki, Alloy** (Grafana Labs). Decide whether to keep the
   coupled stack or move to Perses + Prometheus/Thanos + OpenSearch +
   OpenTelemetry Collector.
@@ -173,22 +183,17 @@ foundation, in priority order:
   appears.
 - Lower priority: k3s (CNCF, but SUSE-developed), OpenZFS (CDDL, no
   foundation), NixOS Foundation (independent), sops-nix and disko
-  (community), PostgreSQL (PGDG), WireGuard (no foundation).
+  (community), PostgreSQL (PGDG), WireGuard (no foundation),
+  keycloak-config-cli (adorsys).
 
 ## Justfile recipes
 
-The Principle 1 audit of the four recipes (`AGENTS.md`: a recipe is usually
+The Principle 1 audit of the two recipes (`AGENTS.md`: a recipe is usually
 work git should do):
 
-- **`authentik-apply <file>`** — manual work automation should own. Argo
-  updates the blueprint ConfigMap, but Authentik applies a blueprint only
-  when the mounted file changes, so the recipe must force it. Replace with a
-  reconcile on ConfigMap change (a small controller, or a worker restart
-  triggered by the change).
 - **`kubeconfig`** — per-workstation state, not break-glass. The cluster CA
   is public and valid to 2036, so a committed kubeconfig template plus the
   `kubelogin` exec plugin would remove the recipe.
 - **`bao`** — legitimate: a short-lived admin token minted from the
   `openbao-admin` ServiceAccount; git cannot hold a credential. OpenBao OIDC
   human login (already in `docs/openbao.md`) would replace it.
-- **`authentik-recover <user> [minutes]`** — real break-glass. Keep.

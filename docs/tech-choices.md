@@ -66,7 +66,7 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
 | `data-mimir-0` | 100 Gi | 90 days |
 | `storage-loki-0` | 50 Gi | 30 days |
 | `grafana` | 5 Gi | dashboards, users |
-| `authentik-db-1` | 5 Gi | users, sessions |
+| `keycloak-db-1` | 5 Gi | realm, users, sessions |
 | `data-openbao-0` | 2 Gi | secrets |
 | `renovate-cache` | 5 Gi | throwaway |
 | `ntfy` | 1 Gi | notifications, users |
@@ -80,7 +80,7 @@ sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace="monit
 / sum by (persistentvolumeclaim) (kubelet_volume_stats_capacity_bytes{namespace="monitoring"})
 ```
 
-and the same with `namespace="authentik"` / `"openbao"`.
+and the same with `namespace="keycloak"` / `"openbao"`.
 
 ## Local storage
 
@@ -115,15 +115,61 @@ and the same with `namespace="authentik"` / `"openbao"`.
 
 ## Identity
 
-- **Need:** SSO for Argo CD, Grafana and future apps, with groups that decide
-  roles.
-- **Choice:** Authentik as the IdP, OIDC confidential clients per app,
-  `homelab-{admins,operators,viewers}` groups in the `groups` claim.
-- **Why:** self-hosted, supports blueprints (IdP config as code) and gives us
-  one place to add a person. See [access.md](access.md).
-- **Alternatives:** **Keycloak** is heavier to operate; **Dex** is a connector,
-  not a full IdP.
+- **Need:** SSO for Argo CD, Grafana, kubectl and future apps (Immich, with
+  phone apps logging in from the internet), with groups that decide roles,
+  a mandatory second factor, and the whole IdP configuration in git.
+- **Choice:** Keycloak, run by the Keycloak Operator (the official
+  `keycloak-k8s-resources` manifests at a pinned tag, addon
+  `keycloak-operator`) with Postgres from CloudNativePG (addon `keycloak`).
+  One realm, `homelab`; OIDC clients per app; the
+  `homelab-{admins,operators,viewers}` groups in the `groups` claim; a
+  browser flow that forces a second factor and refuses users without a tier.
+- **Why:** Apache-2.0 and CNCF incubating (principle 5), the most widely
+  deployed self-hosted IdP, with an operator from the same project. Every
+  feature the setup uses is built in: group membership mapper, conditional
+  flows with "Deny access", TOTP, WebAuthn/passkeys, recovery codes,
+  per-client token and session lengths, brute-force detection. See
+  [access.md](access.md).
+- **Alternatives:**
+  - **Authentik** (what this replaced). The community edition is MIT but
+    `authentik/enterprise/` is under a proprietary licence: single-vendor
+    open core, which principle 5 avoids when a foundation project does the
+    job. Its blueprints were a better config-as-code story than anything
+    Keycloak ships, and its invitation flow needed no SMTP.
+  - **Dex** (CNCF sandbox) is a federation connector, not an IdP: no MFA,
+    no user management beyond static users.
+  - **Zitadel** (AGPL-3.0, single vendor) and **Kanidm** (MPL-2.0,
+    community) are independent; neither is foundation-hosted.
 
+### Keycloak configuration as code
+
+- **Need:** the realm (groups, users, clients, flows, session lengths)
+  declared in git and re-applied when git changes.
+- **Choice:** keycloak-config-cli as a Job (`keycloak/templates/config-job.yaml`)
+  whose name carries a hash of the rendered realm, so Argo CD creates a new
+  Job on every change; the config is a Helm-templated YAML realm, with
+  secrets substituted from the environment (`$(env:…)`). It authenticates
+  with the operator-created `bootstrap-admin` service client.
+- **Why:** it reconciles an existing realm (create, update, and delete what
+  it created before), which is what "git is the source of truth" needs; it
+  is a plain container, so no state backend and no second controller.
+  Apache-2.0.
+- **Caveats:** single-company (adorsys) with one main maintainer, and it
+  trails Keycloak releases: the newest image is built against Keycloak
+  26.5.5 while we run 26.8.1. It works against 26.8.1 for everything we use
+  (tested); a Keycloak bump should be followed by a look at the Job's log.
+- **Alternatives:**
+  - **`KeycloakRealmImport`** (the operator's own CR) only creates a realm
+    that doesn't exist and never updates it; Keycloak's docs say to delete
+    the CR after the import.
+  - **`KeycloakOIDCClient`** (operator, v2alpha1, preview, needs the
+    `client-admin-api:v2` feature) manages clients only, not groups, flows
+    or users. Worth revisiting once it leaves preview.
+  - **The OpenTofu/Terraform provider** (`keycloak/terraform-provider-keycloak`,
+    Apache-2.0, in the Keycloak organisation, tracks current releases) is
+    the better-maintained tool, but needs a runner and a state: Flux's
+    tofu-controller (a second GitOps controller) or a hand-built Job and a
+    state Secret. More moving parts than a Job that applies a file.
 ## GitOps
 
 - **Need:** one control plane that manages itself and the fleet.
@@ -216,7 +262,7 @@ and the same with `namespace="authentik"` / `"openbao"`.
 
 - **Need:** give people cluster permissions by group, without per-user
   kubeconfigs or long-lived credentials.
-- **Choice:** k3s trusts Authentik's `kubernetes` client as a JWT issuer
+- **Choice:** k3s trusts Keycloak's `kubernetes` client as a JWT issuer
   (`nixos/k3s.nix`); the `rbac` addon binds `oidc:homelab-admins` to
   `cluster-admin`, `oidc:homelab-operators` to the aggregated
   `homelab-operator` role (view plus deleting pods) and `oidc:homelab-viewers`
@@ -289,9 +335,6 @@ and the same with `namespace="authentik"` / `"openbao"`.
 - **`# renovate:` comments.** They are not config; they tell Renovate where to
   look for a version that is not in a file it parses natively (e.g. the
   Postgres image inside a `Cluster` manifest, Mimir's image tag).
-- **The Postgres image tag in `authentik/clusters/loft01.yaml`.** It feeds *our*
-  CloudNativePG `Cluster` (`imageName: ghcr.io/cloudnative-pg/postgresql:…`),
-  not the Authentik chart's bundled PostgreSQL subchart, which is unused.
 
 ## Really free software
 
@@ -302,16 +345,9 @@ audit of where the stack stands; the decisions it raises are in `TODO.md`.
 Everything we run is OSI-licensed, so the question is vendor control, not
 whether the source is available. (Licence and foundation per component are in
 the README table; this section adds the alternatives and the switching cost.)
-Four components are single-vendor or open core with no neutral foundation:
+Three components are single-vendor or open core with no neutral foundation
+(the IdP was a fourth until Keycloak replaced it; see Identity):
 
-- **Authentik.** The community edition is MIT, but `authentik/enterprise/`
-  is under a proprietary EE licence (production use needs a subscription), so
-  it is open core. It is our only IdP. The neutral-foundation alternative is
-  **Keycloak** (Apache-2.0, CNCF incubating); **Dex** (CNCF sandbox) is a
-  connector, not a full IdP, and **Zitadel** (AGPL-3.0) is independent.
-  Switching cost is high: every login, the blueprint config-as-code, the
-  `groups` claim, the MFA and recovery flows and the generated `oidcClients`
-  are Authentik-shaped. We use no EE feature.
 - **Grafana, Mimir, Loki and Alloy** (Grafana Labs, not a foundation).
   Grafana, Mimir and Loki are AGPL-3.0; Alloy and the `k8s-monitoring` chart
   are Apache-2.0. Foundation alternatives: **Perses** (Apache-2.0, CNCF
@@ -350,6 +386,9 @@ either), or a need with no better alternative:
 - **prometheus-operator-crds** is Apache-2.0 from the Prometheus community and
   is not itself a CNCF project (Prometheus core is). It is only the CRD
   interface, and goes with the backends if those change.
+- **keycloak-config-cli** is Apache-2.0 from one company (adorsys). It only
+  applies the realm; the OpenTofu provider in the Keycloak organisation is
+  the replacement if it stalls (see Identity).
 - **PostgreSQL** is the PostgreSQL License, from the PostgreSQL Global
   Development Group; there is no foundation-hosted drop-in and none is needed.
 - **WireGuard** is GPL-2.0 with no foundation; there is no drop-in
