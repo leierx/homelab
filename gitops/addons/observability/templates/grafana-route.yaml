@@ -62,6 +62,10 @@ spec:
   oidc:
     provider:
       issuer: https://auth.skinke.net/realms/homelab
+      # given, not discovered: Envoy Gateway fetches discovery once and never retries, and Keycloak may come up later
+      authorizationEndpoint: https://auth.skinke.net/realms/homelab/protocol/openid-connect/auth
+      tokenEndpoint: https://auth.skinke.net/realms/homelab/protocol/openid-connect/token
+      endSessionEndpoint: https://auth.skinke.net/realms/homelab/protocol/openid-connect/logout
     clientID: edge
     clientSecret:
       name: edge-oidc
