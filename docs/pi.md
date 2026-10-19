@@ -10,12 +10,13 @@ That is deliberate; see "Deliberate, don't fix" in `AGENTS.md`.
 From the workstation:
 
 ```sh
-ssh -t -o ClearAllForwardings=yes loft01 tmux new-session -A -s pi pi
+ssh -t loft01 tmux new-session -A -s pi pi
 ```
 
 `-A` attaches to the session named `pi` if it exists, otherwise creates it.
-`Ctrl-b d` detaches; the session and whatever pi is running keep going.
-`-o ClearAllForwardings=yes` skips the workstation's kube-apiserver forward.
+The systemd user service `pi` starts the session at boot (leier lingers), so
+this normally just attaches. `Ctrl-b d` detaches; the session and whatever
+pi is running keep going.
 
 ## First login
 
@@ -28,7 +29,8 @@ where to add another provider later.
 
 | What | Where |
 | --- | --- |
-| settings, system prompt, commit-style skill | `nixos/pi.nix` and `nixos/pi/`, symlinked from the Nix store into `/home/leier/.pi/agent/` |
+| settings, system prompt, commit-style skill | `nixos/pi/default.nix` and the files in `nixos/pi/`, symlinked from the Nix store into `/home/leier/.pi/agent/` |
+| systemd user service `pi` | `nixos/pi/default.nix` |
 | logins, sessions, npm packages | `/home/leier/.pi/agent/`, written by pi, not in git |
 
 Only those three config files are symlinked; the rest of `~/.pi/agent/` is
@@ -37,7 +39,7 @@ install into `~/.pi/agent/npm/` on first start.
 
 ## Change the settings
 
-Edit the `settings` attrset in `nixos/pi.nix` (or the files under
+Edit the `settings` attrset in `nixos/pi/default.nix` (or the files under
 `nixos/pi/`), commit and push, then deploy the host with the pinned rev as
 `AGENTS.md` describes:
 
@@ -51,5 +53,6 @@ A running pi keeps its old settings; the next start reads the new ones.
 
 The host auto-upgrades from `main` on Fridays from 02:00 and may reboot
 until 04:00. A reboot ends the tmux session and any agent running in it;
-logins, sessions and npm packages survive. Run the ssh command again after
-the reboot.
+the user service starts a new session by itself once the host is up, but
+work in progress is lost. Logins, sessions and npm packages survive. Run
+the ssh command again after the reboot.

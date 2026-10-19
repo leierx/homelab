@@ -59,13 +59,26 @@ in
     set -s extended-keys-format csi-u
   '';
 
+  users.users.leier.linger = true;
+
+  systemd.user.services.pi = {
+    wantedBy = [ "default.target" ];
+    restartIfChanged = false;
+    serviceConfig = {
+      Type = "forking";
+      Restart = "always";
+      ExecStart = "${lib.getExe pkgs.tmux} new-session -d -s pi -c /home/leier ${lib.getExe pkgs.bash} -lc pi";
+      ExecStop = "${lib.getExe pkgs.tmux} kill-session -t pi";
+    };
+  };
+
   systemd.tmpfiles.rules = [
     "d /home/leier/.pi 0700 leier users -"
     "d ${agent} 0700 leier users -"
     "d ${agent}/skills 0700 leier users -"
     "d ${agent}/skills/commit-style 0700 leier users -"
     "L+ ${agent}/settings.json - leier users - ${settings}"
-    "L+ ${agent}/APPEND_SYSTEM.md - leier users - ${./pi/APPEND_SYSTEM.md}"
-    "L+ ${agent}/skills/commit-style/SKILL.md - leier users - ${./pi/skills/commit-style/SKILL.md}"
+    "L+ ${agent}/APPEND_SYSTEM.md - leier users - ${./APPEND_SYSTEM.md}"
+    "L+ ${agent}/skills/commit-style/SKILL.md - leier users - ${./skills/commit-style/SKILL.md}"
   ];
 }

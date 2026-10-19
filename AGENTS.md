@@ -111,8 +111,8 @@ How that plays out here:
   auto-upgrade), `hardware.nix` (kernel, watchdog, ZFS, disk health),
   `disko.nix` (NVMe root, ZFS pools), `network.nix` (networkd, `wg0`,
   resolved, nftables), `k3s.nix` (k3s without CNI, OIDC, audit log, pod
-  security defaults), `backup.nix`, `sops.nix` + `secrets.yaml`, `pi.nix`
-  (the pi coding agent and tmux), `installer.nix`.
+  security defaults), `backup.nix`, `sops.nix` + `secrets.yaml`, `pi/`
+  (the pi coding agent, tmux and its user service), `installer.nix`.
 - `gitops/`: the Argo CD fleet. `root.yaml` → `fleet/` (the addon and
   workload ApplicationSets + cluster Secrets) → `addons/<addon>/` and
   `workloads/<name>/`.
