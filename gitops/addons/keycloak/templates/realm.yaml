@@ -23,15 +23,25 @@ data:
         # what the tier check in homelab-browser looks for; every tier group grants it
         - name: homelab-access
           description: Member of a homelab tier
+      client:
+        # Immich promotes on admin and demotes on user (claim immich_role)
+        immich:
+          - name: admin
+          - name: user
     groups:
       - name: homelab-admins
         realmRoles: [homelab-access]
         clientRoles:
           realm-management: [realm-admin]
+          immich: [admin]
       - name: homelab-operators
         realmRoles: [homelab-access]
+        clientRoles:
+          immich: [user]
       - name: homelab-viewers
         realmRoles: [homelab-access]
+        clientRoles:
+          immich: [user]
     users:
       {{- range $name, $user := .Values.users }}
       - username: {{ $name }}
@@ -89,6 +99,22 @@ data:
         {{- end }}
         redirectUris: {{ $client.redirectURIs | toJson }}
         defaultClientScopes: [basic, acr, profile, email, roles, web-origins, groups]
+        {{- with $client.roleClaim }}
+        # the user's roles on this client, as a list in this claim
+        protocolMappers:
+          - name: {{ . }}
+            protocol: openid-connect
+            protocolMapper: oidc-usermodel-client-role-mapper
+            config:
+              claim.name: {{ . }}
+              usermodel.clientRoleMapping.clientId: {{ $name }}
+              multivalued: "true"
+              jsonType.label: String
+              id.token.claim: "true"
+              access.token.claim: "true"
+              userinfo.token.claim: "true"
+              introspection.token.claim: "true"
+        {{- end }}
         {{- $attributes := dict }}
         {{- if $client.public }}
         {{- $_ := set $attributes "pkce.code.challenge.method" "S256" }}

@@ -28,6 +28,15 @@ oidcClients:
       - https://metrics.skinke.net/login/generic_oauth
     postLogoutRedirectURIs:
       - https://metrics.skinke.net/login
+  # Immich: the web app and the phone app (custom scheme); the server keeps the secret for both
+  immich:
+    baseURL: https://photos.skinke.net
+    redirectURIs:
+      - https://photos.skinke.net/auth/login
+      - https://photos.skinke.net/user-settings
+      - app.immich:///oauth-callback
+    # Immich's oauth.roleClaim (its default name): admin or user, per tier in templates/realm.yaml
+    roleClaim: immich_role
   # Envoy Gateway's login in front of the public sites (SecurityPolicy edge-oidc); not an app
   edge:
     redirectURIs:
