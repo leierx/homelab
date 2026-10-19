@@ -16,7 +16,7 @@ spec:
       serviceAccountName: capi-argo-bridge
       containers:
         - name: capi-argo-bridge
-          image: ghcr.io/leierx/capi-argo-bridge:0.1.5
+          image: ghcr.io/leierx/capi-argo-bridge:0.1.8
           args:
             - --argocd-namespace={{ .Release.Namespace }}
             - --cluster-namespace={{ .Values.clusterNamespace }}
