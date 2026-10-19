@@ -1,0 +1,2 @@
+namespace: immich
+podSecurity: restricted

@@ -34,7 +34,7 @@ spec:
             - { port: "10080", protocol: TCP }
             - { port: "10443", protocol: TCP }
   egress:
-    {{- range $ns, $port := dict "argocd" "8080" "keycloak" "8080" "monitoring" "3000" "ntfy" "8080" }}
+    {{- range $ns, $port := dict "argocd" "8080" "immich" "2283" "keycloak" "8080" "monitoring" "3000" "ntfy" "8080" }}
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: {{ $ns }}

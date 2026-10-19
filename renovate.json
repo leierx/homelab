@@ -54,6 +54,17 @@
       "description": "Keycloak (operator and the image it runs) waits for review while keycloak-config-cli is built for an older Keycloak; TODO.md",
       "matchFileNames": ["gitops/addons/keycloak-operator/**"],
       "automerge": false
+    },
+    {
+      "description": "Immich, its Postgres and VectorChord wait for review: upgrades can need manual steps (docs/immich.md)",
+      "matchFileNames": ["gitops/addons/immich/**"],
+      "automerge": false
+    },
+    {
+      "description": "the VectorChord extension image is tagged pg<major>-v<version>; values.yaml holds only the version",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ghcr.io/tensorchord/vchord-scratch"],
+      "extractVersion": "^pg18-v(?<version>\\d+\\.\\d+\\.\\d+)$"
     }
   ]
 }
