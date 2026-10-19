@@ -31,11 +31,17 @@ where to add another provider later.
 | --- | --- |
 | settings, system prompt, commit-style skill | `nixos/pi/default.nix` and the files in `nixos/pi/`, symlinked from the Nix store into `/home/leier/.pi/agent/` |
 | systemd user service `pi` | `nixos/pi/default.nix` |
+| work directory | `/home/leier/pi-agent`, created by tmpfiles |
 | logins, sessions, npm packages | `/home/leier/.pi/agent/`, written by pi, not in git |
 
 Only those three config files are symlinked; the rest of `~/.pi/agent/` is
 pi's own state. The npm packages listed under `packages` in the settings
 install into `~/.pi/agent/npm/` on first start.
+
+`gh` is installed. Git commits use
+`Lars Smith Eier <larssmitheier@protonmail.com>`, and the credential helper
+for `https://github.com` is `!gh auth git-credential`, so a `gh auth login`
+on loft01 handles pushes.
 
 ## Change the settings
 

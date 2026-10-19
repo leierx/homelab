@@ -52,12 +52,21 @@ let
   };
 in
 {
-  environment.systemPackages = [ pi ];
+  environment.systemPackages = [
+    pi
+    pkgs.gh
+  ];
   programs.tmux.enable = true;
   programs.tmux.extraConfig = ''
     set -s extended-keys on
     set -s extended-keys-format csi-u
   '';
+
+  programs.git.config = {
+    user.name = "Lars Smith Eier";
+    user.email = "larssmitheier@protonmail.com";
+    credential."https://github.com".helper = "!gh auth git-credential";
+  };
 
   users.users.leier.linger = true;
 
@@ -67,14 +76,16 @@ in
     serviceConfig = {
       Type = "forking";
       Restart = "always";
+      WorkingDirectory = "/home/leier/pi-agent";
       # ssh's login shell sets TMUX_TMPDIR from /etc/set-environment; match its socket
       Environment = [ "TMUX_TMPDIR=%t" ];
-      ExecStart = "${lib.getExe pkgs.tmux} new-session -d -s pi -c /home/leier ${lib.getExe pkgs.bash} -lc pi";
+      ExecStart = "${lib.getExe pkgs.tmux} new-session -d -s pi -c /home/leier/pi-agent ${lib.getExe pkgs.bash} -lc pi";
       ExecStop = "${lib.getExe pkgs.tmux} kill-session -t pi";
     };
   };
 
   systemd.tmpfiles.rules = [
+    "d /home/leier/pi-agent 0700 leier users -"
     "d /home/leier/.pi 0700 leier users -"
     "d ${agent} 0700 leier users -"
     "d ${agent}/skills 0700 leier users -"
