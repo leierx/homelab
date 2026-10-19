@@ -49,14 +49,14 @@ let
       "''${create[@]}" "::k3s-{now:%Y-%m-%dT%H:%M}" "$stage"
       borg prune --glob-archives 'k3s-*' --keep-daily 14 --keep-weekly 8 --keep-monthly 6
 
-      # one archive per zvol per daily snapshot; an interrupted one is redone, dedup skips what's uploaded
-      for vol in $(zfs list -H -t volume -o name -r tank); do
+      # one archive per PVC (zvol or dataset) per daily snapshot; an interrupted one is redone, dedup skips what's uploaded
+      for vol in $(zfs list -H -t volume,filesystem -o name -r -d 1 tank | grep -v '^tank$'); do
         snap=$(zfs list -H -t snapshot -o name -s creation -d 1 "$vol" | grep '@autosnap_.*_daily$' | tail -n 1) || continue
         prefix=''${vol//\//_}
         stamp=''${snap##*@autosnap_}
         archive="$prefix-''${stamp//:/-}"
         borg info "::$archive" >/dev/null 2>&1 && continue
-        "''${create[@]}" --content-from-command "::$archive" -- zfs send "$snap"
+        "''${create[@]}" --content-from-command "::$archive" -- zfs send -L "$snap"
         borg prune --glob-archives "$prefix-*" --keep-daily 7 --keep-weekly 4 --keep-monthly 6
       done
 
@@ -83,7 +83,7 @@ in
   };
 
   systemd.services.homelab-backup = lib.mkIf offsite.enable {
-    description = "Off-site borg backup of k3s state and PVC zvols";
+    description = "Off-site borg backup of k3s state and PVC volumes";
     after = [
       "network-online.target"
       "zfs.target"
