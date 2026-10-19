@@ -3,11 +3,14 @@
   "rebaseWhen": "behind-base-branch",
   "timezone": "Europe/Oslo",
   "dependencyDashboard": true,
-  "enabledManagers": ["github-actions", "helmv3", "kubernetes", "kustomize", "custom.regex"],
+  "enabledManagers": ["github-actions", "helmv3", "kubernetes", "kustomize", "custom.regex", "terraform"],
   "automergeStrategy": "merge-commit",
   "platformAutomerge": false,
   "kubernetes": {
     "managerFilePatterns": ["/^gitops/addons/.+/templates/.+\\.ya?ml$/"]
+  },
+  "terraform": {
+    "managerFilePatterns": ["/^tofu/.+\\.tf$/"]
   },
   "customManagers": [
     {
@@ -51,8 +54,8 @@
       "automerge": false
     },
     {
-      "description": "Keycloak (operator and the image it runs) waits for review while keycloak-config-cli is built for an older Keycloak; TODO.md",
-      "matchFileNames": ["gitops/addons/keycloak-operator/**"],
+      "description": "The Keycloak operator, the image it runs, the realm's provider and the reconcile image wait for review",
+      "matchFileNames": ["gitops/addons/keycloak-operator/**", "gitops/addons/keycloak/**", "tofu/keycloak/**"],
       "automerge": false
     },
     {
@@ -65,6 +68,11 @@
       "matchDatasources": ["docker"],
       "matchPackageNames": ["ghcr.io/tensorchord/vchord-scratch"],
       "extractVersion": "^pg18-v(?<version>\\d+\\.\\d+\\.\\d+)$"
+    },
+    {
+      "description": "tofu/keycloak's providers come from the OpenTofu registry; Renovate defaults to the Terraform one",
+      "matchDatasources": ["terraform-provider", "terraform-module"],
+      "registryUrls": ["https://registry.opentofu.org"]
     }
   ]
 }
