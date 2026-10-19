@@ -3,11 +3,12 @@
 Things we decided to look into later. Remove an entry when it's done or
 dropped.
 
-## Lab phase
+## Tenants
 
-- **The lab phase ends when dodde's VM is rebuilt for real use.** Until then
-the standing permissions at the top of `AGENTS.md` still apply; that rebuild
-is the point at which they have to be rewritten.
+- `dodde`'s VM is not handed over yet. Add his public key to
+  `/home/dodde/.ssh/authorized_keys`, then `sudo tailscale up` and sign in
+  through the login URL; once his own key works, remove leier's key from that
+  file. Neither his key nor his tailnet goes into git.
 
 ## Protect `main`
 

@@ -6,15 +6,16 @@ only: no history, no "previously".
 
 ## Permissions (lab phase)
 
-Nothing running holds data we care about yet, so move fast: standing
-permission for `kubectl`, `ssh loft01` (+ `doas`), pushing to `main`,
-deploying loft01 and destructive resets (wiping PVCs, pools, OpenBao). Don't
-ask before acting; ask before *deciding* things the user should decide.
+Everything except the tenants (`README.md`) is still disposable, so move
+fast: standing permission for `kubectl`, `ssh loft01` (+ `doas`), pushing to
+`main`, deploying loft01 and destructive resets (wiping PVCs, pools,
+OpenBao). Don't ask before acting; ask before *deciding* things the user
+should decide.
 
-This phase ends when the first workload we care about goes live (the Fedora
-VM for the user's brother). Whoever brings it live rewrites this section: from
-then on, anything that could touch that workload or its data needs explicit
-permission.
+Tenants are production. Stopping, deleting or recreating a tenant's workload
+or its disk needs the user's explicit permission first, and so does rebooting
+`loft01` by hand or restarting k3s, because both stop its VM. The scheduled
+Friday auto-upgrade reboot is fine.
 
 ## Non-negotiables
 
@@ -119,7 +120,7 @@ How that plays out here:
 - `justfile`: workstation helpers.
 - `docs/`: `bootstrap.md` (bare metal to first sync), `operations.md`
   (updates, backups, certificates, observability), `access.md` (SSO, tiers,
-  people), `openbao.md` (secrets), `break-glass.md`, `dodde.md` (dodde's VM),
+  people), `openbao.md` (secrets), `break-glass.md`,
   `immich.md` (photos: logins, bulk upload, restore, upgrades),
   `tech-choices.md` (why).
   `README.md`: what this is; `TODO.md`: deferred work.

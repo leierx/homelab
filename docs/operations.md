@@ -104,6 +104,28 @@ The stream carries no properties: for a `zfs-media` filesystem add
 `-o mountpoint=legacy -o recordsize=1M -o refquota=<size> -o refreservation=<size>`
 to `zfs recv`, as zfs-localpv would have set them.
 
+### Restoring a VM's disk
+
+A VM's disk is a `Block` PVC, so its backups are the zvol's snapshots. Name
+the zvol from the PVC, pick a snapshot, and clone it to a fresh name; the
+live volume and the snapshot stay as they are:
+
+```sh
+pvc=$(kubectl -n dodde get pvc fedora-root -o jsonpath='{.spec.volumeName}')
+zfs list -t snapshot -o name -s creation | grep "$pvc@autosnap"
+zfs clone tank/"$pvc"@autosnap_..._daily tank/pvc-<new-uid>
+```
+
+Give the clone to Kubernetes as a static PV/PVC pair: `volumeHandle
+pvc-<new-uid>`, `volumeAttributes` `openebs.io/poolname=tank` and
+`cas-type localpv-zfs`, `nodeAffinity` `openebs.io/nodeid=loft01`,
+`volumeMode: Block`, `reclaimPolicy: Retain`, then a PVC whose
+`spec.volumeName` names it. Boot a throwaway VM on it and check the data.
+
+To restore in place instead: stop the VM, `zfs rollback tank/"$pvc"@…`, and
+start it again. The snapshot is immutable, so cloning is safe to practise
+while the VM runs.
+
 ## Certificates
 
 ### k3s

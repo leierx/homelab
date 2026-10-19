@@ -48,6 +48,11 @@ real GitOps platform on hardware we own.
   Their pod and service CIDRs must not overlap `10.42.0.0/16` and
   `10.43.0.0/16`, and they boot from a persistent disk
   (`cluster-template-persistent-storage.yaml`), never a containerDisk.
+- **Tenants.** A tenant is a person whose workload runs here for real rather
+  than for the lab. Today there is one: `dodde`, a Fedora VM for the user's
+  brother, in its own namespace under a default-deny policy that leaves it
+  the public internet and nothing internal. Tenants are production: nothing
+  stops, deletes or recreates one without asking (see `AGENTS.md`).
 - **Stateful apps.** CloudNativePG runs Postgres as a `Cluster` inside an
   addon; the app reads the operator-made `<cluster>-app` Secret.
 - **Guardrails.** Namespaces without a Pod Security label get `baseline`,
@@ -98,8 +103,6 @@ real GitOps platform on hardware we own.
 - [access.md](docs/access.md) — who can do what, the tiers, onboarding.
 - [openbao.md](docs/openbao.md) — secrets: the store, the flow, rotation.
 - [break-glass.md](docs/break-glass.md) — getting back in when SSO is broken.
-- [dodde.md](docs/dodde.md) — dodde's Fedora VM: access, handover, isolation,
-  restore.
 - [immich.md](docs/immich.md) — photos: what runs, logins and the phone app,
   bulk upload, restore, upgrades.
 - [tech-choices.md](docs/tech-choices.md) — why each piece, what was
