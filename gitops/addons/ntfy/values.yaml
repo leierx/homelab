@@ -1,3 +1,0 @@
-image:
-  # renovate: datasource=docker depName=docker.io/binwiederhier/ntfy
-  tag: v2.32.0

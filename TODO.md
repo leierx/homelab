@@ -125,7 +125,7 @@ Protect `main`).
 
 - Envoy cuts any route's response at 15 s unless the HTTPRoute sets
   `timeouts.request`. Only Immich's routes do. On the others (Keycloak,
-  Grafana, Argo CD, ntfy) a slow client can't finish a large response: a
+  Grafana, Argo CD) a slow client can't finish a large response: a
   1 MB Keycloak stylesheet at 20 kB/s was cut at 15 s. Decide whether they
   should get a longer timeout or `0s`.
 
@@ -163,6 +163,7 @@ Protect `main`).
 
 ## Observability
 
+- No alert notification channel; choose one.
 - Every PVC's `kubelet_volume_stats_*` has a second series from the API-server
   integration in `k8s-monitoring`
   (`job=integrations/kubernetes/kube-apiserver`, `namespace="default"`, the
@@ -233,8 +234,6 @@ foundation, in priority order:
 - **Renovate** (AGPL-3.0, Mend). No foundation-hosted equivalent; decide
   whether losing the custom managers and one-PR-per-addon grouping is
   acceptable to drop it for Dependabot.
-- **ntfy** (one maintainer). Low switching cost to Gotify, if a reason
-  appears.
 - **Immich** (FUTO) and **VectorChord** (TensorChord, AGPL or ELv2).
   Accepted: no foundation-hosted photo library exists; plain pgvector could
   replace VectorChord (`docs/tech-choices.md`, Photos).

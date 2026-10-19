@@ -208,17 +208,3 @@ kubectl -n renovate annotate externalsecret renovate-github-app force-sync="$(da
 
 `kv patch` fails on a path that doesn't exist yet, so the first property
 falls back to `kv put`.
-
-Grafana's Gotify application token is the other one entered by hand. Gotify
-shows a token once, when the application is created, and messages are only
-visible to the user who created the application: create it while signed in as
-the person whose phone should get the alerts, at https://gotify.skinke.net
-(*Apps → Create application*, name `Grafana`). Then store the token, pasting
-it rather than typing it on the command line:
-
-```sh
-just bao kv patch kv/loft01/gotify grafana_token=-
-```
-
-A rebuilt cluster has an empty Gotify database, so its application and token
-are new: create the application again and repeat the command.

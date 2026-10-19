@@ -200,8 +200,6 @@ How that plays out here:
   `KubevirtMachineTemplate`s.
 - Mimir is our own StatefulSet (no monolithic mode upstream).
 - `prometheus-operator-crds` without the operator: Alloy reads the CRDs.
-- ntfy is public without the edge login (the phone app can't do OIDC); its
-  own deny-all auth guards it.
 - Immich is public without the edge login for the same reason; its own
   Keycloak login guards it (password login and admin sign-up off).
 - Immich's `immich` Postgres role is not a superuser: a `Database` resource

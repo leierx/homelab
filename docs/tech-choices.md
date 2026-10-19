@@ -69,7 +69,6 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
 | `keycloak-db-1` | 5 Gi | realm, users, sessions |
 | `data-openbao-0` | 2 Gi | secrets |
 | `renovate-cache` | 5 Gi | throwaway |
-| `ntfy` | 1 Gi | notifications, users |
 | `fedora-root` (`dodde`) | 200 Gi | dodde's VM disk |
 | `library` (`immich`) | 770 Gi | photos and videos, thumbnails, Immich's database dumps (a ZFS filesystem, `zfs-media`) |
 | `immich-db-1` | 20 Gi | Immich's metadata and embeddings |
@@ -129,7 +128,7 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 
 ### Packaging
 
-- **Choice:** our own manifests in the addon root, like ntfy.
+- **Choice:** our own manifests in the addon root.
 - **Why not the official chart** (`oci://ghcr.io/immich-app/immich-charts/immich`,
   principle 2 says upstream first): its config file comes either from
   inline values (which can't hold the OIDC client secret, and Immich's file
@@ -443,17 +442,14 @@ Five components are single-vendor or open core with no neutral foundation
   vendor) for metrics, **OpenSearch** (Apache-2.0, LF) for logs, and the
   **OpenTelemetry Collector** (Apache-2.0, CNCF graduated) for Alloy.
   Switching cost is high: the three backends, the dashboards, the alert
-  rules, the contact point and the collector config are one coupled stack.
+  rules and the collector config are one coupled stack.
 - **Renovate** (AGPL-3.0, Mend). It is the one component whose job has no
   foundation-hosted equivalent: Dependabot is GitHub-hosted and cannot read our
   `# renovate:` custom managers. Switching technically is easy (drop the
   addon, run Dependabot), but we would lose the one-PR-per-addon grouping and
   the custom regex managers.
-- **ntfy** (Apache-2.0 / GPL-2.0 dual, one maintainer). No foundation-hosted
-  push service exists. **Gotify** (MIT) is the closest self-hosted drop-in;
-  **Alertmanager** (Apache-2.0, CNCF graduated) routes alerts but does not
-  push to a phone. Switching cost is low: the addon is a Deployment, a PVC
-  and one ExternalSecret.
+- **Alerts have no notification channel:** ntfy and Gotify were both tried
+  and removed (ntfy: no OIDC; Gotify: needed imperative token steps).
 - **Immich** (AGPL-3.0, FUTO). No foundation hosts a photo library; every
   serious alternative (PhotoPrism, Ente) is single-vendor too, and
   LibrePhotos is a much smaller community project. Accepted for that

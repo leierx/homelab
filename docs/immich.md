@@ -65,9 +65,9 @@ moving someone between tiers promotes or demotes them at their next login.
 
 ## What is public
 
-The site is on the public edge without the `edge-oidc` gate, like ntfy,
-because the phone app can't get through an OIDC gate. Immich's own login
-is the guard. Without a session, these answer:
+The site is on the public edge without the `edge-oidc` gate, because the
+phone app can't get through an OIDC gate. Immich's own login is the guard.
+Without a session, these answer:
 
 - `/.well-known/immich`, `/api/server/ping`, `version`, `features`,
   `config`, `media-types`, `/api/public/config`,

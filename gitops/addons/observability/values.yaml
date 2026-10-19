@@ -5,10 +5,6 @@ grafana:
   admin:
     existingSecret: grafana
   envValueFrom:
-    GOTIFY_TOKEN:
-      secretKeyRef:
-        name: grafana
-        key: gotify-token
     GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
       secretKeyRef:
         name: grafana
@@ -125,32 +121,8 @@ grafana:
       cert-manager: { gnetId: 20842, revision: 3 }
       envoy-gateway: { gnetId: 24460, revision: 1 }
 
-  # Grafana-managed alerts to Gotify's `Grafana` application; loaded at startup, the chart rolls the pod on change
+  # Grafana-managed alerts, visible in Grafana's alert list; no notification channel (TODO.md)
   alerting:
-    contactpoints.yaml:
-      apiVersion: 1
-      contactPoints:
-        - orgId: 1
-          name: gotify
-          receivers:
-            - uid: gotify
-              type: webhook
-              settings:
-                url: http://gotify.gotify.svc/message
-                httpMethod: POST
-                authorization_scheme: Bearer
-                authorization_credentials: $__env{GOTIFY_TOKEN}
-                # one message per group, at most 10 alerts: a burst stays readable on a phone
-                maxAlerts: "10"
-    policies.yaml:
-      apiVersion: 1
-      policies:
-        - orgId: 1
-          receiver: gotify
-          group_by: [alertname, grafana_folder]
-          group_wait: 30s
-          group_interval: 5m
-          repeat_interval: 12h
     rules.yaml:
       apiVersion: 1
       groups:

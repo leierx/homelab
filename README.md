@@ -33,9 +33,9 @@ real GitOps platform on hardware we own.
   30080/30443, reached through the router's port forward) and `wg` (the
   `10.0.0.1` address on WireGuard). Argo CD and Keycloak's admin side are on
   WireGuard only; publicly, Keycloak serves only its login paths and Grafana
-  sits behind a Keycloak OIDC filter. Immich (`photos.skinke.net`) and ntfy
-  are public without the filter, because their phone apps can't pass it;
-  their own logins guard them. The WireGuard side has no filter, so the Argo
+  sits behind a Keycloak OIDC filter. Immich (`photos.skinke.net`) is public
+  without the filter, because its phone app can't pass it; its own login
+  guards it. The WireGuard side has no filter, so the Argo
   CD and Grafana CLIs and APIs work there.
 - **Storage.** OpenEBS zfs-localpv turns each PVC into an ext4 zvol on the
   `tank` pool (StorageClass `zfs`), or into a ZFS filesystem with 1M records
@@ -62,7 +62,8 @@ real GitOps platform on hardware we own.
   without requests and a memory limit or with a CPU limit; there is no policy
   controller.
 - **Observability.** Alloy scrapes every ServiceMonitor and PodMonitor into
-  Mimir, Loki stores logs, Grafana is the one UI, and alerts go to ntfy.
+  Mimir, Loki stores logs, Grafana is the one UI, and its alerts show in its
+  own alert list.
 
 ## The stack, and why
 
@@ -90,7 +91,6 @@ real GitOps platform on hardware we own.
 | Scraping | Alloy (k8s-monitoring) | one collector that reads ServiceMonitors | Apache-2.0 | none (Grafana Labs) |
 | Logs | Loki | indexes labels, not text, so it is cheap on one node | AGPL-3.0 | none (Grafana Labs) |
 | Dashboards and alerts | Grafana | one UI; dashboards as labelled ConfigMaps | AGPL-3.0 | none (Grafana Labs) |
-| Alert notifications | ntfy | self-hosted phone push, deny-all by default | Apache-2.0 / GPL-2.0 | none (one maintainer) |
 | Photos | Immich | phone backup, timeline, faces and search, Keycloak SSO | AGPL-3.0 | none (FUTO; single vendor, see principle 5) |
 | Job queue | Valkey | Immich's job queues | BSD-3-Clause | Linux Foundation |
 | Dependency updates | Renovate | chart deps, Actions and `# renovate:` versions, one PR per addon | AGPL-3.0 | none (Mend) |

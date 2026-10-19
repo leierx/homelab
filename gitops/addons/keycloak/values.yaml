@@ -28,12 +28,6 @@ oidcClients:
       - https://metrics.skinke.net/login/generic_oauth
     postLogoutRedirectURIs:
       - https://metrics.skinke.net/login
-  # Gotify: the web UI and the phone app (custom scheme); the server keeps the secret for both
-  gotify:
-    baseURL: https://gotify.skinke.net
-    redirectURIs:
-      - https://gotify.skinke.net/auth/oidc/callback
-      - gotify://oidc/callback
   # Immich: the web app and the phone app (custom scheme); the server keeps the secret for both
   immich:
     baseURL: https://photos.skinke.net

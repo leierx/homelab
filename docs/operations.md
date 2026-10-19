@@ -220,21 +220,6 @@ they change, so a rule edit is a push.
   NotReady, an Argo CD application Degraded or Missing, an ExternalSecret or
   PushSecret not Ready, OpenBao sealed or silent, and a certificate expiring.
 
-Alerts go to the `ntfy` contact point: a Grafana webhook to the in-cluster
-`http://ntfy.ntfy.svc/alerts`, with Grafana's token, which ntfy turns into a
-notification on the public topic `alerts`. Grouping is by alertname and
-folder; repeats every 12 hours.
-
-### Subscribing to alerts
-
-ntfy denies everything by default. The users `leier` (admin) and `grafana`
-(write-only on `alerts`) and Grafana's token are generated into OpenBao
-`loft01/ntfy` and provisioned from the environment whenever ntfy starts. In the
-ntfy app, add the server `https://ntfy.skinke.net`, sign in as `leier`, and
-subscribe to `alerts`. The password is:
-
-```sh
-just bao kv get -field=leier_password kv/loft01/ntfy
-```
-
-Grafana publishes with its own token and never uses the password.
+Alerts have no notification channel: they are visible only in Grafana's own
+alert list (https://metrics.skinke.net/alerting/list), and a firing alert
+changes nothing outside it. Choosing a channel is in `TODO.md`.

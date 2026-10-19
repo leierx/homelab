@@ -1,3 +1,0 @@
-image:
-  # renovate: datasource=docker depName=gotify/server
-  tag: 3.1.1
