@@ -12,11 +12,12 @@ provisioner: zfs.csi.openebs.io
 parameters:
   poolname: {{ .name }}
   {{- if .dataset }}
-  # a ZFS filesystem per PVC: the size is a refquota (snapshots don't count), reserved like a zvol
+  # a ZFS filesystem per PVC: the size is a refquota (snapshots don't count),
+  # thin-provisioned so the quota is a limit and not space held in the pool
   fstype: zfs
   recordsize: {{ .dataset.recordsize }}
   quotatype: refquota
-  thinprovision: "no"
+  thinprovision: "yes"
   {{- else }}
   fstype: ext4
   {{- end }}
