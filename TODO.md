@@ -47,14 +47,20 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
 - The `master` realm has Keycloak's defaults (no brute-force detection, no
   second factor for `admin`). It is WireGuard-only; decide whether to manage
   it from git too.
-- keycloak-config-cli trails Keycloak (image built for 26.5.5, we run 26.8.1),
-  and its tag carries the Keycloak version as a suffix, so Renovate never
-  moves it to a build for a newer Keycloak. Bump it by hand when one
-  appears; switch to the OpenTofu provider if it stops keeping up.
+- Replace keycloak-config-cli with the official OpenTofu provider
+  (`keycloak/terraform-provider-keycloak`, in the Keycloak organisation and
+  tracking current releases). keycloak-config-cli is single-company and its
+  image trails Keycloak (built for 26.5.5, we run 26.8.1, and its tag carries
+  the Keycloak version, so Renovate never moves it).
+  - Run tofu from a pod: a `tofu/` directory at the repo root holds the
+    config, and the keycloak addon runs it in a Job named after a hash of
+    that config, like the current one. Argo CD then still sees only a Job.
+  - Decide where state lives (an OpenBao KV entry, a PVC or a Secret) and
+    how a plan/drift becomes visible before an apply changes the realm.
 - Keycloak bumps never automerge (the `keycloak-operator` rule in
   `renovate.json`, which covers the operator and the Keycloak image it pins),
   because keycloak-config-cli is built for an older Keycloak. Drop that rule
-  once a config-cli image built for the Keycloak we run exists.
+  when the realm moves to the OpenTofu provider above.
 - Keycloak's `KeycloakOIDCClient` CR (operator, preview) could replace the
   `oidcClients` part of the config once it is stable.
 
