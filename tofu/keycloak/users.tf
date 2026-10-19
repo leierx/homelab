@@ -14,6 +14,12 @@ resource "keycloak_user" "leier" {
     value_wo_version = "1"
     temporary        = true
   }
+
+  lifecycle {
+    # the temporary password sets UPDATE_PASSWORD, and Keycloak clears it at the
+    # first password change; declaring it would put it back on every run
+    ignore_changes = [required_actions]
+  }
 }
 
 resource "keycloak_user_groups" "leier" {
