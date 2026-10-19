@@ -11,6 +11,8 @@ spec:
     solvers:
       - http01:
           gatewayHTTPRoute:
+            # the solver is reached through the edge Gateway; admission refuses the default NodePort
+            serviceType: ClusterIP
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
