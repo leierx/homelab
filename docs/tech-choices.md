@@ -146,16 +146,16 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 ### Storage
 
 - **Choice:** the library on `zfs-media`, a ZFS filesystem per PVC with
-  `recordsize=1M`, sized by `refquota` with a matching `refreservation`;
-  the database and the model cache on the usual `zfs` zvols.
+  `recordsize=1M`, thin-provisioned: a 770 GiB `refquota` and no
+  reservation; the database and the model cache on the usual `zfs` zvols.
 - **Why:** photos and videos are large files read whole, the case OpenZFS's
   tuning guide gives 1M records for. Files sit on ZFS directly, checksummed
   and compressed per record without an ext4 layer, a snapshot can be
   mounted and read file by file, and growing it is a quota change.
-  `refquota` keeps snapshots out of the visible size, as on a zvol, and the
-  reservation holds Immich's share of the pool like a thick zvol does.
-  Postgres stays on a zvol like Keycloak's: small random writes, and one
-  layout for every database.
+  `refquota` keeps snapshots out of the visible size, as on a zvol, and thin
+  provisioning means the library takes only what it uses, with 770 GiB as
+  the upper limit. Postgres stays on a zvol like Keycloak's: small random
+  writes, and one layout for every database.
 - **Costs:** a second StorageClass; the off-site backup had to learn to
   send filesystems (`zfs send -L`); `.zfs/snapshot` is not reachable inside
   the pod (user namespaces), only by mounting on the host.

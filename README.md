@@ -91,7 +91,7 @@ real GitOps platform on hardware we own.
 | Logs | Loki | indexes labels, not text, so it is cheap on one node | AGPL-3.0 | none (Grafana Labs) |
 | Dashboards and alerts | Grafana | one UI; dashboards as labelled ConfigMaps | AGPL-3.0 | none (Grafana Labs) |
 | Alert notifications | ntfy | self-hosted phone push, deny-all by default | Apache-2.0 / GPL-2.0 | none (one maintainer) |
-| Photos | Immich | phone backup, timeline, map, faces and search, Keycloak SSO | AGPL-3.0 | none (FUTO; single vendor, see principle 5) |
+| Photos | Immich | phone backup, timeline, faces and search, Keycloak SSO | AGPL-3.0 | none (FUTO; single vendor, see principle 5) |
 | Job queue | Valkey | Immich's job queues | BSD-3-Clause | Linux Foundation |
 | Dependency updates | Renovate | chart deps, Actions and `# renovate:` versions, one PR per addon | AGPL-3.0 | none (Mend) |
 

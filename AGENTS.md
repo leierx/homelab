@@ -238,7 +238,8 @@ How that plays out here:
   (addon `keycloak-operator`, which owns the Namespace) and the `Keycloak` CR
   (addon `keycloak`) share `keycloak`.
 - The admin kubeconfig exists only on loft01 (`KUBECONFIG` is set there).
-- Envoy cuts a route's response at 15 s unless the HTTPRoute sets
-  `timeouts.request` (Immich sets `0s` for large downloads).
+- Requests time out at 300 s by default (`BackendTrafficPolicy`
+  `default-request-timeout` on both gateways); a route's `timeouts.request`
+  overrides it (Immich sets `0s` for large downloads).
 - A ZFS filesystem PVC (`zfs-media`) can't show `.zfs/snapshot` inside a pod
   with user namespaces; mount the snapshot read-only on the host instead.
