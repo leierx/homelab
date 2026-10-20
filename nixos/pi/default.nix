@@ -15,6 +15,14 @@ let
     tuiMode = "regular";
     fullscreenScrollbar = "hidden";
 
+    retry = {
+      enabled = true;
+      maxRetries = 10;
+      baseDelayMs = 3000;
+      # the 60s default clamps the backoff long before the last retries
+      maxAgentDelayMs = 3000000;
+    };
+
     npmCommand = [ (lib.getExe' pkgs.nodejs "npm") ];
 
     extensions = [ "!extensions/herdr-*" ];
