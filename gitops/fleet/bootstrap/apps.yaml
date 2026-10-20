@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: apps
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/leierx/homelab.git
+        revision: HEAD
+        directories:
+          - path: gitops/apps/*/*
+          - path: gitops/apps/*/base
+            exclude: true
+  syncPolicy:
+    # removing an app leaves its resources running; clean up by hand
+    preserveResourcesOnDeletion: true
+  template:
+    metadata:
+      name: "{{ index .path.segments 2 }}-{{ .path.basename }}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/leierx/homelab.git
+        targetRevision: HEAD
+        path: "{{ .path.path }}"
+      destination:
+        name: "{{ .path.basename }}"
+        namespace: "{{ index .path.segments 2 }}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: -1

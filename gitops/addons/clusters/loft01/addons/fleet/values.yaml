@@ -1,0 +1,9 @@
+addons:
+  cdi:
+    enabled: true
+  immich:
+    enabled: true
+  kubevirt:
+    enabled: true
+  zfs-localpv:
+    enabled: true

@@ -1,3 +1,0 @@
-namespace: openebs
-# the node plugin is privileged with hostPath mounts; the cluster-wide default (baseline) would refuse it
-podSecurity: privileged

@@ -1,2 +1,0 @@
-# the namespace comes from the keycloak-operator addon, which labels it restricted
-namespace: keycloak

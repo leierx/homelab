@@ -1,3 +1,0 @@
-# node-exporter and the pod-log DaemonSet need host namespaces and hostPath mounts
-namespace: k8s-monitoring
-podSecurity: privileged
