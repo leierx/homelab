@@ -8,7 +8,7 @@ resources:
   - taskrun.yaml
   - cronjob.yaml
   - network-policy.yaml
-  # sync-hook.yaml, left out during the cutover
+  - sync-hook.yaml
 configMapGenerator:
   # every file listed: a dotfile can't fall out of a directory scan; the TaskRun names it, so no hash
   - name: keycloak-tofu-tofu

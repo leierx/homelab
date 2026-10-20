@@ -9,7 +9,7 @@ spec:
   # a tick missed while loft01 or k3s was down or patching runs when it is back (within 6 h)
   startingDeadlineSeconds: 21600
   concurrencyPolicy: Forbid
-  suspend: true
+  suspend: false
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
