@@ -87,7 +87,7 @@ Protect `main`).
 
 - Addons share one pinned upstream version across clusters. A cluster that
   needs another version enables a variant addon,
-  `addons/charts/<addon>-<major>-<minor>/` (`docs/operations.md`); there are
+  `addons/<addon>-<major>-<minor>/` (`docs/operations.md`); there are
   no version stacks or per-cluster version labels. Copy the chart when it is
   actually needed, not before.
 
@@ -207,10 +207,10 @@ Protect `main`).
   `capi-argo-bridge` writing connection-only Secrets (it still creates Secrets
   and copies `addons.homelab/*` labels, which no longer enable anything), or an
   `ExternalSecret` templating a Secret from a kubeconfig in OpenBao.
-- **Groups.** `single-node` and `prod` are in loft01's group list with no
-  folder: nothing is specific to them yet. Move values and patches into
-  `addons/groups/<group>/` once a second cluster shows what is really shared,
-  not before.
+- **Groups.** loft01 is in `core` and `prod`; `prod` has no folder of its own
+  yet, because nothing is specific to it. Move values and patches into
+  `groups/<group>/` once a second cluster shows what is really shared, not
+  before.
 - **OpenBao:** delete the unused `kv/loft01/tekton`, if a store that predates
   the rebuild still has it.
 
@@ -230,9 +230,6 @@ Protect `main`).
   finalizer, so nothing is pruned) lets the catalog recreate it. Record the
   recovery in `bootstrap.md`, or have the catalog set a retry `backoff` and
   accept a manual nudge.
-- The `apps` ApplicationSet validates its destination `name` when it generates,
-  and `members` creates the cluster Secret a second later, so a fresh
-  cluster's apps appear only on the next 3-minute reconcile.
 - The `keycloak-realm` CronWorkflow fires every 10 minutes whether or not
   Keycloak is up; on a fresh cluster the first run fails with "no route to
   host". Start it suspended and unsuspend once Keycloak is Ready, or have the

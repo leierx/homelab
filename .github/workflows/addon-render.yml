@@ -1,6 +1,6 @@
 name: addon render
 
-# Gates Renovate's automerge: renders every cluster's addons and every app as Argo CD does
+# Gates Renovate's automerge: renders every cluster's addons as Argo CD does
 on:
   pull_request:
     paths:
@@ -17,56 +17,47 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - name: render every cluster's addons and every app
+      - name: render every cluster's addons
         run: |
           set -euo pipefail
           helm version --short
           api=$(paste -sd, .github/api-versions.txt)
-          catalog=gitops/addons/charts/fleet/values.yaml
-          for d in gitops/addons/charts/*/; do
+          catalog=gitops/fleet/catalog/values.yaml
+          for d in gitops/addons/*/; do
             a=$(basename "$d")
-            [ "$a" = fleet ] && continue
-            yq -e ".addons | has(\"$a\")" "$catalog" > /dev/null || { echo "no catalog entry for addons/charts/$a"; exit 1; }
+            yq -e ".addons | has(\"$a\")" "$catalog" > /dev/null || { echo "no catalog entry for addons/$a"; exit 1; }
           done
           for a in $(yq -r '.addons | keys | .[]' "$catalog"); do
-            [ -d "gitops/addons/charts/$a" ] || { echo "catalog entry $a has no addons/charts/$a"; exit 1; }
+            [ -d "gitops/addons/$a" ] || { echo "catalog entry $a has no addons/$a"; exit 1; }
           done
           for member in gitops/fleet/members/*.yaml; do
             cluster=$(yq -r '.stringData.name' "$member")
             IFS=, read -r -a groups <<< "$(yq -r '.metadata.annotations["fleet.homelab/groups"] // ""' "$member")"
             layers=("$catalog")
             for g in "${groups[@]}"; do
-              if [ -f "gitops/addons/groups/$g/addons/fleet/values.yaml" ]; then layers+=("gitops/addons/groups/$g/addons/fleet/values.yaml"); fi
+              if [ -f "gitops/groups/$g/addons.yaml" ]; then layers+=("gitops/groups/$g/addons.yaml"); fi
             done
-            if [ -f "gitops/addons/clusters/$cluster/addons/fleet/values.yaml" ]; then layers+=("gitops/addons/clusters/$cluster/addons/fleet/values.yaml"); fi
+            if [ -f "gitops/clusters/$cluster/addons.yaml" ]; then layers+=("gitops/clusters/$cluster/addons.yaml"); fi
             fleet_args=()
             for f in "${layers[@]:1}"; do fleet_args+=(-f "$f"); done
-            helm template "addons-$cluster" gitops/addons/charts/fleet -n argocd "${fleet_args[@]}" \
+            helm template "addons-$cluster" gitops/fleet/catalog -n argocd "${fleet_args[@]}" \
               --set-string "cluster.name=$cluster" > /dev/null
             echo "rendered fleet chart for $cluster"
             merged=$(yq ea '. as $i ireduce ({}; . * $i)' "${layers[@]}")
             for a in $(echo "$merged" | yq -r '.addons | to_entries | map(select(.value.enabled)) | .[].key'); do
               if [ "$(echo "$merged" | yq -r ".addons[\"$a\"].kustomize // false")" = "true" ]; then
-                kubectl kustomize "gitops/addons/clusters/$cluster/addons/$a" > /dev/null
+                kubectl kustomize "gitops/clusters/$cluster/addons/$a" > /dev/null
               else
-                dir="gitops/addons/charts/$a"
+                dir="gitops/addons/$a"
                 args=(-n "$(echo "$merged" | yq -r ".addons[\"$a\"].namespace")" --api-versions "$api")
                 for g in "${groups[@]}"; do
-                  if [ -f "gitops/addons/groups/$g/addons/$a/values.yaml" ]; then args+=(-f "gitops/addons/groups/$g/addons/$a/values.yaml"); fi
+                  if [ -f "gitops/groups/$g/addons/$a/values.yaml" ]; then args+=(-f "gitops/groups/$g/addons/$a/values.yaml"); fi
                 done
-                if [ -f "gitops/addons/clusters/$cluster/addons/$a/values.yaml" ]; then args+=(-f "gitops/addons/clusters/$cluster/addons/$a/values.yaml"); fi
+                if [ -f "gitops/clusters/$cluster/addons/$a/values.yaml" ]; then args+=(-f "gitops/clusters/$cluster/addons/$a/values.yaml"); fi
                 helm dependency update "$dir" > /dev/null
                 helm template "$a" "$dir" "${args[@]}" --set-string "fleet.cluster=$cluster" > /dev/null
                 rm -rf "$dir/charts" "$dir/Chart.lock"
               fi
               echo "rendered $a for $cluster"
             done
-          done
-          for dir in gitops/apps/*/*/; do
-            if [ -f "$dir/kustomization.yaml" ]; then
-              kubectl kustomize "$dir" > /dev/null
-            else
-              for f in "$dir"*.yaml; do yq e '.' "$f" > /dev/null; done
-            fi
-            echo "checked app $dir"
           done

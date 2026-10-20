@@ -9,7 +9,7 @@ syncOptions:
   - CreateNamespace=true
   - ServerSideApply=true
 
-# every addon in addons/charts/, switched off; groups and clusters switch them on
+# every addon in addons/, switched off; groups and clusters switch them on
 addons:
   # cluster-scoped admission policies; the namespace only hosts the Helm release
   admission:
@@ -47,6 +47,10 @@ addons:
     enabled: false
     namespace: capi-operator-system
     podSecurity: restricted
+  dodde:
+    enabled: false
+    namespace: dodde
+    kustomize: true
   envoy-gateway:
     enabled: false
     namespace: envoy-gateway-system

@@ -21,7 +21,7 @@ spec:
       source:
         repoURL: https://github.com/leierx/homelab.git
         targetRevision: HEAD
-        path: gitops/addons/charts/fleet
+        path: gitops/fleet/catalog
       destination:
         server: https://kubernetes.default.svc
         namespace: argocd
@@ -41,9 +41,9 @@ spec:
           ignoreMissingValueFiles: true
           valueFiles:
           {{- range $groups }}
-            - "../../groups/{{ . }}/addons/fleet/values.yaml"
+            - "../../groups/{{ . }}/addons.yaml"
           {{- end }}
-            - "../../clusters/{{ .name }}/addons/fleet/values.yaml"
+            - "../../clusters/{{ .name }}/addons.yaml"
           valuesObject:
             cluster:
               name: "{{ .name }}"

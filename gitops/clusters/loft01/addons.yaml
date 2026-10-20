@@ -1,6 +1,8 @@
 addons:
   cdi:
     enabled: true
+  dodde:
+    enabled: true
   immich:
     enabled: true
   kubevirt:
