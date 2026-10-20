@@ -22,13 +22,19 @@ real GitOps platform on hardware we own.
   [openbao.md](docs/openbao.md)), and the host auto-upgrades from `main` on
   Fridays.
 - **Cluster.** k3s runs without its own CNI and kube-proxy; Cilium provides
-  both and the network policy engine. Argo CD tracks `HEAD` of `main`, and an
-  ApplicationSet renders each addon for each cluster whose Argo Secret carries
-  that addon's label. `fleet/` is the root app: the addon ApplicationSet, one
-  more per `workloads/<name>/` directory, and the cluster Secrets. An addon
-  is a directory whose root is the umbrella chart
-  (`addons/<addon>/Chart.yaml`), with per-cluster values in
-  `addons/<addon>/clusters/<cluster>.yaml`.
+  both and the network policy engine. Argo CD tracks `HEAD` of `main`.
+  `root.yaml` is the root app: it syncs `fleet/bootstrap/`, which holds the
+  `members` Application (the cluster Secrets under `fleet/members/`) and the
+  `addons` and `apps` ApplicationSets. Per cluster, `addons-<cluster>` renders
+  the catalog chart `addons/charts/fleet` with the cluster's groups' values and
+  its own, and that chart emits one Application per enabled addon. An addon is
+  a directory under `addons/charts/` (umbrella chart or Kustomize base); what a
+  cluster runs is a value in `addons/groups/` or `addons/clusters/<cluster>/`,
+  never a label. App manifests live in `apps/<app>/<cluster>/`. The layout
+  follows [gitops-bridge v2](https://github.com/gitops-bridge-dev/gitops-bridge/issues/73)
+  as built in the [AWS fleet-management workshop](https://github.com/aws-samples/fleet-management-on-amazon-eks-workshop)
+  (MIT-0), with Applications instead of ApplicationSets and groups instead of
+  environments.
 - **Edge.** Envoy Gateway terminates TLS on two Gateways: `edge` (NodePort
   30080/30443, reached through the router's port forward) and `wg` (the
   `10.0.0.1` address on WireGuard). Argo CD and Keycloak's admin side are on

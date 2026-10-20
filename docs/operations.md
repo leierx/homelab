@@ -27,7 +27,7 @@ Renovate (`gitops/addons/renovate`) runs self-hosted as a CronJob at 17 past
 every hour, as the GitHub App `leierx-renovate`. Each run mints an
 installation token from the app key in OpenBao `loft01/renovate` (`app_id`,
 `installation_id`, `private_key`). It updates GitHub Actions, the Helm chart
-dependencies in `gitops/addons/*/Chart.yaml`, versions marked with a
+dependencies in `gitops/addons/charts/*/Chart.yaml`, versions marked with a
 `# renovate:` comment, and GitHub release URLs in kustomizations. Policy is
 `renovate.json`: one PR per addon; patch, minor and digest automerge, majors
 wait for review, and so does everything for Keycloak and Immich (their
@@ -49,6 +49,42 @@ opens a PR for each new build, and it automerges once `addon-render` passes.
 
 The host auto-upgrades itself (see `AGENTS.md`), and a push is a cluster
 deploy. To run either by hand, see "Working live" in `AGENTS.md`.
+
+## Change the fleet
+
+- **Add an addon.** Create `gitops/addons/charts/<addon>/`: an umbrella chart
+  (`Chart.yaml` with the upstream dependency, `values.yaml`, `templates/`) or
+  a Kustomize base (`kustomization.yaml`). Then add its entry to the catalog,
+  `gitops/addons/charts/fleet/values.yaml`: `enabled: false`, `namespace`, and
+  optional `podSecurity`, `kustomize: true`, `syncOptions`,
+  `ignoreDifferences`. The render check fails if a chart has no catalog entry
+  or an entry has no chart.
+- **Enable it on a cluster, or for a whole group.**
+  `enabled: true` under `addons.<addon>` in
+  `gitops/addons/clusters/<cluster>/addons/fleet/values.yaml`, or in
+  `gitops/addons/groups/<group>/addons/fleet/values.yaml` for every cluster in
+  the group. A Kustomize addon also needs the cluster's overlay,
+  `gitops/addons/clusters/<cluster>/addons/<addon>/kustomization.yaml`.
+- **Override a value for one cluster, or for a group.**
+  `gitops/addons/clusters/<cluster>/addons/<addon>/values.yaml` or
+  `gitops/addons/groups/<group>/addons/<addon>/values.yaml`. The chart's own
+  `values.yaml` is the default; later layers win, and a file that does not
+  exist is skipped.
+- **Add an app for one cluster.** `gitops/apps/<app>/<cluster>/` with the
+  manifests (or a `kustomization.yaml`); the `apps` ApplicationSet creates
+  `<app>-<cluster>` in namespace `<app>` on that cluster. Shared files go in
+  `gitops/apps/<app>/base/`, which the generator skips; each cluster folder
+  then becomes a Kustomize overlay of it.
+- **Add a cluster.** `gitops/fleet/members/<cluster>.yaml`, its Argo cluster
+  Secret, with `fleet.homelab/groups` saying what it is; then
+  `gitops/addons/clusters/<cluster>/addons/fleet/values.yaml` with the addons
+  that are its own, and the values or overlays those addons need. Only
+  in-cluster clusters are supported today (`TODO.md`).
+- **Run a different version on some clusters.** A variant addon:
+  `gitops/addons/charts/<addon>-<major>-<minor>/`, a copy of the chart with
+  its own `Chart.yaml` pin, plus its own catalog entry, enabled instead of the
+  default on those clusters. That is the only way; there are no version
+  stacks and no per-cluster version labels.
 
 ## Backups and restore
 
