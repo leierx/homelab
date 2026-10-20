@@ -99,8 +99,8 @@ Grafana additionally refuses a token without a tier (`role_attribute_strict`).
 Argo CD has no built-in role between admin and read-only, so operators are
 admins there for now; a custom `role:operator` (sync and actions, no settings)
 can be added to `policy.csv` once someone actually needs the distinction.
-Argo CD's mapping is `policy.csv` in `gitops/addons/charts/argocd/values.yaml`,
-Grafana's is `role_attribute_path` in `gitops/addons/charts/observability/values.yaml`,
+Argo CD's mapping is `policy.csv` in `gitops/addons/argocd/values.yaml`,
+Grafana's is `role_attribute_path` in `gitops/addons/observability/values.yaml`,
 Immich's is the `immich` client roles on each group in
 `tofu/loft01/keycloak/groups.tf` (the `immich_role` claim),
 Kubernetes' is `gitops/addons/rbac`. Neither `view` nor the operator role can
@@ -114,7 +114,7 @@ https://auth.skinke.net/admin/homelab/console/, over WireGuard.
 Argo Workflows has its own SSO RBAC: a ServiceAccount per group, annotated
 with `workflows.argoproj.io/rbac-rule`, and bound to the chart's
 `argo-workflows-admin`/`argo-workflows-edit`/`argo-workflows-view` cluster
-roles (`gitops/addons/charts/argo-workflows/templates/sso.yaml`). Only
+roles (`gitops/addons/argo-workflows/templates/sso.yaml`). Only
 `homelab-admins` has one today, with full admin in every namespace and the
 cluster-scoped `ClusterWorkflowTemplates` the UI lists; to let a future group
 in, add that ServiceAccount, its token Secret and a binding, and keep the

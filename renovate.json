@@ -7,7 +7,7 @@
   "automergeStrategy": "merge-commit",
   "platformAutomerge": false,
   "kubernetes": {
-    "managerFilePatterns": ["/^gitops/addons/charts/.+/templates/.+\\.ya?ml$/", "/^gitops/apps/.+\\.ya?ml$/"]
+    "managerFilePatterns": ["/^gitops/addons/.+/templates/.+\\.ya?ml$/"]
   },
   "terraform": {
     "managerFilePatterns": ["/^tofu/.+\\.tf$/"]
@@ -33,14 +33,8 @@
   ],
   "packageRules": [
     {
-      "description": "one PR per addon: everything under gitops/addons/charts/<addon>/ shares a group",
-      "matchFileNames": ["gitops/addons/charts/**"],
-      "groupName": "{{ lookup (split packageFileDir '/') 3 }}",
-      "commitMessageSuffix": "({{ lookup (split packageFileDir '/') 3 }})"
-    },
-    {
-      "description": "one PR per app: everything under gitops/apps/<app>/ shares a group",
-      "matchFileNames": ["gitops/apps/**"],
+      "description": "one PR per addon: everything under gitops/addons/<addon>/ shares a group",
+      "matchFileNames": ["gitops/addons/**"],
       "groupName": "{{ lookup (split packageFileDir '/') 2 }}",
       "commitMessageSuffix": "({{ lookup (split packageFileDir '/') 2 }})"
     },
@@ -56,23 +50,23 @@
       "automerge": true
     },
     {
-      "matchFileNames": ["gitops/addons/charts/**"],
+      "matchFileNames": ["gitops/addons/**"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
       "automerge": true
     },
     {
-      "matchFileNames": ["gitops/addons/charts/**"],
+      "matchFileNames": ["gitops/addons/**"],
       "matchUpdateTypes": ["major"],
       "automerge": false
     },
     {
       "description": "The Keycloak operator, the image it runs, the realm's provider and the reconcile image wait for review",
-      "matchFileNames": ["gitops/addons/charts/keycloak-operator/**", "gitops/addons/charts/keycloak/**", "tofu/*/keycloak/**"],
+      "matchFileNames": ["gitops/addons/keycloak-operator/**", "gitops/addons/keycloak/**", "tofu/*/keycloak/**"],
       "automerge": false
     },
     {
       "description": "Immich, its Postgres and VectorChord wait for review: upgrades can need manual steps (docs/immich.md)",
-      "matchFileNames": ["gitops/addons/charts/immich/**"],
+      "matchFileNames": ["gitops/addons/immich/**"],
       "automerge": false
     },
     {

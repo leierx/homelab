@@ -122,7 +122,7 @@ still exists with a lost state Secret needs `tofu import`
 
 ## Argo CD (local `admin` disabled)
 
-Argo's `admin` account is turned off in `gitops/addons/charts/argocd/values.yaml`
+Argo's `admin` account is turned off in `gitops/addons/argocd/values.yaml`
 (`admin.enabled: "false"`). To use it, flip that back to `"true"`, commit and
 push; Argo reconciles itself from git even while you cannot log in. Then read
 the password:
@@ -140,7 +140,7 @@ Log in as `admin` over WireGuard, fix whatever is wrong, and set
 Grafana still has its `admin` account, but `disable_login_form: true` hides the
 form and `auth.basic.enabled: false` turns off `admin:<password>` against the
 API. Set `disable_login_form` back to `false` in
-`gitops/addons/charts/observability/values.yaml` (and `auth.basic.enabled` to `true`
+`gitops/addons/observability/values.yaml` (and `auth.basic.enabled` to `true`
 only if you need to script the API), commit and push, then log in as `admin`
 over WireGuard (the public side still has the `edge-oidc` gate) with the
 password in OpenBao:
@@ -159,7 +159,7 @@ signed in keep their own Immich session and keep backing up while Keycloak
 is down; only new logins need it. If someone must get in anyway:
 
 1. Set `passwordLogin.enabled` to `true` in
-   `gitops/addons/charts/immich/templates/_config.tpl`, commit and push. The config
+   `gitops/addons/immich/templates/_config.tpl`, commit and push. The config
    Secret is named after its content, so a new server pod starts with it.
 2. Give an admin a password, interactively (it prompts; leave the password
    empty to get a random one printed):

@@ -41,7 +41,7 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
 - **Need:** one UI over every backend, plus dashboards rendered from the
   releases we already run.
 - **Choice:** Grafana; community dashboards pinned in
-  `gitops/addons/charts/observability/values.yaml`, plus the k8s-monitoring ones.
+  `gitops/addons/observability/values.yaml`, plus the k8s-monitoring ones.
 - **Why:** queries every backend above, and dashboards can be shipped as
   ConfigMaps labelled `grafana_dashboard: "1"`, so addons own their own
   dashboards.
@@ -139,8 +139,8 @@ and the same with `namespace="keycloak"` / `"openbao"`.
   while Immich was at v3.3.3), so the image tag needs its own Renovate
   annotation either way. Switching later is cheap: the stateful parts
   (PVCs, the CNPG cluster) don't depend on how the Deployments are made.
-- **Not an app:** `gitops/apps/` is for VMs and CAPI clusters; an addon
-  with a Helm-templated config lives in `gitops/addons/charts/`.
+- **Not an app:** a one-off workload (a VM, a CAPI `Cluster`) is a Kustomize
+  addon under `gitops/addons/`, not a separate tree.
 
 ### Storage
 
@@ -287,9 +287,8 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 
 - **Need:** one control plane that manages itself and the fleet.
 - **Choice:** Argo CD tracking `HEAD` of `main`; the catalog chart
-  `gitops/addons/charts/fleet` renders one Application per addon a cluster
-  enables by value, and one ApplicationSet turns each
-  `gitops/apps/<app>/<cluster>/` directory into `<app>-<cluster>`.
+  `gitops/fleet/catalog` renders one Application per addon a cluster enables
+  by value, and that includes a one-off workload like dodde's VM.
 - **Why:** a push is a deploy, and what a cluster runs is a value in its own
   folder rather than a label somebody has to remember to set. Details in
   `AGENTS.md` and under "Fleet layout".
@@ -316,7 +315,8 @@ and the same with `namespace="keycloak"` / `"openbao"`.
   [AWS fleet-management workshop](https://github.com/aws-samples/fleet-management-on-amazon-eks-workshop)
   (MIT-0). We take its catalog chart, its enabling by layered values, its
   cluster-first value folders (`groups/<group>/addons/<addon>/values.yaml`,
-  `clusters/<cluster>/addons/<addon>/values.yaml`) and its `apps/<app>/<target>/`.
+  `clusters/<cluster>/addons/<addon>/values.yaml`) and its idea of a workload
+  tree next to the addons.
 - **Choice: the catalog chart renders Applications, not ApplicationSets.** The
   workshop runs an Argo CD per spoke, renders the chart once per Argo instance
   and emits ApplicationSets. Here one hub manages everything and the chart is
@@ -325,22 +325,22 @@ and the same with `namespace="keycloak"` / `"openbao"`.
   names clashing between clusters. Rejected: the per-Argo ApplicationSet model,
   which is more machinery for the same one hub.
 - **Choice: groups, not environments.** A cluster belongs to several groups
-  (`base`, `hub`, `single-node`, `prod`) that combine, in the order its Secret
-  lists them. Rejected: the workshop's single environment axis, which would
-  need an `environment: single-node-prod-hub`-style folder for every
-  combination.
+  (`core`, `prod`) that combine, in the order its Secret lists them. Rejected:
+  the workshop's single environment axis, which would need an
+  `environment: prod-core`-style folder for every combination, and one folder
+  per conceivable trait (`single-node`) before anything uses it.
 - **Choice: enabling by values, in the cluster's folders.** Rejected:
   gitops-bridge v1's `enable_<addon>` labels on the cluster Secret, where what
   a cluster runs is invisible in the cluster's own files, a label cannot be
   layered, and a second writer (the bridge) has to copy it.
 - **Choice: versions in each addon's `Chart.yaml`, and a variant addon for a
   different version.** Renovate's Helm support keeps the one pin current, and
-  a cluster that needs another version enables
-  `addons/charts/<addon>-<major>-<minor>/` instead. Rejected: a central
-  version catalog (a second place to read before you know what runs), version
-  stacks per environment, and per-cluster version labels, the approaches in
-  Moran Weissman's "Multi-Cluster Add-on Management with ArgoCD" series — each
-  makes the version a property of the cluster instead of of the chart.
+  a cluster that needs another version enables `addons/<addon>-<major>-<minor>/`
+  instead. Rejected: a central version catalog (a second place to read before
+  you know what runs), version stacks per environment, and per-cluster version
+  labels, the approaches in Moran Weissman's "Multi-Cluster Add-on Management
+  with ArgoCD" series — each makes the version a property of the cluster
+  instead of of the chart.
 - **Choice: no `default/` folder.** Our addons are umbrella charts, so a
   chart's own `values.yaml` is the default, and the catalog's `values.yaml`
   is the default set of addons: none enabled.
@@ -348,10 +348,18 @@ and the same with `namespace="keycloak"` / `"openbao"`.
   multi-source `$values`.** Rejected: multi-source Applications, which lose
   Argo CD's rollback (it cannot rebuild the previous commit's inputs from the
   live state).
-- **Choice: the cluster Secret is a hand-written file in
-  `fleet/members/`.** Rejected: a chart rendering cluster Secrets from a values
-  map — one more layer around four lines that change once per cluster, and no
-  place to carry a Secret's extra keys.
+- **Choice: the cluster Secret is a hand-written file in `fleet/members/`.**
+  Rejected: a chart rendering cluster Secrets from a values map — one more
+  layer around four lines that change once per cluster, and no place to carry a
+  Secret's extra keys.
+- **Choice: a one-off workload is a Kustomize addon, not its own tree.** dodde's
+  VM, disk and network policy are `addons/dodde/` with a cluster overlay, so
+  there is one mechanism for "something that runs on a cluster" instead of an
+  `apps/` tree with its own ApplicationSet, its own naming rule and its own
+  prune semantics. Rejected: the workshop's `apps/<app>/<target>/` generator —
+  which we built first and removed, because a two-object VM needed a second
+  ApplicationSet, a second health model and a second place where a cluster is
+  named.
 - **Choice: CI has its own render loop.** Rejected: a shared render script,
   which would need a second language runtime on the runner and would grow a
   flag for every difference between CI and bootstrap.

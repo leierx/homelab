@@ -16,9 +16,9 @@ spec:
     repoURL: {{ $.Values.repoURL }}
     targetRevision: {{ $.Values.targetRevision }}
     {{- if $addon.kustomize }}
-    path: gitops/addons/clusters/{{ $cluster }}/addons/{{ $name }}
+    path: gitops/clusters/{{ $cluster }}/addons/{{ $name }}
     {{- else }}
-    path: gitops/addons/charts/{{ $name }}
+    path: gitops/addons/{{ $name }}
     helm:
       releaseName: {{ $name }}
       ignoreMissingValueFiles: true

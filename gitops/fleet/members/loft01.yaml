@@ -9,7 +9,7 @@ metadata:
     # without this Secret every addon Application of the cluster goes
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
     # what the cluster is, in value-layering order (earlier groups lose to later ones)
-    fleet.homelab/groups: base,hub,single-node,prod
+    fleet.homelab/groups: core,prod
 type: Opaque
 stringData:
   name: loft01

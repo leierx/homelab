@@ -103,9 +103,9 @@ cd homelab
 ```sh
 kubectl label namespace kube-system pod-security.kubernetes.io/enforce=privileged \
   pod-security.kubernetes.io/warn=privileged pod-security.kubernetes.io/audit=privileged
-helm dependency update gitops/addons/charts/cilium
-helm template cilium gitops/addons/charts/cilium -n kube-system --include-crds \
-  -f gitops/addons/clusters/loft01/addons/cilium/values.yaml \
+helm dependency update gitops/addons/cilium
+helm template cilium gitops/addons/cilium -n kube-system --include-crds \
+  -f gitops/clusters/loft01/addons/cilium/values.yaml \
   --set-string fleet.cluster=loft01 \
   --set cilium.prometheus.serviceMonitor.trustCRDsExist=true \
   | kubectl apply -n kube-system --server-side --field-manager=argocd-controller -f -
@@ -113,9 +113,9 @@ kubectl wait --for=condition=Ready node --all --timeout=10m
 ```
 
 Values layer the way `addons-<cluster>` lays them: the chart's own
-`values.yaml`, then `gitops/addons/groups/<group>/addons/<addon>/values.yaml`
-for each of the cluster's groups in order, then
-`gitops/addons/clusters/<cluster>/addons/<addon>/values.yaml`. Cilium has no
+`values.yaml`, then `gitops/groups/<group>/addons/<addon>/values.yaml` for
+each of the cluster's groups in order, then
+`gitops/clusters/<cluster>/addons/<addon>/values.yaml`. Cilium has no
 group file today, so only the cluster file is passed. `--set-string
 fleet.cluster=<cluster>` is what Argo passes too.
 
@@ -134,10 +134,10 @@ operator apply normally.
 ### Argo CD
 
 ```sh
-helm dependency update gitops/addons/charts/argocd
+helm dependency update gitops/addons/argocd
 kubectl create namespace argocd
-helm template argocd gitops/addons/charts/argocd -n argocd --include-crds \
-  -f gitops/addons/clusters/loft01/addons/argocd/values.yaml \
+helm template argocd gitops/addons/argocd -n argocd --include-crds \
+  -f gitops/clusters/loft01/addons/argocd/values.yaml \
   --set-string fleet.cluster=loft01 \
   | kubectl apply -n argocd --server-side --field-manager=argocd-controller -f -
 kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
@@ -162,18 +162,19 @@ kubectl -n argocd get applications
 
 `root.yaml` creates the `root` Application for `gitops/fleet/bootstrap`: the
 `members` Application (the cluster Secrets in `gitops/fleet/members/`) and the
-`addons` and `apps` ApplicationSets. `addons` renders the catalog chart for
-every cluster Secret, as `addons-<cluster>`; that Application renders one
-Application per addon the cluster's groups and its own
-`addons/clusters/<cluster>/addons/fleet/values.yaml` switch on. `apps` turns
-each `gitops/apps/<app>/<cluster>/` into `<app>-<cluster>`. The release names
-and namespaces in the templates above match what those Applications render,
-so Argo adopts Cilium and Argo CD and manages everything from git.
+`addons` ApplicationSet. `addons` renders the catalog chart `gitops/fleet/catalog`
+for every cluster Secret, as `addons-<cluster>`; that Application renders one
+Application per addon that `gitops/groups/<group>/addons.yaml` (in the
+cluster's group order) and `gitops/clusters/<cluster>/addons.yaml` switch on.
+A one-off workload is one of those addons too — dodde's VM is the Kustomize
+addon `dodde` — so there is no separate apps ApplicationSet. The release names
+and namespaces in the templates above match what those Applications render, so
+Argo adopts Cilium and Argo CD and manages everything from git.
 
 ## 3. After the fleet is up
 
 There is no Argo CD login yet. `admin.enabled` is `"false"`
-(`gitops/addons/charts/argocd/values.yaml`) and the OIDC client lives in Keycloak,
+(`gitops/addons/argocd/values.yaml`) and the OIDC client lives in Keycloak,
 which the fleet is still bringing up. Bootstrap is driven with `kubectl`;
 that is also how you watch it converge:
 

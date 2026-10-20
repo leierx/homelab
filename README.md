@@ -25,16 +25,17 @@ real GitOps platform on hardware we own.
   both and the network policy engine. Argo CD tracks `HEAD` of `main`.
   `root.yaml` is the root app: it syncs `fleet/bootstrap/`, which holds the
   `members` Application (the cluster Secrets under `fleet/members/`) and the
-  `addons` and `apps` ApplicationSets. Per cluster, `addons-<cluster>` renders
-  the catalog chart `addons/charts/fleet` with the cluster's groups' values and
-  its own, and that chart emits one Application per enabled addon. An addon is
-  a directory under `addons/charts/` (umbrella chart or Kustomize base); what a
-  cluster runs is a value in `addons/groups/` or `addons/clusters/<cluster>/`,
-  never a label. App manifests live in `apps/<app>/<cluster>/`. The layout
-  follows [gitops-bridge v2](https://github.com/gitops-bridge-dev/gitops-bridge/issues/73)
+  `addons` ApplicationSet. Per cluster, `addons-<cluster>` renders the catalog
+  chart `fleet/catalog` with the cluster's groups' enable files and its own,
+  and that chart emits one Application per enabled addon. An addon is a
+  directory under `addons/` (umbrella chart or Kustomize base); what a cluster
+  runs is a value in `groups/<group>/addons.yaml` or
+  `clusters/<cluster>/addons.yaml`, never a label. A one-off workload is a
+  Kustomize addon too. The layout follows
+  [gitops-bridge v2](https://github.com/gitops-bridge-dev/gitops-bridge/issues/73)
   as built in the [AWS fleet-management workshop](https://github.com/aws-samples/fleet-management-on-amazon-eks-workshop)
-  (MIT-0), with Applications instead of ApplicationSets and groups instead of
-  environments.
+  (MIT-0), with Applications instead of ApplicationSets, groups instead of
+  environments, and one addon mechanism for apps and workloads.
 - **Edge.** Envoy Gateway terminates TLS on two Gateways: `edge` (NodePort
   30080/30443, reached through the router's port forward) and `wg` (the
   `10.0.0.1` address on WireGuard). Argo CD and Keycloak's admin side are on
@@ -49,9 +50,9 @@ real GitOps platform on hardware we own.
   them. sanoid snapshots the pool, and an off-site borg backup is ready to
   enable.
 - **Workloads.** The management side runs Cluster API, KubeVirt and CDI, so a
-  workload cluster is a VM on this node. A VM or workload cluster's manifests
-  live in `gitops/apps/<app>/<cluster>/`, which the `apps` ApplicationSet turns
-  into `<app>-<cluster>`; today that is dodde's Fedora VM.
+  workload cluster is a VM on this node. A VM is a Kustomize addon like any
+  other workload, with its manifests in `gitops/addons/<name>/` and the
+  cluster overlay that enables it; today that is dodde's Fedora VM.
   Their pod and service CIDRs must not overlap `10.42.0.0/16` and
   `10.43.0.0/16`, and they boot from a persistent disk
   (`cluster-template-persistent-storage.yaml`), never a containerDisk.
