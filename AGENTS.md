@@ -99,10 +99,9 @@ How that plays out here:
   user's refresh token is valid. Otherwise run it on loft01 (admin
   kubeconfig); that fires the "Admin kubeconfig used" alert, as expected.
 - Logins without a browser: create a test user in the tier you need with
-  kcadm (`docs/break-glass.md`), script the login form and the security-key
-  registration (a software WebAuthn authenticator) over WireGuard, then
-  delete the user. Keycloak itself: `admin` in realm `master`, password in
-  OpenBao.
+  kcadm, script the login form and the security-key registration over
+  WireGuard, then delete the user. For Keycloak itself, see
+  `docs/break-glass.md`.
 
 ## Map
 
@@ -203,8 +202,9 @@ How that plays out here:
   `KubevirtMachineTemplate`s.
 - Mimir is our own StatefulSet (no monolithic mode upstream).
 - `prometheus-operator-crds` without the operator: Alloy reads the CRDs.
-- Immich is public without the edge login for the same reason; its own
-  Keycloak login guards it (password login and admin sign-up off).
+- Immich (`photos.skinke.net`) is public without the `edge-oidc` gate
+  because its phone app can't pass that login; Immich's own Keycloak login
+  is the guard (password login and admin sign-up are off).
 - Immich's `immich` Postgres role is not a superuser: a `Database` resource
   creates its extensions, and a VectorChord bump goes through it.
 - Argo CD operators are `role:admin` until someone needs the distinction.
@@ -234,9 +234,10 @@ How that plays out here:
 - OpenBao's `initialize` blocks run once on empty storage. Change a live
   OpenBao with `just bao` and mirror it there.
 - The Keycloak reconcile runs every 10 minutes (CronWorkflow `keycloak-realm`,
-  namespace `keycloak`) and a failed run or a non-empty plan shows in Grafana.
-  A run killed mid-apply can leave the state Lease locked: unlock it with
-  `tofu force-unlock` (`docs/break-glass.md`).
+  namespace `keycloak`); only a failed run alerts in Grafana, and there is
+  no notification channel yet (`TODO.md`). A non-empty plan is in the
+  workflow's log, not an alert. A run killed mid-apply can leave the state
+  Lease locked: unlock it with `tofu force-unlock` (`docs/break-glass.md`).
 - Envoy Gateway fetches an OIDC issuer's discovery once and never retries, so
   `edge-oidc` names Keycloak's endpoints explicitly.
 - The Keycloak Operator only watches its own namespace: the operator
