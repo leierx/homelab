@@ -11,11 +11,11 @@ spec:
     name: renovate-github-app
   data:
     - secretKey: GITHUB_APP_ID
-      remoteRef: { key: loft01/renovate, property: app_id }
+      remoteRef: { key: "{{ required "fleet.cluster" .Values.fleet.cluster }}/renovate", property: app_id }
     - secretKey: GITHUB_APP_INSTALLATION_ID
-      remoteRef: { key: loft01/renovate, property: installation_id }
+      remoteRef: { key: "{{ required "fleet.cluster" .Values.fleet.cluster }}/renovate", property: installation_id }
     - secretKey: GITHUB_APP_PRIVATE_KEY
-      remoteRef: { key: loft01/renovate, property: private_key }
+      remoteRef: { key: "{{ required "fleet.cluster" .Values.fleet.cluster }}/renovate", property: private_key }
 ---
 apiVersion: v1
 kind: ConfigMap

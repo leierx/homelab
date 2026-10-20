@@ -16,4 +16,4 @@ spec:
           {{- include "immich.config" . | nindent 10 }}
   data:
     - secretKey: oidc_client_secret
-      remoteRef: { key: loft01/immich, property: oidc_client_secret }
+      remoteRef: { key: {{ required "fleet.cluster" .Values.fleet.cluster }}/immich, property: oidc_client_secret }

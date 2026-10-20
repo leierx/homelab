@@ -13,7 +13,7 @@ spec:
   egress:
     - toEndpoints: [{}]
     - toEntities: [kube-apiserver]
-    # the controller fetches OIDC discovery, the proxies exchange codes at auth.skinke.net (public address)
+    # the controller fetches OIDC discovery, the proxies exchange codes at the Keycloak issuer (public address)
     - toEntities: [world]
       toPorts:
         - ports: [{ port: "443", protocol: TCP }]

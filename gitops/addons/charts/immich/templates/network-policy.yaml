@@ -44,7 +44,7 @@ spec:
             app.kubernetes.io/name: immich-machine-learning
       toPorts:
         - ports: [{ port: "3003", protocol: TCP }]
-    # Keycloak at auth.skinke.net, which resolves to the public address
+    # Keycloak at the issuer hostname, which resolves to the public address
     - toEntities: [world]
       toPorts:
         - ports: [{ port: "443", protocol: TCP }]

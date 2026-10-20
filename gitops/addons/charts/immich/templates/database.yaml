@@ -22,8 +22,8 @@ spec:
       database: immich
       owner: immich
   storage:
-    storageClass: zfs
-    size: 20Gi
+    storageClass: {{ required "postgres.storageClass" .Values.postgres.storageClass }}
+    size: {{ required "postgres.size" .Values.postgres.size }}
   resources:
     requests: { cpu: 100m, memory: 512Mi }
     limits: { memory: 2Gi }

@@ -9,7 +9,7 @@ spec:
     kind: ClusterIssuer
     name: letsencrypt
   dnsNames:
-    - argocd.skinke.net
+    - {{ required "host" .Values.host }}
 ---
 # WireGuard only; nothing of Argo CD is on the internet
 apiVersion: gateway.networking.k8s.io/v1
@@ -24,7 +24,7 @@ spec:
     - name: https
       protocol: HTTPS
       port: 443
-      hostname: argocd.skinke.net
+      hostname: {{ required "host" .Values.host }}
       tls:
         mode: Terminate
         certificateRefs:
@@ -42,7 +42,7 @@ spec:
       kind: ListenerSet
       name: argocd-wg
   hostnames:
-    - argocd.skinke.net
+    - {{ required "host" .Values.host }}
   rules:
     - backendRefs:
         - name: argocd-server

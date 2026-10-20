@@ -1,4 +1,4 @@
-# reconciles realm homelab from tofu/keycloak/ every 10 minutes; git wins over hand-made changes
+# reconciles realm homelab from the cluster's OpenTofu root every 10 minutes; git wins over hand-made changes
 apiVersion: argoproj.io/v1alpha1
 kind: CronWorkflow
 metadata:
@@ -37,7 +37,7 @@ spec:
                 depth: 1
         container:
           image: ghcr.io/opentofu/opentofu:{{ .Values.tofu.tag }}
-          workingDir: /work/repo/tofu/keycloak
+          workingDir: /work/repo/tofu/{{ required "fleet.cluster" .Values.fleet.cluster }}/keycloak
           command: [sh, -c]
           args:
             - |

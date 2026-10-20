@@ -3,14 +3,14 @@
 # only SSO: Keycloak client immich, accounts created at first login, admin from the immich_role claim
 oauth:
   enabled: true
-  issuerUrl: https://auth.skinke.net/realms/homelab
+  issuerUrl: https://{{ required "keycloakHost" .Values.keycloakHost }}/realms/homelab
   clientId: immich
   clientSecret: {{ `{{ .oidc_client_secret | quote }}` }}
   autoLaunch: true
 passwordLogin:
   enabled: false
 server:
-  externalDomain: https://photos.skinke.net
+  externalDomain: https://{{ required "host" .Values.host }}
 machineLearning:
   urls: [http://immich-machine-learning:3003]
 # Renovate brings new versions

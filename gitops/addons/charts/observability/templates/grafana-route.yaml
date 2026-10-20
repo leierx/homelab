@@ -1,4 +1,4 @@
-{{- $host := index .Values.grafana "grafana.ini" "server" "domain" }}
+{{- $host := required "grafana.grafana.ini.server.domain is set per cluster" (index .Values.grafana "grafana.ini" "server" "domain") }}
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -61,11 +61,11 @@ spec:
       name: grafana-edge
   oidc:
     provider:
-      issuer: https://auth.skinke.net/realms/homelab
+      issuer: https://{{ required "keycloakHost" .Values.keycloakHost }}/realms/homelab
       # given, not discovered: Envoy Gateway fetches discovery once and never retries, and Keycloak may come up later
-      authorizationEndpoint: https://auth.skinke.net/realms/homelab/protocol/openid-connect/auth
-      tokenEndpoint: https://auth.skinke.net/realms/homelab/protocol/openid-connect/token
-      endSessionEndpoint: https://auth.skinke.net/realms/homelab/protocol/openid-connect/logout
+      authorizationEndpoint: https://{{ required "keycloakHost" .Values.keycloakHost }}/realms/homelab/protocol/openid-connect/auth
+      tokenEndpoint: https://{{ required "keycloakHost" .Values.keycloakHost }}/realms/homelab/protocol/openid-connect/token
+      endSessionEndpoint: https://{{ required "keycloakHost" .Values.keycloakHost }}/realms/homelab/protocol/openid-connect/logout
     clientID: edge
     clientSecret:
       name: edge-oidc
@@ -85,4 +85,4 @@ spec:
     name: edge-oidc
   data:
     - secretKey: client-secret
-      remoteRef: { key: loft01/edge, property: oidc_client_secret }
+      remoteRef: { key: "{{ required "fleet.cluster" .Values.fleet.cluster }}/edge", property: oidc_client_secret }

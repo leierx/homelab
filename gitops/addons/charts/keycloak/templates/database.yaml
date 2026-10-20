@@ -10,8 +10,8 @@ spec:
       database: keycloak
       owner: keycloak
   storage:
-    storageClass: zfs
-    size: 5Gi
+    storageClass: {{ required "postgres.storageClass" .Values.postgres.storageClass }}
+    size: {{ required "postgres.size" .Values.postgres.size }}
   postgresql:
     parameters:
       # Keycloak asks for at most 20 connections; the server keeps headroom for the operator and pg_dump

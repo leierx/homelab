@@ -1,3 +1,7 @@
+zfs-localpv:
+  zfs:
+    # the host's ZFS, not a container image's
+    bin: /run/current-system/sw/bin/zfs
 pools:
   - name: tank
     storageClass: zfs

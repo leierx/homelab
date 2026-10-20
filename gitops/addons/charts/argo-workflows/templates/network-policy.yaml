@@ -17,7 +17,7 @@ spec:
         - ports: [{ port: "2746", protocol: TCP }]
   egress:
     - toEntities: [kube-apiserver]
-    # Keycloak's token and userinfo endpoints at auth.skinke.net (public address), and GitHub
+    # Keycloak's token and userinfo endpoints (public address), and GitHub
     # for the git input artifacts workflows fetch
     - toEntities: [world]
       toPorts:

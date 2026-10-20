@@ -49,14 +49,12 @@ argo-workflows:
         type: RuntimeDefault
     sso:
       enabled: true
-      issuer: https://auth.skinke.net/realms/homelab
       clientId:
         name: argo-server-sso
         key: client-id
       clientSecret:
         name: argo-server-sso
         key: client-secret
-      redirectUrl: https://workflows.skinke.net/oauth2/callback
       # the group claim the SSO RBAC rules read
       scopes: [groups]
       rbac:
@@ -64,3 +62,10 @@ argo-workflows:
     resources:
       requests: { cpu: 20m, memory: 128Mi }
       limits: { memory: 512Mi }
+
+# this site's hostname; the SSO issuer and redirect URL that name it are set per cluster
+host: ""
+
+# set by the fleet chart's Applications (and by CI and bootstrap with --set-string)
+fleet:
+  cluster: ""

@@ -1,8 +1,6 @@
 zfs-localpv:
   analytics:
     enabled: false
-  zfs:
-    bin: /run/current-system/sw/bin/zfs
   # the chart gives every container of a pod the same resources
   zfsController:
     resources:

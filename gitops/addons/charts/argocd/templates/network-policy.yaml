@@ -30,7 +30,7 @@ spec:
         - ports:
             - { port: "53", protocol: UDP }
             - { port: "53", protocol: TCP }
-    # GitHub for the repo, and auth.skinke.net (public address) for SSO
+    # GitHub for the repo, and the Keycloak issuer (public address) for SSO
     - toEntities: [world]
       toPorts:
         - ports: [{ port: "443", protocol: TCP }]

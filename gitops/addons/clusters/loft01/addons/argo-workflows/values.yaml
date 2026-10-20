@@ -1,0 +1,6 @@
+argo-workflows:
+  server:
+    sso:
+      issuer: https://auth.skinke.net/realms/homelab
+      redirectUrl: https://workflows.skinke.net/oauth2/callback
+host: workflows.skinke.net

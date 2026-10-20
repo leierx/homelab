@@ -9,7 +9,7 @@ spec:
     kind: ClusterIssuer
     name: letsencrypt
   dnsNames:
-    - auth.skinke.net
+    - {{ required "host" $.Values.host }}
 {{- range $gw := list "edge" "wg" }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -24,7 +24,7 @@ spec:
     - name: https
       protocol: HTTPS
       port: 443
-      hostname: auth.skinke.net
+      hostname: {{ required "host" $.Values.host }}
       tls:
         mode: Terminate
         certificateRefs:
@@ -44,7 +44,7 @@ spec:
       kind: ListenerSet
       name: keycloak-edge
   hostnames:
-    - auth.skinke.net
+    - {{ required "host" $.Values.host }}
   rules:
     - matches:
         {{- range list "/realms/homelab/" "/resources/" }}
@@ -66,7 +66,7 @@ spec:
       kind: ListenerSet
       name: keycloak-wg
   hostnames:
-    - auth.skinke.net
+    - {{ required "host" $.Values.host }}
   rules:
     - backendRefs:
         - name: keycloak-service

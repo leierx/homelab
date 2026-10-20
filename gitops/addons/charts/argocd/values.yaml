@@ -1,19 +1,8 @@
 argo-cd:
   configs:
     cm:
-      url: https://argocd.skinke.net
       # SSO only; the local admin account is disabled (docs/break-glass.md)
       admin.enabled: "false"
-      oidc.config: |
-        name: Keycloak
-        issuer: https://auth.skinke.net/realms/homelab
-        clientID: argocd
-        clientSecret: $argocd-oidc:clientSecret
-        # `argocd login --sso` uses this public client with PKCE
-        cliClientID: argocd-cli
-        requestedScopes: [openid, profile, email]
-        # renew the session before Keycloak's 5-minute ID token runs out
-        refreshTokenThreshold: 2m
     params:
       # TLS ends at the edge Gateway
       server.insecure: true
@@ -62,3 +51,10 @@ argo-cd:
     resources:
       requests: { cpu: 10m, memory: 16Mi }
       limits: { memory: 64Mi }
+
+# this site's hostname; the URL and the OIDC issuer that repeat it are upstream chart values
+host: ""
+
+# set by the fleet chart's Applications (and by CI and bootstrap with --set-string)
+fleet:
+  cluster: ""

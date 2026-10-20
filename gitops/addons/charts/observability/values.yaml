@@ -11,13 +11,10 @@ grafana:
         key: oidc-client-secret
   grafana.ini:
     server:
-      domain: metrics.skinke.net
       root_url: https://%(domain)s/
     auth:
       # SSO only; the admin account is break-glass (docs/break-glass.md)
       disable_login_form: true
-      # Grafana adds the id_token_hint
-      signout_redirect_url: https://auth.skinke.net/realms/homelab/protocol/openid-connect/logout?post_logout_redirect_uri=https%3A%2F%2Fmetrics.skinke.net%2Flogin
     # the hidden login form alone still left admin:<password> working against the API
     auth.basic:
       enabled: false
@@ -26,9 +23,6 @@ grafana:
       name: Keycloak
       client_id: grafana
       scopes: openid email profile
-      auth_url: https://auth.skinke.net/realms/homelab/protocol/openid-connect/auth
-      token_url: https://auth.skinke.net/realms/homelab/protocol/openid-connect/token
-      api_url: https://auth.skinke.net/realms/homelab/protocol/openid-connect/userinfo
       use_pkce: true
       allow_sign_up: true
       allow_assign_grafana_admin: true
@@ -41,8 +35,8 @@ grafana:
     type: Recreate
   persistence:
     enabled: true
-    storageClassName: zfs
-    size: 5Gi
+    storageClassName: ""
+    size: ""
   # runs as root; fsGroup already gives Grafana the volume
   initChownData:
     enabled: false
@@ -334,8 +328,8 @@ loki:
   singleBinary:
     replicas: 1
     persistence:
-      storageClass: zfs
-      size: 50Gi
+      storageClass: ""
+      size: ""
     resources:
       requests: { cpu: 100m, memory: 512Mi }
       limits: { memory: 2Gi }
@@ -374,9 +368,16 @@ mimir:
     max_label_names_per_series: 50
     otel_metric_suffixes_enabled: true
   storage:
-    storageClassName: zfs
-    size: 100Gi
+    storageClassName: ""
+    size: ""
   goMemLimit: 3600MiB
   resources:
     requests: { cpu: 200m, memory: 1Gi }
     limits: { memory: 4Gi }
+
+# the Keycloak issuer Grafana logs in through; its hostname is per cluster
+keycloakHost: ""
+
+# set by the fleet chart's Applications (and by CI and bootstrap with --set-string)
+fleet:
+  cluster: ""

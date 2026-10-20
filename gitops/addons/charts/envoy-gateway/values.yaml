@@ -4,3 +4,6 @@ gateway-helm:
       resources:
         requests: { cpu: 10m, memory: 32Mi }
         limits: { memory: 64Mi }
+
+# the host's WireGuard address, where the wg Gateway's Service answers
+wireguardAddress: ""

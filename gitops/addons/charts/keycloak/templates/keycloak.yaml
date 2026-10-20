@@ -24,7 +24,7 @@ spec:
   http:
     httpEnabled: true
   hostname:
-    hostname: https://auth.skinke.net
+    hostname: https://{{ required "host" .Values.host }}
   proxy:
     headers: xforwarded
   ingress:
@@ -35,7 +35,7 @@ spec:
   additionalOptions:
     # the Envoy proxies, on the pod network
     - name: proxy-trusted-addresses
-      value: 10.42.0.0/16
+      value: {{ required "podCIDR" .Values.podCIDR }}
     # the database's max_connections is 60; Keycloak's default pool of 100 never fits
     - name: db-pool-max-size
       value: "20"

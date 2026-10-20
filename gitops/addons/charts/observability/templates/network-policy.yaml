@@ -23,7 +23,7 @@ spec:
     - toEndpoints: [{}]
     # Grafana's sidecars watch ConfigMaps
     - toEntities: [kube-apiserver]
-    # Grafana: Keycloak's token endpoint (auth.skinke.net resolves publicly) and grafana.com dashboards
+    # Grafana: the Keycloak token endpoint (its hostname resolves publicly) and grafana.com dashboards
     - toEntities: [world]
       toPorts:
         - ports: [{ port: "443", protocol: TCP }]
