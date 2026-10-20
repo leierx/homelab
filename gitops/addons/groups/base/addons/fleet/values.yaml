@@ -1,0 +1,15 @@
+addons:
+  admission:
+    enabled: true
+  cert-manager:
+    enabled: true
+  cilium:
+    enabled: true
+  external-secrets:
+    enabled: true
+  k8s-monitoring:
+    enabled: true
+  prometheus-operator-crds:
+    enabled: true
+  rbac:
+    enabled: true

@@ -1,3 +1,0 @@
-namespace: kube-system
-# the agent and envoy run on the host network; the cluster-wide default (baseline) would refuse them
-podSecurity: privileged

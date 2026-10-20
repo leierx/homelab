@@ -1,0 +1,53 @@
+openbao:
+  global:
+    tlsDisable: false
+  serverTelemetry:
+    serviceMonitor:
+      enabled: true
+      scheme: https
+      # in-cluster metrics only; the scrape doesn't need to verify OpenBao's private CA
+      tlsConfig:
+        insecureSkipVerify: true
+  injector:
+    enabled: false
+  server:
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { memory: 512Mi }
+    extraEnvironmentVars:
+      BAO_CACERT: /openbao/tls/ca.crt
+    volumes:
+      - name: tls
+        secret:
+          secretName: openbao-tls
+      # k3s deploys this Secret from sops-nix (nixos/sops.nix), so it survives a rebuilt cluster
+      - name: seal-key
+        secret:
+          secretName: openbao-seal-key
+    volumeMounts:
+      - name: tls
+        mountPath: /openbao/tls
+        readOnly: true
+      - name: seal-key
+        mountPath: /openbao/seal
+        readOnly: true
+    dataStorage:
+      storageClass: zfs
+      size: 2Gi
+    statefulSet:
+      securityContext:
+        container:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          seccompProfile:
+            type: RuntimeDefault
+    ha:
+      enabled: true
+      replicas: 1
+      disruptionBudget:
+        enabled: false
+      raft:
+        enabled: true
+        setNodeId: true
+        # config: set per cluster, because its policies name that cluster's kv paths

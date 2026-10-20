@@ -7,7 +7,7 @@
   "automergeStrategy": "merge-commit",
   "platformAutomerge": false,
   "kubernetes": {
-    "managerFilePatterns": ["/^gitops/addons/.+/templates/.+\\.ya?ml$/"]
+    "managerFilePatterns": ["/^gitops/addons/charts/.+/templates/.+\\.ya?ml$/", "/^gitops/apps/.+\\.ya?ml$/"]
   },
   "terraform": {
     "managerFilePatterns": ["/^tofu/.+\\.tf$/"]
@@ -16,7 +16,7 @@
     {
       "customType": "regex",
       "description": "versions annotated with a `# renovate:` comment",
-      "managerFilePatterns": ["/^gitops/addons/.+\\.ya?ml$/"],
+      "managerFilePatterns": ["/^gitops/.+\\.ya?ml$/"],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+\\S+:\\s*(?<currentValue>\\S+)"
       ]
@@ -24,7 +24,7 @@
     {
       "customType": "regex",
       "description": "GitHub release assets in kustomizations",
-      "managerFilePatterns": ["/^gitops/addons/.+/kustomization\\.yaml$/"],
+      "managerFilePatterns": ["/^gitops/.+/kustomization\\.yaml$/"],
       "matchStrings": [
         "https://github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/(?<currentValue>[^/]+)/"
       ],
@@ -33,8 +33,20 @@
   ],
   "packageRules": [
     {
-      "description": "one PR per addon: everything under gitops/addons/<addon>/ shares a group",
-      "matchFileNames": ["gitops/addons/**"],
+      "description": "one PR per addon: everything under gitops/addons/charts/<addon>/ shares a group",
+      "matchFileNames": ["gitops/addons/charts/**"],
+      "groupName": "{{ lookup (split packageFileDir '/') 3 }}",
+      "commitMessageSuffix": "({{ lookup (split packageFileDir '/') 3 }})"
+    },
+    {
+      "description": "one PR per app: everything under gitops/apps/<app>/ shares a group",
+      "matchFileNames": ["gitops/apps/**"],
+      "groupName": "{{ lookup (split packageFileDir '/') 2 }}",
+      "commitMessageSuffix": "({{ lookup (split packageFileDir '/') 2 }})"
+    },
+    {
+      "description": "one PR per OpenTofu root: tofu/<cluster>/<root> groups on the root's name",
+      "matchFileNames": ["tofu/**"],
       "groupName": "{{ lookup (split packageFileDir '/') 2 }}",
       "commitMessageSuffix": "({{ lookup (split packageFileDir '/') 2 }})"
     },
@@ -44,23 +56,23 @@
       "automerge": true
     },
     {
-      "matchFileNames": ["gitops/addons/**"],
+      "matchFileNames": ["gitops/addons/charts/**"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
       "automerge": true
     },
     {
-      "matchFileNames": ["gitops/addons/**"],
+      "matchFileNames": ["gitops/addons/charts/**"],
       "matchUpdateTypes": ["major"],
       "automerge": false
     },
     {
       "description": "The Keycloak operator, the image it runs, the realm's provider and the reconcile image wait for review",
-      "matchFileNames": ["gitops/addons/keycloak-operator/**", "gitops/addons/keycloak/**", "tofu/keycloak/**"],
+      "matchFileNames": ["gitops/addons/charts/keycloak-operator/**", "gitops/addons/charts/keycloak/**", "tofu/*/keycloak/**"],
       "automerge": false
     },
     {
       "description": "Immich, its Postgres and VectorChord wait for review: upgrades can need manual steps (docs/immich.md)",
-      "matchFileNames": ["gitops/addons/immich/**"],
+      "matchFileNames": ["gitops/addons/charts/immich/**"],
       "automerge": false
     },
     {
@@ -70,7 +82,7 @@
       "extractVersion": "^pg18-v(?<version>\\d+\\.\\d+\\.\\d+)$"
     },
     {
-      "description": "tofu/keycloak's providers come from the OpenTofu registry; Renovate defaults to the Terraform one",
+      "description": "the realm root's providers come from the OpenTofu registry; Renovate defaults to the Terraform one",
       "matchDatasources": ["terraform-provider", "terraform-module"],
       "registryUrls": ["https://registry.opentofu.org"]
     }

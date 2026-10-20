@@ -195,7 +195,7 @@ Then, depending on the consumer:
 - **The Keycloak reconcile** reads the client secrets on every run (the
   `keycloak-tofu` ExternalSecret). To rotate a client secret, change it in
   Keycloak too (kcadm), then bump that client's `client_secret_wo_version` in
-  `tofu/keycloak/clients.tf`; the next run writes the new value from OpenBao
+  `tofu/loft01/keycloak/clients.tf`; the next run writes the new value from OpenBao
   and the service's ExternalSecret follows. The `bootstrap-admin` secret is
   only read when the master realm is created and by the reconcile: rotate it
   in Keycloak first (kcadm), then in OpenBao, then restart the reconcile's

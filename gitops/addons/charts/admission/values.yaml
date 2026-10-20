@@ -1,0 +1,2 @@
+# namespaces whose pods get hostUsers: false (MutatingAdmissionPolicy user-namespaces)
+userNamespaces: []

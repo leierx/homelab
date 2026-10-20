@@ -1,8 +1,0 @@
-postgres:
-  # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
-  tag: 18.6-system-trixie
-tofu:
-  # renovate: datasource=docker depName=ghcr.io/opentofu/opentofu
-  tag: 1.13.1
-# confidential clients whose secret is generated once into OpenBao loft01/<name>; tofu/keycloak reads it back
-clientSecrets: [argocd, grafana, immich, edge]

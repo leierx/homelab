@@ -1,0 +1,88 @@
+{{- $host := required "grafana.grafana.ini.server.domain is set per cluster" (index .Values.grafana "grafana.ini" "server" "domain") }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grafana
+spec:
+  secretName: grafana-tls
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt
+  dnsNames:
+    - {{ $host }}
+{{- range $gw := list "edge" "wg" }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: grafana-{{ $gw }}
+spec:
+  parentRef:
+    name: {{ $gw }}
+    namespace: envoy-gateway-system
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: {{ $host }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: grafana-tls
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: grafana-{{ $gw }}
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: grafana-{{ $gw }}
+  hostnames:
+    - {{ $host }}
+  rules:
+    - backendRefs:
+        - name: grafana
+          port: 80
+{{- end }}
+---
+# public requests log in to Keycloak (client edge) before Grafana sees them; wg peers skip this
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: edge-oidc
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: grafana-edge
+  oidc:
+    provider:
+      issuer: https://{{ required "keycloakHost" .Values.keycloakHost }}/realms/homelab
+      # given, not discovered: Envoy Gateway fetches discovery once and never retries, and Keycloak may come up later
+      authorizationEndpoint: https://{{ required "keycloakHost" .Values.keycloakHost }}/realms/homelab/protocol/openid-connect/auth
+      tokenEndpoint: https://{{ required "keycloakHost" .Values.keycloakHost }}/realms/homelab/protocol/openid-connect/token
+      endSessionEndpoint: https://{{ required "keycloakHost" .Values.keycloakHost }}/realms/homelab/protocol/openid-connect/logout
+    clientID: edge
+    clientSecret:
+      name: edge-oidc
+    redirectURL: https://{{ $host }}/oauth2/callback
+    logoutPath: /oauth2/logout
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: edge-oidc
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: openbao
+  target:
+    name: edge-oidc
+  data:
+    - secretKey: client-secret
+      remoteRef: { key: "{{ required "fleet.cluster" .Values.fleet.cluster }}/edge", property: oidc_client_secret }

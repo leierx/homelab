@@ -1,9 +1,0 @@
-pools:
-  - name: tank
-    storageClass: zfs
-    default: true
-  # large files (Immich's library)
-  - name: tank
-    storageClass: zfs-media
-    dataset:
-      recordsize: 1M

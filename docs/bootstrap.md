@@ -103,44 +103,55 @@ cd homelab
 ```sh
 kubectl label namespace kube-system pod-security.kubernetes.io/enforce=privileged \
   pod-security.kubernetes.io/warn=privileged pod-security.kubernetes.io/audit=privileged
-helm dependency update gitops/addons/cilium
-helm template cilium gitops/addons/cilium -n kube-system --include-crds \
-  -f gitops/addons/cilium/values.yaml -f gitops/addons/cilium/clusters/loft01.yaml \
+helm dependency update gitops/addons/charts/cilium
+helm template cilium gitops/addons/charts/cilium -n kube-system --include-crds \
+  -f gitops/addons/clusters/loft01/addons/cilium/values.yaml \
+  --set-string fleet.cluster=loft01 \
   --set cilium.prometheus.serviceMonitor.trustCRDsExist=true \
   | kubectl apply -n kube-system --server-side --field-manager=argocd-controller -f -
 kubectl wait --for=condition=Ready node --all --timeout=10m
 ```
 
+Values layer the way `addons-<cluster>` lays them: the chart's own
+`values.yaml`, then `gitops/addons/groups/<group>/addons/<addon>/values.yaml`
+for each of the cluster's groups in order, then
+`gitops/addons/clusters/<cluster>/addons/<addon>/values.yaml`. Cilium has no
+group file today, so only the cluster file is passed. `--set-string
+fleet.cluster=<cluster>` is what Argo passes too.
+
 The label comes first because k3s enforces Pod Security `baseline` in every
 unlabelled namespace (`nixos/k3s.nix`) and the Cilium agent is privileged;
-later, Argo sets the same labels from the addon's `podSecurity`. The
-`trustCRDsExist` override is only for this first apply: without it
-`helm template` fails, because the chart will not render its ServiceMonitors
-before the Prometheus Operator CRDs exist, and those arrive later with the
-`prometheus-operator-crds` addon. The four `ServiceMonitor`s and the
-`CiliumClusterwideNetworkPolicy` (its CRD comes from Cilium's own operator)
-therefore fail this apply and Argo creates them once the CRDs exist.
-`kubectl apply` keeps going after an unknown kind; the agent and operator
-apply normally.
+later, Argo sets the same labels from the addon's `podSecurity` in the
+catalog. The `trustCRDsExist` override is only for this first apply: without
+it `helm template` fails, because the chart will not render its
+ServiceMonitors before the Prometheus Operator CRDs exist, and those arrive
+later with the `prometheus-operator-crds` addon. The four `ServiceMonitor`s
+and the `CiliumClusterwideNetworkPolicy` (its CRD comes from Cilium's own
+operator) therefore fail this apply and Argo creates them once the CRDs
+exist. `kubectl apply` keeps going after an unknown kind; the agent and
+operator apply normally.
 
 ### Argo CD
 
 ```sh
-helm dependency update gitops/addons/argocd
+helm dependency update gitops/addons/charts/argocd
 kubectl create namespace argocd
-helm template argocd gitops/addons/argocd -n argocd --include-crds \
-  -f gitops/addons/argocd/values.yaml \
+helm template argocd gitops/addons/charts/argocd -n argocd --include-crds \
+  -f gitops/addons/clusters/loft01/addons/argocd/values.yaml \
+  --set-string fleet.cluster=loft01 \
   | kubectl apply -n argocd --server-side --field-manager=argocd-controller -f -
 kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
 ```
 
-Some objects in that render need CRDs that arrive with the fleet (a
-`Certificate`, a `ListenerSet`, an `HTTPRoute` and an `ExternalSecret`). The
-apply reports them and Argo applies them later, once the addons that own the
-CRDs exist. Our own templates carry no namespace, hence `-n` on both applies;
-without it they land in `default`. Argo CD's `CiliumNetworkPolicy` is applied
-here already, and it allows cluster DNS itself: the cluster-wide baseline that
-allows DNS for everyone only arrives once Argo CD can sync Cilium.
+Argo CD's URL and OIDC config are loft01's own values, hence the cluster file;
+the chart's `values.yaml` holds everything every cluster gets. Some objects in
+that render need CRDs that arrive with the fleet (a `Certificate`, a
+`ListenerSet`, an `HTTPRoute` and an `ExternalSecret`). The apply reports them
+and Argo applies them later, once the addons that own the CRDs exist. Our own
+templates carry no namespace, hence `-n` on both applies; without it they land
+in `default`. Argo CD's `CiliumNetworkPolicy` is applied here already, and it
+allows cluster DNS itself: the cluster-wide baseline that allows DNS for
+everyone only arrives once Argo CD can sync Cilium.
 
 ### Hand over to git
 
@@ -149,16 +160,20 @@ kubectl apply -f gitops/root.yaml
 kubectl -n argocd get applications
 ```
 
-`root.yaml` creates the `root` Application for `gitops/fleet`; the
-ApplicationSet there renders every addon that the cluster Secret's labels ask
-for. The release names and namespaces in the templates above match what the
-ApplicationSet renders, so Argo adopts Cilium and Argo CD and manages
-everything from git.
+`root.yaml` creates the `root` Application for `gitops/fleet/bootstrap`: the
+`members` Application (the cluster Secrets in `gitops/fleet/members/`) and the
+`addons` and `apps` ApplicationSets. `addons` renders the catalog chart for
+every cluster Secret, as `addons-<cluster>`; that Application renders one
+Application per addon the cluster's groups and its own
+`addons/clusters/<cluster>/addons/fleet/values.yaml` switch on. `apps` turns
+each `gitops/apps/<app>/<cluster>/` into `<app>-<cluster>`. The release names
+and namespaces in the templates above match what those Applications render,
+so Argo adopts Cilium and Argo CD and manages everything from git.
 
 ## 3. After the fleet is up
 
 There is no Argo CD login yet. `admin.enabled` is `"false"`
-(`gitops/addons/argocd/values.yaml`) and the OIDC client lives in Keycloak,
+(`gitops/addons/charts/argocd/values.yaml`) and the OIDC client lives in Keycloak,
 which the fleet is still bringing up. Bootstrap is driven with `kubectl`;
 that is also how you watch it converge:
 
@@ -189,7 +204,7 @@ and sets your own password.
 ### The Keycloak realm and its state
 
 The realm is not a Job any more: the CronWorkflow `keycloak-realm` in the
-`keycloak` namespace runs `tofu/keycloak/` every 10 minutes. On a rebuilt
+`keycloak` namespace runs `tofu/<cluster>/keycloak/` every 10 minutes (`tofu/loft01/keycloak` today). On a rebuilt
 cluster it creates the realm on its first run after Keycloak is Ready (or
 trigger it as in [access.md](access.md)). A fresh master realm also gets a
 `temp-admin` from the operator; delete it ([break-glass.md](break-glass.md)).

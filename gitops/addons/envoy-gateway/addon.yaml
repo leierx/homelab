@@ -1,2 +1,0 @@
-namespace: envoy-gateway-system
-podSecurity: restricted

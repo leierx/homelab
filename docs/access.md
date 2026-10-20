@@ -4,7 +4,7 @@ Keycloak (https://auth.skinke.net, realm `homelab`) is the only identity
 provider. Services trust its OIDC tokens and never see a password. Local
 logins are disabled everywhere (see [break-glass.md](break-glass.md)).
 
-Everything about the realm is in git: `tofu/keycloak/` (the realm, groups,
+Everything about the realm is in git: `tofu/loft01/keycloak/` (the realm, groups,
 flows, clients, users). The CronWorkflow `keycloak-realm` in the `keycloak`
 namespace runs OpenTofu there every 10 minutes, logging in as the `master`
 realm's `bootstrap-admin` service client. A push is a realm change within 10
@@ -66,7 +66,7 @@ Authorization is carried in the OIDC `groups` claim: the user's direct group
 names (`full.path` off), from the client scope `groups` that every client
 gets as a default scope. Clients request `openid profile email`; nothing has
 to ask for `groups`. Membership is declared per user in
-`tofu/keycloak/users.tf` (the groups themselves in `groups.tf`).
+`tofu/loft01/keycloak/users.tf` (the groups themselves in `groups.tf`).
 
 | Group | Meaning |
 | --- | --- |
@@ -99,10 +99,10 @@ Grafana additionally refuses a token without a tier (`role_attribute_strict`).
 Argo CD has no built-in role between admin and read-only, so operators are
 admins there for now; a custom `role:operator` (sync and actions, no settings)
 can be added to `policy.csv` once someone actually needs the distinction.
-Argo CD's mapping is `policy.csv` in `gitops/addons/argocd/values.yaml`,
-Grafana's is `role_attribute_path` in `gitops/addons/observability/values.yaml`,
+Argo CD's mapping is `policy.csv` in `gitops/addons/charts/argocd/values.yaml`,
+Grafana's is `role_attribute_path` in `gitops/addons/charts/observability/values.yaml`,
 Immich's is the `immich` client roles on each group in
-`tofu/keycloak/groups.tf` (the `immich_role` claim),
+`tofu/loft01/keycloak/groups.tf` (the `immich_role` claim),
 Kubernetes' is `gitops/addons/rbac`. Neither `view` nor the operator role can
 read Secrets, and the operator role can't create or patch workloads either:
 that would let it run a pod as any ServiceAccount. Operators deploy through
@@ -114,7 +114,7 @@ https://auth.skinke.net/admin/homelab/console/, over WireGuard.
 Argo Workflows has its own SSO RBAC: a ServiceAccount per group, annotated
 with `workflows.argoproj.io/rbac-rule`, and bound to the chart's
 `argo-workflows-admin`/`argo-workflows-edit`/`argo-workflows-view` cluster
-roles (`gitops/addons/argo-workflows/templates/sso.yaml`). Only
+roles (`gitops/addons/charts/argo-workflows/templates/sso.yaml`). Only
 `homelab-admins` has one today, with full admin in every namespace and the
 cluster-scoped `ClusterWorkflowTemplates` the UI lists; to let a future group
 in, add that ServiceAccount, its token Secret and a binding, and keep the
@@ -170,10 +170,10 @@ a fallback, more keys, and recovery codes. At login Keycloak asks for the key
 first; *Try another way* switches to TOTP or a recovery code. Keep the
 recovery codes somewhere offline. The flow is Keycloak's "2FA all
 alternative with OTP default" with WebAuthn in OTP's place
-(`homelab-browser` in `tofu/keycloak/flows.tf`).
+(`homelab-browser` in `tofu/loft01/keycloak/flows.tf`).
 
 Brute-force detection is on for the realm: ten failures, then a temporary
-lockout that grows (`tofu/keycloak/realm.tf`).
+lockout that grows (`tofu/loft01/keycloak/realm.tf`).
 
 ## Accounts
 
@@ -276,7 +276,7 @@ There is no SMTP, so Keycloak's email invitations (Organizations) and
 email-driven required actions are out. Instead:
 
 1. Add a `keycloak_user` and a `keycloak_user_groups` in
-   `tofu/keycloak/users.tf` (or copy `leier`'s blocks) with a username, names,
+   `tofu/loft01/keycloak/users.tf` (or copy `leier`'s blocks) with a username, names,
    a distinct email and their tier group, and push. The reconcile creates the
    account without a password within 10 minutes.
 2. Over WireGuard, in the admin console (*Users → <user> → Credentials →
@@ -314,7 +314,7 @@ To change someone's tier, edit their `group_ids` in `users.tf` and push.
 
 ## Adding a new service to SSO
 
-1. Add a `keycloak_openid_client` in `tofu/keycloak/clients.tf` with its
+1. Add a `keycloak_openid_client` in `tofu/loft01/keycloak/clients.tf` with its
    `client_id`, `name`, `base_url`, the exact `valid_redirect_uris` (Keycloak
    matches them exactly unless they end in `*`; a phone app's custom scheme
    such as `app.immich:///oauth-callback` is fine),

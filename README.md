@@ -43,8 +43,9 @@ real GitOps platform on hardware we own.
   them. sanoid snapshots the pool, and an off-site borg backup is ready to
   enable.
 - **Workloads.** The management side runs Cluster API, KubeVirt and CDI, so a
-  workload cluster is a VM on this node; each one is a directory under
-  `gitops/workloads/` that `fleet/workloads.yaml` turns into an Application.
+  workload cluster is a VM on this node. A VM or workload cluster's manifests
+  live in `gitops/apps/<app>/<cluster>/`, which the `apps` ApplicationSet turns
+  into `<app>-<cluster>`; today that is dodde's Fedora VM.
   Their pod and service CIDRs must not overlap `10.42.0.0/16` and
   `10.43.0.0/16`, and they boot from a persistent disk
   (`cluster-template-persistent-storage.yaml`), never a containerDisk.

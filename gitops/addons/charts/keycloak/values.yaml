@@ -1,0 +1,19 @@
+postgres:
+  # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
+  tag: 18.6-system-trixie
+  storageClass: ""
+  size: ""
+tofu:
+  # renovate: datasource=docker depName=ghcr.io/opentofu/opentofu
+  tag: 1.13.1
+# confidential clients whose secret is generated once into OpenBao <cluster>/<name>; the realm root reads it back
+clientSecrets: [argocd, grafana, immich, edge]
+
+# this site's hostname
+host: ""
+# the pod network the Envoy proxies live on
+podCIDR: ""
+
+# set by the fleet chart's Applications (and by CI and bootstrap with --set-string)
+fleet:
+  cluster: ""

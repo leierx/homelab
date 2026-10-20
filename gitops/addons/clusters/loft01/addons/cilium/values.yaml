@@ -1,0 +1,10 @@
+cilium:
+  # the API server on the host itself: k3s has no separate control plane Service
+  k8sServiceHost: 127.0.0.1
+  k8sServicePort: 6443
+  ipam:
+    operator:
+      clusterPoolIPv4PodCIDRList: ["10.42.0.0/16"]
+  # BPF maps are sized from host RAM and charged to the agent's cgroup, ~2.4Gi on 512G
+  resources:
+    requests: { cpu: 100m, memory: 2560Mi }
