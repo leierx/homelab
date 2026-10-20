@@ -111,10 +111,14 @@ operator and its password is then inert.
 Everything that needs a login waits; use the admin kubeconfig on loft01.
 Look at the pod, the operator (`kubectl -n keycloak logs deploy/keycloak-operator`)
 and the database (`kubectl -n keycloak get clusters.postgresql.cnpg.io`). The
-realm lives in Postgres, so a Keycloak pod can be deleted freely; a lost
-database is a restore of its dump ([operations.md](operations.md)), or an
-empty one that the reconcile fills again (people then set up passwords and
-second factors anew).
+realm lives in Postgres, so a Keycloak pod can be deleted freely. A lost
+database is a restore of its dump ([operations.md](operations.md)) or an
+empty one that the next reconcile recreates: with the state still in its
+Secret it finds every resource gone and applies the whole realm as creates
+(49 today, tested), so people start again from their first password and
+second factors. The dangerous mismatch is the other way round: a realm that
+still exists with a lost state Secret needs `tofu import`
+([bootstrap.md](bootstrap.md)).
 
 ## Argo CD (local `admin` disabled)
 

@@ -194,17 +194,26 @@ cluster it creates the realm on its first run after Keycloak is Ready (or
 trigger it as in [access.md](access.md)). A fresh master realm also gets a
 `temp-admin` from the operator; delete it ([break-glass.md](break-glass.md)).
 
-The rule that keeps a rebuild safe: **an empty database needs empty state.**
 OpenTofu's state is the Secret `tfstate-default-keycloak` and the Lease
 `lock-tfstate-default-keycloak`, both in `keycloak` and both inside the k3s
-state that the procedures above wipe. So "new database + new k3s state" is
-consistent: the first run creates everything.
+state that the procedures above wipe. A rebuilt cluster has neither, and the
+first run creates the realm.
 
-If the realm exists but the state Secret is lost, the next plan wants to
-create the realm again and fails on the existing one. **`tofu import` is the
-way back**, one resource at a time (`keycloak_realm` first, then groups,
-clients, flows, users), not a database wipe. Never import into a fresh
-database: there is nothing to import from, and the tables are empty.
+The two mismatches between state and database behave differently (the first
+one was tested on 2026-10-20 against a temporary Keycloak with a copy of the
+state):
+
+- **Empty database, state still there** (the database was wiped or restored
+  empty, the state was not): every refresh finds its resource gone, so the
+  plan is "49 to add, 0 to change, 0 to destroy" and the run recreates the
+  realm from the config. There is nothing to import, `prevent_destroy` does
+  not block because there is no destroy, and `leier` starts again from the
+  first password in OpenBao.
+- **Realm still there, state Secret lost** (or the state was rolled back):
+  the plan wants to create the existing realm and fails. **`tofu import` is
+  the way back**, one resource at a time (`keycloak_realm` first, then
+  groups, clients, flows, users). Never import into an empty database: there
+  is nothing to import from.
 
 To use the Argo CD UI while Keycloak is still down, temporarily set
 `admin.enabled: "true"` and push; Argo reconciles itself, and
