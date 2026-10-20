@@ -34,7 +34,7 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
 
 - WebAuthn-only for `homelab-admins`: everyone registers a security key or
   passkey first, but the second-factor sub-flow of `homelab-browser`
-  (`tofu/keycloak/flows.tf`) still accepts TOTP and
+  (`tofu/loft01/keycloak/flows.tf`) still accepts TOTP and
   recovery codes as fallbacks for every tier. Decide whether admins lose the
   TOTP fallback (a sub-flow conditional on their role) and whether recovery
   codes stay.
@@ -49,7 +49,7 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
   second factor for the operator's temporary `temp-admin` on a fresh database).
   It is WireGuard-only; decide whether to manage it from git too.
 - Keycloak's `KeycloakOIDCClient` CR (operator, preview) could replace the
-  clients in `tofu/keycloak/clients.tf` once it is stable.
+  clients in `tofu/loft01/keycloak/clients.tf` once it is stable.
 - Refresh tokens are reusable: decide whether `revokeRefreshToken: true`
   breaks any client (Argo CD, Grafana, Immich, kubectl) before enabling it,
   or record why not (research F4).

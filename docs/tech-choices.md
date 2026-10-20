@@ -41,7 +41,7 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
 - **Need:** one UI over every backend, plus dashboards rendered from the
   releases we already run.
 - **Choice:** Grafana; community dashboards pinned in
-  `gitops/addons/observability/values.yaml`, plus the k8s-monitoring ones.
+  `gitops/addons/charts/observability/values.yaml`, plus the k8s-monitoring ones.
 - **Why:** queries every backend above, and dashboards can be shipped as
   ConfigMaps labelled `grafana_dashboard: "1"`, so addons own their own
   dashboards.
@@ -139,8 +139,8 @@ and the same with `namespace="keycloak"` / `"openbao"`.
   while Immich was at v3.3.3), so the image tag needs its own Renovate
   annotation either way. Switching later is cheap: the stateful parts
   (PVCs, the CNPG cluster) don't depend on how the Deployments are made.
-- **Not a workload:** `gitops/workloads/` is for VMs and CAPI clusters; an
-  app with a Helm-templated config is an addon.
+- **Not an app:** `gitops/apps/` is for VMs and CAPI clusters; an addon
+  with a Helm-templated config lives in `gitops/addons/charts/`.
 
 ### Storage
 
@@ -230,7 +230,7 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 - **Need:** the realm (groups, users, clients, flows, session lengths)
   declared in git and re-applied, so a hand-made change is undone and a
   rebuild recreates the same realm.
-- **Choice:** OpenTofu (`tofu/keycloak/`) with the Keycloak project's own
+- **Choice:** OpenTofu (`tofu/loft01/keycloak/`) with the Keycloak project's own
   provider (`keycloak/terraform-provider-keycloak`), run by the Argo
   Workflows CronWorkflow `keycloak-realm` every 10 minutes. The state is a
   Secret and a Lease in `keycloak` (OpenTofu's `kubernetes` backend); client
@@ -286,14 +286,13 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 ## GitOps
 
 - **Need:** one control plane that manages itself and the fleet.
-- **Choice:** Argo CD tracking `HEAD` of `main`; one ApplicationSet crossing
-  `addons/*/addon.yaml` with cluster labels (the addon root is the umbrella
-  chart, per-cluster values in `clusters/<cluster>.yaml`), and one more
-  generating an Application per `gitops/workloads/*` directory.
-- **Why:** a push is a deploy; addons and clusters are labelled, not wired
-  together by hand. The addon root is the chart itself, with no per-env copy;
-  per-cluster differences go in `clusters/<cluster>.yaml`. Details in
-  `AGENTS.md`.
+- **Choice:** Argo CD tracking `HEAD` of `main`; the catalog chart
+  `gitops/addons/charts/fleet` renders one Application per addon a cluster
+  enables by value, and one ApplicationSet turns each
+  `gitops/apps/<app>/<cluster>/` directory into `<app>-<cluster>`.
+- **Why:** a push is a deploy, and what a cluster runs is a value in its own
+  folder rather than a label somebody has to remember to set. Details in
+  `AGENTS.md` and under "Fleet layout".
 - **Alternatives:** **Flux** is equivalent for one cluster; the promotion
   layers (**Kargo**, **Sveltos**, **OCM**, Cluster API Addon Provider Helm)
   and the Flux Operator's ResourceSets each add a second control plane — or,
@@ -423,8 +422,9 @@ and the same with `namespace="keycloak"` / `"openbao"`.
   bootstrap and control plane, the KubeVirt provider CAPK); clusters are CAPI
   `Cluster`s in namespace `clusters`. `capi-argo-bridge`, our own ~200-line
   controller (`apps/capi-argo-bridge`), copies a `Cluster`'s
-  `addons.homelab/*` labels onto an Argo CD cluster Secret, so the addons
-  ApplicationSet selects workload clusters like loft01.
+  `addons.homelab/*` labels onto an Argo CD cluster Secret. Those labels no
+  longer enable anything: a bridged cluster gets groups and cluster folders
+  like any other (`TODO.md`).
 - **Why:** Cluster API is the Kubernetes SIG standard, and CAPK puts the nodes
   on KubeVirt on this host. The bridge is the one piece Argo CD lacks: its
   cluster generator needs a cluster Secret.
