@@ -1,4 +1,4 @@
-# reconciles realm homelab from tofu/keycloak/ every 10 minutes; git wins over hand-made changes
+# suspended: the realm is reconciled by the tekton addon now (keycloak-tofu); kept for the cutover rollback
 apiVersion: argoproj.io/v1alpha1
 kind: CronWorkflow
 metadata:
@@ -10,7 +10,7 @@ spec:
   schedules:
     - "*/10 * * * *"
   concurrencyPolicy: Forbid
-  suspend: false
+  suspend: true
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   workflowSpec:
