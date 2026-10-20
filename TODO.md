@@ -85,11 +85,11 @@ Protect `main`).
 
 ## Addon rollout
 
-- Addons share one pinned upstream version across clusters; per-cluster
-  version pinning was deliberately not built. If rolling one cluster ahead
-  becomes real, add a cluster label `channel` and, only in the addons that
-  need it, `channels/<channel>/Chart.yaml` selected through the cluster
-  generator's `values` (rationale in `docs/tech-choices.md`).
+- Addons share one pinned upstream version across clusters. A cluster that
+  needs another version enables a variant addon,
+  `addons/charts/<addon>-<major>-<minor>/` (`docs/operations.md`); there are
+  no version stacks or per-cluster version labels. Copy the chart when it is
+  actually needed, not before.
 
 ## Supply chain
 
@@ -199,6 +199,21 @@ Protect `main`).
   `terminated-pod-gc-threshold` (12500). Decide between a low threshold
   (`--kube-controller-manager-arg`) and leaving them.
 
+## Fleet
+
+- **Remote clusters.** Only in-cluster clusters exist: `fleet/members/<cluster>.yaml`
+  carries `server: https://kubernetes.default.svc`. A remote cluster's
+  credentials need a way into its Argo Secret without a second writer — either
+  `capi-argo-bridge` writing connection-only Secrets (it still creates Secrets
+  and copies `addons.homelab/*` labels, which no longer enable anything), or an
+  `ExternalSecret` templating a Secret from a kubeconfig in OpenBao.
+- **Groups.** `single-node` and `prod` are in loft01's group list with no
+  folder: nothing is specific to them yet. Move values and patches into
+  `addons/groups/<group>/` once a second cluster shows what is really shared,
+  not before.
+- **OpenBao:** delete the unused `kv/loft01/tekton`, if a store that predates
+  the rebuild still has it.
+
 ## Bootstrap
 
 - External Secrets needs nudges to converge quickly on a fresh cluster (see
@@ -208,6 +223,27 @@ Protect `main`).
   acceptable or worth a shorter requeue.
 - `capi-argo-bridge` crash-loops until the Cluster API CRDs exist. Harmless,
   but it could wait for them instead of failing to start.
+- An Application whose sync hits a not-yet-ready webhook (cert-manager, external
+  secrets) stays `Running`/"waiting for healthy state" forever: the failed task
+  is never re-applied, and automated sync cannot start a new operation while one
+  is running, so `retry.limit: -1` never helps. Deleting the Application (no
+  finalizer, so nothing is pruned) lets the catalog recreate it. Record the
+  recovery in `bootstrap.md`, or have the catalog set a retry `backoff` and
+  accept a manual nudge.
+- The `apps` ApplicationSet validates its destination `name` when it generates,
+  and `members` creates the cluster Secret a second later, so a fresh
+  cluster's apps appear only on the next 3-minute reconcile.
+- The `keycloak-realm` CronWorkflow fires every 10 minutes whether or not
+  Keycloak is up; on a fresh cluster the first run fails with "no route to
+  host". Start it suspended and unsuspend once Keycloak is Ready, or have the
+  workflow wait for it.
+- `argo-workflows-server` crash-loops (10 restarts, ~30 min) until the realm
+  exists: it validates the OIDC issuer at startup and exits on 404. A startup
+  probe with a long `failureThreshold`, or the realm coming up earlier, would
+  hide it.
+- Certificates: the first one is Ready ~8 minutes after `root` is applied, so
+  everything behind TLS (OpenBao, Keycloak, every ExternalSecret) waits that
+  long. Nothing to fix, but it sets the floor of the bootstrap.
 
 ## Workloads
 

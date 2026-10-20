@@ -278,3 +278,11 @@ How that plays out here:
   overrides it (Immich sets `0s` for large downloads).
 - A ZFS filesystem PVC (`zfs-media`) can't show `.zfs/snapshot` inside a pod
   with user namespaces; mount the snapshot read-only on the host instead.
+- An Application whose first sync hit a webhook that was not ready yet
+  (cert-manager, external secrets) stays `Running` forever: the failed task is
+  never re-applied and `retry.limit: -1` only fires on a failed operation.
+  Delete the Application; `addons-<cluster>` recreates it and nothing is pruned
+  (`docs/bootstrap.md`).
+- The `apps` ApplicationSet checks its destination when it generates, and
+  cluster Secrets arrive with the `members` Application, so a fresh cluster's
+  apps appear on the next 3-minute reconcile.

@@ -192,6 +192,25 @@ kubectl get externalsecret,pushsecret -A --no-headers | while read ns n _; do
   kubectl -n "$ns" annotate "$n" force-sync="$(date +%s)" --overwrite; done
 ```
 
+### When an Application never finishes its first sync
+
+An Application whose sync hit a webhook that was not ready yet (cert-manager's
+or External Secrets' validating webhook, in practice) can stay `Running` with
+`waiting for healthy state of …` forever: Argo CD keeps the failed task as
+failed, never re-applies it, and cannot start another operation while one is
+running, so `retry.limit: -1` does not help. Its health message names the
+resource it waits for; `status.operationState.syncResult` names the task that
+failed, usually with `failed calling webhook`.
+
+The generated addon Applications carry no finalizer, so deleting one is safe:
+nothing it created is pruned, and `addons-<cluster>` recreates it within its
+reconcile interval with a fresh operation that applies everything again.
+
+```sh
+kubectl -n argocd get app <name> -o json | jq -r '.status.operationState.syncResult.resources[] | select(.status=="SyncFailed") | "\(.kind)/\(.name): \(.message)"'
+kubectl -n argocd delete application <name>
+```
+
 Once Keycloak and the `wg` Gateway are up, the UI is at
 https://argocd.skinke.net over WireGuard, behind Keycloak. On a workstation
 that means `just kubeconfig` for kubectl and the hosts entries in
