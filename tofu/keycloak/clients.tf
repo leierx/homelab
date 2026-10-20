@@ -137,6 +137,25 @@ resource "keycloak_openid_client" "edge" {
   valid_redirect_uris = ["https://metrics.skinke.net/oauth2/callback"]
 }
 
+# the Tekton Dashboard behind Envoy Gateway's login on the wg Gateway; only homelab-admins pass its rule
+resource "keycloak_openid_client" "tekton" {
+  realm_id  = keycloak_realm.homelab.id
+  client_id = "tekton"
+  name      = "tekton"
+  enabled   = true
+  base_url  = "https://tekton.skinke.net"
+
+  access_type                  = "CONFIDENTIAL"
+  client_secret_wo             = var.tekton_client_secret
+  client_secret_wo_version     = "1"
+  standard_flow_enabled        = true
+  direct_access_grants_enabled = false
+  implicit_flow_enabled        = false
+  service_accounts_enabled     = false
+
+  valid_redirect_uris = ["https://tekton.skinke.net/oauth2/callback"]
+}
+
 # kubectl through kubelogin (`just kubeconfig`); the API server trusts this issuer
 resource "keycloak_openid_client" "kubernetes" {
   realm_id  = keycloak_realm.homelab.id
@@ -206,6 +225,12 @@ resource "keycloak_openid_client_default_scopes" "immich" {
 resource "keycloak_openid_client_default_scopes" "edge" {
   realm_id       = keycloak_realm.homelab.id
   client_id      = keycloak_openid_client.edge.id
+  default_scopes = local.default_client_scopes
+}
+
+resource "keycloak_openid_client_default_scopes" "tekton" {
+  realm_id       = keycloak_realm.homelab.id
+  client_id      = keycloak_openid_client.tekton.id
   default_scopes = local.default_client_scopes
 }
 
