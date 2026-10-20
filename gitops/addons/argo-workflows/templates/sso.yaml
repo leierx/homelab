@@ -67,36 +67,13 @@ metadata:
     kubernetes.io/service-account.name: homelab-admins
 type: kubernetes.io/service-account-token
 ---
-# the workflows the group may read and run, here and in the keycloak namespace
+# full Argo Workflows admin: the chart's aggregate role has no cluster-scoped
+# resources except ClusterWorkflowTemplates, which the UI lists, so bind it
+# cluster-wide; `view` adds pods/log and the rest the UI reads
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
-  name: homelab-admins-workflows
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: argo-workflows-admin
-subjects:
-  - kind: ServiceAccount
-    name: homelab-admins
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: homelab-admins-view
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: view
-subjects:
-  - kind: ServiceAccount
-    name: homelab-admins
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: homelab-admins-workflows
-  namespace: keycloak
+  name: argo-workflows-homelab-admins
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -107,10 +84,9 @@ subjects:
     namespace: argo
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
-  name: homelab-admins-view
-  namespace: keycloak
+  name: argo-workflows-homelab-admins-view
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

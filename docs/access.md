@@ -91,6 +91,7 @@ Grafana additionally refuses a token without a tier (`role_attribute_strict`).
 | Argo CD | `role:admin` | `role:admin` | `role:readonly` |
 | Grafana | `GrafanaAdmin` | `Editor` | `Viewer` |
 | Immich | admin | user | user |
+| Argo Workflows (UI) | admin | no access | no access |
 | Keycloak (realm `homelab`) | `realm-admin` | account console only | account console only |
 | Kubernetes (kubectl) | `cluster-admin` | `homelab-operator`: view, delete pods | `view` |
 | OpenBao | `admin` policy, via `just bao` (needs cluster-admin) | none | none |
@@ -109,6 +110,17 @@ Argo CD.
 
 The Keycloak admin console for admins is
 https://auth.skinke.net/admin/homelab/console/, over WireGuard.
+
+Argo Workflows has its own SSO RBAC: a ServiceAccount per group, annotated
+with `workflows.argoproj.io/rbac-rule`, and bound to the chart's
+`argo-workflows-admin`/`argo-workflows-edit`/`argo-workflows-view` cluster
+roles (`gitops/addons/argo-workflows/templates/sso.yaml`). Only
+`homelab-admins` has one today, with full admin in every namespace and the
+cluster-scoped `ClusterWorkflowTemplates` the UI lists; to let a future group
+in, add that ServiceAccount, its token Secret and a binding, and keep the
+tiers. The UI's namespace filter is free text and starts at `default`: type
+`keycloak` (or open `https://workflows.skinke.net/workflows/keycloak`) to see
+the realm reconcile runs.
 
 ## Argo CD
 
