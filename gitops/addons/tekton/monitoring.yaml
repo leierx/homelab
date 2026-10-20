@@ -1,0 +1,10 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: tekton-pipelines-controller
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: controller
+  endpoints:
+    - port: http-metrics

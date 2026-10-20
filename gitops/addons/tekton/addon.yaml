@@ -1,0 +1,2 @@
+namespace: tekton-pipelines
+kustomize: true

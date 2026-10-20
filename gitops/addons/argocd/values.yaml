@@ -14,6 +14,13 @@ argo-cd:
         requestedScopes: [openid, profile, email]
         # renew the session before Keycloak's 5-minute ID token runs out
         refreshTokenThreshold: 2m
+      # the webhook controllers (Tekton, pruner) write their own serving CA into these at runtime
+      resource.customizations.ignoreDifferences.admissionregistration.k8s.io_ValidatingWebhookConfiguration: |
+        jqPathExpressions:
+          - '.webhooks[]?.clientConfig.caBundle'
+      resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
+        jqPathExpressions:
+          - '.webhooks[]?.clientConfig.caBundle'
     params:
       # TLS ends at the edge Gateway
       server.insecure: true

@@ -1,0 +1,117 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# the platform first: the pipelines' Task and TaskRun need these CRDs and the admission webhook
+commonAnnotations:
+  argocd.argoproj.io/sync-wave: "-1"
+resources:
+  - https://github.com/tektoncd/pipeline/releases/download/v1.17.0/release.yaml
+  - https://github.com/tektoncd/dashboard/releases/download/v0.73.0/release-full.yaml
+  - https://github.com/tektoncd/pruner/releases/download/v0.4.3/release.yaml
+patches:
+  # the release labels only enforce; AGENTS.md wants warn and audit too
+  - target: {kind: Namespace, name: tekton-pipelines}
+    patch: |-
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1warn
+        value: restricted
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1audit
+        value: restricted
+  - target: {kind: Namespace, name: tekton-pipelines-resolvers}
+    patch: |-
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1warn
+        value: restricted
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1audit
+        value: restricted
+  # release-full creates an empty namespace nothing uses
+  - target: {kind: Namespace, name: tekton-dashboard}
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: tekton-dashboard
+  # both webhooks create and rotate their own serving certs in these Secrets (knative's certificates
+  # controller); tracking the empty release copy would fight it and show drift
+  - target: {kind: Secret, name: webhook-certs}
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: webhook-certs
+  - target: {kind: Secret, name: tekton-pruner-webhook-certs}
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: tekton-pruner-webhook-certs
+  # one node: no Affinity Assistant pods
+  - target: {kind: ConfigMap, name: feature-flags}
+    patch: |-
+      - op: replace
+        path: /data/coschedule
+        value: disabled
+  - target: {kind: Deployment, name: tekton-pipelines-controller}
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: { cpu: 100m, memory: 256Mi }
+          limits: { memory: 1Gi }
+  - target: {kind: Deployment, name: tekton-events-controller}
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: { cpu: 10m, memory: 64Mi }
+          limits: { memory: 256Mi }
+  # upstream sets CPU limits; this node must not throttle them
+  - target: {kind: Deployment, name: tekton-pipelines-webhook}
+    patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+  - target: {kind: Deployment, name: tekton-pipelines-remote-resolvers}
+    patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+  - target: {kind: Deployment, name: tekton-dashboard}
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: { cpu: 20m, memory: 128Mi }
+          limits: { memory: 512Mi }
+      # the Dashboard only lists and acts in the reconcile's namespace
+      - op: test
+        path: /spec/template/spec/containers/0/args/5
+        value: --namespaces=
+      - op: replace
+        path: /spec/template/spec/containers/0/args/5
+        value: --namespaces=keycloak-tofu
+  - target: {kind: Deployment, name: tekton-pruner-controller}
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: { cpu: 10m, memory: 64Mi }
+          limits: { memory: 256Mi }
+  - target: {kind: Deployment, name: tekton-pruner-webhook}
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests: { cpu: 10m, memory: 64Mi }
+          limits: { memory: 256Mi }
+  # read-write is granted namespace-scoped, by the job's rbac.yaml; the tenant view (pods, pods/log,
+  # events) stays cluster-wide, it grants no Secrets
+  - target: {kind: ClusterRoleBinding, name: tekton-dashboard-pipelines-edit}
+    patch: |-
+      $patch: delete
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: tekton-dashboard-pipelines-edit

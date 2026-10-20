@@ -1,0 +1,52 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: tekton-dashboard
+spec:
+  secretName: tekton-dashboard-tls
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt
+  dnsNames:
+    - tekton.skinke.net
+---
+# WireGuard only: the Dashboard starts and deletes runs
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: tekton-dashboard-wg
+spec:
+  parentRef:
+    name: wg
+    namespace: envoy-gateway-system
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: tekton.skinke.net
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: tekton-dashboard-tls
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: tekton-dashboard-wg
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: tekton-dashboard-wg
+  hostnames:
+    - tekton.skinke.net
+  rules:
+    - backendRefs:
+        - name: tekton-dashboard
+          port: 9097
+      # log streaming is one long request; don't cut it at the gateways' 300 s default
+      timeouts:
+        request: 0s
