@@ -6,15 +6,14 @@ resources:
   - monitoring.yaml
   - network-policy.yaml
 patches:
-  # two weeks of finished runs, capped; wave 0 so the pruner webhook (wave -1) is up to validate it
+  # two weeks of finished runs, capped; the pruner controller refuses to start without this ConfigMap,
+  # so it stays in the platform's wave
   - target: {kind: ConfigMap, name: tekton-pruner-default-spec}
     patch: |-
       apiVersion: v1
       kind: ConfigMap
       metadata:
         name: tekton-pruner-default-spec
-        annotations:
-          argocd.argoproj.io/sync-wave: "0"
       data:
         global-config: |-
           enforcedConfigLevel: global
