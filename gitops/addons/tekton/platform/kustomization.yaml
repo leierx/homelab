@@ -33,22 +33,8 @@ patches:
       kind: Namespace
       metadata:
         name: tekton-dashboard
-  # both webhooks create and rotate their own serving certs in these Secrets (knative's certificates
-  # controller); tracking the empty release copy would fight it and show drift
-  - target: {kind: Secret, name: webhook-certs}
-    patch: |-
-      $patch: delete
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: webhook-certs
-  - target: {kind: Secret, name: tekton-pruner-webhook-certs}
-    patch: |-
-      $patch: delete
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: tekton-pruner-webhook-certs
+  # both webhooks' cert controllers bootstrap from the empty release Secret and then fill in data;
+  # the tekton app ignores drift on those two Secrets' data (gitops/fleet/addons.yaml)
   # one node: no Affinity Assistant pods
   - target: {kind: ConfigMap, name: feature-flags}
     patch: |-
@@ -115,3 +101,11 @@ patches:
       kind: ClusterRoleBinding
       metadata:
         name: tekton-dashboard-pipelines-edit
+  # one replica on one node; its HPA can't compute without metrics-server and would fail the sync
+  - target: {kind: HorizontalPodAutoscaler, name: tekton-pipelines-webhook}
+    patch: |-
+      $patch: delete
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: tekton-pipelines-webhook
