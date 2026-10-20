@@ -109,3 +109,18 @@ patches:
       kind: HorizontalPodAutoscaler
       metadata:
         name: tekton-pipelines-webhook
+  # Triggers isn't installed; release-full's bindings to its roles are dangling
+  - target: {kind: ClusterRoleBinding, name: tekton-dashboard-triggers-view}
+    patch: |-
+      $patch: delete
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: tekton-dashboard-triggers-view
+  - target: {kind: ClusterRoleBinding, name: tekton-dashboard-triggers-edit}
+    patch: |-
+      $patch: delete
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: tekton-dashboard-triggers-edit
