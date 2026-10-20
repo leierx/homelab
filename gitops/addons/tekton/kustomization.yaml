@@ -5,6 +5,7 @@ resources:
   - dashboard-route.yaml
   - monitoring.yaml
   - network-policy.yaml
+  - pipelines/keycloak
 patches:
   # two weeks of finished runs, capped; the pruner controller refuses to start without this ConfigMap,
   # so it stays in the platform's wave

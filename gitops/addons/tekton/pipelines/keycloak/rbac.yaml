@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: keycloak-tofu
+  namespace: keycloak-tofu
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: keycloak-tofu
+  namespace: keycloak-tofu
+rules:
+  # the kubernetes backend lists workspaces by label; a name can't be limited
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [list]
+  - apiGroups: [""]
+    resources: [secrets]
+    resourceNames: [tfstate-default-keycloak]
+    verbs: [get, update, patch, delete]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [create]
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    resourceNames: [lock-tfstate-default-keycloak]
+    verbs: [get, update, patch, delete]
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: keycloak-tofu
+  namespace: keycloak-tofu
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: keycloak-tofu
+subjects:
+  - kind: ServiceAccount
+    name: keycloak-tofu
+    namespace: keycloak-tofu
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: keycloak-tofu-launcher
+  namespace: keycloak-tofu
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: keycloak-tofu-launcher
+  namespace: keycloak-tofu
+rules:
+  - apiGroups: [tekton.dev]
+    resources: [taskruns]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: keycloak-tofu-launcher
+  namespace: keycloak-tofu
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: keycloak-tofu-launcher
+subjects:
+  - kind: ServiceAccount
+    name: keycloak-tofu-launcher
+    namespace: keycloak-tofu
+---
+# the Dashboard's read-write access, this namespace only (its ClusterRoleBinding was dropped)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-dashboard
+  namespace: keycloak-tofu
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-aggregate-edit
+subjects:
+  - kind: ServiceAccount
+    name: tekton-dashboard
+    namespace: tekton-pipelines

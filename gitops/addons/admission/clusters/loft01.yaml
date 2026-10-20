@@ -8,6 +8,8 @@ userNamespaces:
   - external-secrets
   - immich
   - keycloak
+  - keycloak-tofu
   - monitoring
   - openbao
   - renovate
+  - tekton-pipelines

@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - externalsecret.yaml
+  - rbac.yaml
+  - task.yaml
+  - taskrun.yaml
+  - cronjob.yaml
+  # sync-hook.yaml, left out during the cutover
+configMapGenerator:
+  # every file listed: a dotfile can't fall out of a directory scan; the TaskRun names it, so no hash
+  - name: keycloak-tofu-tofu
+    files:
+      - tofu/.terraform.lock.hcl
+      - tofu/clients.tf
+      - tofu/flows.tf
+      - tofu/groups.tf
+      - tofu/providers.tf
+      - tofu/realm.tf
+      - tofu/users.tf
+      - tofu/variables.tf
+      - tofu/versions.tf
+generatorOptions:
+  disableNameSuffixHash: true

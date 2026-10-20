@@ -9,9 +9,9 @@ terraform {
     }
   }
 
-  # state and lock in the keycloak namespace: Secret tfstate-default-keycloak, Lease lock-tfstate-default-keycloak
+  # state and lock in the job's own namespace: Secret tfstate-default-keycloak, Lease lock-tfstate-default-keycloak
   backend "kubernetes" {
-    namespace         = "keycloak"
+    namespace         = "keycloak-tofu"
     secret_suffix     = "keycloak"
     in_cluster_config = true
   }

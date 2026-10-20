@@ -7,10 +7,10 @@
   "automergeStrategy": "merge-commit",
   "platformAutomerge": false,
   "kubernetes": {
-    "managerFilePatterns": ["/^gitops/addons/.+/templates/.+\\.ya?ml$/"]
+    "managerFilePatterns": ["/^gitops/addons/.+/templates/.+\\.ya?ml$/", "/^gitops/addons/tekton/pipelines/.+\\.ya?ml$/"]
   },
   "terraform": {
-    "managerFilePatterns": ["/^tofu/.+\\.tf$/"]
+    "managerFilePatterns": ["/^gitops/addons/tekton/pipelines/.+/tofu/.+\\.tf$/"]
   },
   "customManagers": [
     {
@@ -39,6 +39,12 @@
       "commitMessageSuffix": "({{ lookup (split packageFileDir '/') 2 }})"
     },
     {
+      "description": "a reconcile job never shares a PR with Tekton's own bumps, so neither blocks the other",
+      "matchFileNames": ["gitops/addons/tekton/pipelines/keycloak/**"],
+      "groupName": "keycloak-reconcile",
+      "commitMessageSuffix": "(keycloak-reconcile)"
+    },
+    {
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
       "automerge": true
@@ -55,7 +61,7 @@
     },
     {
       "description": "The Keycloak operator, the image it runs, the realm's provider and the reconcile image wait for review",
-      "matchFileNames": ["gitops/addons/keycloak-operator/**", "gitops/addons/keycloak/**", "tofu/keycloak/**"],
+      "matchFileNames": ["gitops/addons/keycloak-operator/**", "gitops/addons/keycloak/**", "gitops/addons/tekton/pipelines/keycloak/**"],
       "automerge": false
     },
     {
@@ -70,7 +76,7 @@
       "extractVersion": "^pg18-v(?<version>\\d+\\.\\d+\\.\\d+)$"
     },
     {
-      "description": "tofu/keycloak's providers come from the OpenTofu registry; Renovate defaults to the Terraform one",
+      "description": "the reconcile job's providers come from the OpenTofu registry; Renovate defaults to the Terraform one",
       "matchDatasources": ["terraform-provider", "terraform-module"],
       "registryUrls": ["https://registry.opentofu.org"]
     }
