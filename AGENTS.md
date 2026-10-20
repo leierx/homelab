@@ -83,10 +83,9 @@ How that plays out here:
 - An addon: `helm dependency update` + `helm template` with Argo's value
   layering (see GitOps contract), `kubectl apply --dry-run=server` on the
   render, then delete `charts/` and `Chart.lock`.
-- The Keycloak realm (`gitops/addons/tekton/pipelines/keycloak/tofu/`):
-  `tofu fmt -check` and `tofu validate` (`nix shell nixpkgs#opentofu`); the check
-  that counts is the next `keycloak-tofu` TaskRun's plan
-  (`kubectl -n keycloak-tofu get taskrun`).
+- The Keycloak realm (`tofu/keycloak/`): `tofu fmt -check` and `tofu validate`
+  (`nix shell nixpkgs#opentofu`); the check that counts is the next
+  `keycloak-realm` CronWorkflow run's plan (`kubectl -n keycloak get wf`).
 
 ## Working live
 
@@ -118,9 +117,8 @@ How that plays out here:
   workload ApplicationSets + cluster Secrets) → `addons/<addon>/` and
   `workloads/<name>/`.
 - `apps/<name>/`: our own Go programs, each with its own workflow and README.
-- `gitops/addons/tekton/pipelines/`: the CI/CD jobs Tekton runs; each folder
-  is one job with its own namespace. `pipelines/keycloak/tofu/` is realm
-  `homelab` as OpenTofu with the Keycloak provider.
+- `tofu/keycloak/`: realm `homelab` as OpenTofu with the Keycloak provider,
+  run by the `keycloak-realm` CronWorkflow (addon `keycloak`).
 - `justfile`: workstation helpers.
 - `docs/`: `bootstrap.md` (bare metal to first sync), `operations.md`
   (updates, backups, certificates, observability), `access.md` (SSO, tiers,
@@ -190,8 +188,7 @@ How that plays out here:
 - A site: a `Certificate`, a ListenerSet + HTTPRoute per Gateway (`edge` and
   `wg`), an ingress allow from Envoy plus an entry in envoy-gateway's
   `proxies` policy. Public admin UIs sit behind SecurityPolicy `edge-oidc`.
-  SSO: a client in `gitops/addons/tekton/pipelines/keycloak/tofu/clients.tf`
-  (`docs/access.md`).
+  SSO: a client in `tofu/keycloak/clients.tf` (`docs/access.md`).
 
 ## Deliberate, don't "fix"
 

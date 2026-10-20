@@ -34,8 +34,3 @@ variable "argo_workflows_client_secret" {
   type      = string
   sensitive = true
 }
-
-variable "tekton_client_secret" {
-  type      = string
-  sensitive = true
-}

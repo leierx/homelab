@@ -8,14 +8,8 @@ spec:
     ingress: true
     egress: true
   ingress:
-    # Keycloak's own traffic: Postgres, JGroups
+    # the reconcile pod and Keycloak's own traffic: Postgres, JGroups
     - fromEndpoints: [{}]
-    # the realm reconcile (keycloak-tofu), on the HTTP port only
-    - fromEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: keycloak-tofu
-      toPorts:
-        - ports: [{ port: "8080", protocol: TCP }]
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: envoy-gateway-system

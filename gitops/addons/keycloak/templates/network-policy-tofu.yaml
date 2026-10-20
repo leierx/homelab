@@ -1,23 +1,22 @@
-# the reconcile reaches Keycloak, its own state, DNS and what tofu init downloads, and nothing else
+# the reconcile pod reaches Keycloak, DNS, the OpenTofu registry and GitHub, and the API server for its state
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: default
-  namespace: keycloak-tofu
+  name: keycloak-tofu
 spec:
-  endpointSelector: {}
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak-tofu
   enableDefaultDeny:
     ingress: true
     egress: true
-  ingress: []
   egress:
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: keycloak
-            app.kubernetes.io/component: server
+            app.kubernetes.io/name: keycloak
       toPorts:
         - ports: [{ port: "8080", protocol: TCP }]
-    # the DNS rule lets Cilium see the lookups its toFQDNs rule enforces
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: kube-system
@@ -26,14 +25,8 @@ spec:
         - ports:
             - { port: "53", protocol: UDP }
             - { port: "53", protocol: TCP }
-          rules:
-            dns:
-              - matchPattern: "*"
     - toEntities: [kube-apiserver]
-    - toFQDNs:
-        - matchName: registry.opentofu.org
-        - matchName: github.com
-        - matchName: objects.githubusercontent.com
-        - matchName: release-assets.githubusercontent.com
+    # GitHub for the git artifact, registry.opentofu.org and the provider release downloads
+    - toEntities: [world]
       toPorts:
         - ports: [{ port: "443", protocol: TCP }]

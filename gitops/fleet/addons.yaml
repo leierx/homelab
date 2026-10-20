@@ -62,16 +62,3 @@ spec:
             pod-security.kubernetes.io/audit: "{{ .podSecurity }}"
       {{- end }}
     {{- end }}
-    {{- if eq .path.basename "tekton" }}
-    spec:
-      # the Pipelines and pruner webhooks fill in the serving certs of the empty release Secrets
-      ignoreDifferences:
-        - group: ""
-          kind: Secret
-          name: webhook-certs
-          jsonPointers: [/data]
-        - group: ""
-          kind: Secret
-          name: tekton-pruner-webhook-certs
-          jsonPointers: [/data]
-    {{- end }}
