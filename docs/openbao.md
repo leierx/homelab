@@ -200,6 +200,10 @@ Then, depending on the consumer:
   only read when the master realm is created and by the reconcile: rotate it
   in Keycloak first (kcadm), then in OpenBao, then restart the reconcile's
   next run.
+- **Argo Workflows' server** reads the `argo-server-sso` Secret when it starts,
+  so after a change to the `argo-workflows` client secret restart it
+  (`kubectl -n argo rollout restart deploy/argo-workflows-server`); otherwise
+  its login fails with `unauthorized_client`.
 
 ## Host-only secrets (sops, not OpenBao)
 
