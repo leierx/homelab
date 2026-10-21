@@ -8,6 +8,8 @@ argo-cd:
       server.insecure: true
       # diff against what the API server stores, so CRD defaults (HTTPRoute matches, parentRef group/kind) aren't drift
       controller.diff.server.side: true
+      # 4800s: ~2x the longest first sync in the rebuild (2379s); a wedged operation now fails and retries
+      controller.sync.timeout.seconds: "4800"
     rbac:
       policy.csv: |
         g, homelab-admins, role:admin
