@@ -195,17 +195,19 @@ kubectl get externalsecret,pushsecret -A --no-headers | while read ns n _; do
 
 ### When an Application never finishes its first sync
 
-An Application whose sync hit a webhook that was not ready yet (cert-manager's
-or External Secrets' validating webhook, in practice) can stay `Running` with
-`waiting for healthy state of …` forever: Argo CD keeps the failed task as
-failed, never re-applies it, and cannot start another operation while one is
-running, so `retry.limit: -1` does not help. Its health message names the
-resource it waits for; `status.operationState.syncResult` names the task that
-failed, usually with `failed calling webhook`.
+The controller's `controller.sync.timeout.seconds` (4800, about twice the
+longest first sync in the rebuild) ends an operation that has not finished: its
+phase becomes `Failed` with "Operation terminated, triggered by controller sync
+timeout", and `retry.limit: -1` starts a fresh operation. So a sync that hit a
+webhook that was not ready yet (cert-manager's or External Secrets', in
+practice) recovers by itself, at the latest one timeout later.
 
-The generated addon Applications carry no finalizer, so deleting one is safe:
-nothing it created is pruned, and `addons-<cluster>` recreates it within its
-reconcile interval with a fresh operation that applies everything again.
+If it is still stuck after that, deleting the Application is the fallback, not
+the fix. The generated addon Applications carry no finalizer, so nothing it
+created is pruned, and `addons-<cluster>` recreates it within its reconcile
+interval with a fresh operation that applies everything again. Its
+`status.operationState.syncResult` names the tasks that failed, usually with
+`failed calling webhook`.
 
 ```sh
 kubectl -n argocd get app <name> -o json | jq -r '.status.operationState.syncResult.resources[] | select(.status=="SyncFailed") | "\(.kind)/\(.name): \(.message)"'
