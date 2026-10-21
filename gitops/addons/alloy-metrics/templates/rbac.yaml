@@ -1,0 +1,33 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}
+rules:
+  # discovery.kubernetes reads the nodes for kubelet and cAdvisor, the API
+  # server's and kube-dns's endpoint slices, kube-state-metrics and
+  # node-exporter; the events source watches every namespace
+  - apiGroups: ["", "discovery.k8s.io"]
+    resources: ["endpoints", "endpointslices", "pods", "services", "events"]
+    verbs: ["get", "list", "watch"]
+  # the operator components read every ServiceMonitor and PodMonitor
+  - apiGroups: ["monitoring.coreos.com"]
+    resources: ["servicemonitors", "podmonitors"]
+    verbs: ["get", "list", "watch"]
+  # kubelet and cAdvisor are scraped through the node's /metrics and
+  # /metrics/cadvisor, which are cluster-scoped subresources
+  - apiGroups: [""]
+    resources: ["nodes", "nodes/metrics"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Name }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Release.Name }}
+    namespace: {{ .Release.Namespace }}

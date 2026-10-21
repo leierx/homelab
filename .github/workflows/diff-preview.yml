@@ -69,7 +69,7 @@ jobs:
             cluster=$(yq -r '.stringData.name' "$member")
             groups=$(yq -r '.metadata.annotations["fleet.homelab/groups"] // ""' "$member")
             IFS=, read -r -a names <<< "$groups"
-            for addon in prometheus-operator-crds cert-manager envoy-gateway k8s-monitoring; do
+            for addon in prometheus-operator-crds cert-manager envoy-gateway; do
               [ -d "pull-request/gitops/addons/$addon" ] || continue
               args=()
               for g in "${names[@]}"; do

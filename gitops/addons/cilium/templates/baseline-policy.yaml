@@ -12,8 +12,9 @@ spec:
     # metrics scraping
     - fromEndpoints:
         - matchLabels:
-            k8s:io.kubernetes.pod.namespace: k8s-monitoring
-            app.kubernetes.io/name: alloy-metrics
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
   egress:
     - toEndpoints:
         - matchLabels:

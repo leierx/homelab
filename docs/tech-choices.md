@@ -27,6 +27,25 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
   - **Thanos** — Prometheus plus object storage; more moving parts than a
     single-node homelab needs.
 
+### Telemetry collection
+
+- **Need:** scrape cluster, node and app metrics and ship pod, event and audit
+  logs, with configs we can read and change.
+- **Choice:** our own `alloy-metrics` and `alloy-logs` addons (Grafana Alloy,
+  Apache-2.0), the `kube-state-metrics` (Apache-2.0, Kubernetes SIG) and
+  `node-exporter` (Apache-2.0, Prometheus/CNCF) addons, all in namespace
+  `telemetry`; the `.alloy` configs are files under
+  `gitops/addons/*/config/`.
+- **Why:** the configs are real files in git, small and one per concern; there
+  is no operator and no generated config, so what runs is what we wrote. Alloy
+  keeps the ServiceMonitor/PodMonitor interface, so every chart's monitor still
+  works.
+- **Alternatives:** the `k8s-monitoring` chart (what this replaced) — a
+  generated config we didn't write, an alloy-operator, and Helm hooks Argo CD
+  can't run cleanly. Prometheus without Alloy was also possible, but loses the
+  ServiceMonitor/PodMonitor interface unless the Prometheus Operator comes
+  along.
+
 ### Logs
 
 - **Need:** store and search container and node logs, correlate with metrics.
@@ -41,7 +60,8 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
 - **Need:** one UI over every backend, plus dashboards rendered from the
   releases we already run.
 - **Choice:** Grafana; community dashboards pinned in
-  `gitops/addons/observability/values.yaml`, plus the k8s-monitoring ones.
+  `gitops/addons/observability/values.yaml`, plus the k8s-views and
+  node-exporter dashboards.
 - **Why:** queries every backend above, and dashboards can be shipped as
   ConfigMaps labelled `grafana_dashboard: "1"`, so addons own their own
   dashboards.
@@ -56,8 +76,8 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
   was a 50 GiB PVC, a pod and a whole datasource chain for no data. The Alloy
   OTLP receiver that existed only to route traces was removed too.
 - **Alternatives:** re-adding Tempo is a chart dependency, a datasource and an
-  `applicationObservability` block in k8s-monitoring — cheap to bring back the
-  day a real app needs it.
+  OTLP receiver in the Alloy config — cheap to bring back the day a real app
+  needs it.
 
 ### Storage budget (zfs pool)
 
@@ -532,8 +552,8 @@ Five components are single-vendor or open core with no neutral foundation
 (the IdP was one more until Keycloak replaced it; see Identity):
 
 - **Grafana, Mimir, Loki and Alloy** (Grafana Labs, not a foundation).
-  Grafana, Mimir and Loki are AGPL-3.0; Alloy and the `k8s-monitoring` chart
-  are Apache-2.0. Foundation alternatives: **Perses** (Apache-2.0, CNCF
+  Grafana, Mimir and Loki are AGPL-3.0; Alloy is Apache-2.0. Foundation
+  alternatives: **Perses** (Apache-2.0, CNCF
   sandbox) for dashboards, **Prometheus** (Apache-2.0, CNCF graduated) with
   **Thanos** (CNCF incubating) or **VictoriaMetrics** (Apache-2.0,
   vendor) for metrics, **OpenSearch** (Apache-2.0, LF) for logs, and the

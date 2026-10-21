@@ -182,12 +182,6 @@ rules (see Protect `main`).
 ## Observability
 
 - No alert notification channel; choose one.
-- Every PVC's `kubelet_volume_stats_*` has a second series from the API-server
-  integration in `k8s-monitoring`
-  (`job=integrations/kubernetes/kube-apiserver`, `namespace="default"`, the
-  real namespace in `exported_namespace`) next to the kubelet one
-  (`job=integrations/kubernetes/kubelet`). Drop or relabel the duplicate so
-  one PVC is one series.
 - cert-manager's HTTP-01 solver pods carry a CPU limit, so every issuance trips
   the "Pod breaks an admission policy" alert in the Certificate's namespace.
   cert-manager's `--acme-http01-solver-resource-limits-cpu` (controller flag)
@@ -197,7 +191,7 @@ rules (see Protect `main`).
 ## Network policy
 
 - Default-deny for the namespaces not covered yet (kube-system,
-  k8s-monitoring, kubevirt, cdi, capi-*, openebs).
+  telemetry, kubevirt, cdi, capi-*, openebs).
 - Workload clusters (namespace `clusters`, where capi-argo-bridge looks): their
   VMs sit on loft01's pod network, so before the first
   one, a policy for its namespace that allows only what CAPI and Argo CD need

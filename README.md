@@ -69,9 +69,13 @@ real GitOps platform on hardware we own.
   digest and Services exposed outside the Gateways, and warn on containers
   without requests and a memory limit or with a CPU limit; there is no policy
   controller.
-- **Observability.** Alloy scrapes every ServiceMonitor and PodMonitor into
-  Mimir, Loki stores logs, Grafana is the one UI, and its alerts show in its
-  own alert list.
+- **Observability.** Four `telemetry` addons do the collecting: our own
+  `alloy-metrics` (StatefulSet) scrapes the kubelet, cAdvisor,
+  kube-state-metrics, the API server, kube-dns and every ServiceMonitor and
+  PodMonitor into Mimir, and ships Kubernetes events to Loki; `alloy-logs`
+  (DaemonSet) tails pod logs and the API server audit log into Loki;
+  `kube-state-metrics` and `node-exporter` are the prometheus-community
+  charts. Grafana is the one UI, and its alerts show in its own alert list.
 
 ## The stack, and why
 
@@ -97,7 +101,9 @@ real GitOps platform on hardware we own.
 | Vector search | VectorChord + pgvector | Immich's embeddings in Postgres, mounted as an image volume | AGPL-3.0 or ELv2 (we use AGPL), PostgreSQL | none (TensorChord), none (pgvector) |
 | Metrics | Mimir | PromQL and remote-write, blocks on a local PVC | AGPL-3.0 | none (Grafana Labs) |
 | Scrape interface | prometheus-operator-crds | `ServiceMonitor` is the interface every chart writes | Apache-2.0 | none (operator; Prometheus core is CNCF) |
-| Scraping | Alloy (k8s-monitoring) | one collector that reads ServiceMonitors | Apache-2.0 | none (Grafana Labs) |
+| Scraping | Alloy (our own addons) | one collector that reads ServiceMonitors, with configs we wrote | Apache-2.0 | none (Grafana Labs) |
+| Cluster state | kube-state-metrics | Kubernetes object state as metrics | Apache-2.0 | Kubernetes SIG (CNCF) |
+| Host metrics | node-exporter | node CPU, memory, filesystem and network | Apache-2.0 | Prometheus (CNCF) |
 | Logs | Loki | indexes labels, not text, so it is cheap on one node | AGPL-3.0 | none (Grafana Labs) |
 | Dashboards and alerts | Grafana | one UI; dashboards as labelled ConfigMaps | AGPL-3.0 | none (Grafana Labs) |
 | Photos | Immich | phone backup, timeline, faces and search, Keycloak SSO | AGPL-3.0 | none (FUTO; single vendor, see principle 5) |
