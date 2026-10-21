@@ -118,16 +118,6 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
 
 From the rebuild from nothing (October 2026):
 
-- An Application whose sync hits a not-yet-ready webhook (cert-manager, external
-  secrets) stays `Running`/"waiting for healthy state" forever: the failed task
-  is never re-applied, and automated sync cannot start a new operation while one
-  is running, so `retry.limit: -1` never helps. Deleting the Application (no
-  finalizer, so nothing is pruned) lets the catalog recreate it
-  (`docs/bootstrap.md`). Argo CD's `controller.sync.timeout.seconds` could end
-  such an operation by itself.
-- The `keycloak-realm` CronWorkflow fires every 10 minutes whether or not
-  Keycloak is up; on a fresh cluster the first runs fail with "no route to
-  host". Have the workflow wait for Keycloak.
 - `argo-workflows-server` crash-loops (10 restarts, ~30 min) until the realm
   exists: it validates the OIDC issuer at startup and exits on 404. A startup
   probe with a long `failureThreshold`, or the realm coming up earlier, would
