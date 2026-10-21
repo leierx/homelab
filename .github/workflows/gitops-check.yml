@@ -1,0 +1,96 @@
+name: gitops check
+
+# Renders the fleet layout offline and checks every addon the way Argo CD will
+# use it. Gates Renovate's automerge.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "gitops/**"
+      - ".github/workflows/gitops-check.yml"
+  pull_request:
+    paths:
+      - "gitops/**"
+      - ".github/workflows/gitops-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: "1.22"
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.x"
+
+      - name: install PyYAML
+        run: pip install pyyaml
+
+      - name: 1. render-check
+        run: gitops/tools/render-check/run.sh
+
+      - name: 2. every non-template YAML parses
+        run: |
+          set -euo pipefail
+          find gitops -name '*.yaml' ! -path '*/templates/*' -print0 \
+            | xargs -0 -r -n1 yq e '.' >/dev/null
+
+      - name: 3. every Helm addon builds and renders
+        run: |
+          set -euo pipefail
+          for d in gitops/addons/*/; do
+            [ -f "$d/addon.yaml" ] || continue
+            [ "$(yq -r '.type' "$d/addon.yaml")" = "helm" ] || continue
+            name=$(basename "$d")
+            ns=$(yq -r '.namespace' "$d/addon.yaml")
+            rel=$(yq -r '.releaseName // .name // ""' "$d/addon.yaml")
+            [ -n "$rel" ] || rel=$name
+            layer="gitops/clusters/loft01/addons/$name/values.yaml"
+            repo=$(yq -r '.dependencies[0].repository // ""' "$d/Chart.yaml")
+            case "$repo" in
+              oci://*|"") ;;
+              *) helm repo add "$name" "$repo" --force-update >/dev/null ;;
+            esac
+            helm dependency build "$d" >/dev/null
+            args=(template "$rel" "$d" -n "$ns" --include-crds
+              --set fleet.cluster=loft01 --set-json 'fleet.groups=["prod"]')
+            [ -f "$layer" ] && args+=(-f "$layer")
+            helm "${args[@]}" > "/tmp/render-$name.yaml"
+
+            # a delete addon may only be delete if every CRD it renders survives removal
+            if [ "$(yq -r '.onRemoval' "$d/addon.yaml")" = "delete" ]; then
+              crds=$(yq ea '[select(.kind == "CustomResourceDefinition")] | length' "/tmp/render-$name.yaml")
+              kept=$(yq ea '[select(.kind == "CustomResourceDefinition")
+                | select(.metadata.annotations."helm.sh/resource-policy" == "keep"
+                    or ((.metadata.annotations."argocd.argoproj.io/sync-options" // "") | test("Delete=false")))] | length' "/tmp/render-$name.yaml")
+              if [ "$crds" != "$kept" ]; then
+                echo "::error::$name is onRemoval=delete but renders $crds CRD(s), only $kept with a keep annotation" >&2
+                exit 1
+              fi
+            fi
+            echo "rendered $name"
+          done
+
+      - name: 4. every Kustomize addon builds
+        run: |
+          set -euo pipefail
+          for d in gitops/addons/*/; do
+            [ -f "$d/addon.yaml" ] || continue
+            [ "$(yq -r '.type' "$d/addon.yaml")" = "kustomize" ] || continue
+            kubectl kustomize "$d" >/dev/null
+            echo "rendered $(basename "$d")"
+          done
+
+      - name: 5. bootstrap/cluster has exactly the two ApplicationSets
+        run: |
+          set -euo pipefail
+          kubectl kustomize gitops/bootstrap/cluster > /tmp/cluster.yaml
+          names=$(yq ea -o=json '[select(.kind == "ApplicationSet") | .metadata.name] | sort | join(",")' /tmp/cluster.yaml)
+          [ "$names" = "addons,addons-ordered" ]

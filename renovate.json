@@ -3,11 +3,14 @@
   "rebaseWhen": "behind-base-branch",
   "timezone": "Europe/Oslo",
   "dependencyDashboard": true,
-  "enabledManagers": ["github-actions", "kubernetes", "kustomize", "custom.regex", "terraform"],
+  "enabledManagers": ["github-actions", "helmv3", "kubernetes", "kustomize", "custom.regex", "terraform"],
   "automergeStrategy": "merge-commit",
   "platformAutomerge": false,
   "kubernetes": {
-    "managerFilePatterns": ["/^gitops/(charts|addon-extras|apps)/.+/templates/.+\\.ya?ml$/"]
+    "managerFilePatterns": ["/^gitops/addons/.+\\.ya?ml$/"]
+  },
+  "kustomize": {
+    "managerFilePatterns": ["/^gitops/addons/.+/kustomization\\.ya?ml$/"]
   },
   "terraform": {
     "managerFilePatterns": ["/^iac/tofu/.+\\.tf$/"]
@@ -23,16 +26,8 @@
     },
     {
       "customType": "regex",
-      "description": "the argocd-diff-preview image in the diff-preview workflow, by tag and digest",
-      "managerFilePatterns": ["/^\\.github/workflows/diff-preview\\.yml$/"],
-      "matchStrings": [
-        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+ARGOCD_DIFF_PREVIEW_IMAGE: \\S+:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:\\S+)"
-      ]
-    },
-    {
-      "customType": "regex",
       "description": "GitHub release assets in kustomizations",
-      "managerFilePatterns": ["/^gitops/.+/kustomization\\.yaml$/"],
+      "managerFilePatterns": ["/^gitops/addons/.+/kustomization\\.ya?ml$/"],
       "matchStrings": [
         "https://github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/(?<currentValue>[^/]+)/"
       ],
@@ -41,14 +36,8 @@
   ],
   "packageRules": [
     {
-      "description": "one PR per addon or app: everything under its folder shares a group",
-      "matchFileNames": ["gitops/charts/**", "gitops/addon-extras/**", "gitops/manifests/**", "gitops/apps/**"],
-      "groupName": "{{ lookup (split packageFileDir '/') 2 }}",
-      "commitMessageSuffix": "({{ lookup (split packageFileDir '/') 2 }})"
-    },
-    {
-      "description": "one PR per stack: a stack is one Kubernetes minor's tested chart versions",
-      "matchFileNames": ["gitops/stacks/**"],
+      "description": "one PR per addon folder: everything under gitops/addons/<addon>/ shares a group",
+      "matchFileNames": ["gitops/addons/**"],
       "groupName": "{{ lookup (split packageFileDir '/') 2 }}",
       "commitMessageSuffix": "({{ lookup (split packageFileDir '/') 2 }})"
     },
@@ -64,30 +53,23 @@
       "automerge": true
     },
     {
-      "matchFileNames": ["gitops/charts/**", "gitops/addon-extras/**", "gitops/manifests/**", "gitops/apps/**", "gitops/stacks/**"],
+      "matchFileNames": ["gitops/addons/**"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
       "automerge": true
     },
     {
-      "matchFileNames": ["gitops/charts/**", "gitops/addon-extras/**", "gitops/manifests/**", "gitops/apps/**", "gitops/stacks/**"],
+      "matchFileNames": ["gitops/addons/**"],
       "matchUpdateTypes": ["major"],
       "automerge": false
     },
     {
-      "description": "a cluster adopts a new stack version without review: the tag only freezes versions CI rendered",
-      "matchFileNames": ["gitops/bootstrap/members/**"],
-      "matchDatasources": ["git-tags"],
-      "versioning": "regex:^stack-(?<compatibility>\\d+\\.\\d+)\\.(?<patch>\\d+)$",
-      "automerge": true
-    },
-    {
       "description": "The Keycloak operator, the image it runs, the realm's provider and the reconcile image wait for review",
-      "matchFileNames": ["gitops/manifests/keycloak-operator/**", "gitops/charts/keycloak/**", "iac/tofu/*/keycloak/**"],
+      "matchFileNames": ["gitops/addons/keycloak-operator/**", "gitops/addons/keycloak/**", "iac/tofu/*/keycloak/**"],
       "automerge": false
     },
     {
       "description": "Immich, its Postgres and VectorChord wait for review: upgrades can need manual steps (docs/immich.md)",
-      "matchFileNames": ["gitops/apps/immich/**"],
+      "matchFileNames": ["gitops/addons/immich/**"],
       "automerge": false
     },
     {

@@ -1,6 +1,0 @@
-monitoring.coreos.com/v1
-monitoring.coreos.com/v1/PodMonitor
-monitoring.coreos.com/v1/ServiceMonitor
-gateway.networking.k8s.io/v1
-gateway.networking.k8s.io/v1/GatewayClass
-gateway.networking.k8s.io/v1beta1
