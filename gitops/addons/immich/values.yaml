@@ -1,7 +1,7 @@
 # server and machine learning ship together under one version
 immich:
   # renovate: datasource=docker depName=ghcr.io/immich-app/immich-server
-  tag: v3.3.3
+  tag: v3.3.4
 # Postgres 18 is in this tag, the vchord image's pg18- prefix and its paths in templates/database.yaml
 postgres:
   # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
