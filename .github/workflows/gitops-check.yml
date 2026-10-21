@@ -92,5 +92,9 @@ jobs:
         run: |
           set -euo pipefail
           kubectl kustomize gitops/bootstrap/cluster > /tmp/cluster.yaml
-          names=$(yq ea -o=json '[select(.kind == "ApplicationSet") | .metadata.name] | sort | join(",")' /tmp/cluster.yaml)
-          [ "$names" = "addons,addons-ordered" ]
+          names=$(yq ea -r 'select(.kind == "ApplicationSet") | .metadata.name' /tmp/cluster.yaml \
+            | grep -vE '^(---)?$' | sort | paste -sd, -)
+          if [ "$names" != "addons,addons-ordered" ]; then
+            echo "::error::bootstrap/cluster rendered ApplicationSets: $names" >&2
+            exit 1
+          fi
