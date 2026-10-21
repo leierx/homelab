@@ -42,7 +42,7 @@ metadata:
     addons_repo_basepath: gitops/
     addons_repo_revision: HEAD
     # renovate: datasource=git-tags depName=https://github.com/leierx/homelab.git
-    addons_stack_version: stack-1.36.1
+    addons_stack_version: stack-1.36.2
     workload_repo_url: https://github.com/leierx/homelab.git
     workload_repo_basepath: gitops/apps/
     workload_repo_revision: HEAD
