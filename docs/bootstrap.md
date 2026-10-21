@@ -97,8 +97,9 @@ and the extras are exactly the set CI rendered:
 
 ```sh
 ssh loft01
-git clone https://github.com/leierx/homelab.git
+git clone https://github.com/leierx/homelab.git   # skip if ~/homelab is already a clone
 cd homelab
+git fetch --tags
 member=gitops/bootstrap/members/loft01.yaml
 cluster=loft01
 env=prod
@@ -166,8 +167,9 @@ later with the `prometheus_operator_crds` addon. The four `ServiceMonitor`s
 and the `CiliumClusterwideNetworkPolicy` (its CRD comes from Cilium's own
 operator) therefore fail this apply and Argo creates them once the CRDs
 exist. `kubectl apply` keeps going after an unknown kind; the agent and
-operator apply normally. The addon's extras come with the same render: the
-cluster-wide baseline policy that allows DNS.
+operator apply normally, and the command exits non-zero on those five
+resources, which is expected. The addon's extras come with the same render:
+the cluster-wide baseline policy that allows DNS.
 
 ### Argo CD
 
@@ -241,16 +243,24 @@ kubectl -n argocd get applicationsets -o json | jq -r '.items[] |
   "\(.metadata.annotations["argocd.argoproj.io/sync-wave"] // "-") \(.metadata.creationTimestamp) \(.metadata.name) \([.status.resources[]?.health.status] | join(","))"' | sort -n
 ```
 
-Much of the wait is External Secrets backing off: the `openbao` store and the
-ExternalSecrets that read generated values fail until OpenBao and the
-PushSecrets are up, and then retry on an exponential backoff of up to about
-17 minutes. To hurry it along:
+The waves do that waiting, so External Secrets no longer needs a nudge: OpenBao
+is in wave 2 and `external_secrets` in wave 3, so the store and the
+ExternalSecrets that read generated values are created after the store can
+answer, and they sync on their first try — the two-minute `force-sync` loop this
+page used to recommend is gone. What can still hold a wave is the External
+Secrets webhook: an `ExternalSecret` applied in the same minute the webhook
+starts has no endpoint yet, its apply fails, and the Application waits on the
+operation rather than retrying it (the last paragraph of this section is the
+way out). The one that bites is `renovate` in wave 4, right after
+`external_secrets`.
 
-```sh
-kubectl annotate clustersecretstore openbao openbao-push force-sync="$(date +%s)" --overwrite
-kubectl get externalsecret,pushsecret -A --no-headers | while read ns n _; do
-  kubectl -n "$ns" annotate "$n" force-sync="$(date +%s)" --overwrite; done
-```
+Measured on the rebuild of 2026-10-21, from `root.yaml` to Healthy: wave 0
+under a minute, each later wave one to three minutes once the wave before it was
+Healthy, with the exceptions a bootstrap has anyway — cert-manager's first
+`Certificate` (the `letsencrypt` HTTP-01 challenge through the `edge` Gateway)
+and the OpenBao raft pod take the longest. The whole addon side was Healthy
+about 15 minutes after `root.yaml`; Renovate's own ExternalSecret waited for its
+credentials, which are entered by hand ([Secrets entered by hand](#secrets-entered-by-hand)).
 
 ### When an Application never finishes its first sync
 
@@ -266,7 +276,8 @@ the fix. The generated Applications carry no finalizer, so nothing it created
 is pruned, and its ApplicationSet recreates it within its reconcile interval
 with a fresh operation that applies everything again. Its
 `status.operationState.syncResult` names the tasks that failed, usually with
-`failed calling webhook`.
+`failed calling webhook`; `renovate`'s ExternalSecret was that one in the
+rebuild, and deleting the Application was the fix.
 
 ```sh
 kubectl -n argocd get app <name> -o json | jq -r '.status.operationState.syncResult.resources[] | select(.status=="SyncFailed") | "\(.kind)/\(.name): \(.message)"'

@@ -120,26 +120,41 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
 
 From the rebuild from nothing (October 2026):
 
-- `argo-workflows-server` crash-loops (10 restarts, ~30 min) until the realm
-  exists: it validates the OIDC issuer at startup and exits on 404. A startup
-  probe with a long `failureThreshold`, or the realm coming up earlier, would
-  hide it.
-- External Secrets needs nudges to converge quickly on a fresh cluster (see
-  `docs/bootstrap.md`, section 3): a `ClusterSecretStore` validated before
-  OpenBao was up, and ExternalSecrets that ran before their PushSecret, retry
-  on controller-runtime's backoff (up to ~17 minutes). Decide whether that is
-  acceptable or worth a shorter requeue.
-- `capi-argo-bridge` crash-loops until the Cluster API CRDs exist. Harmless,
-  but it could wait for them instead of failing to start.
-- Certificates: the first one is Ready ~8 minutes after `root` is applied, so
-  everything behind TLS (OpenBao, Keycloak, every ExternalSecret) waits that
-  long. Nothing to fix, but it sets the floor of the bootstrap.
-- The Argo CD application controller was OOM-killed at 2Gi during the flatten
-  (a sync loop on `root`); its limit is now 4Gi. The container that has run
-  since then has a steady state of ~874 MiB average and 992 MiB max (12 h), so
-  2Gi held only ~2x steady state; the loop's last scraped values before the
-  kills reached 1.65 GiB, and 4Gi is ~4x steady state. The loop is now bounded
-  by `controller.sync.timeout.seconds` (4800).
+- `argo-workflows-server` crash-loops (7 restarts this time, ~20 min) until the
+  realm exists: it validates the OIDC issuer at startup and exits on 404. A
+  startup probe with a long `failureThreshold`, or the realm coming up earlier,
+  would hide it.
+- External Secrets no longer needs a nudge — the waves put OpenBao before
+  `external_secrets` — but an `ExternalSecret` applied in the same minute the
+  External Secrets webhook starts fails its apply and holds the operation
+  (`renovate`, in wave 4, right behind `external_secrets`). Deleting that
+  Application is the fix (`docs/bootstrap.md`, section 3). A readiness gate on
+  the webhook in wave 3 would remove the last manual step.
+- Certificates: the first one is Ready minutes after its wave starts (cert-manager
+  in wave 1, the `letsencrypt` HTTP-01 challenge through the `edge` Gateway), so
+  everything behind TLS waits for it. Nothing to fix, but it sets the floor of
+  the bootstrap.
+- The Argo CD application controller was OOM-killed at 2Gi during an earlier
+  flatten (a sync loop on `root`); its limit is now 4Gi, ~4x its steady state
+  (~874 MiB average), and the loop is bounded by
+  `controller.sync.timeout.seconds` (4800).
+
+## Addon delivery
+
+- The ApplicationSet health check reads `status.resources[].health`, which the
+  controller only rewrites on a reconcile, so the layout runs the applicationset
+  controller with `--cache-sync-period=60s` (`gitops/charts/gitops-addons`
+  values). That is a workaround for an upstream gap: when a reconcile stops
+  being needed for the status to be current, drop the flag.
+- Argo CD refuses two revisions of one repository in one Application, so the
+  overrides are part of the stack version rather than read from `HEAD`
+  (`docs/tech-choices.md`, Fleet layout). If that restriction is lifted, the
+  overrides can ship at `HEAD` again and a value or hostname change stops
+  needing a promotion.
+- A stack version reaches a cluster when Renovate's promotion PR merges, so an
+  override change can take up to an hour (Renovate runs at 17 past). Pin the
+  Secret by hand in a `fix(gitops): pin <cluster> to <tag>` commit when that
+  delay is in the way, as `docs/gitops.md` says.
 
 ## Renovate configuration
 
