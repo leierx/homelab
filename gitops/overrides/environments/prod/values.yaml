@@ -10,7 +10,9 @@ addons:
     syncWave: 0
   rbac:
     syncWave: 0
-  # wave 1: the controllers whose CRDs and webhooks the later waves' objects go through
+  # wave 1: the controllers whose CRDs and webhooks the later waves' objects go
+  # through; envoy_gateway ships the Gateway API CRDs cert_manager will not start
+  # without, so the pair that needs each other shares the wave
   cert_manager:
     syncWave: 1
   cilium:
@@ -19,20 +21,20 @@ addons:
     syncWave: 1
   cloudnative_pg:
     syncWave: 1
+  envoy_gateway:
+    syncWave: 1
   keycloak_operator:
     syncWave: 1
   kubevirt:
     syncWave: 1
   zfs_localpv:
     syncWave: 1
-  # wave 2: secrets and the edge, and the backends the telemetry writes to
+  # wave 2: secrets, and the backends the telemetry writes to
   alloy_logs:
     syncWave: 2
   alloy_metrics:
     syncWave: 2
   cluster_api:
-    syncWave: 2
-  envoy_gateway:
     syncWave: 2
   kube_state_metrics:
     syncWave: 2
