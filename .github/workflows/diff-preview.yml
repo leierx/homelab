@@ -39,21 +39,46 @@ jobs:
       - name: render the generated Applications
         run: |
           set -euo pipefail
-          for checkout in main pull-request; do
-            mkdir -p "$checkout/rendered"
-            for member in "$checkout"/gitops/fleet/members/*.yaml; do
-              cluster=$(yq -r '.stringData.name' "$member")
-              groups=$(yq -r '.metadata.annotations["fleet.homelab/groups"] // ""' "$member")
+          for member in pull-request/gitops/fleet/members/*.yaml; do
+            cluster=$(yq -r '.stringData.name' "$member")
+            groups=$(yq -r '.metadata.annotations["fleet.homelab/groups"] // ""' "$member")
+            IFS=, read -r -a names <<< "$groups"
+            for checkout in main pull-request; do
               args=()
-              IFS=, read -r -a names <<< "$groups"
               for g in "${names[@]}"; do
                 if [ -f "$checkout/gitops/groups/$g/addons.yaml" ]; then args+=(-f "$checkout/gitops/groups/$g/addons.yaml"); fi
               done
               if [ -f "$checkout/gitops/clusters/$cluster/addons.yaml" ]; then args+=(-f "$checkout/gitops/clusters/$cluster/addons.yaml"); fi
+              mkdir -p "$checkout/rendered"
               helm template "addons-$cluster" "$checkout/gitops/fleet/catalog" -n argocd "${args[@]}" \
                 --set-string "cluster.name=$cluster" \
                 --set "cluster.groups={$groups}" \
                 > "$checkout/rendered/applications-$cluster.yaml"
+            done
+          done
+
+      # The throwaway cluster has none of the CRDs the real one has, so charts
+      # that guard on a CRD would render differently (or fail). Take them from
+      # the pinned charts of the addons that install them.
+      - name: render the cluster's CRDs
+        run: |
+          set -euo pipefail
+          mkdir -p pull-request/preinstall
+          : > pull-request/preinstall/crds.yaml
+          for member in pull-request/gitops/fleet/members/*.yaml; do
+            cluster=$(yq -r '.stringData.name' "$member")
+            groups=$(yq -r '.metadata.annotations["fleet.homelab/groups"] // ""' "$member")
+            IFS=, read -r -a names <<< "$groups"
+            for addon in prometheus-operator-crds cert-manager envoy-gateway k8s-monitoring; do
+              [ -d "pull-request/gitops/addons/$addon" ] || continue
+              args=()
+              for g in "${names[@]}"; do
+                if [ -f "pull-request/gitops/groups/$g/addons/$addon/values.yaml" ]; then args+=(-f "pull-request/gitops/groups/$g/addons/$addon/values.yaml"); fi
+              done
+              if [ -f "pull-request/gitops/clusters/$cluster/addons/$addon/values.yaml" ]; then args+=(-f "pull-request/gitops/clusters/$cluster/addons/$addon/values.yaml"); fi
+              helm template "$addon" "pull-request/gitops/addons/$addon" --include-crds --dependency-update "${args[@]}" \
+                --set-string "fleet.cluster=$cluster" \
+                | yq 'select(.kind == "CustomResourceDefinition")' >> pull-request/preinstall/crds.yaml
             done
           done
 
@@ -70,10 +95,12 @@ jobs:
             -v "$PWD/pull-request:/target-branch" \
             -v "$PWD/output:/output" \
             -v "$PWD/pull-request/gitops/fleet/members:/secrets:ro" \
+            -v "$PWD/pull-request/preinstall:/preinstall:ro" \
             "$ARGOCD_DIFF_PREVIEW_IMAGE" \
             --target-branch="refs/pull/${{ github.event.number }}/merge" \
             --repo="${{ github.repository }}" \
             --secrets-folder=/secrets \
+            --preinstall-folder=/preinstall \
             --file-regex='^(rendered/|gitops/fleet/bootstrap/)' \
             --render-method=repo-server-api \
             --timeout=900 \
