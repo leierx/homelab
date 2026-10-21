@@ -7,14 +7,19 @@ For every CAPI `Cluster` (`cluster.x-k8s.io/v1beta2`) in `--cluster-namespace`
 
 - writes the Argo CD cluster Secret `cluster-<name>` in `--argocd-namespace`
   with the server and client certs from that kubeconfig,
-- copies the Cluster's `env` and `addons.homelab/*` labels onto it, which
-  decide the addons the cluster gets,
+- copies the GitOps Bridge v2 metadata from the Cluster onto it: the labels
+  `environment`, `kubernetes_version` and every `enable_<addon>`, the label
+  `cluster_name` from the Cluster's name, and the annotations prefixed
+  `addons_` and `workload_`; those labels and annotations decide what the
+  cluster runs (`docs/gitops.md`),
+- drops every other label and annotation, so removing an `enable_` label
+  switches the addon off,
 - deletes it again when the Cluster is deleted.
 
 It only touches Secrets labelled `app.kubernetes.io/managed-by:
 capi-argo-bridge` whose `capi-argo-bridge.homelab/source` annotation names
 the Cluster, and refuses to overwrite a `cluster-<name>` Secret it didn't
-create. Deployed by `gitops/addons/capi-argo-bridge`.
+create. Deployed by `gitops/charts/capi-argo-bridge`.
 
 ## Design decisions
 

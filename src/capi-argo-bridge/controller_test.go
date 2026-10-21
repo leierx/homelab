@@ -73,9 +73,17 @@ func reconcileRequest(name string) reconcile.Request {
 
 func TestReconcileCreatesSecretWithCopiedLabelsAndConfig(t *testing.T) {
 	cluster := newTestCluster("test", map[string]string{
-		"addons.homelab/cilium": "true",
-		"unrelated-label":       "ignored",
-		"addons.homelab/argocd": "true",
+		"enable_cilium":      "true",
+		"enable_argocd":      "true",
+		"environment":        "prod",
+		"kubernetes_version": "1.36",
+		"unrelated-label":    "ignored",
+	})
+	cluster.SetAnnotations(map[string]string{
+		"addons_repo_url":        "https://github.com/leierx/homelab.git",
+		"addons_stack_version":   "stack-1.36.1",
+		"workload_repo_basepath": "gitops/apps/",
+		"unrelated-annotation":   "ignored",
 	})
 	kubeconfigSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: "test-kubeconfig"},
@@ -95,8 +103,11 @@ func TestReconcileCreatesSecretWithCopiedLabelsAndConfig(t *testing.T) {
 	wantLabels := map[string]string{
 		"argocd.argoproj.io/secret-type": "cluster",
 		"app.kubernetes.io/managed-by":   "capi-argo-bridge",
-		"addons.homelab/cilium":          "true",
-		"addons.homelab/argocd":          "true",
+		"cluster_name":                   "test",
+		"enable_cilium":                  "true",
+		"enable_argocd":                  "true",
+		"environment":                    "prod",
+		"kubernetes_version":             "1.36",
 	}
 	for k, v := range wantLabels {
 		if secret.Labels[k] != v {
@@ -108,6 +119,19 @@ func TestReconcileCreatesSecretWithCopiedLabelsAndConfig(t *testing.T) {
 	}
 	if secret.Annotations[sourceAnnoKey] != "default/test" {
 		t.Errorf("source annotation = %q", secret.Annotations[sourceAnnoKey])
+	}
+	wantAnnotations := map[string]string{
+		"addons_repo_url":        "https://github.com/leierx/homelab.git",
+		"addons_stack_version":   "stack-1.36.1",
+		"workload_repo_basepath": "gitops/apps/",
+	}
+	for k, v := range wantAnnotations {
+		if secret.Annotations[k] != v {
+			t.Errorf("annotation %q = %q, want %q", k, secret.Annotations[k], v)
+		}
+	}
+	if _, ok := secret.Annotations["unrelated-annotation"]; ok {
+		t.Errorf("unrelated annotation should not be copied")
 	}
 	if string(secret.Data["name"]) != "test" {
 		t.Errorf("name = %q", secret.Data["name"])
@@ -137,7 +161,7 @@ func TestReconcileRemovesDroppedLabel(t *testing.T) {
 		Data:       map[string][]byte{"value": testKubeconfig(t, "https://1.2.3.4:6443")},
 	}
 
-	cluster := newTestCluster("test", map[string]string{"addons.homelab/cilium": "true"})
+	cluster := newTestCluster("test", map[string]string{"enable_cilium": "true"})
 	rec := newReconciler(cluster, kubeconfigSecret)
 	ctx := context.Background()
 	if _, err := rec.Reconcile(ctx, reconcileRequest("test")); err != nil {
@@ -156,8 +180,8 @@ func TestReconcileRemovesDroppedLabel(t *testing.T) {
 	if err := rec.Get(ctx, types.NamespacedName{Namespace: argocdNS, Name: "cluster-test"}, secret); err != nil {
 		t.Fatalf("expected secret to exist: %v", err)
 	}
-	if _, ok := secret.Labels["addons.homelab/cilium"]; ok {
-		t.Errorf("addon label should have been removed")
+	if _, ok := secret.Labels["enable_cilium"]; ok {
+		t.Errorf("enable_ label should have been removed")
 	}
 }
 
