@@ -1,0 +1,9 @@
+# this site's hostname; the certificate, ListenerSets and routes that name it are ours
+host: ""
+
+# the Keycloak issuer Grafana logs in through; its hostname is per cluster
+keycloakHost: ""
+
+# set by the fleet chart's Applications (and by CI and bootstrap with --set-string)
+fleet:
+  cluster: ""

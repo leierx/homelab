@@ -1,5 +1,5 @@
 result
 result-*
-gitops/addons/*/charts/
-gitops/addons/*/Chart.lock
+gitops/apps/*/*/charts/
+gitops/apps/*/*/Chart.lock
 .terraform/
