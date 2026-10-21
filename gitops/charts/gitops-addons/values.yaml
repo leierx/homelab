@@ -245,6 +245,10 @@ addons:
           requests: {cpu: 20m, memory: 64Mi}
           limits: {memory: 256Mi}
       applicationSet:
+        # the ApplicationSet health check reads status.resources, which the controller only
+        # refreshes on a reconcile; this resyncs its cache, so a wave sees the wave below it
+        extraArgs:
+          - --cache-sync-period=60s
         metrics: {enabled: true, serviceMonitor: {enabled: true}}
         resources:
           requests: {cpu: 10m, memory: 64Mi}
