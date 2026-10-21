@@ -14,8 +14,13 @@ binding rules; this page is the how. Secrets are in
 on dispatch and on pull requests. On a schedule or dispatch it runs
 `nix flake update`, then `nix fmt -- --ci`, `nix flake check`, the loft01
 toplevel build and the installer eval; a pull request runs the checks without
-the update. On `main` it pushes `flake.lock` only if all of those pass. Do not
-bump inputs by hand.
+the update. On `main` it opens a PR with the updated `flake.lock` only if all
+of those pass, and merges it in the same job: a PR opened with `GITHUB_TOKEN`
+starts no workflows, so no checks would ever run on it. That needs the
+repository setting **Allow GitHub Actions to create and approve pull
+requests** (`gh api repos/leierx/homelab/actions/permissions/workflow` shows
+`can_approve_pull_request_reviews: true`), which is not in git. Do not bump
+inputs by hand.
 
 The same job fails with `nixos-<next> exists: move nixpkgs (and
 services.k3s.package) off nixos-<release>` once the next NixOS release branch

@@ -22,8 +22,11 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
 - GitHub ruleset on `main`: no force-push or deletion, required status checks,
   PRs required for everyone except the owner (bypass), so "push, test, push"
   keeps working but bots can't push directly.
-- `flake-bump` opens an auto-merging PR instead of `git push origin HEAD:main`.
 - Give each job only the `permissions` it needs.
+- A `GITHUB_TOKEN`-opened PR starts no workflows, so with rulesets that require
+  status checks `flake-bump`'s PR would never get them: it would need a GitHub
+  App token (`actions/create-github-app-token`) or a ruleset bypass for this
+  workflow.
 - Commits stay unsigned, so the GitHub account and its tokens are the root of
   trust: passkey 2FA, no stale PATs.
 - The two CI workflows are path-filtered (`flake-bump` is Nix-only,
