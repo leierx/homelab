@@ -60,7 +60,7 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
 
 - WebAuthn-only for `homelab-admins`: everyone registers a security key or
   passkey first, but the second-factor sub-flow of `homelab-browser`
-  (`tofu/loft01/keycloak/flows.tf`) still accepts TOTP and
+  (`iac/tofu/loft01/keycloak/flows.tf`) still accepts TOTP and
   recovery codes as fallbacks for every tier. Decide whether admins lose the
   TOTP fallback (a sub-flow conditional on their role) and whether recovery
   codes stay.
@@ -80,7 +80,7 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
   reconcile creates that realm, so something has to bootstrap it first;
   design the hand-over.
 - Keycloak's `KeycloakOIDCClient` CR (operator, preview) could replace the
-  clients in `tofu/loft01/keycloak/clients.tf` once it is stable.
+  clients in `iac/tofu/loft01/keycloak/clients.tf` once it is stable.
 - Refresh tokens are reusable: decide whether `revokeRefreshToken: true`
   breaks any client (Argo CD, Grafana, Immich, kubectl) before enabling it,
   or record why not (research F4).
@@ -97,21 +97,23 @@ Anything on `main` ships to the host (auto-upgrade, as root) and the cluster
 
 ## Fleet
 
-- **Remote clusters.** Only in-cluster clusters exist: `fleet/members/<cluster>.yaml`
-  carries `server: https://kubernetes.default.svc`. A remote cluster's
-  credentials need a way into its Argo Secret without a second writer — either
-  `capi-argo-bridge` writing connection-only Secrets (it still creates Secrets
-  and copies `addons.homelab/*` labels, which no longer enable anything), or an
-  `ExternalSecret` templating a Secret from a kubeconfig in OpenBao.
-- **Groups.** loft01 is in `core` and `prod`; `prod` has no folder of its own
-  yet, because nothing is specific to it. Move values and patches into
-  `groups/<group>/` once a second cluster shows what is really shared, not
-  before.
-- **Versions.** Addons share one pinned upstream version across clusters. A
-  cluster that needs another version enables a variant addon,
-  `addons/<addon>-<major>-<minor>/` (`docs/operations.md`); there are no
-  version stacks or per-cluster version labels. Copy the chart when it is
-  actually needed, not before.
+- **Remote clusters.** Only in-cluster clusters exist:
+  `bootstrap/members/<cluster>.yaml` carries
+  `server: https://kubernetes.default.svc`. A remote cluster's credentials need
+  a way into its Argo Secret without a second writer — either `capi-argo-bridge`
+  writing connection-only Secrets (it copies a `Cluster`'s metadata, so it
+  would also have to carry the stack version and the `addons_*`/`workload_*`
+  annotations), or an `ExternalSecret` templating a Secret from a kubeconfig in
+  OpenBao.
+- **Environments hold only sync waves.** `overrides/environments/prod/` has
+  nothing but the waves, because there is one prod cluster. Move values into an
+  environment once a second cluster of that environment shows what is really
+  shared, not before.
+- **Replace the waves with Argo CD's own dependencies** once
+  [argo-cd#7437](https://github.com/argoproj/argo-cd/issues/7437) or the
+  [sync-groups proposal](https://github.com/argoproj/argo-cd/pull/25282) lands:
+  then a wave is a property of the Applications themselves and the
+  ApplicationSet health check can go.
 - **OpenBao:** delete the unused `kv/loft01/tekton`, if it is still there.
 
 ## Bootstrap
@@ -141,7 +143,7 @@ From the rebuild from nothing (October 2026):
 
 ## Renovate configuration
 
-Review `renovate.json` and `gitops/addons/renovate`: grouping and schedules.
+Review `renovate.json`: grouping and schedules.
 Today patch, minor and digest automerge once `addon-render` passes and majors
 wait; decide whether `platformAutomerge` should go back on once `main` has
 rules (see Protect `main`).

@@ -35,7 +35,7 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
   Apache-2.0), the `kube-state-metrics` (Apache-2.0, Kubernetes SIG) and
   `node-exporter` (Apache-2.0, Prometheus/CNCF) addons, all in namespace
   `telemetry`; the `.alloy` configs are files under
-  `gitops/addons/*/config/`.
+  `gitops/addon-extras/alloy-*/config/`.
 - **Why:** the configs are real files in git, small and one per concern; there
   is no operator and no generated config, so what runs is what we wrote. Alloy
   keeps the ServiceMonitor/PodMonitor interface, so every chart's monitor still
@@ -59,9 +59,9 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
 
 - **Need:** one UI over every backend, plus dashboards rendered from the
   releases we already run.
-- **Choice:** Grafana; community dashboards pinned in
-  `gitops/addons/observability/values.yaml`, plus the k8s-views and
-  node-exporter dashboards.
+- **Choice:** Grafana; community dashboards pinned in the `grafana` addon's
+  catalog values (`gitops/charts/gitops-addons/values.yaml`), plus the
+  k8s-views and node-exporter dashboards.
 - **Why:** queries every backend above, and dashboards can be shipped as
   ConfigMaps labelled `grafana_dashboard: "1"`, so addons own their own
   dashboards.
@@ -159,8 +159,9 @@ and the same with `namespace="keycloak"` / `"openbao"`.
   while Immich was at v3.3.3), so the image tag needs its own Renovate
   annotation either way. Switching later is cheap: the stateful parts
   (PVCs, the CNPG cluster) don't depend on how the Deployments are made.
-- **Not an app:** a one-off workload (a VM, a CAPI `Cluster`) is a Kustomize
-  addon under `gitops/addons/`, not a separate tree.
+- **Not an addon:** a one-off workload (a VM, a CAPI `Cluster`) is an app
+  under `gitops/apps/`, not an addon: the catalog is for things every cluster
+  of a kind runs, and an app ships its own `Namespace`.
 
 ### Storage
 
@@ -250,7 +251,7 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 - **Need:** the realm (groups, users, clients, flows, session lengths)
   declared in git and re-applied, so a hand-made change is undone and a
   rebuild recreates the same realm.
-- **Choice:** OpenTofu (`tofu/loft01/keycloak/`) with the Keycloak project's own
+- **Choice:** OpenTofu (`iac/tofu/loft01/keycloak/`) with the Keycloak project's own
   provider (`keycloak/terraform-provider-keycloak`), run by the Argo
   Workflows CronWorkflow `keycloak-realm` every 10 minutes. The state is a
   Secret and a Lease in `keycloak` (OpenTofu's `kubernetes` backend); client
@@ -305,13 +306,16 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 
 ## GitOps
 
-- **Need:** one control plane that manages itself and the fleet.
-- **Choice:** Argo CD tracking `HEAD` of `main`; the catalog chart
-  `gitops/fleet/catalog` renders one Application per addon a cluster enables
-  by value, and that includes a one-off workload like dodde's VM.
-- **Why:** a push is a deploy, and what a cluster runs is a value in its own
-  folder rather than a label somebody has to remember to set. Details in
-  `AGENTS.md` and under "Fleet layout".
+- **Need:** one control plane that manages itself and the fleet, with an
+  explicit contract for what each cluster runs.
+- **Choice:** Argo CD tracking `HEAD` of `main`, and the fleet laid out as
+  GitOps Bridge v2 (the issue as written; see "Fleet layout"). The catalog
+  chart renders one ApplicationSet per addon a cluster enables, and the apps
+  ApplicationSet renders the workloads.
+- **Why:** a push is a deploy, and every object Argo CD runs comes from
+  ApplicationSets that git renders: nothing is generated outside the
+  repository, and the chain Secret → catalog → stack → overrides says where
+  each value comes from.
 - **Alternatives:** **Flux** is equivalent for one cluster; the promotion
   layers (**Kargo**, **Sveltos**, **OCM**, Cluster API Addon Provider Helm)
   and the Flux Operator's ResourceSets each add a second control plane — or,
@@ -319,80 +323,117 @@ and the same with `namespace="keycloak"` / `"openbao"`.
   Argo CD's own extras were rejected too: the **Source Hydrator** (beta) needs
   a commit server and a git write credential and never deletes stale output;
   **argocd-agent** (pre-1.0) is built for hundreds of clusters and cannot
-  carry a hydrator spec; **progressive syncs** and sync waves turn off
-  automated sync and impose the ordering we avoid. If one cluster ever has to
-  run ahead, a cluster label `channel` and a `channels/<channel>/Chart.yaml`
-  in only the addons that need it is the planned extension (`TODO.md`).
+  carry a hydrator spec; **progressive syncs** would be a second notion of
+  waves next to the environment's (Sync waves, below). If one cluster ever has
+  to run ahead, a second stack tag is the natural extension: the Secret names
+  its own version.
 
 ## Fleet layout
 
 - **Need:** one repository that describes several clusters in different places,
   each with its own values, without one Application file per addon per cluster
   and without a second control plane.
-- **Where it comes from:** the layout follows
+- **Where it comes from:** the layout is
   [gitops-bridge v2](https://github.com/gitops-bridge-dev/gitops-bridge/issues/73)
-  as built in the
+  as written, following
+  [BENMALEKarim's single-chart spec](https://github.com/gitops-bridge-dev/gitops-bridge/issues/73#issuecomment-2275214124)
+  and the
   [AWS fleet-management workshop](https://github.com/aws-samples/fleet-management-on-amazon-eks-workshop)
-  (MIT-0). We take its catalog chart, its enabling by layered values, its
-  cluster-first value folders (`groups/<group>/addons/<addon>/values.yaml`,
-  `clusters/<cluster>/addons/<addon>/values.yaml`) and its idea of a workload
-  tree next to the addons.
-- **Choice: the catalog chart renders Applications, not ApplicationSets.** The
-  workshop runs an Argo CD per spoke, renders the chart once per Argo instance
-  and emits ApplicationSets. Here one hub manages everything and the chart is
-  rendered once per cluster (`addons-<cluster>`), so every value is known at
-  Helm time: no `{{ }}` escaping through the template, and no ApplicationSet
-  names clashing between clusters. Rejected: the per-Argo ApplicationSet model,
-  which is more machinery for the same one hub.
-- **Choice: groups, not environments.** A cluster belongs to several groups
-  (`core`, `prod`) that combine, in the order its Secret lists them. Rejected:
-  the workshop's single environment axis, which would need an
-  `environment: prod-core`-style folder for every combination, and one folder
-  per conceivable trait (`single-node`) before anything uses it.
-- **Choice: enabling by values, in the cluster's folders.** Rejected:
-  gitops-bridge v1's `enable_<addon>` labels on the cluster Secret, where what
-  a cluster runs is invisible in the cluster's own files, a label cannot be
-  layered, and a second writer (the bridge) has to copy it.
-- **Choice: versions in each addon's `Chart.yaml`, and a variant addon for a
-  different version.** Renovate's Helm support keeps the one pin current, and
-  a cluster that needs another version enables `addons/<addon>-<major>-<minor>/`
-  instead. Rejected: a central version catalog (a second place to read before
-  you know what runs), version stacks per environment, and per-cluster version
-  labels, the approaches in Moran Weissman's "Multi-Cluster Add-on Management
-  with ArgoCD" series — each makes the version a property of the cluster
-  instead of of the chart.
-- **Choice: no `default/` folder.** Our addons are umbrella charts, so a
-  chart's own `values.yaml` is the default, and the catalog's `values.yaml`
-  is the default set of addons: none enabled.
-- **Choice: single-source Applications with relative value files, not
-  multi-source `$values`.** Rejected: multi-source Applications, which lose
-  Argo CD's rollback (it cannot rebuild the previous commit's inputs from the
-  live state).
-- **Choice: the cluster Secret is a hand-written file in `fleet/members/`.**
-  Rejected: a chart rendering cluster Secrets from a values map — one more
-  layer around four lines that change once per cluster, and no place to carry a
-  Secret's extra keys.
-- **Choice: a one-off workload is a Kustomize addon, not its own tree.** dodde's
-  VM, disk and network policy are `addons/dodde/` with a cluster overlay, so
-  there is one mechanism for "something that runs on a cluster" instead of an
-  `apps/` tree with its own ApplicationSet, its own naming rule and its own
-  prune semantics. Rejected: the workshop's `apps/<app>/<target>/` generator —
-  which we built first and removed, because a two-object VM needed a second
-  ApplicationSet, a second health model and a second place where a cluster is
-  named.
-- **Choice: CI has its own render loop.** Rejected: a shared render script,
+  (MIT-0), with sync waves and the ApplicationSet health check in place of the
+  issue's dependency webhook (`docs/gitops.md` has the item-by-item table).
+- **Choice: implement the issue as written.** Rejected: our earlier
+  adaptation, which read the proposal as "a catalog chart that renders
+  Applications, groups as the environment axis, upstream versions in umbrella
+  `Chart.yaml`s, one addon mechanism for apps and workloads". It was a partial
+  reading: no stacks, so a version could not be promoted as a set; umbrella
+  charts, so every upstream addon needed a second `Chart.yaml` and `Chart.lock`;
+  and workloads as addons, which put a VM's disk in the catalog's namespace
+  model. The issue's shape is simpler in every one of those places.
+- **Choice: one catalog chart, rendered once per cluster as
+  `gitops-addons-<cluster>`, emitting one ApplicationSet per enabled addon.**
+  Rejected: rendering the chart once per Argo CD instance and letting each
+  ApplicationSet's cluster generator select clusters (the workshop's and
+  BENMALEKarim's original model): with one hub it means per-addon
+  ApplicationSets that exist even for clusters that do not enable them, and
+  names that have to be kept unique across consumers. Rejected too: one
+  Application per addon (our previous layout), where an addon had no object of
+  its own for health, so nothing could wait for another addon.
+- **Choice: the `enable_` labels on the cluster Secret decide which
+  ApplicationSets exist.** Rejected: a fixed ApplicationSet per addon with a
+  `matchExpressions: enable_<addon> in [true]` cluster selector — that is
+  gitops-bridge v1's shape, and the issue's item 6 asks to remove the noise of
+  ApplicationSets that match no cluster. Rejected: enabling by values in a
+  per-cluster file (our previous layout), which hid what a cluster runs from
+  the Secret and needed a whole file per cluster per addon. The costs are
+  accepted and stated: a label cannot be layered (values stay in the cluster's
+  overrides), and a second writer has to copy the labels — that is
+  `capi-argo-bridge`'s job for a workload cluster, and the point of the bridge.
+- **Choice: a stack file per Kubernetes minor, and a git tag per stack
+  version.** Rejected: a published `gitops-addons` chart repository with one
+  chart version per Kubernetes version (BENMALEKarim's first idea; the issue's
+  owner answered that versions can be overrides, and a chart release pipeline
+  is real work for a single-repo fleet); rejected: a moving branch per stack
+  (`stack-1.36`), which cannot be pinned immutably and drifts under a cluster
+  that tracks it; rejected: a stack file without tags, where a cluster would
+  pick up half a promotion between two syncs.
+- **Choice: only upstream chart versions live in the stack.** An image tag, a
+  CR version or a provider version stays where it is read (`# renovate:` in a
+  value or a manifest). Rejected: every version in the stack, which would
+  separate an image from the template that needs it and duplicate the values
+  the overrides already layer; rejected: versions in each addon's
+  `Chart.yaml`, which cannot say "these versions were tested together".
+- **Choice: Renovate promotes the tag to each cluster; CI only tags.** The
+  merge that changes a stack-side path produces `stack-<minor>.<n>`, and
+  Renovate opens one PR per cluster that raises `addons_stack_version`, which
+  automerges because CI rendered that tag. Rejected: CI writing the new
+  version to `main` itself, which needs a write token in a workflow, races
+  other merges and cannot be reviewed; rejected: no promotion step, where every
+  merge would reach every cluster at once and a stack version would mean
+  nothing.
+- **Choice: environment sync waves plus the ApplicationSet health check.**
+  Rejected: the issue's `depends_on` annotation with a validating webhook — a
+  second ordering engine to run and secure, unmaintained upstream
+  ([argo-cd#7437](https://github.com/argoproj/argo-cd/issues/7437) is open, the
+  [sync-groups proposal](https://github.com/argoproj/argo-cd/pull/25282) is not
+  merged); rejected: waves in the catalog, where an addon's wave is a guess for
+  every other environment; rejected: pure retry, where the first bootstrap
+  never converges (a `Certificate` cannot become Ready before cert-manager's
+  webhook is, and a Degraded Application's failed task is never re-applied).
+- **Choice: addon-extras as a second source of the addon's Application.**
+  Rejected: umbrella charts (our previous layout: our templates and the
+  upstream chart in one chart, so every addon carried a `Chart.yaml`,
+  `Chart.lock` and a values file that mixed the two), and a separate
+  Application per extras folder (two objects per addon to keep in one release
+  name, two health entries, and no order between them).
+- **Choice: an app is a workload, an addon is not.** `apps/<app>/<environment>/`
+  with the workshop's generator; a VM (dodde) and a stateful app that ships its
+  own `Namespace` (Immich) are apps. Rejected: a one-off workload as a
+  Kustomize addon (our previous layout: workable, but the catalog then carried
+  a workload's namespace and the addon had to know it was one), and a separate
+  `workloads/` tree with a third ApplicationSet.
+- **Choice: the cluster Secret is a hand-written file in
+  `bootstrap/members/`.** Rejected: a chart rendering cluster Secrets from a
+  values map — one more layer around four lines that change once per cluster,
+  and no place to carry a Secret's extra keys.
+- **Choice: multi-source Applications only where they are needed** — the
+  values ref (overrides at `HEAD`) and, for an upstream addon with extras, its
+  second source. Rejected: multi-source everywhere, which loses nothing but
+  adds a values source to addons that read none; rejected: single-source
+  Applications with relative value files (our previous layout), which can only
+  express one revision, so a stack tag and the overrides at `HEAD` could not
+  be combined.
+- **Choice: CI has its own render loop**, reading the same value layers out of
+  the catalog, stack, overrides and Secret. Rejected: a shared render script,
   which would need a second language runtime on the runner and would grow a
   flag for every difference between CI and bootstrap.
 - **Choice: CI renders everything on any `gitops/**` change.** Rejected:
   computing which clusters an addon change affects — a dependency graph that
-  has to know the catalog, the groups and the cluster folders, and that is
-  wrong silently when it misses an edge. A full render takes under a minute.
+  has to know the catalog, the overrides and the Secrets, and that is wrong
+  silently when it misses an edge. A full render takes a few minutes.
 - **Parked, not rejected:** Argo CD's Source Hydrator would move rendering out
-  of the repo (not needed while Helm renders in-cluster), the GitOps Promoter
-  and Argo CD's Progressive Syncs would promote between long-lived
-  environments (the groups replace that for now). Revisit when a second real
-  cluster exists.
-
+  of the repo (not needed while Helm renders in-cluster), and the GitOps
+  Promoter would promote between long-lived environment branches (one
+  environment does not need it). Revisit when a second real cluster exists.
 ## Networking
 
 - **Need:** pod networking, Services without kube-proxy, network policy that
@@ -448,7 +489,7 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 - **Choice:** the `admission` addon: built-in `ValidatingAdmissionPolicy`
   (`image-versions` and `services-not-exposed` deny, `container-resources`
   warns and audits) and a `MutatingAdmissionPolicy` that sets
-  `hostUsers: false` in the namespaces listed in `clusters/loft01.yaml`; Pod
+  `hostUsers: false` in the namespaces loft01's overrides list; Pod
   Security Admission with k3s defaults (enforce baseline, warn and audit
   restricted) and per-namespace labels.
 - **Why:** Kubernetes built-ins: CEL rules in git, no controller or webhook to
@@ -509,10 +550,13 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 - **Choice:** Cluster API through the cluster-api-operator (core, kubeadm
   bootstrap and control plane, the KubeVirt provider CAPK); clusters are CAPI
   `Cluster`s in namespace `clusters`. `capi-argo-bridge`, our own ~200-line
-  controller (`apps/capi-argo-bridge`), copies a `Cluster`'s
-  `addons.homelab/*` labels onto an Argo CD cluster Secret. Those labels no
-  longer enable anything: a bridged cluster gets groups and cluster folders
-  like any other (`TODO.md`).
+  controller (`src/capi-argo-bridge`), copies the GitOps Bridge metadata from a
+  `Cluster` onto an Argo CD cluster Secret: the labels `environment`,
+  `kubernetes_version` and every `enable_*`, `cluster_name` from the Cluster's
+  name, and the annotations prefixed `addons_` and `workload_`. That is the
+  contract the global ApplicationSet reads, so a bridged cluster gets addons
+  and apps like any other — with its own Secret's stack version, which the
+  bridge does not know about (`TODO.md`).
 - **Why:** Cluster API is the Kubernetes SIG standard, and CAPK puts the nodes
   on KubeVirt on this host. The bridge is the one piece Argo CD lacks: its
   cluster generator needs a cluster Secret.

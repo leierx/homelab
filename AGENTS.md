@@ -66,34 +66,44 @@ How that plays out here:
 - Git is the only source of truth. `main` ships to host and cluster;
   bootstrap is the only imperative step, and even break-glass toggles go
   through git.
-- Eventually consistent, not ordered: no sync waves or hooks, things retry
-  until their dependencies exist.
+- Eventually consistent inside an addon: no hooks, and the objects one addon
+  creates have no order between them — a missing dependency surfaces as a
+  retry. Across addons only the environment's sync waves order, and only for
+  a first bootstrap, an enable and a stack promotion (`docs/gitops.md`, Sync
+  waves).
+- Upstream chart versions live in the stack of the Kubernetes minor, as exact
+  versions; every other version lives where it is used. No other version
+  files or indirection. Digests and signatures only where built-in tooling
+  does it for free; never custom regex or bespoke automation.
 - Honest about one node: one replica, no HA theatre, no leader election, no
   eviction or migration.
 - Bots keep everything up to date; CI gates it.
-- Versions live where they’re used, as exact versions: no separate version
-  files or indirection. Digests and signatures only where built-in tooling
-  does it for free; never custom regex or bespoke automation.
 - Every component has a reason and a rejected alternative in
   `docs/tech-choices.md`. Deferred work goes in `TODO.md`, not in comments.
 
 ## Checks before a commit
 
 - Nix: `nix fmt -- --ci`, `nix flake check`.
-- An addon: `helm dependency update` + `helm template` with the same value
-  layering as CI (see GitOps contract), or `kubectl kustomize` on the
-  cluster's overlay, piped into
-  `kubectl apply --server-side --dry-run=server -f -`; then delete `charts/`
-  and `Chart.lock`.
-- The Keycloak realm (`tofu/loft01/keycloak/`): `tofu fmt -check` and `tofu validate`
-  (`nix shell nixpkgs#opentofu`); the check that counts is the next
-  `keycloak-realm` CronWorkflow run's plan (`kubectl -n keycloak get wf`).
+- Anything under `gitops/`: the two `addon render` steps, unchanged from CI
+  (`docs/gitops.md`, "Check a change before it ships"). The render step
+  renders every ApplicationSet and every source of every addon and app; an
+  addon on its own needs no separate `helm template`.
+- The Keycloak realm (`iac/tofu/loft01/keycloak/`): `tofu fmt -check` and
+  `tofu validate` (`nix shell nixpkgs#opentofu`); the check that counts is the
+  next `keycloak-realm` CronWorkflow run's plan (`kubectl -n keycloak get wf`).
+- `src/capi-argo-bridge`: `gofmt -l .`, `go vet ./...`, `go test ./...`.
 
 ## Working live
 
-- A push to `main` is a deploy (Argo tracks `HEAD`). Nudge an app with
+- A push to `main` is a deploy. `gitops/overrides/**` and `gitops/apps/**`
+  ship at `HEAD`: the next sync picks them up.
+  `gitops/charts/**`, `gitops/stacks/**`, `gitops/addon-extras/**` and
+  `gitops/manifests/**` ship only when the cluster's `addons_stack_version`
+  moves to a new tag (`docs/gitops.md`, "What ships").
+- Nudge an app with
   `kubectl -n argocd annotate app <app> argocd.argoproj.io/refresh=normal --overwrite`;
-  a new addon needs `root` refreshed with `refresh=hard`.
+  a changed stack version or a new addon needs the `gitops-addons-<cluster>`
+  and `root` Applications refreshed with `refresh=hard`.
 - Host: push, then
   `ssh loft01 "doas nixos-rebuild switch --flake 'git+https://github.com/leierx/homelab.git?ref=main&rev=<full sha>#loft01'"`.
   Always pin `rev`: without it the host has fetched a stale `main`.
@@ -115,15 +125,20 @@ How that plays out here:
   resolved, nftables), `k3s.nix` (k3s without CNI, OIDC, audit log, pod
   security defaults), `backup.nix`, `sops.nix` + `secrets.yaml`, `pi/`
   (the pi coding agent, tmux and its user service), `installer.nix`.
-- `gitops/`: the Argo CD fleet. `root.yaml` → `fleet/bootstrap/` (the
-  `members` Application and the `addons` ApplicationSet) → the catalog chart
-  `fleet/catalog/`, the addons in `addons/`, and each cluster's enable files and
-  value overrides in `groups/<group>/addons.yaml` and `clusters/<cluster>/`.
-- `apps/<name>/`: our own Go programs, each with its own workflow and README.
-- `tofu/<cluster>/<root>/` (`tofu/loft01/keycloak/`): realm `homelab` as OpenTofu with the Keycloak provider,
-  run by the `keycloak-realm` CronWorkflow (addon `keycloak`).
+- `gitops/`: GitOps Bridge v2 (`docs/gitops.md`). `root.yaml` →
+  `bootstrap/` (the `members` Application, the global `gitops-addons`
+  ApplicationSet and the `apps` one) → `charts/gitops-addons/` (the catalog)
+  → `charts/<addon>/`, `addon-extras/<addon>/`, `manifests/<addon>/` and
+  `apps/<app>/`, at the versions in `stacks/k8s-<minor>/` and with the waves
+  in `overrides/environments/`, for the addons a cluster Secret's `enable_`
+  labels switch on.
+- `src/<name>/`: our own Go programs, each with its own workflow and README.
+- `iac/tofu/<cluster>/<root>/` (`iac/tofu/loft01/keycloak/`): realm `homelab` as
+  OpenTofu with the Keycloak provider, run by the `keycloak-realm`
+  CronWorkflow (addon `keycloak`).
 - `justfile`: workstation helpers.
-- `docs/`: `bootstrap.md` (bare metal to first sync), `operations.md`
+- `docs/`: `gitops.md` (the fleet layout, waves, how to change it),
+  `bootstrap.md` (bare metal to first sync), `operations.md`
   (updates, backups, certificates, observability), `access.md` (SSO, tiers,
   people), `openbao.md` (secrets), `break-glass.md`,
   `immich.md` (photos: logins, bulk upload, restore, upgrades),
@@ -138,51 +153,76 @@ How that plays out here:
   PR only if fmt, check, the toplevel build and the installer eval pass.
   Don't hand-bump inputs. When it fails because a new `nixos-YY.MM` exists,
   move `nixpkgs` and `services.k3s.package` (one Kubernetes minor at a time).
-- Renovate (self-hosted, `gitops/addons/renovate`) pins Actions to commit
-  digests and bumps them, chart deps, `# renovate:`-annotated versions,
-  release URLs in kustomizations and the versions of our own
-  `ghcr.io/leierx` images, one PR per addon. Patch, minor and digest
-  automerge once the `addon-render` workflow passes; majors, Keycloak
-  (operator, image, provider and reconcile image) and Immich (upgrades can
-  need manual steps, `docs/immich.md`) wait for review.
-  Policy is in `renovate.json`. Go modules are bumped by hand.
+- `stack release` (CI) tags `stack-<k8s minor>.<n>` on every merge that
+  changes `gitops/charts/**`, `gitops/stacks/**`, `gitops/addon-extras/**` or
+  `gitops/manifests/**`. A tag freezes the catalog chart, the stack,
+  addon-extras, our charts and the manifests: the set CI rendered. Renovate
+  then opens one PR per cluster that raises `addons_stack_version` to the new
+  tag, which is the release: nothing addon-side reaches a cluster before that
+  merges.
+- Renovate (self-hosted, addon `renovate`) pins Actions to commit
+  digests and bumps them, the stack charts, `# renovate:`-annotated versions,
+  release URLs in kustomizations and the versions of our own `ghcr.io/leierx`
+  images. One PR per addon or app, one per stack, one per OpenTofu root.
+  Patch, minor and digest automerge once `addon render` passes; majors,
+  Keycloak (operator, image, provider and reconcile image) and Immich (upgrades
+  can need manual steps, `docs/immich.md`) wait for review. The stack tag
+  promotion automerges: CI rendered that tag. Policy is in `renovate.json`.
+  Go modules are bumped by hand.
 
 ## GitOps contract
 
-- `root.yaml` (applied once by hand) → `fleet/bootstrap/`: the `members`
-  Application and the `addons` ApplicationSet.
-- A cluster is `fleet/members/<cluster>.yaml`, its Argo cluster Secret. It says
-  what the cluster is, never what it runs: annotation
-  `fleet.homelab/groups` (ordered; later groups win). Only in-cluster clusters
-  exist (`TODO.md`).
-- An addon is `addons/<addon>/`: an umbrella chart (`Chart.yaml` pins
-  upstream, `values.yaml` is the default, `templates/` holds our extras) or a
-  Kustomize base (`kustomization.yaml`). Every addon has one entry in the
-  catalog, `fleet/catalog/values.yaml`: `enabled: false`, `namespace`, optional
-  `podSecurity`, `kustomize`, `syncOptions`, `ignoreDifferences`.
-- Per cluster, `addons-<cluster>` renders the catalog chart with
-  `groups/<group>/addons.yaml` (in the cluster's group order) and
-  `clusters/<cluster>/addons.yaml`. Those files switch addons on (or off). The
-  chart renders one Application per enabled addon, `<addon>-<cluster>`, with no
-  finalizer, so switching an addon off leaves it running.
-- Helm values layer `addons/<addon>/values.yaml` →
-  `groups/<group>/addons/<addon>/values.yaml` →
-  `clusters/<cluster>/addons/<addon>/values.yaml`; missing files are skipped.
-  Argo also passes `fleet.cluster`. Templates use it and per-cluster values
-  instead of naming a cluster or a hostname.
-- A Kustomize addon renders `clusters/<cluster>/addons/<addon>/`, the cluster's
-  overlay of the base in `addons/<addon>/`. A cluster that enables one needs
-  that overlay. A one-off workload (a KubeVirt VM, a CAPI `Cluster`) is a
-  Kustomize addon too, not a separate tree.
-- Where a value goes: versions and what every cluster gets → the chart; what a
-  kind of cluster needs → its group; anything naming or tied to one cluster
-  (hostnames, IPs, pools, hardware sizing, OpenBao policies) → the cluster
-  folder. Version pins (`# renovate:`) live only in `addons/`.
+- `root.yaml` (applied once by hand) → `bootstrap/`: the `members`
+  Application (the cluster Secrets in `bootstrap/members/`), the global
+  `gitops-addons` ApplicationSet and the `apps` ApplicationSet.
+- A cluster is `bootstrap/members/<cluster>.yaml`, its Argo cluster Secret.
+  Its labels say what the cluster is — `cluster_name`, `environment`,
+  `kubernetes_version` and one `enable_<addon>: "true"` per addon it runs,
+  never one for an app — and its annotations say where its addons and
+  workloads come from: `addons_repo_url`, `addons_repo_basepath`,
+  `addons_repo_revision`, `addons_stack_version`,
+  `workload_repo_url`, `workload_repo_basepath`, `workload_repo_revision`.
+  It also carries `argocd.argoproj.io/sync-options: Delete=false,Prune=false`.
+  Only in-cluster clusters exist (`TODO.md`).
+- The catalog, `charts/gitops-addons/values.yaml`, is one entry per addon:
+  `enabled: false`, `namespace`, optional `podSecurity`, `releaseName`, and
+  exactly one of `values` (an upstream chart, plus `extras: {}` when
+  `addon-extras/<addon>/` exists), `path` (our chart in `charts/`), or `path`
+  plus `kustomize` (a `manifests/` base). It never carries a version, a sync
+  wave or a cluster's value.
+- `stacks/k8s-<minor>/stack.yaml` holds every upstream addon's `repoUrl`,
+  `chart` and `targetRevision`, with the `# renovate:` comment. An OCI chart
+  has no scheme in `repoUrl` (`docker.io/envoyproxy`).
+- The global ApplicationSet renders the catalog with the stack, the
+  environment's overrides and the cluster's overrides, and sets
+  `addons.<addon>.enabled` from the Secret's labels. The chart and the stack
+  come from the tag in `addons_stack_version`; the overrides come from `HEAD`.
+  The chart emits one ApplicationSet per enabled addon,
+  `addon-<addon>-<cluster>`.
+- An upstream addon's Application has one source, or two when it has extras:
+  the chart from the stack and `addon-extras/<addon>/` from the same revision,
+  both with the addon's `releaseName`. Our charts and Kustomize addons render
+  their `path`.
+- Overrides set only `values`, `extras.values`, `kustomize`, `syncWave` and
+  `ignoreDifferences`. Where a value goes: a version → the stack; what every
+  cluster of an environment gets → that environment; anything naming or tied
+  to one cluster (hostnames, IPs, pools, hardware sizing, OpenBao policies) →
+  the cluster. The wave is the environment's.
+- `fleet.cluster` is passed by the ApplicationSet (`valuesObject.fleet`), so
+  our templates and extras use `{{ required "fleet.cluster" .Values.fleet.cluster }}`
+  instead of naming a cluster. Apps set it in their environment values.
+- No value may contain `{{`: every string of an ApplicationSet template is a
+  Go template. Write `{{ "{{" }}` when one must.
 - A different version on some clusters is a variant addon,
-  `addons/<addon>-<major>-<minor>/`, enabled instead of the default. There is
-  no other way.
-- OpenTofu lives in `tofu/<cluster>/<root>/`. The keycloak addon's
-  CronWorkflow clones the repo and runs `tofu/<cluster>/keycloak` every 10
+  `charts/<addon>-<major>-<minor>/` or an `addon-extras/<addon>-…/` entry,
+  enabled instead of the default. There is no other way.
+- An app is `apps/<app>/<environment>/`: a Kustomize base (`immich` ships its
+  own `Namespace` and `restricted` labels) or a chart that depends on
+  `file://../base`. The `apps` ApplicationSet generates
+  `app-<app>-<cluster>` for the cluster's environment, in namespace `<app>`.
+  Apps are never in the catalog.
+- OpenTofu lives in `iac/tofu/<cluster>/<root>/`. The keycloak addon's
+  CronWorkflow clones the repo and runs `iac/tofu/<cluster>/keycloak` every 10
   minutes.
 - Data-bearing objects carry `argocd.argoproj.io/sync-options:
   Delete=false,Prune=false`.
@@ -197,9 +237,9 @@ How that plays out here:
 - ServiceAccount tokens: `automountServiceAccountToken: false` for pods that
   never call the Kubernetes API. RBAC namespaced unless it truly can't be.
 - Network policy: an addon that owns data, faces the edge or runs third-party
-  code ships `templates/network-policy.yaml`: a `CiliumNetworkPolicy`
-  `default`, default-deny both ways, explicit allows. Write it with
-  `policyAuditMode` first.
+  code ships `templates/network-policy.yaml` in its own chart or
+  `addon-extras/<addon>/`: a `CiliumNetworkPolicy` `default`, default-deny both
+  ways, explicit allows. Write it with `policyAuditMode` first.
 - Secrets: never in `gitops/`. Read through an `ExternalSecret` from
   `ClusterSecretStore/openbao` (`{{ .Values.fleet.cluster }}/<app>`); generate with a `Password` +
   `PushSecret` to `openbao-push`. Add the namespace to the store's
@@ -211,16 +251,24 @@ How that plays out here:
 - A site: a `Certificate`, a ListenerSet + HTTPRoute per Gateway (`edge` and
   `wg`), an ingress allow from Envoy plus an entry in envoy-gateway's
   `proxies` policy. Public admin UIs sit behind SecurityPolicy `edge-oidc`.
-  SSO: a client in `tofu/loft01/keycloak/clients.tf` (`docs/access.md`).
+  SSO: a client in `iac/tofu/loft01/keycloak/clients.tf` (`docs/access.md`).
 
 ## Deliberate, don't "fix"
 
-- Every app uses the `default` AppProject and tracks `HEAD` of `main`.
+- Every app uses the `default` AppProject.
+- `gitops/overrides/**` and `gitops/apps/**` ship at `HEAD`;
+  `gitops/charts/**`, `gitops/stacks/**`, `gitops/addon-extras/**` and
+  `gitops/manifests/**` ship at the cluster's stack tag. That is the
+  promotion step, not a delay to route around.
+- Ordering exists only as an environment's sync waves and the
+  `ApplicationSet` health check; never a hook, a `depends_on` webhook or a
+  wave in the catalog.
+- `preserveResourcesOnDeletion` on every generated ApplicationSet, and no
+  finalizer on a generated Application: switching an addon off prunes its
+  ApplicationSet and Application and leaves its resources running. Clean up by
+  hand.
 - Argo CD and Cilium manage themselves.
-- No ordering between apps; CRDs from another app arrive via endless retry.
-- `preserveResourcesOnDeletion`, and no finalizer on a generated addon
-  Application: switching an addon off prunes its Application and leaves its
-  resources running. Clean up by hand.
+- No ordering between apps; a CRD from another app arrives via endless retry.
 - `charts/` and `Chart.lock` are gitignored; Argo builds dependencies.
 - KubeVirt `evictionStrategy: None` cluster-wide. Don't set it on VMs or
   `KubevirtMachineTemplate`s.
@@ -265,7 +313,7 @@ How that plays out here:
 - Envoy Gateway fetches an OIDC issuer's discovery once and never retries, so
   `edge-oidc` names Keycloak's endpoints explicitly.
 - The Keycloak Operator only watches its own namespace: the operator
-  (addon `keycloak-operator`, which owns the Namespace) and the `Keycloak` CR
+  (addon `keycloak_operator`, which owns the Namespace) and the `Keycloak` CR
   (addon `keycloak`) share `keycloak`.
 - The admin kubeconfig exists only on loft01 (`KUBECONFIG` is set there).
 - Requests time out at 300 s by default (`BackendTrafficPolicy`
@@ -276,5 +324,8 @@ How that plays out here:
 - An Application whose first sync hit a webhook that was not ready yet
   (cert-manager, external secrets) stays `Running` forever: the failed task is
   never re-applied and `retry.limit: -1` only fires on a failed operation.
-  Delete the Application; `addons-<cluster>` recreates it and nothing is pruned
-  (`docs/bootstrap.md`).
+  Delete the Application; its ApplicationSet recreates it and nothing is
+  pruned (`docs/bootstrap.md`).
+- A sync wave measured by the ApplicationSet health check waits for *every*
+  generated Application: a Degraded one holds the whole wave, so a wave that
+  never ends is a diagnosis of the addon in it, not a reason to move the wave.

@@ -92,32 +92,69 @@ k3s runs with `--flannel-backend=none` and `--disable-kube-proxy`
 and Argo CD are applied by hand once, because Argo cannot install the CNI or
 itself; everything else comes from git.
 
+Check out the stack tag the cluster's Secret names, so the charts, the catalog
+and the extras are exactly the set CI rendered:
+
 ```sh
 ssh loft01
 git clone https://github.com/leierx/homelab.git
 cd homelab
+member=gitops/bootstrap/members/loft01.yaml
+cluster=loft01
+env=prod
+kver=$(yq -r '.metadata.labels.kubernetes_version' "$member")
+git checkout "$(yq -r '.metadata.annotations.addons_stack_version' "$member")"
 ```
+
+`addon` renders one upstream addon the way its Application does: the stack's
+chart at its `targetRevision`, the catalog's `values`, and the environment's
+and the cluster's `values` on top — then, if the addon has one, our
+`addon-extras` folder for it with the cluster's `extras.values` and
+`fleet.cluster`. Its output goes to `kubectl apply --server-side
+--field-manager=argocd-controller`, the field manager and release name Argo
+uses, so the generated Applications adopt these objects instead of fighting
+them.
+
+```sh
+addon() {
+  key=$1 ns=$2
+  shift 2
+  stack=gitops/stacks/k8s-$kver/stack.yaml
+  catalog=gitops/charts/gitops-addons/values.yaml
+  chart=$(yq -r ".addons[\"$key\"].chart" "$stack")
+  repo=$(yq -r ".addons[\"$key\"].repoUrl" "$stack")
+  version=$(yq -r ".addons[\"$key\"].targetRevision" "$stack")
+  release=$(yq -r ".addons[\"$key\"].releaseName" "$catalog")
+  case "$repo" in
+    *://*) src=("$chart" --repo "$repo") ;;
+    *) src=("oci://$repo/$chart") ;;
+  esac
+  helm template "$release" "${src[@]}" --version "$version" -n "$ns" --include-crds \
+    -f <(yq ".addons[\"$key\"].values // {}" "$catalog") \
+    -f <(yq ".addons[\"$key\"].values // {}" "gitops/overrides/environments/$env/values.yaml") \
+    -f <(yq ".addons[\"$key\"].values // {}" "gitops/overrides/clusters/$cluster/values.yaml") \
+    "$@"
+  if [ "$(yq -r ".addons[\"$key\"] | has(\"extras\")" "$catalog")" = "true" ]; then
+    helm template "$release" "gitops/addon-extras/${key//_/-}" -n "$ns" --include-crds \
+      -f <(yq ".addons[\"$key\"].extras.values // {}" "gitops/overrides/clusters/$cluster/values.yaml") \
+      --set-string "fleet.cluster=$cluster"
+  fi
+}
+```
+
+Only an upstream addon can be bootstrapped this way, and only `cilium` and
+`argocd` need to be: a chart of our own and a Kustomize addon arrive with the
+first sync.
 
 ### Cilium
 
 ```sh
 kubectl label namespace kube-system pod-security.kubernetes.io/enforce=privileged \
   pod-security.kubernetes.io/warn=privileged pod-security.kubernetes.io/audit=privileged
-helm dependency update gitops/addons/cilium
-helm template cilium gitops/addons/cilium -n kube-system --include-crds \
-  -f gitops/clusters/loft01/addons/cilium/values.yaml \
-  --set-string fleet.cluster=loft01 \
-  --set cilium.prometheus.serviceMonitor.trustCRDsExist=true \
+addon cilium kube-system --set prometheus.serviceMonitor.trustCRDsExist=true \
   | kubectl apply -n kube-system --server-side --field-manager=argocd-controller -f -
 kubectl wait --for=condition=Ready node --all --timeout=10m
 ```
-
-Values layer the way `addons-<cluster>` lays them: the chart's own
-`values.yaml`, then `gitops/groups/<group>/addons/<addon>/values.yaml` for
-each of the cluster's groups in order, then
-`gitops/clusters/<cluster>/addons/<addon>/values.yaml`. Cilium has no
-group file today, so only the cluster file is passed. `--set-string
-fleet.cluster=<cluster>` is what Argo passes too.
 
 The label comes first because k3s enforces Pod Security `baseline` in every
 unlabelled namespace (`nixos/k3s.nix`) and the Cilium agent is privileged;
@@ -125,61 +162,83 @@ later, Argo sets the same labels from the addon's `podSecurity` in the
 catalog. The `trustCRDsExist` override is only for this first apply: without
 it `helm template` fails, because the chart will not render its
 ServiceMonitors before the Prometheus Operator CRDs exist, and those arrive
-later with the `prometheus-operator-crds` addon. The four `ServiceMonitor`s
+later with the `prometheus_operator_crds` addon. The four `ServiceMonitor`s
 and the `CiliumClusterwideNetworkPolicy` (its CRD comes from Cilium's own
 operator) therefore fail this apply and Argo creates them once the CRDs
 exist. `kubectl apply` keeps going after an unknown kind; the agent and
-operator apply normally.
+operator apply normally. The addon's extras come with the same render: the
+cluster-wide baseline policy that allows DNS.
 
 ### Argo CD
 
 ```sh
-helm dependency update gitops/addons/argocd
 kubectl create namespace argocd
-helm template argocd gitops/addons/argocd -n argocd --include-crds \
-  -f gitops/clusters/loft01/addons/argocd/values.yaml \
-  --set-string fleet.cluster=loft01 \
+addon argocd argocd \
   | kubectl apply -n argocd --server-side --field-manager=argocd-controller -f -
 kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
 ```
 
 Argo CD's URL and OIDC config are loft01's own values, hence the cluster file;
-the chart's `values.yaml` holds everything every cluster gets. Some objects in
-that render need CRDs that arrive with the fleet (a `Certificate`, a
+the catalog's `values` for `argocd` hold everything every cluster gets. Some
+objects in that render need CRDs that arrive with the fleet (a `Certificate`, a
 `ListenerSet`, an `HTTPRoute` and an `ExternalSecret`). The apply reports them
-and Argo applies them later, once the addons that own the CRDs exist. Our own
-templates carry no namespace, hence `-n` on both applies; without it they land
-in `default`. Argo CD's `CiliumNetworkPolicy` is applied here already, and it
-allows cluster DNS itself: the cluster-wide baseline that allows DNS for
-everyone only arrives once Argo CD can sync Cilium.
+and Argo applies them later, once the addons that own the CRDs exist. The
+extras' templates carry no namespace, hence `-n` on both applies; without it
+they land in `default`. Argo CD's `CiliumNetworkPolicy` is applied here
+already, and it allows cluster DNS itself: the cluster-wide baseline that
+allows DNS for everyone only arrives once Argo CD can sync Cilium.
+
+The catalog's Argo CD values also install the ApplicationSet health check, and
+the first wave is only ordered if it is there before `root.yaml` is applied:
+
+```sh
+kubectl -n argocd get cm argocd-cm -o json | jq -r '.data | keys[]' | grep io_ApplicationSet
+```
+
+That must print `resource.customizations.health.argoproj.io_ApplicationSet`. If
+it prints nothing, the catalog's values did not reach this render: fix that
+first, or every wave starts at once.
 
 ### Hand over to git
 
 ```sh
+git checkout main
 kubectl apply -f gitops/root.yaml
 kubectl -n argocd get applications
 ```
 
-`root.yaml` creates the `root` Application for `gitops/fleet/bootstrap`: the
-`members` Application (the cluster Secrets in `gitops/fleet/members/`) and the
-`addons` ApplicationSet. `addons` renders the catalog chart `gitops/fleet/catalog`
-for every cluster Secret, as `addons-<cluster>`; that Application renders one
-Application per addon that `gitops/groups/<group>/addons.yaml` (in the
-cluster's group order) and `gitops/clusters/<cluster>/addons.yaml` switch on.
-A one-off workload is one of those addons too — dodde's VM is the Kustomize
-addon `dodde` — so there is no separate apps ApplicationSet. The release names
-and namespaces in the templates above match what those Applications render, so
-Argo adopts Cilium and Argo CD and manages everything from git.
+`root.yaml` creates the `root` Application for `gitops/bootstrap`: the
+`members` Application (the cluster Secrets in `gitops/bootstrap/members/`), the
+global `gitops-addons` ApplicationSet and the `apps` ApplicationSet.
+`gitops-addons` renders the catalog chart `gitops/charts/gitops-addons` for
+every cluster Secret, at the commit its `addons_stack_version` names, as
+`gitops-addons-<cluster>`; that Application emits one ApplicationSet per addon
+the Secret's `enable_` labels switch on, each with the wave the environment's
+overrides give it. `apps` generates one Application per `gitops/apps/<app>/<environment>/`
+— dodde's VM and Immich today. The release names, namespaces and values in the
+templates above match what those Applications render, so Argo adopts Cilium
+and Argo CD and manages everything from git.
 
 ## 3. After the fleet is up
 
-There is no Argo CD login yet. `admin.enabled` is `"false"`
-(`gitops/addons/argocd/values.yaml`) and the OIDC client lives in Keycloak,
-which the fleet is still bringing up. Bootstrap is driven with `kubectl`;
-that is also how you watch it converge:
+There is no Argo CD login yet. `admin.enabled` is `"false"` (the catalog's
+`argocd` values) and the OIDC client lives in Keycloak, which the fleet is
+still bringing up. Bootstrap is driven with `kubectl`; that is also how you
+watch it converge:
 
 ```sh
+watch kubectl -n argocd get applicationsets    # one per enabled addon, each with its wave
 watch kubectl -n argocd get applications
+```
+
+Each wave starts only once every Application of the waves before it is
+Healthy ([gitops.md](gitops.md), Sync waves); an ApplicationSet's wave is its
+`argocd.argoproj.io/sync-wave` annotation. To see which wave is running and
+what holds it:
+
+```sh
+kubectl -n argocd get applicationsets -o json | jq -r '.items[] |
+  "\(.metadata.annotations["argocd.argoproj.io/sync-wave"] // "-") \(.metadata.creationTimestamp) \(.metadata.name) \([.status.resources[]?.health.status] | join(","))"' | sort -n
 ```
 
 Much of the wait is External Secrets backing off: the `openbao` store and the
@@ -203,9 +262,9 @@ webhook that was not ready yet (cert-manager's or External Secrets', in
 practice) recovers by itself, at the latest one timeout later.
 
 If it is still stuck after that, deleting the Application is the fallback, not
-the fix. The generated addon Applications carry no finalizer, so nothing it
-created is pruned, and `addons-<cluster>` recreates it within its reconcile
-interval with a fresh operation that applies everything again. Its
+the fix. The generated Applications carry no finalizer, so nothing it created
+is pruned, and its ApplicationSet recreates it within its reconcile interval
+with a fresh operation that applies everything again. Its
 `status.operationState.syncResult` names the tasks that failed, usually with
 `failed calling webhook`.
 
@@ -226,10 +285,11 @@ and sets your own password.
 ### The Keycloak realm and its state
 
 The realm is not a Job any more: the CronWorkflow `keycloak-realm` in the
-`keycloak` namespace runs `tofu/<cluster>/keycloak/` every 10 minutes (`tofu/loft01/keycloak` today). On a rebuilt
-cluster it creates the realm on its first run after Keycloak is Ready (or
-trigger it as in [access.md](access.md)). A fresh master realm also gets a
-`temp-admin` from the operator; delete it ([break-glass.md](break-glass.md)).
+`keycloak` namespace runs `iac/tofu/<cluster>/keycloak/` every 10 minutes
+(`iac/tofu/loft01/keycloak` today). On a rebuilt cluster it creates the realm
+on its first run after Keycloak is Ready (or trigger it as in
+[access.md](access.md)). A fresh master realm also gets a `temp-admin` from
+the operator; delete it ([break-glass.md](break-glass.md)).
 
 OpenTofu's state is the Secret `tfstate-default-keycloak` and the Lease
 `lock-tfstate-default-keycloak`, both in `keycloak` and both inside the k3s
@@ -253,9 +313,10 @@ state):
   is nothing to import from.
 
 To use the Argo CD UI while Keycloak is still down, temporarily set
-`admin.enabled: "true"` and push; Argo reconciles itself, and
-[break-glass.md](break-glass.md) has the password steps. Revert it
-afterwards.
+`admin.enabled: "true"` in `gitops/overrides/clusters/loft01/values.yaml`
+(`addons.argocd.values.configs.cm`) and push: overrides ship at `HEAD`, so Argo
+reconciles itself on the next sync, and [break-glass.md](break-glass.md) has
+the password steps. Revert it afterwards.
 
 ### Secrets entered by hand
 

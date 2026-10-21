@@ -28,22 +28,31 @@ appears, because `nix flake update` never leaves the pinned `nixos-YY.MM`.
 Then move `nixpkgs.url` in `flake.nix` to the new release and
 `services.k3s.package` in `nixos/k3s.nix` one Kubernetes minor at a time.
 
-Renovate (`gitops/addons/renovate`) runs self-hosted as a CronJob at 17 past
-every hour, as the GitHub App `leierx-renovate`. Each run mints an
-installation token from the app key in OpenBao `loft01/renovate` (`app_id`,
-`installation_id`, `private_key`). It updates GitHub Actions, the Helm chart
-dependencies in `gitops/addons/*/Chart.yaml`, versions marked with a
+Renovate (addon `renovate`) runs self-hosted as a CronJob at 17 past every
+hour, as the GitHub App `leierx-renovate`. Each run mints an installation
+token from the app key in OpenBao `loft01/renovate` (`app_id`,
+`installation_id`, `private_key`). It updates GitHub Actions, the chart
+versions in `gitops/stacks/k8s-<minor>/stack.yaml`, versions marked with a
 `# renovate:` comment, and GitHub release URLs in kustomizations. Policy is
-`renovate.json`: one PR per addon; patch, minor and digest automerge, majors
-wait for review, and so does everything for Keycloak and Immich (their
-upgrades can need a manual step). Go modules are not managed; bump
-`k8s.io/*` and controller-runtime together by hand.
+`renovate.json`: one PR per addon or app, one per stack, one per OpenTofu
+root; patch, minor and digest automerge, majors wait for review, and so does
+everything for Keycloak and Immich (their upgrades can need a manual step).
+Go modules are not managed; bump `k8s.io/*` and controller-runtime together by
+hand.
 
-`.github/workflows/addon-render.yml` renders every changed addon with Argo's
-value layering and the cluster's API versions, and Renovate waits for that
-check before automerging.
+`stack release` (`.github/workflows/stack-release.yml`) tags
+`stack-<k8s minor>.<n>` on every merge that changes
+`gitops/{charts,stacks,addon-extras,manifests}/**`, and Renovate then opens
+one PR per cluster that raises `addons_stack_version` to that tag. That
+promotion PR is how a stack version reaches a cluster (`docs/gitops.md`,
+"What ships").
 
-Each `apps/<name>` has its own `.github/workflows/<name>.yml`, triggered by
+`.github/workflows/addon-render.yml` checks the layout and renders every
+cluster's ApplicationSets and every source of every addon and app with Argo's
+value layering and the cluster's API versions; Renovate waits for that check
+before automerging.
+
+Each `src/<name>` has its own `.github/workflows/<name>.yml`, triggered by
 changes to that directory. `capi-argo-bridge` vets and tests on pull
 requests, and on `main` publishes
 `ghcr.io/leierx/capi-argo-bridge:{main,0.1.<run number>}` with ko. The
@@ -57,40 +66,11 @@ deploy. To run either by hand, see "Working live" in `AGENTS.md`.
 
 ## Change the fleet
 
-- **Add an addon.** Create `gitops/addons/<addon>/`: an umbrella chart
-  (`Chart.yaml` with the upstream dependency, `values.yaml`, `templates/`) or
-  a Kustomize base (`kustomization.yaml`). Then add its entry to the catalog,
-  `gitops/fleet/catalog/values.yaml`: `enabled: false`, `namespace`, and
-  optional `podSecurity`, `kustomize: true`, `syncOptions`,
-  `ignoreDifferences`. The render check fails if a chart has no catalog entry
-  or an entry has no chart.
-- **Enable it on a cluster, or for a whole group.**
-  `enabled: true` under `addons.<addon>` in
-  `gitops/clusters/<cluster>/addons.yaml`, or in
-  `gitops/groups/<group>/addons.yaml` for every cluster in the group. A
-  Kustomize addon also needs the cluster's overlay,
-  `gitops/clusters/<cluster>/addons/<addon>/kustomization.yaml`.
-- **Override a value for one cluster, or for a group.**
-  `gitops/clusters/<cluster>/addons/<addon>/values.yaml` or
-  `gitops/groups/<group>/addons/<addon>/values.yaml`. The chart's own
-  `values.yaml` is the default; later layers win, and a file that does not
-  exist is skipped.
-- **Add a one-off workload for one cluster.** Make it a Kustomize addon:
-  `gitops/addons/<name>/kustomization.yaml` plus its manifests, a catalog entry
-  with `kustomize: true`, the cluster overlay
-  `gitops/clusters/<cluster>/addons/<name>/kustomization.yaml` that references
-  `../../../../addons/<name>`, and `enabled: true` in the cluster's
-  `addons.yaml`. That is what dodde's VM is.
-- **Add a cluster.** `gitops/fleet/members/<cluster>.yaml`, its Argo cluster
-  Secret, with `fleet.homelab/groups` saying what it is; then
-  `gitops/clusters/<cluster>/addons.yaml` with the addons that are its own, and
-  the values or overlays those addons need. Only in-cluster clusters are
-  supported today (`TODO.md`).
-- **Run a different version on some clusters.** A variant addon:
-  `gitops/addons/<addon>-<major>-<minor>/`, a copy of the chart with its own
-  `Chart.yaml` pin, plus its own catalog entry, enabled instead of the default
-  on those clusters. That is the only way; there are no version stacks and no
-  per-cluster version labels.
+How to add or remove an addon, change a value, add an app or a cluster, bump a
+version or move to a new Kubernetes minor: [gitops.md](gitops.md), "Working
+with it". What ships when is in `AGENTS.md` ("What ships, and when"); the
+promotion itself is a Renovate PR that raises the cluster's
+`addons_stack_version` to a new `stack-<minor>.<n>` tag.
 
 ## Backups and restore
 
@@ -225,13 +205,12 @@ days, which means renewal is failing.
 
 ### What runs
 
-`observability` (namespace `monitoring`, management cluster only) runs
-Grafana at https://metrics.skinke.net behind Keycloak, plus Mimir for
-metrics and Loki for logs, each a single pod with a PVC on the `tank`
-pool. Retention is 90 days for metrics and 30 for logs. Mimir is our own
-StatefulSet (`templates/mimir.yaml`), because mimir-distributed has no
-monolithic mode. There is no tracing backend; see
-[tech-choices.md](tech-choices.md).
+`grafana` (namespace `monitoring`, management cluster only) runs
+Grafana at https://metrics.skinke.net behind Keycloak, `loki` runs Loki for
+logs and `mimir` runs Mimir for metrics, each a single pod with a PVC on the
+`tank` pool. Retention is 90 days for metrics and 30 for logs. Mimir is our own
+chart (`gitops/charts/mimir/`), because mimir-distributed has no monolithic
+mode. There is no tracing backend; see [tech-choices.md](tech-choices.md).
 
 `telemetry` (one namespace) runs the collectors. `alloy-metrics` is a
 StatefulSet that scrapes the kubelet, cAdvisor, kube-state-metrics, the API
@@ -240,19 +219,19 @@ events to Loki. `alloy-logs` is a DaemonSet that tails every pod's logs and the
 API server's audit log. The prometheus-community `kube-state-metrics` and
 `node-exporter` charts run beside them. The namespace is Pod Security
 privileged because node-exporter and the log collector need host access. All
-four are enabled for every cluster in `groups/core/addons.yaml`; the
-cluster's values file names its Mimir and Loki destinations. Nothing sends
-OTLP today, so no receiver is deployed.
+four are enabled on every cluster
+([gitops.md](gitops.md)); the cluster's overrides name its Mimir and Loki
+destinations. Nothing sends OTLP today, so no receiver is deployed.
 
 Alloy scrapes every ServiceMonitor and PodMonitor (their CRDs come from
 `prometheus-operator-crds`; we do not run the Prometheus Operator). Grafana
 loads ConfigMaps labelled `grafana_dashboard: "1"` from any namespace, with
 the folder from the `grafana_folder` annotation, plus the grafana.com
-dashboards pinned in `observability/values.yaml`.
+dashboards pinned in the `grafana` addon's catalog values.
 
 ### Adding a scrape or a log pipeline
 
-- Cluster metrics are files in `gitops/addons/alloy-metrics/config/`: one per
+- Cluster metrics are files in `gitops/addon-extras/alloy-metrics/config/`: one per
 target (`kubelet.alloy`, `cadvisor.alloy`, `api-server.alloy`,
 `kube-dns.alloy`, `kube-state-metrics.alloy`, `node-exporter.alloy`),
 `operator.alloy` for ServiceMonitors/PodMonitors, `events.alloy` for Kubernetes
@@ -262,7 +241,7 @@ events, and `remote-write.alloy` for the destinations. The addon's
 forward it to `prometheus.remote_write.mimir.receiver`. Keep the `job` name
 stable: dashboards and alerts filter on it, and the community dashboards expose
 it as a variable.
-- Pod logs and the audit log are in `gitops/addons/alloy-logs/config/`
+- Pod logs and the audit log are in `gitops/addon-extras/alloy-logs/config/`
 (`pods.alloy`, `audit.alloy`); the audit file is included only when the
 cluster sets `auditLogPath`.
 - Check: render the addon with the cluster's value layering (as `addon render`
@@ -273,9 +252,10 @@ list are the live check.
 
 ### Alerts
 
-The rules are Grafana-managed, in `observability/values.yaml` under
-`grafana.alerting` (folder `homelab`). The chart rolls the Grafana pod when
-they change, so a rule edit is a push.
+The rules are Grafana-managed, in the `grafana` addon's catalog values
+(`gitops/charts/gitops-addons/values.yaml`) under `grafana.alerting` (folder
+`homelab`). The chart rolls the Grafana pod when they change, so a rule edit is
+a push.
 
 - `security` reads the API audit log (`{job="kube-audit"}` in Loki) and
   OpenBao's audit log, plus Mimir for `hubble_drop_total` (network-policy
