@@ -1,4 +1,7 @@
 grafana:
+  resources:
+    requests:
+      cpu: 100m
   grafana.ini:
     server:
       domain: metrics.skinke.net
