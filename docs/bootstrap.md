@@ -254,13 +254,14 @@ operation rather than retrying it (the last paragraph of this section is the
 way out). The one that bites is `renovate` in wave 4, right after
 `external_secrets`.
 
-Measured on the rebuild of 2026-10-21, from `root.yaml` to Healthy: wave 0
-under a minute, each later wave one to three minutes once the wave before it was
-Healthy, with the exceptions a bootstrap has anyway — cert-manager's first
-`Certificate` (the `letsencrypt` HTTP-01 challenge through the `edge` Gateway)
-and the OpenBao raft pod take the longest. The whole addon side was Healthy
-about 15 minutes after `root.yaml`; Renovate's own ExternalSecret waited for its
-credentials, which are entered by hand ([Secrets entered by hand](#secrets-entered-by-hand)).
+Measured on the rebuild of 2026-10-21: every wave's ApplicationSets existed
+nine minutes after `gitops-addons-loft01` started its sync, one to three minutes
+per wave once the wave before it was Healthy. The waves that take real time are
+wave 1 (cert-manager's first `Certificate` — the `letsencrypt` HTTP-01 challenge
+through the `edge` Gateway — and the OpenBao raft pod) and wave 4 (Keycloak's
+realm and the ExternalSecrets behind it). Renovate's own ExternalSecret waits
+for its credentials, which are entered by hand
+([Secrets entered by hand](#secrets-entered-by-hand)).
 
 ### When an Application never finishes its first sync
 
