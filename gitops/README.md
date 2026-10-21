@@ -2,6 +2,7 @@
 
 Argo CD addons for every cluster, from this folder, with ApplicationSets and Go templating.
 Design, rules and the day-to-day guide: [docs/fleet-gitops.md](docs/fleet-gitops.md).
+From an empty cluster: [docs/bootstrap.md](docs/bootstrap.md).
 
 ```
 bootstrap/   Argo CD wiring (root Application, AppProjects, ApplicationSets). Rarely touched.
