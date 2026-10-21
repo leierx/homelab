@@ -3,7 +3,8 @@ kind: Namespace
 metadata:
   name: {{ .Release.Namespace }}
   annotations:
-    # shared namespace: removing one addon must not delete what another one uses
+    # monitoring is shared by grafana, loki and prometheus-operator-crds; this addon owns the
+    # labels, the others rely on it. Prune=false keeps it if only this addon is removed.
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
   labels:
     pod-security.kubernetes.io/enforce: restricted
