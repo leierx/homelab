@@ -5,7 +5,7 @@ postgres:
   size: ""
 tofu:
   # renovate: datasource=docker depName=ghcr.io/opentofu/opentofu
-  tag: 1.13.1
+  tag: 1.13.2
 # confidential clients whose secret is generated once into OpenBao <cluster>/<name>; the realm root reads it back
 clientSecrets: [argocd, grafana, immich, edge]
 
