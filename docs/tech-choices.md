@@ -415,13 +415,19 @@ and the same with `namespace="keycloak"` / `"openbao"`.
   `bootstrap/members/`.** Rejected: a chart rendering cluster Secrets from a
   values map — one more layer around four lines that change once per cluster,
   and no place to carry a Secret's extra keys.
-- **Choice: multi-source Applications only where they are needed** — the
-  values ref (overrides at `HEAD`) and, for an upstream addon with extras, its
-  second source. Rejected: multi-source everywhere, which loses nothing but
-  adds a values source to addons that read none; rejected: single-source
-  Applications with relative value files (our previous layout), which can only
-  express one revision, so a stack tag and the overrides at `HEAD` could not
-  be combined.
+- **Choice: single-source Applications, with a second source only for an
+  upstream addon's extras.** The catalog chart, the stack and the overrides all
+  come from the cluster's stack tag, so a stack version freezes everything CI
+  rendered; the apps ship at `HEAD`.
+  Rejected, because Argo CD refuses it: the design's two sources — the chart and
+  the stack at the tag as a `$values` ref with the overrides at `HEAD` — fail
+  with "cannot reference a different revision of the same repository"
+  (`reposerver/repository/repository.go`); the repo server normalizes both URLs
+  and rejects two revisions, so no alias gets around it. Rejected with it: a
+  published chart or a second repository just to hold the overrides. The cost is
+  accepted: a value, a hostname or a wave change is a stack version like any
+  other addon-side change (merge → tag → Renovate promotes the tag), and
+  `stack release` watches `gitops/overrides/**` for it.
 - **Choice: CI has its own render loop**, reading the same value layers out of
   the catalog, stack, overrides and Secret. Rejected: a shared render script,
   which would need a second language runtime on the runner and would grow a

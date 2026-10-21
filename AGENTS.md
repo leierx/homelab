@@ -95,10 +95,10 @@ How that plays out here:
 
 ## Working live
 
-- A push to `main` is a deploy. `gitops/overrides/**` and `gitops/apps/**`
-  ship at `HEAD`: the next sync picks them up.
-  `gitops/charts/**`, `gitops/stacks/**`, `gitops/addon-extras/**` and
-  `gitops/manifests/**` ship only when the cluster's `addons_stack_version`
+- A push to `main` is a deploy. `gitops/apps/**` ships at `HEAD`: the next
+  sync picks it up. Everything addon-side — `gitops/charts/**`,
+  `gitops/stacks/**`, `gitops/overrides/**`, `gitops/addon-extras/**` and
+  `gitops/manifests/**` — ships only when the cluster's `addons_stack_version`
   moves to a new tag (`docs/gitops.md`, "What ships").
 - Nudge an app with
   `kubectl -n argocd annotate app <app> argocd.argoproj.io/refresh=normal --overwrite`;
@@ -154,9 +154,10 @@ How that plays out here:
   Don't hand-bump inputs. When it fails because a new `nixos-YY.MM` exists,
   move `nixpkgs` and `services.k3s.package` (one Kubernetes minor at a time).
 - `stack release` (CI) tags `stack-<k8s minor>.<n>` on every merge that
-  changes `gitops/charts/**`, `gitops/stacks/**`, `gitops/addon-extras/**` or
-  `gitops/manifests/**`. A tag freezes the catalog chart, the stack,
-  addon-extras, our charts and the manifests: the set CI rendered. Renovate
+  changes `gitops/charts/**`, `gitops/stacks/**`, `gitops/overrides/**`,
+  `gitops/addon-extras/**` or `gitops/manifests/**` (or when dispatched). A tag
+  freezes the catalog chart, the stack, the overrides, addon-extras, our charts
+  and the manifests: the set CI rendered. Renovate
   then opens one PR per cluster that raises `addons_stack_version` to the new
   tag, which is the release: nothing addon-side reaches a cluster before that
   merges.
@@ -180,8 +181,8 @@ How that plays out here:
   `kubernetes_version` and one `enable_<addon>: "true"` per addon it runs,
   never one for an app — and its annotations say where its addons and
   workloads come from: `addons_repo_url`, `addons_repo_basepath`,
-  `addons_repo_revision`, `addons_stack_version`,
-  `workload_repo_url`, `workload_repo_basepath`, `workload_repo_revision`.
+  `addons_stack_version`, `workload_repo_url`, `workload_repo_basepath`,
+  `workload_repo_revision`.
   It also carries `argocd.argoproj.io/sync-options: Delete=false,Prune=false`.
   Only in-cluster clusters exist (`TODO.md`).
 - The catalog, `charts/gitops-addons/values.yaml`, is one entry per addon:
@@ -195,10 +196,10 @@ How that plays out here:
   has no scheme in `repoUrl` (`docker.io/envoyproxy`).
 - The global ApplicationSet renders the catalog with the stack, the
   environment's overrides and the cluster's overrides, and sets
-  `addons.<addon>.enabled` from the Secret's labels. The chart and the stack
-  come from the tag in `addons_stack_version`; the overrides come from `HEAD`.
-  The chart emits one ApplicationSet per enabled addon,
-  `addon-<addon>-<cluster>`.
+  `addons.<addon>.enabled` from the Secret's labels. The chart, the stack and
+  the overrides all come from the tag in `addons_stack_version`: Argo CD cannot
+  read two revisions of one repository in one Application. The chart emits one
+  ApplicationSet per enabled addon, `addon-<addon>-<cluster>`.
 - An upstream addon's Application has one source, or two when it has extras:
   the chart from the stack and `addon-extras/<addon>/` from the same revision,
   both with the addon's `releaseName`. Our charts and Kustomize addons render
@@ -256,9 +257,9 @@ How that plays out here:
 ## Deliberate, don't "fix"
 
 - Every app uses the `default` AppProject.
-- `gitops/overrides/**` and `gitops/apps/**` ship at `HEAD`;
-  `gitops/charts/**`, `gitops/stacks/**`, `gitops/addon-extras/**` and
-  `gitops/manifests/**` ship at the cluster's stack tag. That is the
+- `gitops/apps/**` ships at `HEAD`; everything addon-side — `gitops/charts/**`,
+  `gitops/stacks/**`, `gitops/overrides/**`, `gitops/addon-extras/**` and
+  `gitops/manifests/**` — ships at the cluster's stack tag. That is the
   promotion step, not a delay to route around.
 - Ordering exists only as an environment's sync waves and the
   `ApplicationSet` health check; never a hook, a `depends_on` webhook or a
