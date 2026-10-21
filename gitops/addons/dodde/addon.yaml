@@ -3,3 +3,4 @@ type: kustomize
 groups: [prod]
 namespace: dodde
 onRemoval: keep      # holds the VM disk; deleting the namespace would delete it
+syncOptions: [ServerSideApply=true]   # matches the old global syncOptions; large CRDs exceed the client-side apply annotation limit

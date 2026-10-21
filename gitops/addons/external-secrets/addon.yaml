@@ -4,3 +4,4 @@ groups: [prod]
 namespace: external-secrets
 wave: 3
 onRemoval: keep      # owns ExternalSecret/PushSecret CRDs
+syncOptions: [ServerSideApply=true]   # matches the old global syncOptions; large CRDs exceed the client-side apply annotation limit

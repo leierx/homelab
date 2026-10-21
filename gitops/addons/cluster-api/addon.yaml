@@ -3,3 +3,4 @@ type: helm
 groups: [prod]
 namespace: capi-operator-system
 onRemoval: keep      # owns Cluster API CRDs and provider CRs
+syncOptions: [ServerSideApply=true]   # matches the old global syncOptions; large CRDs exceed the client-side apply annotation limit

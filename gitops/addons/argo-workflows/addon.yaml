@@ -4,3 +4,4 @@ groups: [prod]
 namespace: argo
 wave: 4
 onRemoval: keep      # owns Workflow/CronWorkflow CRDs; deleting them deletes workflows
+syncOptions: [ServerSideApply=true]   # matches the old global syncOptions; large CRDs exceed the client-side apply annotation limit

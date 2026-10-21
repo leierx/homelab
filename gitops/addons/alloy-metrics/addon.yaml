@@ -3,3 +3,4 @@ type: helm
 groups: [prod]
 namespace: telemetry
 onRemoval: delete      # stateless metrics collector; no CRDs or data
+syncOptions: [ServerSideApply=true]   # matches the old global syncOptions; large CRDs exceed the client-side apply annotation limit

@@ -4,3 +4,4 @@ groups: [prod]
 namespace: renovate
 wave: 4
 onRemoval: keep      # cache PVC, and easy to re-enable
+syncOptions: [ServerSideApply=true]   # matches the old global syncOptions; large CRDs exceed the client-side apply annotation limit

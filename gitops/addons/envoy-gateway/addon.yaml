@@ -4,3 +4,4 @@ groups: [prod]
 namespace: envoy-gateway-system
 wave: 1
 onRemoval: keep      # ships Gateway API CRDs; every site depends on the Gateways
+syncOptions: [ServerSideApply=true]   # matches the old global syncOptions; large CRDs exceed the client-side apply annotation limit

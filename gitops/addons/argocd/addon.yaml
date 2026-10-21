@@ -4,3 +4,4 @@ groups: [prod]
 namespace: argocd
 wave: 4
 onRemoval: keep      # the hub; owns Argo CRDs and all fleet state
+syncOptions: [ServerSideApply=true]   # matches the old global syncOptions; large CRDs exceed the client-side apply annotation limit

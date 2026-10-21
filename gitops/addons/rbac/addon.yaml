@@ -3,3 +3,4 @@ type: helm
 groups: [prod]
 namespace: kube-system
 onRemoval: delete      # cluster-scoped RBAC only; removed cleanly
+syncOptions: [ServerSideApply=true]   # matches the old global syncOptions; large CRDs exceed the client-side apply annotation limit

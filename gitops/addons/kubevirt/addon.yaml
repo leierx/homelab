@@ -3,3 +3,4 @@ type: kustomize
 groups: [prod]
 namespace: kubevirt
 onRemoval: keep      # owns KubeVirt CRDs; VMs depend on it
+syncOptions: [ServerSideApply=true]   # matches the old global syncOptions; large CRDs exceed the client-side apply annotation limit

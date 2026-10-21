@@ -5,3 +5,4 @@ namespace: immich
 releaseName: immich
 wave: 4
 onRemoval: keep      # holds the photo library and database
+syncOptions: [ServerSideApply=true]   # matches the old global syncOptions; large CRDs exceed the client-side apply annotation limit
