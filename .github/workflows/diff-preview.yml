@@ -104,7 +104,24 @@ jobs:
             --file-regex='^(rendered/|gitops/fleet/bootstrap/)' \
             --render-method=repo-server-api \
             --timeout=900 \
+            --keep-cluster-alive \
+            --debug \
             --title="Rendered manifest diff"
+
+      - name: inspect the cluster
+        if: failure()
+        run: |
+          docker ps -a
+          node=argocd-diff-preview-control-plane
+          docker exec "$node" crictl ps -a || true
+          docker exec "$node" crictl pods || true
+          docker exec "$node" journalctl -u kubelet --no-pager | tail -120 || true
+          port=$(docker port "$node" 6443 | awk -F: 'NR==1{print $2}')
+          docker exec "$node" cat /etc/kubernetes/admin.conf > /tmp/admin.conf
+          sed -i "s#https://127.0.0.1:6443#https://127.0.0.1:$port#" /tmp/admin.conf
+          kubectl --kubeconfig /tmp/admin.conf get pods -A -o wide || true
+          kubectl --kubeconfig /tmp/admin.conf -n argocd describe deploy argocd-redis || true
+          kubectl --kubeconfig /tmp/admin.conf -n argocd get events --sort-by=.lastTimestamp | tail -60 || true
 
       - name: upload the diff
         if: always()
