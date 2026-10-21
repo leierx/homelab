@@ -23,6 +23,14 @@
     },
     {
       "customType": "regex",
+      "description": "the argocd-diff-preview image in the diff-preview workflow, by tag and digest",
+      "managerFilePatterns": ["/^\\.github/workflows/diff-preview\\.yml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+ARGOCD_DIFF_PREVIEW_IMAGE: \\S+:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:\\S+)"
+      ]
+    },
+    {
+      "customType": "regex",
       "description": "GitHub release assets in kustomizations",
       "managerFilePatterns": ["/^gitops/.+/kustomization\\.yaml$/"],
       "matchStrings": [
