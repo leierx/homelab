@@ -18,6 +18,14 @@ rules:
   - apiGroups: [""]
     resources: ["nodes", "nodes/metrics"]
     verbs: ["get", "list", "watch"]
+  # the API server's own /metrics is a non-resource URL
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+  # a ServiceMonitor or PodMonitor can reference a Secret for its scrape
+  # credentials, as CDI's does
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
