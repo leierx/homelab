@@ -37,7 +37,7 @@ spec:
                 depth: 1
         container:
           image: ghcr.io/opentofu/opentofu:{{ .Values.tofu.tag }}
-          workingDir: /work/repo/tofu/{{ required "fleet.cluster" .Values.fleet.cluster }}/keycloak
+          workingDir: /work/repo/iac/tofu/{{ required "fleet.cluster" .Values.fleet.cluster }}/keycloak
           command: [sh, -c]
           args:
             - |
