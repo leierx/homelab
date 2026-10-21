@@ -3,14 +3,14 @@
   "rebaseWhen": "behind-base-branch",
   "timezone": "Europe/Oslo",
   "dependencyDashboard": true,
-  "enabledManagers": ["github-actions", "helmv3", "kubernetes", "kustomize", "custom.regex", "terraform"],
+  "enabledManagers": ["github-actions", "kubernetes", "kustomize", "custom.regex", "terraform"],
   "automergeStrategy": "merge-commit",
   "platformAutomerge": false,
   "kubernetes": {
-    "managerFilePatterns": ["/^gitops/addons/.+/templates/.+\\.ya?ml$/"]
+    "managerFilePatterns": ["/^gitops/(charts|addon-extras|apps)/.+/templates/.+\\.ya?ml$/"]
   },
   "terraform": {
-    "managerFilePatterns": ["/^tofu/.+\\.tf$/"]
+    "managerFilePatterns": ["/^iac/tofu/.+\\.tf$/"]
   },
   "customManagers": [
     {
@@ -18,7 +18,7 @@
       "description": "versions annotated with a `# renovate:` comment",
       "managerFilePatterns": ["/^gitops/.+\\.ya?ml$/"],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+\\S+:\\s*(?<currentValue>\\S+)"
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)( registryUrl=(?<registryUrl>\\S+))?\\s+\\S+:\\s*(?<currentValue>\\S+)"
       ]
     },
     {
@@ -41,16 +41,22 @@
   ],
   "packageRules": [
     {
-      "description": "one PR per addon: everything under gitops/addons/<addon>/ shares a group",
-      "matchFileNames": ["gitops/addons/**"],
+      "description": "one PR per addon or app: everything under its folder shares a group",
+      "matchFileNames": ["gitops/charts/**", "gitops/addon-extras/**", "gitops/manifests/**", "gitops/apps/**"],
       "groupName": "{{ lookup (split packageFileDir '/') 2 }}",
       "commitMessageSuffix": "({{ lookup (split packageFileDir '/') 2 }})"
     },
     {
-      "description": "one PR per OpenTofu root: tofu/<cluster>/<root> groups on the root's name",
-      "matchFileNames": ["tofu/**"],
+      "description": "one PR per stack: a stack is one Kubernetes minor's tested chart versions",
+      "matchFileNames": ["gitops/stacks/**"],
       "groupName": "{{ lookup (split packageFileDir '/') 2 }}",
       "commitMessageSuffix": "({{ lookup (split packageFileDir '/') 2 }})"
+    },
+    {
+      "description": "one PR per OpenTofu root: iac/tofu/<cluster>/<root> groups on the root's name",
+      "matchFileNames": ["iac/tofu/**"],
+      "groupName": "{{ lookup (split packageFileDir '/') 3 }}",
+      "commitMessageSuffix": "({{ lookup (split packageFileDir '/') 3 }})"
     },
     {
       "matchManagers": ["github-actions"],
@@ -58,23 +64,30 @@
       "automerge": true
     },
     {
-      "matchFileNames": ["gitops/addons/**"],
+      "matchFileNames": ["gitops/charts/**", "gitops/addon-extras/**", "gitops/manifests/**", "gitops/apps/**", "gitops/stacks/**"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
       "automerge": true
     },
     {
-      "matchFileNames": ["gitops/addons/**"],
+      "matchFileNames": ["gitops/charts/**", "gitops/addon-extras/**", "gitops/manifests/**", "gitops/apps/**", "gitops/stacks/**"],
       "matchUpdateTypes": ["major"],
       "automerge": false
     },
     {
+      "description": "a cluster adopts a new stack version without review: the tag only freezes versions CI rendered",
+      "matchFileNames": ["gitops/bootstrap/members/**"],
+      "matchDatasources": ["git-tags"],
+      "versioning": "regex:^stack-(?<compatibility>\\d+\\.\\d+)\\.(?<patch>\\d+)$",
+      "automerge": true
+    },
+    {
       "description": "The Keycloak operator, the image it runs, the realm's provider and the reconcile image wait for review",
-      "matchFileNames": ["gitops/addons/keycloak-operator/**", "gitops/addons/keycloak/**", "tofu/*/keycloak/**"],
+      "matchFileNames": ["gitops/manifests/keycloak-operator/**", "gitops/charts/keycloak/**", "iac/tofu/*/keycloak/**"],
       "automerge": false
     },
     {
       "description": "Immich, its Postgres and VectorChord wait for review: upgrades can need manual steps (docs/immich.md)",
-      "matchFileNames": ["gitops/addons/immich/**"],
+      "matchFileNames": ["gitops/apps/immich/**"],
       "automerge": false
     },
     {
