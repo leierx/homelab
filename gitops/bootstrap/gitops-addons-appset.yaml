@@ -29,37 +29,35 @@ spec:
           - ServerSideApply=true
         retry:
           limit: -1
-  # the chart and the stack at the cluster's stack version, the overrides at HEAD, the enable_ labels on top
+  # the chart, the stack and the overrides at the cluster's stack version: Argo CD
+  # cannot read two revisions of one repository in one Application
   templatePatch: |
     {{- $url := index .metadata.annotations "addons_repo_url" }}
     {{- $base := index .metadata.annotations "addons_repo_basepath" }}
     {{- $stack := index .metadata.annotations "addons_stack_version" }}
     spec:
-      sources:
-        - repoURL: {{ $url | quote }}
-          targetRevision: {{ index .metadata.annotations "addons_repo_revision" | quote }}
-          ref: values
-        - repoURL: {{ $url | quote }}
-          targetRevision: {{ $stack | quote }}
-          path: {{ printf "%scharts/gitops-addons" $base | quote }}
-          helm:
-            releaseName: {{ printf "gitops-addons-%s" .name | quote }}
-            ignoreMissingValueFiles: true
-            valueFiles:
-              - {{ printf "../../stacks/k8s-%s/stack.yaml" .metadata.labels.kubernetes_version | quote }}
-              - {{ printf "$values/%soverrides/environments/%s/values.yaml" $base .metadata.labels.environment | quote }}
-              - {{ printf "$values/%soverrides/clusters/%s/values.yaml" $base .name | quote }}
-            valuesObject:
-              cluster:
-                name: {{ .name | quote }}
-              repo:
-                url: {{ $url | quote }}
-                basepath: {{ $base | quote }}
-                stackRevision: {{ $stack | quote }}
-              addons:
-              {{- range $label, $value := .metadata.labels }}
-              {{- if hasPrefix "enable_" $label }}
-                {{ trimPrefix "enable_" $label }}:
-                  enabled: {{ eq $value "true" }}
-              {{- end }}
-              {{- end }}
+      source:
+        repoURL: {{ $url | quote }}
+        targetRevision: {{ $stack | quote }}
+        path: {{ printf "%scharts/gitops-addons" $base | quote }}
+        helm:
+          releaseName: {{ printf "gitops-addons-%s" .name | quote }}
+          ignoreMissingValueFiles: true
+          valueFiles:
+            - {{ printf "../../stacks/k8s-%s/stack.yaml" .metadata.labels.kubernetes_version | quote }}
+            - {{ printf "../../overrides/environments/%s/values.yaml" .metadata.labels.environment | quote }}
+            - {{ printf "../../overrides/clusters/%s/values.yaml" .name | quote }}
+          valuesObject:
+            cluster:
+              name: {{ .name | quote }}
+            repo:
+              url: {{ $url | quote }}
+              basepath: {{ $base | quote }}
+              stackRevision: {{ $stack | quote }}
+            addons:
+            {{- range $label, $value := .metadata.labels }}
+            {{- if hasPrefix "enable_" $label }}
+              {{ trimPrefix "enable_" $label }}:
+                enabled: {{ eq $value "true" }}
+            {{- end }}
+            {{- end }}

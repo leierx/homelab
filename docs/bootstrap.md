@@ -314,9 +314,9 @@ state):
 
 To use the Argo CD UI while Keycloak is still down, temporarily set
 `admin.enabled: "true"` in `gitops/overrides/clusters/loft01/values.yaml`
-(`addons.argocd.values.configs.cm`) and push: overrides ship at `HEAD`, so Argo
-reconciles itself on the next sync, and [break-glass.md](break-glass.md) has
-the password steps. Revert it afterwards.
+(`addons.argocd.values.configs.cm`) and push: `stack release` tags it, and the
+cluster picks it up when its `addons_stack_version` moves to that tag.
+[break-glass.md](break-glass.md) has the password steps. Revert it afterwards.
 
 ### Secrets entered by hand
 

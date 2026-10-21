@@ -91,7 +91,7 @@ jobs:
               [ "$(yq -r ".metadata.labels[\"$l\"] // \"\"" "$m")" != "" ] || fail "$m: label $l is missing"
             done
             [ "$(yq -r '.metadata.labels.cluster_name' "$m")" = "$name" ] || fail "$m: cluster_name differs from stringData.name"
-            for a in argocd.argoproj.io/sync-options addons_repo_url addons_repo_basepath addons_repo_revision addons_stack_version workload_repo_url workload_repo_basepath workload_repo_revision; do
+            for a in argocd.argoproj.io/sync-options addons_repo_url addons_repo_basepath addons_stack_version workload_repo_url workload_repo_basepath workload_repo_revision; do
               [ "$(yq -r ".metadata.annotations[\"$a\"] // \"\"" "$m")" != "" ] || fail "$m: annotation $a is missing"
             done
             for l in $(yq -r '.metadata.labels | keys | .[] | select(test("^enable_"))' "$m"); do
@@ -129,7 +129,7 @@ jobs:
           }
 
           # the catalog chart, rendered as the global ApplicationSet renders it:
-          # the stack and the chart at the cluster's stack version, the overrides at HEAD
+          # the chart, the stack and the overrides at the cluster's stack version
           for member in gitops/bootstrap/members/*.yaml; do
             cluster=$(yq -r '.stringData.name' "$member")
             env=$(yq -r '.metadata.labels.environment' "$member")
@@ -143,7 +143,7 @@ jobs:
               tree) ;;
               tag) stackdir=$(at_tag "$tag") ;;
               auto)
-                if printf '%s\n' "$changed" | grep -Eq '^gitops/(charts|stacks|addon-extras|manifests)/'; then
+                if printf '%s\n' "$changed" | grep -Eq '^gitops/(charts|stacks|addon-extras|manifests|overrides)/'; then
                   :
                 elif git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
                   stackdir=$(at_tag "$tag")
@@ -160,8 +160,8 @@ jobs:
             mkdir -p "$out/$cluster"
             helm template "gitops-addons-$cluster" "$stackdir/gitops/charts/gitops-addons" -n argocd \
               -f "$stackdir/gitops/stacks/k8s-$kver/stack.yaml" \
-              -f "gitops/overrides/environments/$env/values.yaml" \
-              -f "gitops/overrides/clusters/$cluster/values.yaml" \
+              -f "$stackdir/gitops/overrides/environments/$env/values.yaml" \
+              -f "$stackdir/gitops/overrides/clusters/$cluster/values.yaml" \
               --set "cluster.name=$cluster" \
               --set "repo.url=$url" \
               --set "repo.basepath=$base" \

@@ -125,10 +125,10 @@ still exists with a lost state Secret needs `tofu import`
 Argo's `admin` account is turned off in the catalog's `argocd` values
 (`admin.enabled: "false"`). To use it, set it back to `"true"` under
 `addons.argocd.values.configs.cm` in
-`gitops/overrides/clusters/loft01/values.yaml`, commit and push: overrides ship
-at `HEAD`, so Argo reconciles itself on the next sync even while you cannot log
-in. (The catalog would wait for a stack version, which is the wrong delay for
-break-glass.) Then read the password:
+`gitops/overrides/clusters/loft01/values.yaml`, merge, and let `stack release`
+tag it and the cluster's `addons_stack_version` move to the new tag (Renovate
+opens that PR). Argo reconciles itself from git even while you cannot log in.
+Then read the password:
 
 ```sh
 kubectl -n argocd get secret argocd-initial-admin-secret \
@@ -145,9 +145,9 @@ form and `auth.basic.enabled: false` turns off `admin:<password>` against the
 API. Set `disable_login_form` back to `false` under
 `addons.grafana.values.grafana."grafana.ini".auth` in
 `gitops/overrides/clusters/loft01/values.yaml` (and `auth.basic.enabled` to
-`true` only if you need to script the API), commit and push — overrides ship at
-`HEAD`, so the next sync applies it — then log in as `admin` over WireGuard
-(the public side still has the `edge-oidc` gate) with the password in OpenBao:
+`true` only if you need to script the API), merge and promote the tag as above,
+then log in as `admin` over WireGuard (the public side still has the
+`edge-oidc` gate) with the password in OpenBao:
 
 ```sh
 just bao kv get -field=admin_password kv/loft01/grafana

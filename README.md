@@ -35,8 +35,8 @@ real GitOps platform on hardware we own.
   and its environment's and its own overrides, and that chart emits one
   ApplicationSet per enabled addon. Upstream chart versions live in
   `stacks/k8s-<minor>/stack.yaml`, and a `stack-<minor>.<n>` git tag freezes
-  the catalog, the stack, the extras and our manifests together. Details:
-  [docs/gitops.md](docs/gitops.md).
+  the catalog, the stack, the overrides, the extras and our manifests together.
+  Details: [docs/gitops.md](docs/gitops.md).
 - **Edge.** Envoy Gateway terminates TLS on two Gateways: `edge` (NodePort
   30080/30443, reached through the router's port forward) and `wg` (the
   `10.0.0.1` address on WireGuard). Argo CD and Keycloak's admin side are on
