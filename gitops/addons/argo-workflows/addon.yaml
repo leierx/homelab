@@ -1,0 +1,6 @@
+# +argocd:skip-file-rendering
+type: helm
+groups: [prod]
+namespace: argo
+wave: 4
+onRemoval: keep      # owns Workflow/CronWorkflow CRDs; deleting them deletes workflows

@@ -1,0 +1,67 @@
+cluster-api-operator:
+  enableHelmHook: false
+  resources:
+    manager:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        cpu: null
+        memory: 256Mi
+  containerSecurityContext:
+    manager:
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      seccompProfile:
+        type: RuntimeDefault
+  core:
+    cluster-api:
+      version: v1.14.3
+      deployment:
+        containers:
+        - name: manager
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 512Mi
+  bootstrap:
+    kubeadm:
+      version: v1.14.3
+      deployment:
+        containers:
+        - name: manager
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+  controlPlane:
+    kubeadm:
+      version: v1.14.3
+      deployment:
+        containers:
+        - name: manager
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 512Mi
+  infrastructure:
+    kubevirt:
+      version: v0.11.2
+      deployment:
+        containers:
+        - name: manager
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 256Mi

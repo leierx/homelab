@@ -1,0 +1,22 @@
+# default-deny: only External Secrets talks to OpenBao (people use `just bao`, which is kubectl exec)
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default
+spec:
+  endpointSelector: {}
+  enableDefaultDeny:
+    ingress: true
+    egress: true
+  ingress:
+    - fromEndpoints: [{}]
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: external-secrets
+            app.kubernetes.io/name: external-secrets
+      toPorts:
+        - ports: [{ port: "8200", protocol: TCP }]
+  egress:
+    - toEndpoints: [{}]
+    # Kubernetes auth (TokenReview) and service registration
+    - toEntities: [kube-apiserver]

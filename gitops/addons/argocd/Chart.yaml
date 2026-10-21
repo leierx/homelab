@@ -1,0 +1,8 @@
+apiVersion: v2
+name: argocd
+description: Fleet wrapper for the upstream argo-cd chart
+version: 1.0.0
+dependencies:
+  - name: argo-cd
+    version: 10.10.5
+    repository: https://argoproj.github.io/argo-helm

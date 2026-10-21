@@ -1,0 +1,8 @@
+apiVersion: v2
+name: loki
+description: Fleet wrapper for the upstream loki chart
+version: 1.0.0
+dependencies:
+  - name: loki
+    version: 19.0.3
+    repository: https://grafana-community.github.io/helm-charts

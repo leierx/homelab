@@ -1,0 +1,12 @@
+userNamespaces:
+- argo
+- argocd
+- cert-manager
+- cnpg-system
+- envoy-gateway-system
+- external-secrets
+- immich
+- keycloak
+- monitoring
+- openbao
+- renovate

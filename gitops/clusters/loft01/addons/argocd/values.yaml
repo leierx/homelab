@@ -1,0 +1,24 @@
+argo-cd:
+  configs:
+    cm:
+      url: https://argocd.skinke.net
+      oidc.config: 'name: Keycloak
+
+        issuer: https://auth.skinke.net/realms/homelab
+
+        clientID: argocd
+
+        clientSecret: $argocd-oidc:clientSecret
+
+        # `argocd login --sso` uses this public client with PKCE
+
+        cliClientID: argocd-cli
+
+        requestedScopes: [openid, profile, email]
+
+        # renew the session before Keycloak''s 5-minute ID token runs out
+
+        refreshTokenThreshold: 2m
+
+        '
+host: argocd.skinke.net

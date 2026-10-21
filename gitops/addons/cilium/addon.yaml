@@ -1,0 +1,5 @@
+# +argocd:skip-file-rendering
+type: helm
+groups: [prod]
+namespace: kube-system
+onRemoval: keep      # the CNI: removing it must never take the cluster network down

@@ -1,0 +1,5 @@
+# +argocd:skip-file-rendering
+type: kustomize
+groups: [prod]
+namespace: dodde
+onRemoval: keep      # holds the VM disk; deleting the namespace would delete it

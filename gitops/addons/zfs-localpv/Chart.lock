@@ -1,0 +1,6 @@
+dependencies:
+- name: zfs-localpv
+  repository: https://openebs.github.io/zfs-localpv
+  version: 2.11.2
+digest: sha256:33c263f9e59d70c7fe4cbfcffe2c410c49995534d844f0ed79ac59acd3129503
+generated: "2026-10-21T21:35:55.7878548+02:00"

@@ -1,0 +1,6 @@
+# +argocd:skip-file-rendering
+type: helm
+groups: [prod]
+namespace: keycloak
+wave: 4
+onRemoval: keep      # holds the realm database and generated client secrets

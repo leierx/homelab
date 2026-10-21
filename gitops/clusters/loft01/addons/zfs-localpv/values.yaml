@@ -1,0 +1,11 @@
+zfs-localpv:
+  zfs:
+    bin: /run/current-system/sw/bin/zfs
+pools:
+- name: tank
+  storageClass: zfs
+  default: true
+- name: tank
+  storageClass: zfs-media
+  dataset:
+    recordsize: 1M

@@ -1,0 +1,76 @@
+argo-workflows:
+  crds:
+    upgradeJob:
+      podSecurityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+        limits:
+          memory: 128Mi
+  controller:
+    workflowNamespaces:
+    - argo
+    podSecurityContext:
+      seccompProfile:
+        type: RuntimeDefault
+    persistence: {}
+    workflowDefaults:
+      spec:
+        ttlStrategy:
+          secondsAfterCompletion: 259200
+        podGC:
+          strategy: OnWorkflowSuccess
+          deleteDelayDuration: 1h
+    metricsConfig:
+      enabled: true
+    serviceMonitor:
+      enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
+  executor:
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 8737
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        memory: 256Mi
+  server:
+    authModes:
+    - sso
+    podSecurityContext:
+      seccompProfile:
+        type: RuntimeDefault
+    sso:
+      enabled: true
+      clientId:
+        name: argo-server-sso
+        key: client-id
+      clientSecret:
+        name: argo-server-sso
+        key: client-secret
+      scopes:
+      - groups
+      rbac:
+        enabled: true
+    resources:
+      requests:
+        cpu: 20m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+host: ''
+certificateIssuer: letsencrypt-staging

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: mimir
+description: Mimir as one -target=all pod; mimir-distributed has no monolithic mode
+version: 0.0.0

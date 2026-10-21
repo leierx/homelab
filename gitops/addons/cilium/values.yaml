@@ -1,0 +1,79 @@
+cilium:
+  kubeProxyReplacement: true
+  bpf:
+    masquerade: true
+  ipv6:
+    enabled: false
+  hubble:
+    listenAddress: ''
+    tls:
+      enabled: false
+    metrics:
+      enabled:
+      - dns:query;ignoreAAAA
+      - drop:sourceContext=workload-name|reserved-identity;destinationContext=workload-name|reserved-identity
+      - flow:sourceContext=workload-name|reserved-identity;destinationContext=workload-name|reserved-identity
+      - tcp
+      - icmp
+      - port-distribution
+      - policy:sourceContext=workload-name|reserved-identity;destinationContext=workload-name|reserved-identity
+      serviceMonitor:
+        enabled: true
+      dashboards:
+        enabled: true
+        annotations:
+          grafana_folder: Cilium
+  prometheus:
+    enabled: true
+    metricsService: true
+    serviceMonitor:
+      enabled: true
+      trustCRDsExist: true
+  dashboards:
+    enabled: true
+    annotations:
+      grafana_folder: Cilium
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+  initResources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      memory: 256Mi
+  envoy:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        memory: 1Gi
+    prometheus:
+      serviceMonitor:
+        enabled: true
+  operator:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        memory: 256Mi
+    prometheus:
+      metricsService: true
+      serviceMonitor:
+        enabled: true
+    dashboards:
+      enabled: true
+      annotations:
+        grafana_folder: Cilium
+  certgen:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 64Mi
+  policyCIDRMatchMode: null

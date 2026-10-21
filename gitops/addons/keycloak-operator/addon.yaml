@@ -1,0 +1,5 @@
+# +argocd:skip-file-rendering
+type: kustomize
+groups: [prod]
+namespace: keycloak
+onRemoval: keep      # owns Keycloak CRDs

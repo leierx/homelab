@@ -1,0 +1,6 @@
+# +argocd:skip-file-rendering
+type: helm
+groups: [prod]
+namespace: cert-manager
+wave: 1
+onRemoval: delete      # CRDs render with helm.sh/resource-policy: keep (crds.keep=true)

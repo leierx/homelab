@@ -1,0 +1,6 @@
+# +argocd:skip-file-rendering
+type: helm
+groups: [prod]
+namespace: openbao
+wave: 2
+onRemoval: keep      # holds every secret and its seal/raft data

@@ -1,0 +1,5 @@
+# +argocd:skip-file-rendering
+type: helm
+groups: [prod]
+namespace: cnpg-system
+onRemoval: keep      # owns Postgres CRDs; deleting them deletes every database

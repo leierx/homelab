@@ -1,0 +1,25 @@
+# originals, thumbnails, encoded video and Immich's own database dumps; a ZFS filesystem, browsable per file in snapshots
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: library
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: {{ required "library.storageClass" .Values.library.storageClass }}
+  resources:
+    requests:
+      storage: {{ required "library.size" .Values.library.size }}
+---
+# downloaded models; losing it only means downloading them again
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-cache
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: {{ required "modelCache.storageClass" .Values.modelCache.storageClass }}
+  resources:
+    requests:
+      storage: {{ required "modelCache.size" .Values.modelCache.size }}

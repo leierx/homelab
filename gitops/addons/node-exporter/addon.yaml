@@ -1,0 +1,5 @@
+# +argocd:skip-file-rendering
+type: helm
+groups: [prod]
+namespace: telemetry
+onRemoval: delete      # stateless exporter

@@ -1,0 +1,5 @@
+# +argocd:skip-file-rendering
+type: helm
+groups: [prod]
+namespace: kube-system
+onRemoval: delete      # cluster-scoped RBAC only; removed cleanly

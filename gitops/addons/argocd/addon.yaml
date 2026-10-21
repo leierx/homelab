@@ -1,0 +1,6 @@
+# +argocd:skip-file-rendering
+type: helm
+groups: [prod]
+namespace: argocd
+wave: 4
+onRemoval: keep      # the hub; owns Argo CRDs and all fleet state

@@ -1,0 +1,18 @@
+zfs-localpv:
+  analytics:
+    enabled: false
+  zfsController:
+    resources:
+      requests:
+        cpu: 5m
+        memory: 16Mi
+      limits:
+        memory: 128Mi
+  zfsNode:
+    resources:
+      requests:
+        cpu: 5m
+        memory: 16Mi
+      limits:
+        memory: 256Mi
+pools: []

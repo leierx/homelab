@@ -1,0 +1,8 @@
+apiVersion: v2
+name: cloudnative-pg
+description: Fleet wrapper for the upstream cloudnative-pg chart
+version: 1.0.0
+dependencies:
+  - name: cloudnative-pg
+    version: 0.29.1
+    repository: https://cloudnative-pg.github.io/charts
