@@ -2,7 +2,7 @@
 
 Immich is the photo library at https://photos.skinke.net: phone backup,
 timeline, faces and smart search. It is the addon
-`gitops/addons/immich`, namespace `immich`, our own manifests (why: see
+`gitops/apps/immich`, namespace `immich`, our own manifests (why: see
 [tech-choices.md](tech-choices.md), Photos).
 
 ## What runs where
@@ -50,7 +50,7 @@ refused at Keycloak, before Immich sees them.
 | `homelab-operators`, `homelab-viewers` | user |
 
 The role comes from the `immich_role` claim (the client's roles, granted per
-tier in `tofu/loft01/keycloak/groups.tf`) and is synced at every login, so
+tier in `iac/tofu/loft01/keycloak/groups.tf`) and is synced at every login, so
 moving someone between tiers promotes or demotes them at their next login.
 
 - **Web:** https://photos.skinke.net goes straight to Keycloak.

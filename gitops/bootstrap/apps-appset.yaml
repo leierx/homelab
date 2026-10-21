@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: apps
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  # every apps/<app>/<environment>/ folder for the cluster's environment
+  generators:
+    - matrix:
+        generators:
+          - clusters:
+              selector:
+                matchLabels:
+                  argocd.argoproj.io/secret-type: cluster
+          - git:
+              repoURL: '{{ index .metadata.annotations "workload_repo_url" }}'
+              revision: '{{ index .metadata.annotations "workload_repo_revision" }}'
+              directories:
+                - path: '{{ index .metadata.annotations "workload_repo_basepath" }}*/{{ .metadata.labels.environment }}'
+  template:
+    metadata:
+      name: "app-{{ base (dir .path.path) }}-{{ .name }}"
+    spec:
+      project: default
+      source:
+        repoURL: '{{ index .metadata.annotations "workload_repo_url" }}'
+        targetRevision: '{{ index .metadata.annotations "workload_repo_revision" }}'
+        path: "{{ .path.path }}"
+      destination:
+        name: "{{ .name }}"
+        namespace: "{{ base (dir .path.path) }}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: -1

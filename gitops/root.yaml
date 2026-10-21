@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/leierx/homelab.git
     targetRevision: HEAD
-    path: gitops/fleet/bootstrap
+    path: gitops/bootstrap
     directory:
       recurse: false
   destination:

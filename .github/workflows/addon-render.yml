@@ -1,10 +1,12 @@
 name: addon render
 
-# Gates Renovate's automerge: renders every cluster's addons as Argo CD does
+# Gates Renovate's automerge: checks the GitOps Bridge v2 layout, then renders
+# every cluster's addons and apps as Argo CD does
 on:
   pull_request:
     paths:
       - "gitops/**"
+      - "nixos/k3s.nix"
       - ".github/api-versions.txt"
       - ".github/workflows/addon-render.yml"
 
@@ -16,48 +18,221 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
 
-      - name: render every cluster's addons
+      - name: check the layout
         run: |
           set -euo pipefail
-          helm version --short
-          api=$(paste -sd, .github/api-versions.txt)
-          catalog=gitops/fleet/catalog/values.yaml
-          for d in gitops/addons/*/; do
-            a=$(basename "$d")
-            yq -e ".addons | has(\"$a\")" "$catalog" > /dev/null || { echo "no catalog entry for addons/$a"; exit 1; }
+          catalog=gitops/charts/gitops-addons/values.yaml
+          mapfile -t stacks < <(ls gitops/stacks/k8s-*/stack.yaml)
+          mapfile -t keys < <(yq -r '.addons | keys | .[]' "$catalog")
+
+          fail() { echo "::error::$*" >&2; exit 1; }
+
+          # the catalog says what an addon is; the stack says which version, the
+          # overrides say what it is on a cluster
+          for k in "${keys[@]}"; do
+            if [ "$(yq -r ".addons[\"$k\"] | has(\"syncWave\") or has(\"repoUrl\") or has(\"chart\") or has(\"targetRevision\")" "$catalog")" = "true" ]; then
+              fail "catalog: addons.$k sets a wave, a repository, a chart or a version; those belong in overrides/ or stacks/"
+            fi
+            if [ "$(yq -r ".addons[\"$k\"] | has(\"path\")" "$catalog")" != "true" ]; then
+              for s in "${stacks[@]}"; do
+                if [ "$(yq -r ".addons[\"$k\"] | has(\"chart\")" "$s")" != "true" ]; then
+                  fail "catalog: addons.$k has no path and $s has no chart for it"
+                fi
+              done
+            fi
+            has_extras=$(yq -r ".addons[\"$k\"] | has(\"extras\")" "$catalog")
+            dir="gitops/addon-extras/${k//_/-}"
+            if [ "$has_extras" = "true" ] && [ ! -d "$dir" ]; then
+              fail "catalog: addons.$k has extras but $dir does not exist"
+            fi
+            if [ "$has_extras" = "false" ] && [ -d "$dir" ]; then
+              fail "catalog: $dir exists but addons.$k has no extras"
+            fi
           done
-          for a in $(yq -r '.addons | keys | .[]' "$catalog"); do
-            [ -d "gitops/addons/$a" ] || { echo "catalog entry $a has no addons/$a"; exit 1; }
+
+          for d in gitops/charts/*/ gitops/manifests/*/; do
+            b=$(basename "$d")
+            [ "$b" = gitops-addons ] && continue
+            n=$(yq -r ".addons | map(select(.path == \"$(dirname "$d" | cut -d/ -f2)/$b\")) | length" "$catalog")
+            if [ "$n" != "1" ]; then
+              fail "$d is the path of $n catalog entries, want exactly one"
+            fi
           done
-          for member in gitops/fleet/members/*.yaml; do
-            cluster=$(yq -r '.stringData.name' "$member")
-            IFS=, read -r -a groups <<< "$(yq -r '.metadata.annotations["fleet.homelab/groups"] // ""' "$member")"
-            layers=("$catalog")
-            for g in "${groups[@]}"; do
-              if [ -f "gitops/groups/$g/addons.yaml" ]; then layers+=("gitops/groups/$g/addons.yaml"); fi
-            done
-            if [ -f "gitops/clusters/$cluster/addons.yaml" ]; then layers+=("gitops/clusters/$cluster/addons.yaml"); fi
-            fleet_args=()
-            for f in "${layers[@]:1}"; do fleet_args+=(-f "$f"); done
-            helm template "addons-$cluster" gitops/fleet/catalog -n argocd "${fleet_args[@]}" \
-              --set-string "cluster.name=$cluster" > /dev/null
-            echo "rendered fleet chart for $cluster"
-            merged=$(yq ea '. as $i ireduce ({}; . * $i)' "${layers[@]}")
-            for a in $(echo "$merged" | yq -r '.addons | to_entries | map(select(.value.enabled)) | .[].key'); do
-              if [ "$(echo "$merged" | yq -r ".addons[\"$a\"].kustomize // false")" = "true" ]; then
-                kubectl kustomize "gitops/clusters/$cluster/addons/$a" > /dev/null
-              else
-                dir="gitops/addons/$a"
-                args=(-n "$(echo "$merged" | yq -r ".addons[\"$a\"].namespace")" --api-versions "$api")
-                for g in "${groups[@]}"; do
-                  if [ -f "gitops/groups/$g/addons/$a/values.yaml" ]; then args+=(-f "gitops/groups/$g/addons/$a/values.yaml"); fi
-                done
-                if [ -f "gitops/clusters/$cluster/addons/$a/values.yaml" ]; then args+=(-f "gitops/clusters/$cluster/addons/$a/values.yaml"); fi
-                helm dependency update "$dir" > /dev/null
-                helm template "$a" "$dir" "${args[@]}" --set-string "fleet.cluster=$cluster" > /dev/null
-                rm -rf "$dir/charts" "$dir/Chart.lock"
+
+          for s in "${stacks[@]}" gitops/overrides/environments/*/values.yaml gitops/overrides/clusters/*/values.yaml; do
+            [ -f "$s" ] || continue
+            for a in $(yq -r '.addons // {} | keys | .[]' "$s"); do
+              if [ "$(yq -r ".addons | has(\"$a\")" "$catalog")" != "true" ]; then
+                fail "$s: addon $a is not in the catalog"
               fi
-              echo "rendered $a for $cluster"
+            done
+          done
+
+          for f in gitops/overrides/environments/*/values.yaml gitops/overrides/clusters/*/values.yaml; do
+            [ -f "$f" ] || continue
+            while read -r k x; do
+              case "$x" in
+                values|extras|kustomize|syncWave|ignoreDifferences) ;;
+                *) fail "$f: addons.$k.$x is not allowed (only values, extras, kustomize, syncWave, ignoreDifferences)" ;;
+              esac
+            done < <(yq -r '.addons // {} | to_entries[] | .key as $k | (.value | keys[]) as $x | "\($k) \($x)"' "$f")
+          done
+
+          minor=$(grep -oE 'pkgs\.k3s_[0-9]+_[0-9]+' nixos/k3s.nix | head -1 | sed -e 's/pkgs\.k3s_//' -e 's/_/./')
+          [ -n "$minor" ] || fail "nixos/k3s.nix names no k3s package"
+          [ -d "gitops/stacks/k8s-$minor" ] || fail "nixos/k3s.nix runs k3s $minor but gitops/stacks/k8s-$minor/ does not exist"
+
+          for m in gitops/bootstrap/members/*.yaml; do
+            name=$(yq -r '.stringData.name' "$m")
+            for l in argocd.argoproj.io/secret-type cluster_name environment kubernetes_version; do
+              [ "$(yq -r ".metadata.labels[\"$l\"] // \"\"" "$m")" != "" ] || fail "$m: label $l is missing"
+            done
+            [ "$(yq -r '.metadata.labels.cluster_name' "$m")" = "$name" ] || fail "$m: cluster_name differs from stringData.name"
+            for a in argocd.argoproj.io/sync-options addons_repo_url addons_repo_basepath addons_repo_revision addons_stack_version workload_repo_url workload_repo_basepath workload_repo_revision; do
+              [ "$(yq -r ".metadata.annotations[\"$a\"] // \"\"" "$m")" != "" ] || fail "$m: annotation $a is missing"
+            done
+            for l in $(yq -r '.metadata.labels | keys | .[] | select(test("^enable_"))' "$m"); do
+              if [ "$(yq -r ".addons | has(\"${l#enable_}\")" "$catalog")" != "true" ]; then
+                fail "$m: label $l names no addon"
+              fi
+            done
+          done
+
+          echo "the layout is valid"
+
+      - name: render
+        run: |
+          set -euo pipefail
+          out=${RENDER_OUT:-rendered}
+          mode=${STACK_FROM:-auto}
+          api=$(paste -sd, .github/api-versions.txt)
+          # objects without a namespace get the Application's, as Argo CD does
+          cluster_scoped='^(APIService|CertificateSigningRequest|CiliumClusterwideNetworkPolicy|ClusterIssuer|ClusterRole|ClusterRoleBinding|ClusterSecretStore|CSIDriver|CustomResourceDefinition|FlowSchema|GatewayClass|IngressClass|MutatingAdmissionPolicy|MutatingAdmissionPolicyBinding|MutatingWebhookConfiguration|Namespace|Node|PersistentVolume|PriorityClass|PriorityLevelConfiguration|RuntimeClass|StorageClass|ValidatingAdmissionPolicy|ValidatingAdmissionPolicyBinding|ValidatingWebhookConfiguration)$'
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          rm -rf "$out"
+
+          changed=""
+          if [ -n "${GITHUB_BASE_REF:-}" ]; then
+            git fetch -q origin "$GITHUB_BASE_REF" || true
+            changed=$(git diff --name-only "origin/$GITHUB_BASE_REF...HEAD" || true)
+          elif [ "$mode" = "auto" ]; then
+            changed=$(git diff --name-only "HEAD^" || true)
+          fi
+
+          at_tag() { # at_tag <tag>: a worktree of a stack tag, printed once
+            if [ ! -d "$tmp/tag" ]; then git worktree add -q --detach "$tmp/tag" "$1"; fi
+            echo "$tmp/tag"
+          }
+
+          # the catalog chart, rendered as the global ApplicationSet renders it:
+          # the stack and the chart at the cluster's stack version, the overrides at HEAD
+          for member in gitops/bootstrap/members/*.yaml; do
+            cluster=$(yq -r '.stringData.name' "$member")
+            env=$(yq -r '.metadata.labels.environment' "$member")
+            kver=$(yq -r '.metadata.labels.kubernetes_version' "$member")
+            tag=$(yq -r '.metadata.annotations.addons_stack_version' "$member")
+            url=$(yq -r '.metadata.annotations.addons_repo_url' "$member")
+            base=$(yq -r '.metadata.annotations.addons_repo_basepath' "$member")
+
+            stackdir=.
+            case "$mode" in
+              tree) ;;
+              tag) stackdir=$(at_tag "$tag") ;;
+              auto)
+                if printf '%s\n' "$changed" | grep -Eq '^gitops/(charts|stacks|addon-extras|manifests)/'; then
+                  :
+                elif git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
+                  stackdir=$(at_tag "$tag")
+                fi ;;
+              *) echo "::error::STACK_FROM=$mode is not auto, tree or tag" >&2; exit 1 ;;
+            esac
+            [ -d "$stackdir/gitops/charts/gitops-addons" ] || { echo "::error::$stackdir has no gitops/charts/gitops-addons" >&2; exit 1; }
+
+            enables=()
+            while read -r l v; do
+              enables+=("--set-string" "addons.${l#enable_}.enabled=$([ "$v" = "true" ] && echo true || echo false)")
+            done < <(yq -r '.metadata.labels | to_entries[] | select(.key | test("^enable_")) | "\(.key) \(.value)"' "$member")
+
+            mkdir -p "$out/$cluster"
+            helm template "gitops-addons-$cluster" "$stackdir/gitops/charts/gitops-addons" -n argocd \
+              -f "$stackdir/gitops/stacks/k8s-$kver/stack.yaml" \
+              -f "gitops/overrides/environments/$env/values.yaml" \
+              -f "gitops/overrides/clusters/$cluster/values.yaml" \
+              --set "cluster.name=$cluster" \
+              --set "repo.url=$url" \
+              --set "repo.basepath=$base" \
+              --set "repo.stackRevision=$tag" \
+              "${enables[@]}" > "$out/$cluster/applicationsets.yaml"
+            echo "rendered the catalog for $cluster from $stackdir"
+
+            # every ApplicationSet template may carry a Go template; only the escapes may survive
+            if sed -e 's/{{ "{{" }}//g' -e 's/{{ "}}" }}//g' "$out/$cluster/applicationsets.yaml" | grep -q '{{'; then
+              echo "::error::$out/$cluster/applicationsets.yaml contains {{ outside the escapes" >&2
+              sed -e 's/{{ "{{" }}//g' -e 's/{{ "}}" }}//g' "$out/$cluster/applicationsets.yaml" | grep -n '{{' | head -5 >&2
+              exit 1
+            fi
+
+            # every source of every enabled addon's ApplicationSet
+            yq ea -o=json '[select(.kind == "ApplicationSet")]' "$out/$cluster/applicationsets.yaml" > "$tmp/appsets.json"
+            for name in $(jq -r '.[].metadata.name' "$tmp/appsets.json"); do
+              addon=${name#addon-}
+              addon=${addon%-"$cluster"}
+              ns=$(jq -r --arg n "$name" '.[] | select(.metadata.name == $n) | .spec.template.spec.destination.namespace' "$tmp/appsets.json")
+              jq -c --arg n "$name" '.[] | select(.metadata.name == $n) | (.spec.template.spec.sources // [.spec.template.spec.source]) | .[]' "$tmp/appsets.json" > "$tmp/sources.jsonl"
+              : > "$tmp/render.yaml"
+              i=0
+              while read -r src; do
+                i=$((i + 1))
+                [ "$(echo "$src" | jq -r '.ref // ""')" = "" ] || continue
+                echo "$src" | jq '.helm.valuesObject // {}' | yq -P > "$tmp/values.yaml"
+                release=$(echo "$src" | jq -r '.helm.releaseName // ""')
+                chart=$(echo "$src" | jq -r '.chart // ""')
+                path=$(echo "$src" | jq -r '.path // ""')
+                if [ -n "$chart" ]; then
+                  repo=$(echo "$src" | jq -r '.repoURL')
+                  version=$(echo "$src" | jq -r '.targetRevision')
+                  case "$repo" in
+                    *://*) src_args=("$chart" --repo "$repo") ;;
+                    *) src_args=("oci://$repo/$chart") ;;
+                  esac
+                  helm template "$release" "${src_args[@]}" --version "$version" -n "$ns" \
+                    --include-crds --api-versions "$api" -f "$tmp/values.yaml" >> "$tmp/render.yaml"
+                elif echo "$path" | grep -qE '^gitops/(charts|addon-extras)/'; then
+                  helm template "$release" "$stackdir/$path" -n "$ns" \
+                    --include-crds --api-versions "$api" -f "$tmp/values.yaml" >> "$tmp/render.yaml"
+                elif echo "$path" | grep -qE '^gitops/manifests/'; then
+                  kdir="$tmp/kustomize-$i"
+                  mkdir -p "$kdir"
+                  jq -n --arg res "$(realpath --relative-to="$kdir" "$PWD/$path")" --argjson k "$(echo "$src" | jq -c '.kustomize // {}')" \
+                    '{apiVersion: "kustomize.config.k8s.io/v1beta1", kind: "Kustomization", resources: [$res]} + $k' \
+                    | yq -P > "$kdir/kustomization.yaml"
+                  kubectl kustomize "$kdir" >> "$tmp/render.yaml"
+                else
+                  echo "::error::$name: source $i is neither an upstream chart nor a known path ($path)" >&2
+                  exit 1
+                fi
+              done < "$tmp/sources.jsonl"
+              NS="$ns" CS="$cluster_scoped" yq 'select(. != null) | (.metadata.namespace | select(. == null)) |= strenv(NS) | del(select(.kind | test(strenv(CS))) | .metadata.namespace)' \
+                "$tmp/render.yaml" > "$out/$cluster/addon-$addon-$cluster.yaml"
+              echo "rendered $addon for $cluster"
+            done
+
+            # every app the apps ApplicationSet generates for this environment
+            for d in gitops/apps/*/"$env"/; do
+              [ -d "$d" ] || continue
+              app=$(basename "$(dirname "$d")")
+              if [ -f "$d/Chart.yaml" ]; then
+                helm dependency update "$d" > /dev/null
+                helm template "$app" "$d" -n "$app" --include-crds --api-versions "$api" > "$tmp/render.yaml"
+              else
+                kubectl kustomize "$d" > "$tmp/render.yaml"
+              fi
+              NS="$app" CS="$cluster_scoped" yq 'select(. != null) | (.metadata.namespace | select(. == null)) |= strenv(NS) | del(select(.kind | test(strenv(CS))) | .metadata.namespace)' \
+                "$tmp/render.yaml" > "$out/$cluster/app-$app-$cluster.yaml"
+              echo "rendered app $app for $cluster"
             done
           done

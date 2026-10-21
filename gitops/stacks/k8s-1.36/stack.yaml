@@ -1,0 +1,92 @@
+# Kubernetes 1.36: the tested version of every upstream addon chart; Renovate bumps them
+addons:
+  alloy_logs:
+    repoUrl: https://grafana.github.io/helm-charts
+    chart: alloy
+    # renovate: datasource=helm depName=alloy registryUrl=https://grafana.github.io/helm-charts
+    targetRevision: 1.14.0
+  alloy_metrics:
+    repoUrl: https://grafana.github.io/helm-charts
+    chart: alloy
+    # renovate: datasource=helm depName=alloy registryUrl=https://grafana.github.io/helm-charts
+    targetRevision: 1.14.0
+  argo_workflows:
+    repoUrl: https://argoproj.github.io/argo-helm
+    chart: argo-workflows
+    # renovate: datasource=helm depName=argo-workflows registryUrl=https://argoproj.github.io/argo-helm
+    targetRevision: 2.0.13
+  argocd:
+    repoUrl: https://argoproj.github.io/argo-helm
+    chart: argo-cd
+    # renovate: datasource=helm depName=argo-cd registryUrl=https://argoproj.github.io/argo-helm
+    targetRevision: 10.10.5
+  cert_manager:
+    repoUrl: https://charts.jetstack.io
+    chart: cert-manager
+    # renovate: datasource=helm depName=cert-manager registryUrl=https://charts.jetstack.io
+    targetRevision: v1.21.2
+  cilium:
+    repoUrl: https://helm.cilium.io
+    chart: cilium
+    # renovate: datasource=helm depName=cilium registryUrl=https://helm.cilium.io
+    targetRevision: 1.20.3
+  cloudnative_pg:
+    repoUrl: https://cloudnative-pg.github.io/charts
+    chart: cloudnative-pg
+    # renovate: datasource=helm depName=cloudnative-pg registryUrl=https://cloudnative-pg.github.io/charts
+    targetRevision: 0.29.1
+  cluster_api:
+    repoUrl: https://kubernetes-sigs.github.io/cluster-api-operator
+    chart: cluster-api-operator
+    # renovate: datasource=helm depName=cluster-api-operator registryUrl=https://kubernetes-sigs.github.io/cluster-api-operator
+    targetRevision: 0.30.0
+  envoy_gateway:
+    repoUrl: docker.io/envoyproxy
+    chart: gateway-helm
+    # renovate: datasource=docker depName=docker.io/envoyproxy/gateway-helm
+    targetRevision: v1.9.2
+  external_secrets:
+    repoUrl: https://charts.external-secrets.io
+    chart: external-secrets
+    # renovate: datasource=helm depName=external-secrets registryUrl=https://charts.external-secrets.io
+    targetRevision: 2.13.0
+  grafana:
+    repoUrl: https://grafana-community.github.io/helm-charts
+    chart: grafana
+    # renovate: datasource=helm depName=grafana registryUrl=https://grafana-community.github.io/helm-charts
+    targetRevision: 14.0.1
+  kube_state_metrics:
+    repoUrl: https://prometheus-community.github.io/helm-charts
+    chart: kube-state-metrics
+    # renovate: datasource=helm depName=kube-state-metrics registryUrl=https://prometheus-community.github.io/helm-charts
+    targetRevision: 8.6.0
+  loki:
+    repoUrl: https://grafana-community.github.io/helm-charts
+    chart: loki
+    # renovate: datasource=helm depName=loki registryUrl=https://grafana-community.github.io/helm-charts
+    targetRevision: 19.0.2
+  node_exporter:
+    repoUrl: https://prometheus-community.github.io/helm-charts
+    chart: prometheus-node-exporter
+    # renovate: datasource=helm depName=prometheus-node-exporter registryUrl=https://prometheus-community.github.io/helm-charts
+    targetRevision: 4.60.0
+  openbao:
+    repoUrl: https://openbao.github.io/openbao-helm
+    chart: openbao
+    # renovate: datasource=helm depName=openbao registryUrl=https://openbao.github.io/openbao-helm
+    targetRevision: 0.30.4
+  prometheus_operator_crds:
+    repoUrl: https://prometheus-community.github.io/helm-charts
+    chart: prometheus-operator-crds
+    # renovate: datasource=helm depName=prometheus-operator-crds registryUrl=https://prometheus-community.github.io/helm-charts
+    targetRevision: 32.0.1
+  renovate:
+    repoUrl: https://docs.renovatebot.com/helm-charts
+    chart: renovate
+    # renovate: datasource=helm depName=renovate registryUrl=https://docs.renovatebot.com/helm-charts
+    targetRevision: 46.375.1
+  zfs_localpv:
+    repoUrl: https://openebs.github.io/zfs-localpv
+    chart: zfs-localpv
+    # renovate: datasource=helm depName=zfs-localpv registryUrl=https://openebs.github.io/zfs-localpv
+    targetRevision: 2.11.2

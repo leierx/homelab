@@ -63,7 +63,7 @@ A forgotten password: `kcadm set-password -r homelab --username <user>
 it alone (`leier` too: OpenBao's `leier_password` is only the first password
 after a rebuild).
 
-Whatever you change by hand in something `tofu/loft01/keycloak` declares (a client,
+Whatever you change by hand in something `iac/tofu/loft01/keycloak` declares (a client,
 a flow, a user's groups) is put back by the next run; fix the cause in git.
 A run that dies while holding the state lock leaves the Lease behind; unlock
 it with the same state:
@@ -122,10 +122,13 @@ still exists with a lost state Secret needs `tofu import`
 
 ## Argo CD (local `admin` disabled)
 
-Argo's `admin` account is turned off in `gitops/addons/argocd/values.yaml`
-(`admin.enabled: "false"`). To use it, flip that back to `"true"`, commit and
-push; Argo reconciles itself from git even while you cannot log in. Then read
-the password:
+Argo's `admin` account is turned off in the catalog's `argocd` values
+(`admin.enabled: "false"`). To use it, set it back to `"true"` under
+`addons.argocd.values.configs.cm` in
+`gitops/overrides/clusters/loft01/values.yaml`, commit and push: overrides ship
+at `HEAD`, so Argo reconciles itself on the next sync even while you cannot log
+in. (The catalog would wait for a stack version, which is the wrong delay for
+break-glass.) Then read the password:
 
 ```sh
 kubectl -n argocd get secret argocd-initial-admin-secret \
@@ -139,11 +142,12 @@ Log in as `admin` over WireGuard, fix whatever is wrong, and set
 
 Grafana still has its `admin` account, but `disable_login_form: true` hides the
 form and `auth.basic.enabled: false` turns off `admin:<password>` against the
-API. Set `disable_login_form` back to `false` in
-`gitops/addons/observability/values.yaml` (and `auth.basic.enabled` to `true`
-only if you need to script the API), commit and push, then log in as `admin`
-over WireGuard (the public side still has the `edge-oidc` gate) with the
-password in OpenBao:
+API. Set `disable_login_form` back to `false` under
+`addons.grafana.values.grafana."grafana.ini".auth` in
+`gitops/overrides/clusters/loft01/values.yaml` (and `auth.basic.enabled` to
+`true` only if you need to script the API), commit and push — overrides ship at
+`HEAD`, so the next sync applies it — then log in as `admin` over WireGuard
+(the public side still has the `edge-oidc` gate) with the password in OpenBao:
 
 ```sh
 just bao kv get -field=admin_password kv/loft01/grafana
@@ -159,7 +163,7 @@ signed in keep their own Immich session and keep backing up while Keycloak
 is down; only new logins need it. If someone must get in anyway:
 
 1. Set `passwordLogin.enabled` to `true` in
-   `gitops/addons/immich/templates/_config.tpl`, commit and push. The config
+   `gitops/apps/immich/base/templates/_config.tpl`, commit and push. The config
    Secret is named after its content, so a new server pod starts with it.
 2. Give an admin a password, interactively (it prompts; leave the password
    empty to get a random one printed):

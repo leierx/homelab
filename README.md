@@ -22,20 +22,21 @@ real GitOps platform on hardware we own.
   [openbao.md](docs/openbao.md)), and the host auto-upgrades from `main` on
   Fridays.
 - **Cluster.** k3s runs without its own CNI and kube-proxy; Cilium provides
-  both and the network policy engine. Argo CD tracks `HEAD` of `main`.
-  `root.yaml` is the root app: it syncs `fleet/bootstrap/`, which holds the
-  `members` Application (the cluster Secrets under `fleet/members/`) and the
-  `addons` ApplicationSet. Per cluster, `addons-<cluster>` renders the catalog
-  chart `fleet/catalog` with the cluster's groups' enable files and its own,
-  and that chart emits one Application per enabled addon. An addon is a
-  directory under `addons/` (umbrella chart or Kustomize base); what a cluster
-  runs is a value in `groups/<group>/addons.yaml` or
-  `clusters/<cluster>/addons.yaml`, never a label. A one-off workload is a
-  Kustomize addon too. The layout follows
-  [gitops-bridge v2](https://github.com/gitops-bridge-dev/gitops-bridge/issues/73)
-  as built in the [AWS fleet-management workshop](https://github.com/aws-samples/fleet-management-on-amazon-eks-workshop)
-  (MIT-0), with Applications instead of ApplicationSets, groups instead of
-  environments, and one addon mechanism for apps and workloads.
+  both and the network policy engine. Argo CD tracks `HEAD` of `main`. The
+  fleet is [GitOps Bridge v2](https://github.com/gitops-bridge-dev/gitops-bridge/issues/73)
+  as written — BENMALEKarim's single-chart spec in that issue and the
+  [AWS fleet-management workshop](https://github.com/aws-samples/fleet-management-on-amazon-eks-workshop)
+  (MIT-0), with sync waves instead of the issue's dependency webhook.
+  `root.yaml` syncs `gitops/bootstrap/`: the `members` Application (the cluster
+  Secrets under `bootstrap/members/`), the global `gitops-addons`
+  ApplicationSet and the `apps` one. A cluster Secret's `enable_` labels say
+  which addons the cluster runs; the global ApplicationSet renders the catalog
+  chart `charts/gitops-addons` for it with the stack of its Kubernetes minor
+  and its environment's and its own overrides, and that chart emits one
+  ApplicationSet per enabled addon. Upstream chart versions live in
+  `stacks/k8s-<minor>/stack.yaml`, and a `stack-<minor>.<n>` git tag freezes
+  the catalog, the stack, the extras and our manifests together. Details:
+  [docs/gitops.md](docs/gitops.md).
 - **Edge.** Envoy Gateway terminates TLS on two Gateways: `edge` (NodePort
   30080/30443, reached through the router's port forward) and `wg` (the
   `10.0.0.1` address on WireGuard). Argo CD and Keycloak's admin side are on
@@ -50,9 +51,11 @@ real GitOps platform on hardware we own.
   them. sanoid snapshots the pool, and an off-site borg backup is ready to
   enable.
 - **Workloads.** The management side runs Cluster API, KubeVirt and CDI, so a
-  workload cluster is a VM on this node. A VM is a Kustomize addon like any
-  other workload, with its manifests in `gitops/addons/<name>/` and the
-  cluster overlay that enables it; today that is dodde's Fedora VM.
+  workload cluster is a VM on this node. An app is
+  `gitops/apps/<app>/<environment>/` — a Kustomize base (dodde's Fedora VM) or
+  its own chart (Immich, whose `Namespace` it ships itself) — and the `apps`
+  ApplicationSet generates it for every cluster of that environment. Today
+  that is dodde's VM and Immich.
   Their pod and service CIDRs must not overlap `10.42.0.0/16` and
   `10.43.0.0/16`, and they boot from a persistent disk
   (`cluster-template-persistent-storage.yaml`), never a containerDisk.
@@ -108,10 +111,12 @@ real GitOps platform on hardware we own.
 | Dashboards and alerts | Grafana | one UI; dashboards as labelled ConfigMaps | AGPL-3.0 | none (Grafana Labs) |
 | Photos | Immich | phone backup, timeline, faces and search, Keycloak SSO | AGPL-3.0 | none (FUTO; single vendor, see principle 5) |
 | Job queue | Valkey | Immich's job queues | BSD-3-Clause | Linux Foundation |
-| Dependency updates | Renovate | chart deps, Actions and `# renovate:` versions, one PR per addon | AGPL-3.0 | none (Mend) |
+| Dependency updates | Renovate | stack charts, Actions and `# renovate:` versions, one PR per addon or app | AGPL-3.0 | none (Mend) |
 
 ## Docs
 
+- [gitops.md](docs/gitops.md) — the fleet: GitOps Bridge v2, the catalog, the
+  stack tags, sync waves, and how to change any of it.
 - [bootstrap.md](docs/bootstrap.md) — bare metal to a synced cluster.
 - [operations.md](docs/operations.md) — updates, backups and restore,
   certificates, observability and alerting.

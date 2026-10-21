@@ -25,7 +25,8 @@ OpenBao gives us:
 
 ## How it is deployed
 
-- `gitops/addons/openbao` — the `openbao` Helm chart in HA mode with raft,
+- `gitops/addon-extras/openbao/` next to the upstream chart in the stack — HA
+  mode with raft,
   `replicas: 1`, `updateStrategy: OnDelete`. Config changes need
   `kubectl -n openbao delete pod openbao-0`.
 - **Storage:** raft on a `zfs` PVC, 2 GiB.
@@ -117,7 +118,7 @@ OpenBao kv/loft01/<app> ──(ClusterSecretStore/openbao)──▶ ExternalSecr
 
 Because the fleet shares one `ClusterSecretStore`, adding an app is an
 `ExternalSecret` referencing a new path, plus its namespace in the store's
-`conditions` (`gitops/addons/external-secrets`) if it is not there yet. A
+`conditions` (`gitops/addon-extras/external-secrets/`) if it is not there yet. A
 namespace that is not listed is refused (`denied by spec.condition`).
 
 ## Generated secrets
@@ -162,7 +163,7 @@ spec:
   creates. To generate into a path created by hand, mark it first:
   `just bao kv metadata patch -custom-metadata=managed-by=external-secrets kv/loft01/<app>`.
 - A new namespace that generates secrets must be added to the `conditions` of
-  `ClusterSecretStore/openbao-push` (`gitops/addons/external-secrets`).
+  `ClusterSecretStore/openbao-push` (`gitops/addon-extras/external-secrets/`).
 
 Only credentials that come from outside (the Renovate GitHub App, later borg)
 are entered by hand, once.
@@ -195,7 +196,7 @@ Then, depending on the consumer:
 - **The Keycloak reconcile** reads the client secrets on every run (the
   `keycloak-tofu` ExternalSecret). To rotate a client secret, change it in
   Keycloak too (kcadm), then bump that client's `client_secret_wo_version` in
-  `tofu/loft01/keycloak/clients.tf`; the next run writes the new value from OpenBao
+  `iac/tofu/loft01/keycloak/clients.tf`; the next run writes the new value from OpenBao
   and the service's ExternalSecret follows. The `bootstrap-admin` secret is
   only read when the master realm is created and by the reconcile: rotate it
   in Keycloak first (kcadm), then in OpenBao, then restart the reconcile's
