@@ -233,17 +233,43 @@ StatefulSet (`templates/mimir.yaml`), because mimir-distributed has no
 monolithic mode. There is no tracing backend; see
 [tech-choices.md](tech-choices.md).
 
-`k8s-monitoring` (Grafana's chart: Alloy, kube-state-metrics, node-exporter)
-is meant for every cluster; `clusters/<cluster>.yaml` names the cluster and
-its destinations. Its namespace is Pod Security privileged for node-exporter
-and pod logs. Nothing sends OTLP today, so the receiver is not deployed;
-re-add `applicationObservability` to receive traces.
+`telemetry` (one namespace) runs the collectors. `alloy-metrics` is a
+StatefulSet that scrapes the kubelet, cAdvisor, kube-state-metrics, the API
+server, kube-dns, every ServiceMonitor and PodMonitor, and ships Kubernetes
+events to Loki. `alloy-logs` is a DaemonSet that tails every pod's logs and the
+API server's audit log. The prometheus-community `kube-state-metrics` and
+`node-exporter` charts run beside them. The namespace is Pod Security
+privileged because node-exporter and the log collector need host access. All
+four are enabled for every cluster in `groups/core/addons.yaml`; the
+cluster's values file names its Mimir and Loki destinations. Nothing sends
+OTLP today, so no receiver is deployed.
 
 Alloy scrapes every ServiceMonitor and PodMonitor (their CRDs come from
 `prometheus-operator-crds`; we do not run the Prometheus Operator). Grafana
 loads ConfigMaps labelled `grafana_dashboard: "1"` from any namespace, with
 the folder from the `grafana_folder` annotation, plus the grafana.com
 dashboards pinned in `observability/values.yaml`.
+
+### Adding a scrape or a log pipeline
+
+- Cluster metrics are files in `gitops/addons/alloy-metrics/config/`: one per
+target (`kubelet.alloy`, `cadvisor.alloy`, `api-server.alloy`,
+`kube-dns.alloy`, `kube-state-metrics.alloy`, `node-exporter.alloy`),
+`operator.alloy` for ServiceMonitors/PodMonitors, `events.alloy` for Kubernetes
+events, and `remote-write.alloy` for the destinations. The addon's
+`templates/config.yaml` concatenates them into one `config.alloy`.
+- For a new target, add a file with a `discovery.*`/`prometheus.scrape` pair and
+forward it to `prometheus.remote_write.mimir.receiver`. Keep the `job` name
+stable: dashboards and alerts filter on it, and the community dashboards expose
+it as a variable.
+- Pod logs and the audit log are in `gitops/addons/alloy-logs/config/`
+(`pods.alloy`, `audit.alloy`); the audit file is included only when the
+cluster sets `auditLogPath`.
+- Check: render the addon with the cluster's value layering (as `addon render`
+does), then `alloy fmt` the rendered `config.alloy` (`nix shell
+nixpkgs#grafana-alloy`). `alloy run` outside the cluster cannot build the
+`discovery.kubernetes` components; the pod's `/-/ready` and the UI's component
+list are the live check.
 
 ### Alerts
 

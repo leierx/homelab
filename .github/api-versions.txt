@@ -4,5 +4,3 @@ monitoring.coreos.com/v1/ServiceMonitor
 gateway.networking.k8s.io/v1
 gateway.networking.k8s.io/v1/GatewayClass
 gateway.networking.k8s.io/v1beta1
-collectors.grafana.com/v1alpha1/Alloy
-cert-manager.io/v1

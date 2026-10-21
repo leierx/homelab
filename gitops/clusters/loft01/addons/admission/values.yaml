@@ -1,4 +1,4 @@
-# pods here get hostUsers: false; nothing privileged or reading host files (k8s-monitoring's log collector)
+# pods here get hostUsers: false; nothing privileged or reading host files (telemetry's log collector)
 userNamespaces:
   - argo
   - argocd

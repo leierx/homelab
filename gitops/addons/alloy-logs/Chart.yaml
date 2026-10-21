@@ -1,0 +1,7 @@
+apiVersion: v2
+name: alloy-logs
+version: 0.0.0
+dependencies:
+  - name: alloy
+    version: 1.13.0
+    repository: https://grafana.github.io/helm-charts

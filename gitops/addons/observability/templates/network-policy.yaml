@@ -12,7 +12,7 @@ spec:
     # Alloy pushes metrics and logs
     - fromEndpoints:
         - matchLabels:
-            k8s:io.kubernetes.pod.namespace: k8s-monitoring
+            k8s:io.kubernetes.pod.namespace: telemetry
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: envoy-gateway-system

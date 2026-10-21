@@ -15,6 +15,16 @@ addons:
   admission:
     enabled: false
     namespace: kube-system
+  # all four telemetry addons share one namespace, and node-exporter and the log
+  # collector need host access, so the namespace can only be privileged
+  alloy-logs:
+    enabled: false
+    namespace: telemetry
+    podSecurity: privileged
+  alloy-metrics:
+    enabled: false
+    namespace: telemetry
+    podSecurity: privileged
   argocd:
     enabled: false
     namespace: argocd
@@ -63,11 +73,6 @@ addons:
     enabled: false
     namespace: immich
     podSecurity: restricted
-  # node-exporter and the pod-log DaemonSet need host namespaces and hostPath mounts
-  k8s-monitoring:
-    enabled: false
-    namespace: k8s-monitoring
-    podSecurity: privileged
   # the namespace comes from the keycloak-operator addon, which labels it restricted
   keycloak:
     enabled: false
@@ -76,10 +81,18 @@ addons:
     enabled: false
     namespace: keycloak
     kustomize: true
+  kube-state-metrics:
+    enabled: false
+    namespace: telemetry
+    podSecurity: privileged
   kubevirt:
     enabled: false
     namespace: kubevirt
     kustomize: true
+  node-exporter:
+    enabled: false
+    namespace: telemetry
+    podSecurity: privileged
   observability:
     enabled: false
     namespace: monitoring
