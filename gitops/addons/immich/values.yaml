@@ -14,4 +14,4 @@ library:
 modelCache:
   storageClass: ''
   size: ''
-certificateIssuer: letsencrypt-staging
+certificateIssuer: letsencrypt-prod

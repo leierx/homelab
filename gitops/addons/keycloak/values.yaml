@@ -11,4 +11,4 @@ clientSecrets:
 - edge
 host: ''
 podCIDR: ''
-certificateIssuer: letsencrypt-staging
+certificateIssuer: letsencrypt-prod

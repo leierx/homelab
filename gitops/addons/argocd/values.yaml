@@ -86,4 +86,4 @@ argo-cd:
       limits:
         memory: 64Mi
 host: ''
-certificateIssuer: letsencrypt-staging
+certificateIssuer: letsencrypt-prod

@@ -586,4 +586,4 @@ grafana:
                   - 0
 host: ''
 keycloakHost: ''
-certificateIssuer: letsencrypt-staging
+certificateIssuer: letsencrypt-prod
