@@ -64,7 +64,7 @@ addons:
     repoUrl: https://grafana-community.github.io/helm-charts
     chart: loki
     # renovate: datasource=helm depName=loki registryUrl=https://grafana-community.github.io/helm-charts
-    targetRevision: 19.0.2
+    targetRevision: 19.0.3
   node_exporter:
     repoUrl: https://prometheus-community.github.io/helm-charts
     chart: prometheus-node-exporter
@@ -84,7 +84,7 @@ addons:
     repoUrl: https://docs.renovatebot.com/helm-charts
     chart: renovate
     # renovate: datasource=helm depName=renovate registryUrl=https://docs.renovatebot.com/helm-charts
-    targetRevision: 46.375.1
+    targetRevision: 46.375.5
   zfs_localpv:
     repoUrl: https://openebs.github.io/zfs-localpv
     chart: zfs-localpv
