@@ -42,6 +42,13 @@ spec:
           args:
             - |
               set -eu
+              # the CronWorkflow fires before Keycloak is Ready on a fresh cluster
+              tries=50
+              until wget -q -O /dev/null http://keycloak-service:8080/realms/master; do
+                tries=$((tries - 1))
+                [ "$tries" -gt 0 ] || { echo "keycloak-service did not answer"; exit 1; }
+                sleep 10
+              done
               tofu init -input=false
               tofu plan -out=plan
               tofu apply plan
