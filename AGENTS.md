@@ -134,10 +134,10 @@ How that plays out here:
 
 - The host auto-upgrades from `main` Fridays 02:00 and may reboot until
   04:00.
-- `flake-bump` (CI) updates `flake.lock` every 2 days and pushes only if
-  fmt, check, the toplevel build and the installer eval pass. Don't hand-bump
-  inputs. When it fails because a new `nixos-YY.MM` exists, move `nixpkgs` and
-  `services.k3s.package` (one Kubernetes minor at a time).
+- `flake-bump` (CI) updates `flake.lock` every 2 days and opens and merges a
+  PR only if fmt, check, the toplevel build and the installer eval pass.
+  Don't hand-bump inputs. When it fails because a new `nixos-YY.MM` exists,
+  move `nixpkgs` and `services.k3s.package` (one Kubernetes minor at a time).
 - Renovate (self-hosted, `gitops/addons/renovate`) pins Actions to commit
   digests and bumps them, chart deps, `# renovate:`-annotated versions,
   release URLs in kustomizations and the versions of our own

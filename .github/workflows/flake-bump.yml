@@ -22,6 +22,9 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-26.04
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: cachix/install-nix-action@448cde739abec1eaf0646249e3d25bb8d9bc7702 # v31
@@ -47,10 +50,39 @@ jobs:
             exit 1
           fi
 
-      - name: push flake.lock
+      - name: open and merge the flake.lock PR
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git diff --quiet -- flake.lock && exit 0
+          set -euo pipefail
+          if git diff --quiet -- flake.lock; then exit 0; fi
+
+          branch="flake-bump/$(date -u +%Y-%m-%d)-${GITHUB_RUN_ID}"
+          old=$(mktemp)
+          git show HEAD:flake.lock > "$old"
+          changes=$(jq -r --slurpfile old "$old" '
+            .nodes | to_entries[]
+            | select(.value.locked != null)
+            | .key as $name
+            | ($old[0].nodes[$name].locked.rev // "new") as $before
+            | select($before != .value.locked.rev)
+            | "- `\($name)`: \($before[0:12]) -> \(.value.locked.rev[0:12])"' flake.lock)
+          if [ -z "$changes" ]; then changes='- `flake.lock`: see the diff'; fi
+
+          git checkout -b "$branch"
           git -c user.name=github-actions -c user.email=github-actions@noreply.github.com \
             commit -m "chore: bump flake.lock" -- flake.lock
-          git push origin HEAD:main
+          git push origin "$branch"
+
+          {
+            echo "Updated inputs:"
+            echo
+            echo "$changes"
+          } > /tmp/body.md
+          gh pr create --base main --head "$branch" \
+            --title "chore: bump flake.lock" --body-file /tmp/body.md
+
+          # A PR opened with GITHUB_TOKEN starts no other workflows, so no checks
+          # would ever run on it. They already ran above on exactly this tree.
+          gh pr merge --merge --delete-branch
