@@ -96,6 +96,7 @@ jobs:
             -v "$PWD/output:/output" \
             -v "$PWD/pull-request/gitops/fleet/members:/secrets:ro" \
             -v "$PWD/pull-request/preinstall:/preinstall:ro" \
+            -v "$PWD/pull-request/.github/argocd-diff-preview/values.yaml:/argocd-config/values.yaml:ro" \
             "$ARGOCD_DIFF_PREVIEW_IMAGE" \
             --target-branch="refs/pull/${{ github.event.number }}/merge" \
             --repo="${{ github.repository }}" \
