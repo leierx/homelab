@@ -1,6 +1,0 @@
-# this site's hostname; the SSO issuer and redirect URL that name it are set per cluster
-host: ""
-
-# set by the fleet chart's Applications (and by CI and bootstrap with --set-string)
-fleet:
-  cluster: ""

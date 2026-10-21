@@ -1,2 +1,0 @@
-# the host's WireGuard address, where the wg Gateway's Service answers
-wireguardAddress: ""

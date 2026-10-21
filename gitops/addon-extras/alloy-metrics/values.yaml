@@ -1,6 +1,0 @@
-# set by the fleet chart's Applications (and by CI and bootstrap with --set-string)
-fleet:
-  cluster: ""
-# set by the cluster's values file
-mimirUrl: ""
-lokiUrl: ""

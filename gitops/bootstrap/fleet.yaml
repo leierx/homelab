@@ -1,0 +1,67 @@
+# Level 1: one Application per cluster folder (gitops/clusters/<cluster>/cluster.yaml).
+#
+# Each Application `cluster-<cluster>`:
+#   1. deploys the cluster's two ApplicationSets from gitops/bootstrap/cluster/, named
+#      <cluster>-addons and <cluster>-addons-ordered, with the cluster's data patched in, and
+#   2. syncs the cluster's registration (cluster-secret.yaml), if the folder has one.
+#
+# The controller gives every `cluster-<cluster>` Application the resources finalizer, so deleting a
+# cluster folder deletes that cluster's ApplicationSets and registration. Always set
+# `decommission:` in cluster.yaml first (see gitops/docs/fleet-gitops.md, "Decommissioning").
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: fleet
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/leierx/homelab.git
+        revision: main
+        files:
+          - path: gitops/clusters/*/cluster.yaml
+          - path: gitops/clusters/*/*/cluster.yaml
+            exclude: true
+  template:
+    metadata:
+      name: 'cluster-{{ .path.basename }}'
+    spec:
+      project: fleet
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: argocd
+      sources:
+        - repoURL: https://github.com/leierx/homelab.git
+          targetRevision: main
+          path: gitops/bootstrap/cluster
+          kustomize:
+            namePrefix: '{{ .path.basename }}-'
+            patches:
+              - target:
+                  kind: ApplicationSet
+                patch: |-
+                  {{- $element := dict
+                        "cluster" .path.basename
+                        "clusterGroups" (dig "groups" (list) .)
+                        "clusterAddons" (dig "addons" (dict) .)
+                        "decommission" (dig "decommission" "" .)
+                        "repoURL" "https://github.com/leierx/homelab.git"
+                        "revision" "main"
+                      | toJson }}
+                  - op: replace
+                    path: /spec/generators/0/matrix/generators/0/matrix/generators/0/list/elements/0
+                    value: {{ $element }}
+                  - op: replace
+                    path: /spec/generators/1/matrix/generators/0/matrix/generators/0/list/elements/0
+                    value: {{ $element }}
+        - repoURL: https://github.com/leierx/homelab.git
+          targetRevision: main
+          path: '{{ .path.path }}'
+          directory:
+            include: cluster-secret.yaml
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true

@@ -1,4 +1,0 @@
-apiVersion: v2
-name: gitops-addons
-description: GitOps Bridge v2 (gitops-bridge-dev/gitops-bridge#73), one ApplicationSet per enabled addon
-version: 0.0.0

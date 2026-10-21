@@ -1,6 +1,0 @@
-# this site's hostname; the URL and the OIDC issuer that repeat it are upstream chart values
-host: ""
-
-# set by the fleet chart's Applications (and by CI and bootstrap with --set-string)
-fleet:
-  cluster: ""

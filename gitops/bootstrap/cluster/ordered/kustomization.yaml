@@ -1,0 +1,34 @@
+# Same ApplicationSet as base/, but it only generates the Applications that have a wave, and
+# syncs them with a RollingSync: wave N starts once every Application in waves < N is Healthy.
+# Requires progressive syncs (applicationsetcontroller.enable.progressive.syncs: "true").
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+nameSuffix: -ordered
+patches:
+  - target:
+      kind: ApplicationSet
+    patch: |-
+      - op: replace
+        path: /spec/generators/0/matrix/generators/0/matrix/generators/1/git/values/ordered
+        value: "true"
+      - op: replace
+        path: /spec/generators/1/matrix/generators/0/matrix/generators/1/git/values/ordered
+        value: "true"
+      - op: add
+        path: /spec/strategy
+        value:
+          type: RollingSync
+          deletionOrder: Reverse
+          rollingSync:
+            steps:
+              - matchExpressions: [{ key: fleet/wave, operator: In, values: ["1"] }]
+              - matchExpressions: [{ key: fleet/wave, operator: In, values: ["2"] }]
+              - matchExpressions: [{ key: fleet/wave, operator: In, values: ["3"] }]
+              - matchExpressions: [{ key: fleet/wave, operator: In, values: ["4"] }]
+              - matchExpressions: [{ key: fleet/wave, operator: In, values: ["5"] }]
+              - matchExpressions: [{ key: fleet/wave, operator: In, values: ["6"] }]
+              - matchExpressions: [{ key: fleet/wave, operator: In, values: ["7"] }]
+              - matchExpressions: [{ key: fleet/wave, operator: In, values: ["8"] }]
+              - matchExpressions: [{ key: fleet/wave, operator: In, values: ["9"] }]

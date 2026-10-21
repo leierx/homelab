@@ -1,5 +1,9 @@
 result
 result-*
-gitops/apps/*/*/charts/
-gitops/apps/*/*/Chart.lock
 .terraform/
+
+# Subcharts downloaded by `helm dependency build` when rendering locally
+gitops/**/charts/*.tgz
+
+# Built by gitops/tools/render-check/run.sh
+gitops/tools/render-check/render
