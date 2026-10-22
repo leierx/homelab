@@ -38,6 +38,9 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: keycloak-edge
+  annotations:
+    # keycloak-service comes from the Keycloak CR (wave 1); until then the route is Degraded
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   parentRefs:
     - group: gateway.networking.k8s.io
@@ -60,6 +63,9 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: keycloak-wg
+  annotations:
+    # keycloak-service comes from the Keycloak CR (wave 1); until then the route is Degraded
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   parentRefs:
     - group: gateway.networking.k8s.io
