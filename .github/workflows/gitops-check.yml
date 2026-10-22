@@ -34,7 +34,7 @@ jobs:
         run: pip install pyyaml
 
       - name: 1. render-check
-        run: gitops/tools/render-check/run.sh
+        run: SIM_OUT=/tmp/sim.yaml gitops/tools/render-check/run.sh
 
       - name: 2. every non-template YAML parses
         run: |
@@ -42,41 +42,54 @@ jobs:
           find gitops -name '*.yaml' ! -path '*/templates/*' -print0 \
             | xargs -0 -r -n1 yq e '.' >/dev/null
 
-      - name: 3. every Helm addon builds and renders
+      - name: 3. every enabled Helm addon builds and renders on its cluster
         run: |
           set -euo pipefail
-          for d in gitops/addons/*/; do
-            [ -f "$d/addon.yaml" ] || continue
-            [ "$(yq -r '.type' "$d/addon.yaml")" = "helm" ] || continue
-            name=$(basename "$d")
-            ns=$(yq -r '.namespace' "$d/addon.yaml")
-            rel=$(yq -r '.releaseName // .name // ""' "$d/addon.yaml")
-            [ -n "$rel" ] || rel=$name
-            layer="gitops/clusters/loft01/addons/$name/values.yaml"
-            repo=$(yq -r '.dependencies[0].repository // ""' "$d/Chart.yaml")
-            case "$repo" in
-              oci://*|"") ;;
-              *) helm repo add "$name" "$repo" --force-update >/dev/null ;;
-            esac
-            helm dependency build "$d" >/dev/null
-            args=(template "$rel" "$d" -n "$ns" --include-crds
-              --set fleet.cluster=loft01 --set-json 'fleet.groups=["prod"]')
-            [ -f "$layer" ] && args+=(-f "$layer")
-            helm "${args[@]}" > "/tmp/render-$name.yaml"
+          [ -s /tmp/sim.yaml ] || { echo "::error::render-check did not write SIM_OUT" >&2; exit 1; }
+
+          # One Application per enabled Helm addon per cluster, with the value files the
+          # ApplicationSet generated: every group layer in order, then the cluster layer.
+          while IFS= read -r app; do
+            cluster=$(jq -r '.cluster' <<<"$app")
+            dir=$(jq -r '.dir' <<<"$app")
+            [ -f "$dir/addon.yaml" ] || continue
+            name=$(basename "$dir")
+            ns=$(jq -r '.namespace' <<<"$app")
+            rel=$(jq -r '.releaseName' <<<"$app")
+            out="/tmp/render-$cluster-$name.yaml"
+
+            helm dependency build "$dir" >/dev/null
+            args=(template "$rel" "$dir" -n "$ns" --include-crds
+              --set-json "fleet=$(jq -c '.fleet' <<<"$app")")
+            while IFS= read -r vf; do
+              [ -n "$vf" ] || continue
+              vf=${vf#\$values/}
+              [ -f "$vf" ] && args+=(-f "$vf")
+            done < <(jq -r '.valueFiles[]?' <<<"$app")
+            helm "${args[@]}" > "$out"
+            cp "$out" "/tmp/render-$name.yaml"   # check 10 reads these
 
             # a delete addon may only be delete if every CRD it renders survives removal
-            if [ "$(yq -r '.onRemoval' "$d/addon.yaml")" = "delete" ]; then
-              crds=$(yq ea '[select(.kind == "CustomResourceDefinition")] | length' "/tmp/render-$name.yaml")
+            if [ "$(yq -r '.onRemoval' "$dir/addon.yaml")" = "delete" ]; then
+              crds=$(yq ea '[select(.kind == "CustomResourceDefinition")] | length' "$out")
               kept=$(yq ea '[select(.kind == "CustomResourceDefinition")
                 | select(.metadata.annotations."helm.sh/resource-policy" == "keep"
-                    or ((.metadata.annotations."argocd.argoproj.io/sync-options" // "") | test("Delete=false")))] | length' "/tmp/render-$name.yaml")
+                    or ((.metadata.annotations."argocd.argoproj.io/sync-options" // "") | test("Delete=false")))] | length' "$out")
               if [ "$crds" != "$kept" ]; then
-                echo "::error::$name is onRemoval=delete but renders $crds CRD(s), only $kept with a keep annotation" >&2
+                echo "::error::$name on $cluster is onRemoval=delete but renders $crds CRD(s), only $kept with a keep annotation" >&2
                 exit 1
               fi
             fi
-            echo "rendered $name"
-          done
+            echo "rendered $name on $cluster"
+          done < <(yq ea -o=json -I=0 'select(.kind == "Application"
+              and .metadata.labels."fleet/kind" == "addon"
+              and (.spec.sources[0].helm // null) != null)
+            | {"cluster": .metadata.labels."fleet/cluster",
+               "dir": .spec.sources[0].path,
+               "namespace": .spec.destination.namespace,
+               "releaseName": .spec.sources[0].helm.releaseName,
+               "fleet": .spec.sources[0].helm.valuesObject.fleet,
+               "valueFiles": .spec.sources[0].helm.valueFiles}' /tmp/sim.yaml | jq -c .)
 
       - name: 4. every Kustomize addon builds
         run: |
