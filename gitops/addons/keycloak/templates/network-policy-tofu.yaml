@@ -1,4 +1,4 @@
-# the reconcile pod reaches Keycloak, DNS, the OpenTofu registry and GitHub, and the API server for its state
+# the reconcile pod reaches Keycloak, DNS, the OpenTofu registry, and the API server for its state
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
@@ -26,7 +26,7 @@ spec:
             - { port: "53", protocol: UDP }
             - { port: "53", protocol: TCP }
     - toEntities: [kube-apiserver]
-    # GitHub for the git artifact, registry.opentofu.org and the provider release downloads
+    # registry.opentofu.org and the provider release downloads
     - toEntities: [world]
       toPorts:
         - ports: [{ port: "443", protocol: TCP }]
