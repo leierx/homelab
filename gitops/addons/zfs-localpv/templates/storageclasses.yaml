@@ -1,25 +1,27 @@
-{{- range .Values.pools }}
+{{- range .Values.storageClasses }}
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: {{ .storageClass }}
+  name: {{ .name }}
   {{- if .default }}
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
   {{- end }}
 provisioner: zfs.csi.openebs.io
 parameters:
-  poolname: {{ .name }}
-  {{- if .dataset }}
+  poolname: {{ .poolname }}
+  {{- if eq .fstype "zfs" }}
   # a ZFS filesystem per PVC: the size is a refquota (snapshots don't count),
   # thin-provisioned so the quota is a limit and not space held in the pool
-  fstype: zfs
-  recordsize: {{ .dataset.recordsize }}
+  fstype: {{ .fstype }}
+  recordsize: {{ .recordsize }}
   quotatype: refquota
+  {{- if .thinprovision }}
   thinprovision: "yes"
+  {{- end }}
   {{- else }}
-  fstype: ext4
+  fstype: {{ .fstype }}
   {{- end }}
 allowVolumeExpansion: true
 volumeBindingMode: WaitForFirstConsumer

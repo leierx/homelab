@@ -15,4 +15,8 @@ zfs-localpv:
         memory: 16Mi
       limits:
         memory: 256Mi
-pools: []
+# Classes are defined per cluster (they name that cluster's zpools). The cluster layer lists them:
+#   zfs       - fstype ext4, not thin: databases and anything needing a normal filesystem
+#   zfs-thin  - fstype zfs, recordsize 1M, thin-provisioned: bulk files (media, backups, caches).
+#               Recordsize is an upper bound, so small files are not wasted; do not put databases here
+storageClasses: []

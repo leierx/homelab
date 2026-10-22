@@ -1,11 +1,19 @@
 zfs-localpv:
   zfs:
     bin: /run/current-system/sw/bin/zfs
-pools:
-- name: tank
-  storageClass: zfs
+storageClasses:
+- name: zfs
+  poolname: tank
+  fstype: ext4
+  thinprovision: false
   default: true
-- name: tank
-  storageClass: zfs-media
-  dataset:
-    recordsize: 1M
+- name: zfs-thin
+  poolname: tank
+  fstype: zfs
+  thinprovision: true
+  recordsize: 1M
+- name: zfs-media
+  poolname: tank
+  fstype: zfs
+  thinprovision: true
+  recordsize: 1M
