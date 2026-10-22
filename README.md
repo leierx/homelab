@@ -23,14 +23,12 @@ real GitOps platform on hardware we own.
   Fridays.
 - **Cluster.** k3s runs without its own CNI and kube-proxy; Cilium provides
   both and the network policy engine. Argo CD tracks `HEAD` of `main` and
-  deploys the fleet layout in `gitops/`: `root.yaml` syncs the AppProjects and
-  the fleet ApplicationSet; that creates one `cluster-<name>` Application per
-  `gitops/clusters/<name>/cluster.yaml`, which in turn creates the cluster's
-  two ApplicationSets. Addons choose where they run with `groups` and
-  `clusters`, cluster and group layers add configuration, and each addon states
-  its `onRemoval` policy and its wave. The rules, the file reference and the
-  day-to-day changes are in [docs/fleet-gitops.md](docs/fleet-gitops.md);
-  `gitops/tools/render-check/run.sh` previews the result offline.
+  renders the fleet chart in `gitops/fleet/`: `root.yaml` creates one
+  `cluster-<name>` Application per `gitops/clusters/<name>/cluster.yaml`, and
+  each of those creates one `<name>-<addon>` Application per addon whose
+  `fleet.yaml` selects the cluster. Group and cluster layers add values and
+  manifests. The guide is [docs/fleet.md](docs/fleet.md), and
+  `helm template` previews everything offline.
 - **Edge.** Envoy Gateway terminates TLS on two Gateways: `edge` (NodePort
   30080/30443, reached through the router's port forward) and `wg` (the
   `10.0.0.1` address on WireGuard). Argo CD and Keycloak's admin side are on
@@ -45,12 +43,11 @@ real GitOps platform on hardware we own.
   them. sanoid snapshots the pool, and an off-site borg backup is ready to
   enable.
 - **Workloads.** The management side runs Cluster API, KubeVirt and CDI, so a
-  workload cluster is a VM on this node. `capi-argo-bridge`
-  (`gitops/addons/capi-argo-bridge`) registers such a cluster with Argo CD; its
-  groups and addons then come from `gitops/clusters/<name>/cluster.yaml`, with
-  no `cluster-secret.yaml` needed. An app that exists on one cluster only is a
-  cluster app under `gitops/clusters/<cluster>/apps/`; everything today is an
-  addon. Their pod and service CIDRs must not overlap `10.42.0.0/16` and
+  workload cluster is a VM on this node. Its folder under `gitops/clusters/`
+  holds the CAPI `Cluster` and an ExternalSecret that registers it with Argo
+  CD from CAPI's kubeconfig Secret; none exists yet. An app that runs on one
+  cluster only is an addon with `clusters: [<cluster>]` in its `fleet.yaml`.
+  Workload clusters' pod and service CIDRs must not overlap `10.42.0.0/16` and
   `10.43.0.0/16`, and they boot from a persistent disk
   (`cluster-template-persistent-storage.yaml`), never a containerDisk.
 - **Lab VM.** `dodde` is a Fedora VM for the user's brother, in its own
@@ -78,12 +75,11 @@ real GitOps platform on hardware we own.
 ```
 nixos/        the host: disks, k3s, sops-nix, pi
 gitops/
-  bootstrap/  Argo CD wiring (root Application, AppProjects, fleet ApplicationSet)
-  addons/     one folder per addon; capi-argo-bridge keeps its Go source in src/
-  groups/     configuration shared by every cluster with that group tag
-  clusters/   one folder per cluster: cluster.yaml, layers, cluster-only apps
-  tools/      render-check, the offline preview
-tofu/         OpenTofu roots; tofu/keycloak is the realm
+  root.yaml   the one Application applied by hand
+  fleet/      the fleet chart: renders cluster-<c> and <c>-<addon> Applications
+  addons/     one folder per addon: fleet.yaml and a chart; keycloak/tofu is the realm
+  groups/     configuration shared by every cluster in a group
+  clusters/   one folder per cluster: cluster.yaml, registration, layers
 docs/         the guides linked below
 flake.nix     the flake (host and installer)
 ```
@@ -119,12 +115,12 @@ flake.nix     the flake (host and installer)
 | Dashboards and alerts | Grafana | one UI; dashboards as labelled ConfigMaps | AGPL-3.0 | none (Grafana Labs) |
 | Photos | Immich | phone backup, timeline, faces and search, Keycloak SSO | AGPL-3.0 | none (FUTO; single vendor, see principle 5) |
 | Job queue | Valkey | Immich's job queues | BSD-3-Clause | Linux Foundation |
-| Dependency updates | Renovate | wrapper charts, Actions, `# renovate:` versions, one PR per addon folder or OpenTofu root | AGPL-3.0 | none (Mend) |
+| Dependency updates | Renovate | wrapper charts, Actions, `# renovate:` versions, one PR per addon folder | AGPL-3.0 | none (Mend) |
 
 ## Docs
 
-- [fleet-gitops.md](docs/fleet-gitops.md) — the fleet: layout, rules, waves,
-  removal, and how to change any addon, group or cluster.
+- [fleet.md](docs/fleet.md) — the fleet chart: layout, `fleet.yaml`, values,
+  pausing, removal, and how to change any addon, group or cluster.
 - [bootstrap.md](docs/bootstrap.md) — bare metal to a synced cluster.
 - [operations.md](docs/operations.md) — updates, backups and restore,
   certificates, observability and alerting.
