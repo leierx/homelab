@@ -1,4 +1,4 @@
-clusters: [loft01]
+clusters: [loft1]
 namespace: capi-operator-system
 syncOptions: [Delete=false]
 managedNamespaceMetadata:
