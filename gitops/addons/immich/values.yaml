@@ -30,7 +30,7 @@ immich:
             image:
               repository: ghcr.io/immich-app/immich-server
               # renovate: datasource=docker depName=ghcr.io/immich-app/immich-server
-              tag: v3.3.4
+              tag: v3.3.5
             env:
               # the database keeps its credentials in its own Secret
               DB_URL:
@@ -54,7 +54,7 @@ immich:
             image:
               repository: ghcr.io/immich-app/immich-machine-learning
               # renovate: datasource=docker depName=ghcr.io/immich-app/immich-machine-learning
-              tag: v3.3.4
+              tag: v3.3.5
             resources:
               requests: { cpu: 500m, memory: 1Gi }
               limits: { memory: 8Gi }
