@@ -1,0 +1,61 @@
+{{- with $c := .Values.cluster }}
+{{- $meta := fromYaml ($.Files.Get (printf "clusters/%s/cluster.yaml" $c)) }}
+{{- if $meta.Error }}{{ fail (printf "clusters/%s/cluster.yaml: %s" $c $meta.Error) }}{{ end }}
+{{- $g := $meta.global.fleet.group }}
+{{- if ne $meta.global.fleet.cluster $c }}{{ fail (printf "clusters/%s/cluster.yaml: cluster must be %s" $c $c) }}{{ end }}
+{{- if not (has $g $.Values.groups) }}{{ fail (printf "clusters/%s/cluster.yaml: unknown group %s" $c $g) }}{{ end }}
+{{- range $path, $_ := $.Files.Glob "addons/*/fleet.yaml" }}
+{{- $a := base (dir $path) }}
+{{- $s := fromYaml ($.Files.Get $path) }}
+{{- if $s.Error }}{{ fail (printf "%s: %s" $path $s.Error) }}{{ end }}
+{{- if not $s }}{{ fail (printf "%s: empty" $path) }}{{ end }}
+{{- range $k, $_ := omit $s "groups" "clusters" "paused" "namespace" "release" "syncOptions" "ignoreDifferences" "managedNamespaceMetadata" }}{{ fail (printf "%s: unknown key %s" $path $k) }}{{ end }}
+{{- range $s.groups }}{{ if not (has . $.Values.groups) }}{{ fail (printf "%s: unknown group %s" $path .) }}{{ end }}{{ end }}
+{{- if or (has $c ($s.clusters | default list)) (has $g ($s.groups | default list)) }}
+{{- $r := $s.release | default $a }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $c }}-{{ $a }}
+  namespace: argocd
+  labels: {fleet.skinke.net/cluster: {{ $c }}, fleet.skinke.net/addon: {{ $a }}}
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: default
+  destination: {name: {{ $c }}, namespace: {{ $s.namespace | default $a }}}
+  sources:
+    - repoURL: {{ $.Values.repoURL }}
+      targetRevision: main
+      path: gitops/addons/{{ $a }}
+      helm:
+        releaseName: {{ $r }}
+        valueFiles:
+        {{- range list (printf "groups/%s/addons/%s/values.yaml" $g $r) (printf "clusters/%s/addons/%s/values.yaml" $c $r) }}
+        {{- if $.Files.Get . }}
+          - /gitops/{{ . }}
+        {{- end }}
+        {{- end }}
+          - /gitops/clusters/{{ $c }}/cluster.yaml
+    {{- range list (printf "addons/%s/manifests" $a) (printf "clusters/%s/addons/%s/manifests" $c $r) }}
+    {{- if $.Files.Glob (printf "%s/**" .) }}
+    - repoURL: {{ $.Values.repoURL }}
+      targetRevision: main
+      path: gitops/{{ . }}
+    {{- end }}
+    {{- end }}
+  syncPolicy:
+    {{- if not (has $c ($s.paused | default list)) }}
+    automated: {prune: true, selfHeal: true}
+    {{- end }}
+    retry: {limit: -1, refresh: true, backoff: {duration: 10s, factor: 2, maxDuration: 3m}}
+    syncOptions: {{ concat (list "CreateNamespace=true" "ServerSideApply=true" "SkipDryRunOnMissingResource=true") ($s.syncOptions | default list) | toJson }}
+    {{- with $s.managedNamespaceMetadata }}
+    managedNamespaceMetadata: {{ toJson . }}
+    {{- end }}
+  {{- with $s.ignoreDifferences }}
+  ignoreDifferences: {{ toJson . }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

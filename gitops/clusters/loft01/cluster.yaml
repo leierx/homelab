@@ -1,2 +1,6 @@
-# loft01: the hub and the only cluster.
-groups: [prod]
+# loft01: the hub
+global:
+  fleet:
+    cluster: loft01
+    group: prod
+    domain: skinke.net

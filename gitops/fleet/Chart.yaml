@@ -1,0 +1,4 @@
+apiVersion: v2
+name: fleet
+description: Renders cluster-<c> per cluster folder (root mode) or <c>-<a> per selecting addon (cluster=<c>)
+version: 1.0.0

@@ -1,0 +1,2 @@
+# subcharts downloaded by local `helm dependency build` runs
+addons/*/charts/

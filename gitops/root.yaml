@@ -1,0 +1,18 @@
+# The only manifest applied by hand: kubectl apply -f gitops/root.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: default
+  destination: {server: https://kubernetes.default.svc, namespace: argocd}
+  source:
+    repoURL: https://github.com/leierx/homelab.git
+    targetRevision: main
+    path: gitops/fleet
+    helm: {releaseName: root}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {limit: -1, refresh: true, backoff: {duration: 10s, factor: 2, maxDuration: 3m}}
+    syncOptions: [Delete=false]
