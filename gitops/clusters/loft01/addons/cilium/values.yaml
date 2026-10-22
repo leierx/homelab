@@ -7,5 +7,4 @@ cilium:
       - 10.42.0.0/16
   resources:
     requests:
-      cpu: 100m
       memory: 2560Mi

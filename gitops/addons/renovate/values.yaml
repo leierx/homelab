@@ -13,7 +13,17 @@ renovate:
 
       '
   renovate:
-    config: "{\n  \"platform\": \"github\",\n  \"repositories\": [\"leierx/homelab\"],\n  \"onboarding\": false,\n  \"requireConfig\": \"required\",\n  \"platformCommit\": \"enabled\",\n  \"username\": \"leierx-renovate[bot]\",\n  \"persistRepoData\": true\n}\n"
+    config: |
+      {
+        "platform": "github",
+        "repositories": ["leierx/homelab"],
+        "onboarding": false,
+        "requireConfig": "required",
+        "platformCommit": "enabled",
+        "username": "leierx-renovate[bot]",
+        "persistRepoData": true
+      }
+
     persistence:
       cache:
         enabled: true
