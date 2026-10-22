@@ -58,6 +58,16 @@ jobs:
             rel=$(jq -r '.releaseName' <<<"$app")
             out="/tmp/render-$cluster-$name.yaml"
 
+            # a fresh runner has no chart-repository list; `helm dependency build` needs it
+            idx=0
+            while IFS= read -r repo; do
+              [ -n "$repo" ] || continue
+              idx=$((idx + 1))
+              case "$repo" in
+                oci://*) ;;
+                *) helm repo add "$name-$idx" "$repo" --force-update >/dev/null ;;
+              esac
+            done < <(yq ea -r '.dependencies[]?.repository // ""' "$dir/Chart.yaml")
             helm dependency build "$dir" >/dev/null
             args=(template "$rel" "$dir" -n "$ns" --include-crds
               --set-json "fleet=$(jq -c '.fleet' <<<"$app")")
