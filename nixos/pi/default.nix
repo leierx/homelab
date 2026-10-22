@@ -52,12 +52,17 @@ let
     postBuild = ''
       wrapProgram $out/bin/pi --suffix PATH : ${
         lib.makeBinPath [
+          pkgs.argocd
           pkgs.git
+          pkgs.go
           pkgs.nodejs
+          pkgs.openssl
           pkgs.opentofu
           pkgs.postgresql_18
+          (pkgs.python3.withPackages (ps: [ ps.pyyaml ]))
           pkgs.renovate
           pkgs.sqlite
+          pkgs.unzip
         ]
       }
     '';
