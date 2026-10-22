@@ -3,9 +3,9 @@ name: capi-argo-bridge
 on:
   push:
     branches: [main]
-    paths: ["src/capi-argo-bridge/**", ".github/workflows/capi-argo-bridge.yml"]
+    paths: ["gitops/addons/capi-argo-bridge/src/**", ".github/workflows/capi-argo-bridge.yml"]
   pull_request:
-    paths: ["src/capi-argo-bridge/**", ".github/workflows/capi-argo-bridge.yml"]
+    paths: ["gitops/addons/capi-argo-bridge/src/**", ".github/workflows/capi-argo-bridge.yml"]
   workflow_dispatch:
 
 permissions:
@@ -14,7 +14,7 @@ permissions:
 
 defaults:
   run:
-    working-directory: src/capi-argo-bridge
+    working-directory: gitops/addons/capi-argo-bridge/src
 
 jobs:
   build:
@@ -23,8 +23,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
-          go-version-file: src/capi-argo-bridge/go.mod
-          cache-dependency-path: src/capi-argo-bridge/go.sum
+          go-version-file: gitops/addons/capi-argo-bridge/src/go.mod
+          cache-dependency-path: gitops/addons/capi-argo-bridge/src/go.sum
       - run: gofmt -l . | (! grep .)
       - run: go vet ./...
       - run: go test ./...

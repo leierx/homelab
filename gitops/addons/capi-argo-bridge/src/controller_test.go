@@ -71,17 +71,15 @@ func reconcileRequest(name string) reconcile.Request {
 	return reconcile.Request{NamespacedName: types.NamespacedName{Namespace: testNamespace, Name: name}}
 }
 
-func TestReconcileCreatesSecretWithCopiedLabelsAndConfig(t *testing.T) {
+func TestReconcileCreatesSecretWithClusterCredentials(t *testing.T) {
 	cluster := newTestCluster("test", map[string]string{
 		"enable_cilium":      "true",
-		"enable_argocd":      "true",
 		"environment":        "prod",
 		"kubernetes_version": "1.36",
 		"unrelated-label":    "ignored",
 	})
 	cluster.SetAnnotations(map[string]string{
 		"addons_repo_url":        "https://github.com/leierx/homelab.git",
-		"addons_stack_version":   "stack-1.36.1",
 		"workload_repo_basepath": "gitops/apps/",
 		"unrelated-annotation":   "ignored",
 	})
@@ -103,35 +101,20 @@ func TestReconcileCreatesSecretWithCopiedLabelsAndConfig(t *testing.T) {
 	wantLabels := map[string]string{
 		"argocd.argoproj.io/secret-type": "cluster",
 		"app.kubernetes.io/managed-by":   "capi-argo-bridge",
-		"cluster_name":                   "test",
-		"enable_cilium":                  "true",
-		"enable_argocd":                  "true",
-		"environment":                    "prod",
-		"kubernetes_version":             "1.36",
+	}
+	if len(secret.Labels) != len(wantLabels) {
+		t.Errorf("labels = %v, want exactly %v", secret.Labels, wantLabels)
 	}
 	for k, v := range wantLabels {
 		if secret.Labels[k] != v {
 			t.Errorf("label %q = %q, want %q", k, secret.Labels[k], v)
 		}
 	}
-	if _, ok := secret.Labels["unrelated-label"]; ok {
-		t.Errorf("unrelated label should not be copied")
-	}
 	if secret.Annotations[sourceAnnoKey] != "default/test" {
 		t.Errorf("source annotation = %q", secret.Annotations[sourceAnnoKey])
 	}
-	wantAnnotations := map[string]string{
-		"addons_repo_url":        "https://github.com/leierx/homelab.git",
-		"addons_stack_version":   "stack-1.36.1",
-		"workload_repo_basepath": "gitops/apps/",
-	}
-	for k, v := range wantAnnotations {
-		if secret.Annotations[k] != v {
-			t.Errorf("annotation %q = %q, want %q", k, secret.Annotations[k], v)
-		}
-	}
-	if _, ok := secret.Annotations["unrelated-annotation"]; ok {
-		t.Errorf("unrelated annotation should not be copied")
+	if len(secret.Annotations) != 1 {
+		t.Errorf("annotations = %v, want only %q", secret.Annotations, sourceAnnoKey)
 	}
 	if string(secret.Data["name"]) != "test" {
 		t.Errorf("name = %q", secret.Data["name"])
@@ -155,33 +138,47 @@ func TestReconcileCreatesSecretWithCopiedLabelsAndConfig(t *testing.T) {
 	}
 }
 
-func TestReconcileRemovesDroppedLabel(t *testing.T) {
+func TestReconcileDropsGitOpsBridgeMetadata(t *testing.T) {
 	kubeconfigSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: "test-kubeconfig"},
 		Data:       map[string][]byte{"value": testKubeconfig(t, "https://1.2.3.4:6443")},
 	}
 
-	cluster := newTestCluster("test", map[string]string{"enable_cilium": "true"})
-	rec := newReconciler(cluster, kubeconfigSecret)
-	ctx := context.Background()
-	if _, err := rec.Reconcile(ctx, reconcileRequest("test")); err != nil {
+	cluster := newTestCluster("test", map[string]string{"enable_cilium": "true", "environment": "prod"})
+	cluster.SetAnnotations(map[string]string{"addons_repo_url": "https://github.com/leierx/homelab.git"})
+	stale := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: argocdNS,
+			Name:      "cluster-test",
+			Labels: map[string]string{
+				argoSecretType:  argoSecretValue,
+				managedByLabel:  managedByValue,
+				"enable_cilium": "true",
+				"environment":   "prod",
+			},
+			Annotations: map[string]string{
+				sourceAnnoKey:     "default/test",
+				"addons_repo_url": "https://github.com/leierx/homelab.git",
+			},
+		},
+	}
+
+	rec := newReconciler(cluster, kubeconfigSecret, stale)
+	if _, err := rec.Reconcile(context.Background(), reconcileRequest("test")); err != nil {
 		t.Fatalf("reconcile failed: %v", err)
 	}
 
-	cluster.SetLabels(map[string]string{})
-	if err := rec.Update(ctx, cluster); err != nil {
-		t.Fatalf("updating cluster: %v", err)
-	}
-	if _, err := rec.Reconcile(ctx, reconcileRequest("test")); err != nil {
-		t.Fatalf("second reconcile failed: %v", err)
-	}
-
 	secret := &corev1.Secret{}
-	if err := rec.Get(ctx, types.NamespacedName{Namespace: argocdNS, Name: "cluster-test"}, secret); err != nil {
+	if err := rec.Get(context.Background(), types.NamespacedName{Namespace: argocdNS, Name: "cluster-test"}, secret); err != nil {
 		t.Fatalf("expected secret to exist: %v", err)
 	}
-	if _, ok := secret.Labels["enable_cilium"]; ok {
-		t.Errorf("enable_ label should have been removed")
+	for _, key := range []string{"enable_cilium", "environment"} {
+		if _, ok := secret.Labels[key]; ok {
+			t.Errorf("label %q should have been removed", key)
+		}
+	}
+	if _, ok := secret.Annotations["addons_repo_url"]; ok {
+		t.Errorf("annotation addons_repo_url should have been removed")
 	}
 }
 

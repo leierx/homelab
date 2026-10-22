@@ -1,4 +1,4 @@
-module github.com/leierx/homelab/src/capi-argo-bridge
+module github.com/leierx/homelab/gitops/addons/capi-argo-bridge/src
 
 go 1.26.8
 

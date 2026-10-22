@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: capi-argo-bridge
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: capi-argo-bridge
+  template:
+    metadata:
+      labels:
+        app: capi-argo-bridge
+    spec:
+      serviceAccountName: capi-argo-bridge
+      containers:
+        - name: capi-argo-bridge
+          image: ghcr.io/leierx/capi-argo-bridge:0.1.12
+          args:
+            - --argocd-namespace={{ .Release.Namespace }}
+            - --cluster-namespace={{ .Values.clusterNamespace }}
+          ports:
+            - name: health
+              containerPort: 8081
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault

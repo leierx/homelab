@@ -52,7 +52,7 @@ cluster's ApplicationSets and every source of every addon and app with Argo's
 value layering and the cluster's API versions; Renovate waits for that check
 before automerging.
 
-Each `src/<name>` has its own `.github/workflows/<name>.yml`, triggered by
+Each `<addon>/src` in the addon folder has its own `.github/workflows/<name>.yml`, triggered by
 changes to that directory. `capi-argo-bridge` vets and tests on pull
 requests, and on `main` publishes
 `ghcr.io/leierx/capi-argo-bridge:{main,0.1.<run number>}` with ko. The

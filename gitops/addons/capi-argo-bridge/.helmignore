@@ -1,0 +1,2 @@
+# the Go source is built and pushed by .github/workflows/capi-argo-bridge.yml, not packaged in the chart
+src/

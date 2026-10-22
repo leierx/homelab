@@ -7,19 +7,20 @@ For every CAPI `Cluster` (`cluster.x-k8s.io/v1beta2`) in `--cluster-namespace`
 
 - writes the Argo CD cluster Secret `cluster-<name>` in `--argocd-namespace`
   with the server and client certs from that kubeconfig,
-- copies the GitOps Bridge v2 metadata from the Cluster onto it: the labels
-  `environment`, `kubernetes_version` and every `enable_<addon>`, the label
-  `cluster_name` from the Cluster's name, and the annotations prefixed
-  `addons_` and `workload_`; those labels and annotations decide what the
-  cluster runs (`docs/gitops.md`),
-- drops every other label and annotation, so removing an `enable_` label
-  switches the addon off,
+- labels it `argocd.argoproj.io/secret-type: cluster` and
+  `app.kubernetes.io/managed-by: capi-argo-bridge`, and records the source
+  Cluster in the `capi-argo-bridge.homelab/source` annotation,
 - deletes it again when the Cluster is deleted.
+
+It copies nothing else from the Cluster. A cluster's groups and addons come
+from `gitops/clusters/<name>/cluster.yaml`, not from labels. A CAPI cluster
+needs that folder and no `cluster-secret.yaml`: this controller writes the
+registration.
 
 It only touches Secrets labelled `app.kubernetes.io/managed-by:
 capi-argo-bridge` whose `capi-argo-bridge.homelab/source` annotation names
 the Cluster, and refuses to overwrite a `cluster-<name>` Secret it didn't
-create. Deployed by `gitops/charts/capi-argo-bridge`.
+create. Deployed by `gitops/addons/capi-argo-bridge`.
 
 ## Design decisions
 
@@ -36,6 +37,7 @@ controllers are built, even when that costs dependencies.
 | `clientcmd` to parse the kubeconfig | client-go's own parser, already in the graph. |
 | `controllerutil.CreateOrUpdate` | Standard create/update helper. It skips the write when nothing changed, so Argo CD doesn't reload the cluster on every reconcile. |
 | Label + source annotation instead of an ownerReference | ownerReferences can't cross namespaces (Cluster in its own, Secret in `argocd`). |
+| Only name, server, config and the two identity labels | Groups and addons are declared in `gitops/clusters/<name>/cluster.yaml`; a cluster Secret is a registration, not a copy of the Cluster's metadata. |
 | Argo Secrets map back to their Cluster | A managed Secret whose Cluster is gone gets reconciled and deleted on start-up, so a Cluster deleted while this was down is still cleaned up. No finalizer needed. |
 | zap logger from controller-runtime | kubebuilder's default. |
 | `/healthz` and `/readyz` on `:8081` | kubebuilder's default probes. |

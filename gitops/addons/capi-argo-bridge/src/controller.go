@@ -33,14 +33,6 @@ const (
 	sourceAnnoKey   = "capi-argo-bridge.homelab/source"
 	argoSecretType  = "argocd.argoproj.io/secret-type"
 	argoSecretValue = "cluster"
-	clusterNameKey  = "cluster_name"
-)
-
-// the GitOps Bridge v2 metadata an Argo CD cluster Secret carries: these labels and
-// annotations decide what the cluster runs (gitops/bootstrap/members)
-var (
-	copiedLabelKeys    = []string{"environment", "kubernetes_version"}
-	copiedAnnoPrefixes = []string{"addons_", "workload_"}
 )
 
 type ClusterReconciler struct {
@@ -111,8 +103,8 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req reconcile.Request
 			return fmt.Errorf("secret %s/%s is not managed by capi-argo-bridge for cluster %s, refusing to overwrite", r.ArgoCDNamespace, argoName, source)
 		}
 		secret.Type = corev1.SecretTypeOpaque
-		secret.Labels = clusterLabels(cluster)
-		secret.Annotations = clusterAnnotations(cluster, source)
+		secret.Labels = clusterLabels()
+		secret.Annotations = clusterAnnotations(source)
 		secret.Data = map[string][]byte{
 			"name":   []byte(req.Name),
 			"server": []byte(server),
@@ -123,36 +115,15 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req reconcile.Request
 	return reconcile.Result{}, err
 }
 
-func clusterLabels(cluster *unstructured.Unstructured) map[string]string {
-	labels := map[string]string{
+func clusterLabels() map[string]string {
+	return map[string]string{
 		argoSecretType: argoSecretValue,
 		managedByLabel: managedByValue,
-		clusterNameKey: cluster.GetName(),
 	}
-	for k, v := range cluster.GetLabels() {
-		if strings.HasPrefix(k, "enable_") {
-			labels[k] = v
-			continue
-		}
-		for _, key := range copiedLabelKeys {
-			if k == key {
-				labels[k] = v
-			}
-		}
-	}
-	return labels
 }
 
-func clusterAnnotations(cluster *unstructured.Unstructured, source string) map[string]string {
-	annotations := map[string]string{sourceAnnoKey: source}
-	for k, v := range cluster.GetAnnotations() {
-		for _, prefix := range copiedAnnoPrefixes {
-			if strings.HasPrefix(k, prefix) {
-				annotations[k] = v
-			}
-		}
-	}
-	return annotations
+func clusterAnnotations(source string) map[string]string {
+	return map[string]string{sourceAnnoKey: source}
 }
 
 func (r *ClusterReconciler) deleteArgoSecret(ctx context.Context, argoName, source string) error {

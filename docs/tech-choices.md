@@ -556,13 +556,11 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 - **Choice:** Cluster API through the cluster-api-operator (core, kubeadm
   bootstrap and control plane, the KubeVirt provider CAPK); clusters are CAPI
   `Cluster`s in namespace `clusters`. `capi-argo-bridge`, our own ~200-line
-  controller (`src/capi-argo-bridge`), copies the GitOps Bridge metadata from a
-  `Cluster` onto an Argo CD cluster Secret: the labels `environment`,
-  `kubernetes_version` and every `enable_*`, `cluster_name` from the Cluster's
-  name, and the annotations prefixed `addons_` and `workload_`. That is the
-  contract the global ApplicationSet reads, so a bridged cluster gets addons
-  and apps like any other — with its own Secret's stack version, which the
-  bridge does not know about (`TODO.md`).
+  controller (`gitops/addons/capi-argo-bridge/src`), turns a `Cluster` and its
+  kubeconfig Secret into an Argo CD cluster Secret: `name`, `server`, `config`,
+  and its own managed-by label and source annotation. The cluster's groups and
+  addons come from `gitops/clusters/<name>/cluster.yaml`, so a bridged cluster
+  gets addons and apps like any other and needs no `cluster-secret.yaml`.
 - **Why:** Cluster API is the Kubernetes SIG standard, and CAPK puts the nodes
   on KubeVirt on this host. The bridge is the one piece Argo CD lacks: its
   cluster generator needs a cluster Secret.
