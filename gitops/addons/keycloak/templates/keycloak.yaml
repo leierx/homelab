@@ -5,6 +5,8 @@ metadata:
   annotations:
     # the CRD comes from the keycloak-operator addon
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    # after its database and secrets are Healthy
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   instances: 1
   # Keycloak never calls the Kubernetes API (JGroups finds peers through the headless Service's DNS)
