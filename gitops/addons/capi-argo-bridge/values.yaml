@@ -1,2 +1,0 @@
-# all workload clusters (CAPI Clusters and their Secrets) live in this namespace; the bridge reads only here
-clusterNamespace: clusters

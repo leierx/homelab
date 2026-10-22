@@ -1,6 +1,0 @@
-# +argocd:skip-file-rendering
-type: helm
-groups: [prod]
-namespace: kube-system
-podSecurity: privileged
-onRemoval: delete      # admission policies only; recreated from git

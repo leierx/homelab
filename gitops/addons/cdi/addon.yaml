@@ -1,5 +1,0 @@
-# +argocd:skip-file-rendering
-type: kustomize
-groups: [prod]
-namespace: cdi
-onRemoval: keep      # owns CDI CRDs; DataVolumes live here

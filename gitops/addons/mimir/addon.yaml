@@ -1,6 +1,0 @@
-# +argocd:skip-file-rendering
-type: helm
-groups: [prod]
-namespace: monitoring
-podSecurity: restricted
-onRemoval: keep      # holds metrics data

@@ -1,8 +1,0 @@
-# +argocd:skip-file-rendering
-type: helm
-groups: [prod]
-namespace: immich
-podSecurity: restricted
-releaseName: immich
-wave: 4
-onRemoval: keep      # holds the photo library and database

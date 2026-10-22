@@ -5,5 +5,3 @@ result-*
 # Subcharts downloaded by `helm dependency build` when rendering locally
 gitops/**/charts/*.tgz
 
-# Built by gitops/tools/render-check/run.sh
-gitops/tools/render-check/render

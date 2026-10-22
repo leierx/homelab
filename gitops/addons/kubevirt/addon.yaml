@@ -1,5 +1,0 @@
-# +argocd:skip-file-rendering
-type: kustomize
-groups: [prod]
-namespace: kubevirt
-onRemoval: keep      # owns KubeVirt CRDs; VMs depend on it
