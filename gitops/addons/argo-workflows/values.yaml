@@ -16,7 +16,6 @@ argo-workflows:
     podSecurityContext:
       seccompProfile:
         type: RuntimeDefault
-    persistence: {}
     workflowDefaults:
       spec:
         ttlStrategy:
@@ -56,16 +55,8 @@ argo-workflows:
         type: RuntimeDefault
     sso:
       enabled: true
-      clientId:
-        name: argo-server-sso
-        key: client-id
-      clientSecret:
-        name: argo-server-sso
-        key: client-secret
       scopes:
       - groups
-      rbac:
-        enabled: true
     resources:
       requests:
         cpu: 20m

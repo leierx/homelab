@@ -27,7 +27,6 @@ alloy:
     create: false
   controller:
     type: statefulset
-    replicas: 1
   configReloader:
     resources:
       requests:

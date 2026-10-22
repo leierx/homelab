@@ -5,8 +5,6 @@ cilium:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
   bpf:
     masquerade: true
-  ipv6:
-    enabled: false
   hubble:
     listenAddress: ''
     tls:
@@ -79,4 +77,3 @@ cilium:
         memory: 32Mi
       limits:
         memory: 64Mi
-  policyCIDRMatchMode: null

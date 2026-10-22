@@ -1,6 +1,5 @@
 renovate:
   serviceAccount:
-    create: false
     name: renovate
   cronjob:
     schedule: 17 * * * *

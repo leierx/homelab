@@ -24,8 +24,6 @@ alloy:
         memory: 512Mi
   rbac:
     create: false
-  controller:
-    type: daemonset
   configReloader:
     resources:
       requests:
