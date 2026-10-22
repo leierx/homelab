@@ -2,21 +2,24 @@
 
 Immich is the photo library at https://photos.skinke.net: phone backup,
 timeline, faces and smart search. It is the addon
-`gitops/apps/immich`, namespace `immich`, our own manifests (why: see
+`gitops/addons/immich`, namespace `immich`. Server, machine learning and
+Valkey come from the upstream `immich-charts` chart; the database, the
+PVCs, the routes and the config secret are our own templates (why: see
 [tech-choices.md](tech-choices.md), Photos).
 
 ## What runs where
 
 | Part | What | Storage |
 | --- | --- | --- |
-| `immich-server` | API, web app and the job workers (thumbnails, metadata, video) | `library`: 770 Gi, StorageClass `zfs-media` (a ZFS filesystem, 1M records), mounted at `/data` |
-| `immich-machine-learning` | CLIP (smart search, duplicates), faces, OCR, on CPU | `model-cache`: 10 Gi zvol; models come from Hugging Face on first use |
+| `immich-server` | API, web app and the job workers (thumbnails, metadata, video) | `library`: 770 Gi, StorageClass `zfs-thin` (a thin-provisioned ZFS filesystem, 1M records), mounted at `/data` |
+| `immich-machine-learning` | CLIP (smart search, duplicates), faces, OCR, on CPU | `model-cache`: 10 Gi on `zfs-thin`; models come from Hugging Face on first use |
 | `immich-valkey` | the job queues | `emptyDir`: survives a container restart, not a new pod |
-| `immich-db` (CloudNativePG) | Postgres 18 with VectorChord and pgvector | `immich-db-1`: 20 Gi zvol |
+| `immich-db` (CloudNativePG) | Postgres 18 with VectorChord and pgvector | `immich-db-1`: 20 Gi zvol on `zfs` |
 
 The 800 GB share is those three volumes. Versions are in `values.yaml`: the
-Immich tag (server and machine learning share it), the Postgres image and
-the VectorChord version.
+Immich image tags for server and machine learning (Renovate bumps them from
+their `# renovate:` comments), the Postgres image and the VectorChord
+version.
 
 On the library, `library/<user>/<year>/<year-month-day>/<file>` holds the
 originals as uploaded (Immich's storage template is on), so they are
@@ -25,9 +28,10 @@ be regenerated; `backups/` holds Immich's own nightly database dumps
 (02:00, the last 14).
 
 Settings live in `templates/_config.tpl`, rendered with the OIDC client
-secret into a Secret by External Secrets. With a config file Immich's admin
-UI shows the settings but can't change them; change them in git. The Secret
-is named after the content, so a change starts a new server pod.
+secret into the Secret `immich-config` by External Secrets. With a config
+file Immich's admin UI shows the settings but can't change them; change
+them in git. The name is fixed, so after a config change run
+`kubectl -n immich rollout restart deploy` to make the server read it.
 
 The map is off (`map.enabled`): its tiles come from `tiles.immich.cloud`,
 which would see which areas people look at. Reverse geocoding stays on; it
@@ -135,7 +139,8 @@ Takeout keeps its metadata in JSON files the CLI ignores; use
 
 Space: `kubectl -n immich exec deploy/immich-server -- df -h /data`, or
 `zfs get used,refquota` on the dataset. Grow the library by raising
-`storage` in `templates/storage.yaml`; it is a quota change, online.
+`library.size` in `clusters/loft01/addons/immich/values.yaml`; it is a quota
+change, online.
 
 ## Backups and restore
 
@@ -193,8 +198,9 @@ automerges it.
 
 - **Immich:** read the release notes for every version in between
   (breaking changes, and anything about the database or VectorChord), then
-  merge. The server runs its migrations at start; watch
-  `kubectl -n immich logs deploy/immich-server`.
+  merge. The image tags are pinned explicitly in `values.yaml`; the chart is
+  pinned by version in `Chart.yaml`. The server runs its migrations at
+  start; watch `kubectl -n immich logs deploy/immich-server`.
 - **VectorChord** (`vchord.version`): the same value moves the extension
   image and the version the `Database` resource installs, so CloudNativePG
   restarts Postgres and runs `ALTER EXTENSION vchord UPDATE TO …` as

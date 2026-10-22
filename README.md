@@ -47,7 +47,7 @@ real GitOps platform on hardware we own.
   CD and Grafana CLIs and APIs work there.
 - **Storage.** OpenEBS zfs-localpv turns each PVC into an ext4 zvol on the
   `tank` pool (StorageClass `zfs`), or into a ZFS filesystem with 1M records
-  for large files (`zfs-media`, Immich's library); the host does not mount
+  for large files (`zfs-thin`, Immich's library); the host does not mount
   them. sanoid snapshots the pool, and an off-site borg backup is ready to
   enable.
 - **Workloads.** The management side runs Cluster API, KubeVirt and CDI, so a

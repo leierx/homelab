@@ -90,7 +90,7 @@ Format: **need** — what problem it solves; **choice**; **why**; **alternatives
 | `data-openbao-0` | 2 Gi | secrets |
 | `renovate-cache` | 5 Gi | throwaway |
 | `fedora-root` (`dodde`) | 200 Gi | dodde's VM disk |
-| `library` (`immich`) | 770 Gi | photos and videos, thumbnails, Immich's database dumps (a ZFS filesystem, `zfs-media`) |
+| `library` (`immich`) | 770 Gi | photos and videos, thumbnails, Immich's database dumps (a ZFS filesystem, `zfs-thin`) |
 | `immich-db-1` | 20 Gi | Immich's metadata and embeddings |
 | `model-cache` (`immich`) | 10 Gi | machine-learning models; throwaway |
 
@@ -110,7 +110,7 @@ and the same with `namespace="keycloak"` / `"openbao"`.
   stateful apps on one node, with per-volume snapshots.
 - **Choice:** one ZFS pool `tank` — four striped mirrors over the eight
   900 GB SAS disks — with zfs-localpv as the CSI. A single default
-  StorageClass `zfs` provisions ext4 zvols (16 KiB blocks); `zfs-media`
+  StorageClass `zfs` provisions ext4 zvols (16 KiB blocks); `zfs-thin`
   provisions ZFS filesystems with 1M records for large files (Immich). sanoid
   snapshots the whole pool.
 - **Why:** the workload is VM disks and databases, i.e. small random I/O.
@@ -165,7 +165,7 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 
 ### Storage
 
-- **Choice:** the library on `zfs-media`, a ZFS filesystem per PVC with
+- **Choice:** the library on `zfs-thin`, a ZFS filesystem per PVC with
   `recordsize=1M`, thin-provisioned: a 770 GiB `refquota` and no
   reservation; the database and the model cache on the usual `zfs` zvols.
 - **Why:** photos and videos are large files read whole, the case OpenZFS's

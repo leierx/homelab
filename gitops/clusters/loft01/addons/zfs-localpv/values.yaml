@@ -12,8 +12,3 @@ storageClasses:
   fstype: zfs
   thinprovision: true
   recordsize: 1M
-- name: zfs-media
-  poolname: tank
-  fstype: zfs
-  thinprovision: true
-  recordsize: 1M

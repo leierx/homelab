@@ -320,7 +320,7 @@ How that plays out here:
 - Requests time out at 300 s by default (`BackendTrafficPolicy`
   `default-request-timeout` on both gateways); a route's `timeouts.request`
   overrides it (Immich sets `0s` for large downloads).
-- A ZFS filesystem PVC (`zfs-media`) can't show `.zfs/snapshot` inside a pod
+- A ZFS filesystem PVC (`zfs-thin`) can't show `.zfs/snapshot` inside a pod
   with user namespaces; mount the snapshot read-only on the host instead.
 - An Application whose first sync hit a webhook that was not ready yet
   (cert-manager, external secrets) stays `Running` forever: the failed task is

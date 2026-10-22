@@ -77,7 +77,7 @@ promotion itself is a Renovate PR that raises the cluster's
 ### Snapshots
 
 sanoid snapshots the whole `tank` pool recursively, so every PVC (a zvol, or
-a ZFS filesystem for `zfs-media`) is included, atomically: 24 hourly, 14 daily
+a ZFS filesystem for `zfs-thin`) is included, atomically: 24 hourly, 14 daily
 and 3 monthly. A new volume gets its first daily snapshot the next day.
 zfs-localpv destroys a PVC's volume with `-r`, so its snapshots go with the
 PVC. A filesystem's snapshot can be mounted read-only on the host to copy
@@ -93,7 +93,7 @@ an encrypted borg repo (`repokey-blake2`) on rsync.net:
 - a `sqlite3 .backup` of the k3s state database plus `server/{token,cred,tls}`
   and the node password, in one `k3s-<timestamp>` archive;
 - each PVC volume's newest sanoid daily snapshot as `zfs send -L` (zvols and
-  `zfs-media` filesystems; `-L` keeps 1M records whole), one archive per
+  `zfs-thin` filesystems; `-L` keeps 1M records whole), one archive per
   volume per daily snapshot.
 
 It never modifies the pools. An archive that already exists is skipped, so a
@@ -122,7 +122,7 @@ so the PVC binds to the restored volume:
 borg extract --stdout ::<pool>_pvc-<uuid>-<timestamp>_daily | zfs recv <pool>/pvc-<uuid>
 ```
 
-The stream carries no properties: for a `zfs-media` filesystem add
+The stream carries no properties: for a `zfs-thin` filesystem add
 `-o mountpoint=legacy -o recordsize=1M -o refquota=<size> -o refreservation=<size>`
 to `zfs recv`, as zfs-localpv would have set them.
 
