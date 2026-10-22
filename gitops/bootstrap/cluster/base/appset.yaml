@@ -66,7 +66,7 @@ spec:
                 {{- if $enabled }}
                 {{- /* 2. Settings: addon.yaml, then groupOverrides in the cluster's group order, then cluster.yaml */}}
                 {{-   $s := dict }}
-                {{-   range $k := list "type" "name" "namespace" "wave" "releaseName" "syncOptions" "ignoreDifferences" "onRemoval" }}
+                {{-   range $k := list "type" "name" "namespace" "podSecurity" "wave" "releaseName" "syncOptions" "ignoreDifferences" "onRemoval" }}
                 {{-     if hasKey $ $k }}{{ $_ := set $s $k (get $ $k) }}{{ end }}
                 {{-   end }}
                 {{-   $ordered := hasKey $s "wave" }}
@@ -87,6 +87,9 @@ spec:
                 {{-   if not (has (get $s "onRemoval") (list "delete" "keep")) }}
                 {{-     fail (printf "%s: onRemoval must be delete or keep" $where) }}
                 {{-   end }}
+                {{-   if not (has (toString (get $s "podSecurity")) (list "" "privileged" "baseline" "restricted")) }}
+                {{-     fail (printf "%s: podSecurity must be privileged, baseline or restricted" $where) }}
+                {{-   end }}
                 {{-   if and (hasKey $s "wave") (not $ordered) }}
                 {{-     fail (printf "%s: a wave can only be overridden on addons whose addon.yaml sets one" $where) }}
                 {{-   end }}
@@ -103,6 +106,7 @@ spec:
                           "dir" (printf "gitops/addons/%s" $addon)
                           "type" (get $s "type")
                           "namespace" (get $s "namespace" | default $name)
+                          "podSecurity" (toString (get $s "podSecurity"))
                           "wave" (toString (get $s "wave"))
                           "releaseName" (get $s "releaseName" | default $name)
                           "syncOptions" (get $s "syncOptions" | default list)
@@ -136,7 +140,7 @@ spec:
                 {{- $out := list }}
                 {{- if ne .decommission "uninstall" }}
                 {{-   $s := dict }}
-                {{-   range $k := list "type" "namespace" "wave" "releaseName" "syncOptions" "ignoreDifferences" "onRemoval" }}
+                {{-   range $k := list "type" "namespace" "podSecurity" "wave" "releaseName" "syncOptions" "ignoreDifferences" "onRemoval" }}
                 {{-     if hasKey $ $k }}{{ $_ := set $s $k (get $ $k) }}{{ end }}
                 {{-   end }}
                 {{-   $ordered := hasKey $s "wave" }}
@@ -146,6 +150,9 @@ spec:
                 {{-   end }}
                 {{-   if not (has (get $s "onRemoval") (list "delete" "keep")) }}
                 {{-     fail (printf "%s: onRemoval must be delete or keep" $where) }}
+                {{-   end }}
+                {{-   if not (has (toString (get $s "podSecurity")) (list "" "privileged" "baseline" "restricted")) }}
+                {{-     fail (printf "%s: podSecurity must be privileged, baseline or restricted" $where) }}
                 {{-   end }}
                 {{-   if and $ordered (not (has (toString (get $s "wave")) (list "1" "2" "3" "4" "5" "6" "7" "8" "9"))) }}
                 {{-     fail (printf "%s: wave must be a whole number from 1 to 9" $where) }}
@@ -157,6 +164,7 @@ spec:
                           "dir" .path.path
                           "type" (get $s "type")
                           "namespace" (get $s "namespace" | default $app)
+                          "podSecurity" (toString (get $s "podSecurity"))
                           "wave" (toString (get $s "wave"))
                           "releaseName" (get $s "releaseName" | default $app)
                           "syncOptions" (get $s "syncOptions" | default list)
@@ -240,6 +248,14 @@ spec:
         automated:
           prune: true
           selfHeal: true
+        {{- with $a.podSecurity }}
+        # Labels the destination namespace. Argo CD never deletes a namespace it labels this way.
+        managedNamespaceMetadata:
+          labels:
+            pod-security.kubernetes.io/enforce: {{ . }}
+            pod-security.kubernetes.io/warn: {{ . }}
+            pod-security.kubernetes.io/audit: {{ . }}
+        {{- end }}
         retry:
           limit: -1
           refresh: true
@@ -250,6 +266,7 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - SkipDryRunOnMissingResource=true
+          - ServerSideApply=true
           {{- range $a.syncOptions }}
           - {{ . }}
           {{- end }}

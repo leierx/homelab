@@ -1,4 +1,4 @@
-"""Offline approximation of the fleet ApplicationSets (see gitops/docs/fleet-gitops.md).
+"""Offline approximation of the fleet ApplicationSets (see docs/fleet-gitops.md).
 
 Mirrors Argo CD closely enough to catch template, data and YAML-shape errors before pushing:
 git files generators (with exclude and values), matrix param merging (first child wins),

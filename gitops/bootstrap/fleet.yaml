@@ -7,7 +7,7 @@
 #
 # The controller gives every `cluster-<cluster>` Application the resources finalizer, so deleting a
 # cluster folder deletes that cluster's ApplicationSets and registration. Always set
-# `decommission:` in cluster.yaml first (see gitops/docs/fleet-gitops.md, "Decommissioning").
+# `decommission:` in cluster.yaml first (see docs/fleet-gitops.md, "Decommissioning").
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
