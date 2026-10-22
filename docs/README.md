@@ -1,12 +1,10 @@
 # Docs
 
-Longer-form explanations of how this homelab is put together. `AGENTS.md` is
-the binding operational contract; these pages add the *why* and the procedures
-that do not fit there. `README.md` at the repo root is the overview.
+Longer-form explanations of how this homelab is put together. `README.md` at
+the repo root is the overview.
 
-- [gitops.md](gitops.md) — GitOps Bridge v2: the tree, the cluster Secret,
-  the catalog, the stacks and their tags, sync waves, and how to change the
-  fleet.
+- [fleet-gitops.md](fleet-gitops.md) — the fleet: layout, resolution rules,
+  waves, removal, and how to change any addon, group or cluster.
 - [bootstrap.md](bootstrap.md) — bare metal to a synced cluster.
 - [immich.md](immich.md) — photos: what runs where, logins and the phone
   app, what is public, bulk upload, restore, upgrades.

@@ -122,12 +122,12 @@ still exists with a lost state Secret needs `tofu import`
 
 ## Argo CD (local `admin` disabled)
 
-Argo's `admin` account is turned off in the catalog's `argocd` values
+Argo's `admin` account is turned off in the `argocd` addon's values
 (`admin.enabled: "false"`). To use it, set it back to `"true"` under
-`addons.argocd.values.configs.cm` in
-`gitops/overrides/clusters/loft01/values.yaml`, merge, and let `stack release`
-tag it and the cluster's `addons_stack_version` move to the new tag (Renovate
-opens that PR). Argo reconciles itself from git even while you cannot log in.
+`argo-cd.configs.cm` in
+`gitops/clusters/loft01/addons/argocd/values.yaml`, push, and wait for the
+`loft01-argocd` Application to sync. Argo reconciles itself from git even while
+you cannot log in.
 Then read the password:
 
 ```sh
@@ -143,10 +143,10 @@ Log in as `admin` over WireGuard, fix whatever is wrong, and set
 Grafana still has its `admin` account, but `disable_login_form: true` hides the
 form and `auth.basic.enabled: false` turns off `admin:<password>` against the
 API. Set `disable_login_form` back to `false` under
-`addons.grafana.values.grafana."grafana.ini".auth` in
-`gitops/overrides/clusters/loft01/values.yaml` (and `auth.basic.enabled` to
-`true` only if you need to script the API), merge and promote the tag as above,
-then log in as `admin` over WireGuard (the public side still has the
+`grafana.grafana.ini.auth` in
+`gitops/clusters/loft01/addons/grafana/values.yaml` (and `auth.basic.enabled` to
+`true` only if you need to script the API), push and wait for the sync, then
+log in as `admin` over WireGuard (the public side still has the
 `edge-oidc` gate) with the password in OpenBao:
 
 ```sh
@@ -163,8 +163,9 @@ signed in keep their own Immich session and keep backing up while Keycloak
 is down; only new logins need it. If someone must get in anyway:
 
 1. Set `passwordLogin.enabled` to `true` in
-   `gitops/apps/immich/base/templates/_config.tpl`, commit and push. The config
-   Secret is named after its content, so a new server pod starts with it.
+   `gitops/addons/immich/templates/_config.tpl`, commit and push. The config
+   Secret has a fixed name, so restart the server after it updates:
+   `kubectl -n immich rollout restart deploy`.
 2. Give an admin a password, interactively (it prompts; leave the password
    empty to get a random one printed):
 

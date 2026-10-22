@@ -1,9 +1,9 @@
 # Operations
 
-Runbooks for keeping loft01 and its cluster healthy. `AGENTS.md` holds the
-binding rules; this page is the how. Secrets are in
+Runbooks for keeping loft01 and its cluster healthy. Secrets are in
 [openbao.md](openbao.md), access in [access.md](access.md), recovery in
-[break-glass.md](break-glass.md), and the first install in
+[break-glass.md](break-glass.md), the fleet's rules in
+[fleet-gitops.md](fleet-gitops.md), and the first install in
 [bootstrap.md](bootstrap.md).
 
 ## Updates
@@ -31,46 +31,38 @@ Then move `nixpkgs.url` in `flake.nix` to the new release and
 Renovate (addon `renovate`) runs self-hosted as a CronJob at 17 past every
 hour, as the GitHub App `leierx-renovate`. Each run mints an installation
 token from the app key in OpenBao `loft01/renovate` (`app_id`,
-`installation_id`, `private_key`). It updates GitHub Actions, the chart
-versions in `gitops/stacks/k8s-<minor>/stack.yaml`, versions marked with a
-`# renovate:` comment, and GitHub release URLs in kustomizations. Policy is
-`renovate.json`: one PR per addon or app, one per stack, one per OpenTofu
-root; patch, minor and digest automerge, majors wait for review, and so does
-everything for Keycloak and Immich (their upgrades can need a manual step).
-Go modules are not managed; bump `k8s.io/*` and controller-runtime together by
-hand.
+`installation_id`, `private_key`). It updates GitHub Actions, wrapper chart
+versions, versions marked with a `# renovate:` comment, GitHub release URLs in
+kustomizations, and the OpenTofu providers under `tofu/`. Policy is
+`renovate.json`: one PR per addon folder or OpenTofu root; patch, minor and
+digest automerge, majors wait for review, and so does everything for Keycloak
+and Immich (their upgrades can need a manual step). Go modules are not managed;
+bump `k8s.io/*` and controller-runtime together by hand.
 
-`stack release` (`.github/workflows/stack-release.yml`) tags
-`stack-<k8s minor>.<n>` on every merge that changes
-`gitops/{charts,stacks,addon-extras,manifests}/**`, and Renovate then opens
-one PR per cluster that raises `addons_stack_version` to that tag. That
-promotion PR is how a stack version reaches a cluster (`docs/gitops.md`,
-"What ships").
+`gitops-check` (`.github/workflows/gitops-check.yml`) is the gate for a
+`gitops/**` change: it runs render-check, renders every enabled Helm addon on
+every cluster with the value files its Application uses, checks the Kustomize
+addons, and checks namespace ownership. Renovate waits for it before
+automerging.
 
-`.github/workflows/addon-render.yml` checks the layout and renders every
-cluster's ApplicationSets and every source of every addon and app with Argo's
-value layering and the cluster's API versions; Renovate waits for that check
-before automerging.
-
-Each `<addon>/src` in the addon folder has its own `.github/workflows/<name>.yml`, triggered by
-changes to that directory. `capi-argo-bridge` vets and tests on pull
-requests, and on `main` publishes
-`ghcr.io/leierx/capi-argo-bridge:{main,0.1.<run number>}` with ko. The
-Deployment pins the `0.1.<run number>` tag; Renovate's `kubernetes` manager
-opens a PR for each new build, and it automerges once `addon-render` passes.
+`capi-argo-bridge` has its own workflow, triggered by changes under
+`gitops/addons/capi-argo-bridge/src`. It vets and tests on pull requests and on
+`main` publishes `ghcr.io/leierx/capi-argo-bridge:{main,0.1.<run number>}` with
+ko. The Deployment pins the `0.1.<run number>` tag; Renovate's `kubernetes`
+manager opens a PR for each new build.
 
 ### Deploying now
 
-The host auto-upgrades itself (see `AGENTS.md`), and a push is a cluster
-deploy. To run either by hand, see "Working live" in `AGENTS.md`.
+The host auto-upgrades itself, and a push to `main` is a cluster deploy. On the
+host, `docs/bootstrap.md` has the hand runs; after the fleet is up, use Argo CD
+or `kubectl` as in [fleet-gitops.md](fleet-gitops.md).
 
 ## Change the fleet
 
-How to add or remove an addon, change a value, add an app or a cluster, bump a
-version or move to a new Kubernetes minor: [gitops.md](gitops.md), "Working
-with it". What ships when is in `AGENTS.md` ("What ships, and when"); the
-promotion itself is a Renovate PR that raises the cluster's
-`addons_stack_version` to a new `stack-<minor>.<n>` tag.
+How to add or remove an addon, change a value, add a cluster app or a cluster,
+change a wave or a removal policy, or run another version on some clusters:
+[fleet-gitops.md](fleet-gitops.md). Preview any change with
+`gitops/tools/render-check/run.sh` before pushing.
 
 ## Backups and restore
 
@@ -209,7 +201,7 @@ days, which means renewal is failing.
 Grafana at https://metrics.skinke.net behind Keycloak, `loki` runs Loki for
 logs and `mimir` runs Mimir for metrics, each a single pod with a PVC on the
 `tank` pool. Retention is 90 days for metrics and 30 for logs. Mimir is our own
-chart (`gitops/charts/mimir/`), because mimir-distributed has no monolithic
+chart (`gitops/addons/mimir/`), because mimir-distributed has no monolithic
 mode. There is no tracing backend; see [tech-choices.md](tech-choices.md).
 
 `telemetry` (one namespace) runs the collectors. `alloy-metrics` is a
@@ -220,18 +212,18 @@ API server's audit log. The prometheus-community `kube-state-metrics` and
 `node-exporter` charts run beside them. The namespace is Pod Security
 privileged because node-exporter and the log collector need host access. All
 four are enabled on every cluster
-([gitops.md](gitops.md)); the cluster's overrides name its Mimir and Loki
-destinations. Nothing sends OTLP today, so no receiver is deployed.
+([fleet-gitops.md](fleet-gitops.md)); the cluster's layers name its Mimir and
+Loki destinations. Nothing sends OTLP today, so no receiver is deployed.
 
 Alloy scrapes every ServiceMonitor and PodMonitor (their CRDs come from
 `prometheus-operator-crds`; we do not run the Prometheus Operator). Grafana
 loads ConfigMaps labelled `grafana_dashboard: "1"` from any namespace, with
 the folder from the `grafana_folder` annotation, plus the grafana.com
-dashboards pinned in the `grafana` addon's catalog values.
+dashboards pinned in the `grafana` addon's values.
 
 ### Adding a scrape or a log pipeline
 
-- Cluster metrics are files in `gitops/addon-extras/alloy-metrics/config/`: one per
+- Cluster metrics are files in `gitops/addons/alloy-metrics/config/`: one per
 target (`kubelet.alloy`, `cadvisor.alloy`, `api-server.alloy`,
 `kube-dns.alloy`, `kube-state-metrics.alloy`, `node-exporter.alloy`),
 `operator.alloy` for ServiceMonitors/PodMonitors, `events.alloy` for Kubernetes
@@ -241,19 +233,19 @@ events, and `remote-write.alloy` for the destinations. The addon's
 forward it to `prometheus.remote_write.mimir.receiver`. Keep the `job` name
 stable: dashboards and alerts filter on it, and the community dashboards expose
 it as a variable.
-- Pod logs and the audit log are in `gitops/addon-extras/alloy-logs/config/`
+- Pod logs and the audit log are in `gitops/addons/alloy-logs/config/`
 (`pods.alloy`, `audit.alloy`); the audit file is included only when the
 cluster sets `auditLogPath`.
-- Check: render the addon with the cluster's value layering (as `addon render`
-does), then `alloy fmt` the rendered `config.alloy` (`nix shell
+- Check: render the addon with the cluster's value layering (as
+`gitops-check` does), then `alloy fmt` the rendered `config.alloy` (`nix shell
 nixpkgs#grafana-alloy`). `alloy run` outside the cluster cannot build the
 `discovery.kubernetes` components; the pod's `/-/ready` and the UI's component
 list are the live check.
 
 ### Alerts
 
-The rules are Grafana-managed, in the `grafana` addon's catalog values
-(`gitops/charts/gitops-addons/values.yaml`) under `grafana.alerting` (folder
+The rules are Grafana-managed, in the `grafana` addon's values
+(`gitops/addons/grafana/values.yaml`) under `grafana.alerting` (folder
 `homelab`). The chart rolls the Grafana pod when they change, so a rule edit is
 a push.
 
@@ -270,4 +262,4 @@ a push.
 
 Alerts have no notification channel: they are visible only in Grafana's own
 alert list (https://metrics.skinke.net/alerting/list), and a firing alert
-changes nothing outside it. Choosing a channel is in `TODO.md`.
+changes nothing outside it.

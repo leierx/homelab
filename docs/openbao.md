@@ -25,8 +25,8 @@ OpenBao gives us:
 
 ## How it is deployed
 
-- `gitops/addon-extras/openbao/` next to the upstream chart in the stack — HA
-  mode with raft,
+- `gitops/addons/openbao/` (the upstream chart) with `clusters/loft01/addons/openbao/values.yaml` —
+  HA mode with raft,
   `replicas: 1`, `updateStrategy: OnDelete`. Config changes need
   `kubectl -n openbao delete pod openbao-0`.
 - **Storage:** raft on a `zfs` PVC, 2 GiB.
@@ -118,7 +118,7 @@ OpenBao kv/loft01/<app> ──(ClusterSecretStore/openbao)──▶ ExternalSecr
 
 Because the fleet shares one `ClusterSecretStore`, adding an app is an
 `ExternalSecret` referencing a new path, plus its namespace in the store's
-`conditions` (`gitops/addon-extras/external-secrets/`) if it is not there yet. A
+`conditions` (`gitops/addons/external-secrets/`) if it is not there yet. A
 namespace that is not listed is refused (`denied by spec.condition`).
 
 ## Generated secrets
@@ -163,7 +163,7 @@ spec:
   creates. To generate into a path created by hand, mark it first:
   `just bao kv metadata patch -custom-metadata=managed-by=external-secrets kv/loft01/<app>`.
 - A new namespace that generates secrets must be added to the `conditions` of
-  `ClusterSecretStore/openbao-push` (`gitops/addon-extras/external-secrets/`).
+  `ClusterSecretStore/openbao-push` (`gitops/addons/external-secrets/`).
 
 Only credentials that come from outside (the Renovate GitHub App, later borg)
 are entered by hand, once.
@@ -222,7 +222,7 @@ Secret.
   other PVC, but OpenBao takes no raft snapshots of its own. Snapshots and the
   off-site backup are in [operations.md](operations.md); a
   `bao operator raft snapshot save` should be added to that run
-  (`TODO.md`).
+  as a future change.
 - **Pod restarted or rescheduled** → it unseals itself from the mounted
   `openbao-seal-key` Secret; nothing to do.
 

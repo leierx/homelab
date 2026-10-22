@@ -5,7 +5,7 @@ step: after Cilium and Argo CD, `main` ships everything, and a push is a
 deploy.
 
 Section 1 (building the ISO, nixos-anywhere) runs from a workstation; the
-cluster steps, sections 2 and 3, run **on loft01**. A workstation's kubectl
+cluster steps, sections 2–8, run **on loft01**. A workstation's kubectl
 logs in through Keycloak, which does not exist until the fleet is up, and
 `just kubeconfig` writes an OIDC kubeconfig for exactly that later use. On
 the host, `KUBECONFIG` points at the admin kubeconfig (group `wheel`), and
@@ -85,267 +85,171 @@ busy`; destroy it after the reboot, before section 2. The old audit log goes
 so that Alloy does not ship it again as new events. k3s starts on boot with
 an empty datastore and a new CA; carry on with section 2.
 
-## 2. Cilium, then Argo CD, then git
+## 2. The kube-system namespace
 
-k3s runs with `--flannel-backend=none` and `--disable-kube-proxy`
-(`nixos/k3s.nix`), so the node stays `NotReady` until Cilium is in. Cilium
-and Argo CD are applied by hand once, because Argo cannot install the CNI or
-itself; everything else comes from git.
-
-Check out the stack tag the cluster's Secret names, so the charts, the catalog
-and the extras are exactly the set CI rendered:
+k3s enforces Pod Security `baseline` in unlabelled namespaces. Cilium and the
+cluster-scoped admission/RBAC addons live in `kube-system`, and the Cilium agent
+is privileged:
 
 ```sh
-ssh loft01
-git clone https://github.com/leierx/homelab.git   # skip if ~/homelab is already a clone
-cd homelab
-git fetch --tags
-member=gitops/bootstrap/members/loft01.yaml
-cluster=loft01
-env=prod
-kver=$(yq -r '.metadata.labels.kubernetes_version' "$member")
-git checkout "$(yq -r '.metadata.annotations.addons_stack_version' "$member")"
+kubectl label namespace kube-system \
+  pod-security.kubernetes.io/enforce=privileged \
+  pod-security.kubernetes.io/warn=privileged \
+  pod-security.kubernetes.io/audit=privileged --overwrite
 ```
 
-`addon` renders one upstream addon the way its Application does: the stack's
-chart at its `targetRevision`, the catalog's `values`, and the environment's
-and the cluster's `values` on top — then, if the addon has one, our
-`addon-extras` folder for it with the cluster's `extras.values` and
-`fleet.cluster`. Its output goes to `kubectl apply --server-side
---field-manager=argocd-controller`, the field manager and release name Argo
-uses, so the generated Applications adopt these objects instead of fighting
-them.
+The `cilium` addon declares `podSecurity: privileged`, so Argo keeps the
+namespace labelled from `managedNamespaceMetadata` after this first apply.
+
+## 3. Cilium
+
+k3s runs with `--flannel-backend=none --disable-kube-proxy`, so the node stays
+`NotReady` until Cilium is in.
 
 ```sh
-addon() {
-  key=$1 ns=$2
-  shift 2
-  stack=gitops/stacks/k8s-$kver/stack.yaml
-  catalog=gitops/charts/gitops-addons/values.yaml
-  chart=$(yq -r ".addons[\"$key\"].chart" "$stack")
-  repo=$(yq -r ".addons[\"$key\"].repoUrl" "$stack")
-  version=$(yq -r ".addons[\"$key\"].targetRevision" "$stack")
-  release=$(yq -r ".addons[\"$key\"].releaseName" "$catalog")
-  case "$repo" in
-    *://*) src=("$chart" --repo "$repo") ;;
-    *) src=("oci://$repo/$chart") ;;
-  esac
-  helm template "$release" "${src[@]}" --version "$version" -n "$ns" --include-crds \
-    -f <(yq ".addons[\"$key\"].values // {}" "$catalog") \
-    -f <(yq ".addons[\"$key\"].values // {}" "gitops/overrides/environments/$env/values.yaml") \
-    -f <(yq ".addons[\"$key\"].values // {}" "gitops/overrides/clusters/$cluster/values.yaml") \
-    "$@"
-  if [ "$(yq -r ".addons[\"$key\"] | has(\"extras\")" "$catalog")" = "true" ]; then
-    helm template "$release" "gitops/addon-extras/${key//_/-}" -n "$ns" --include-crds \
-      -f <(yq ".addons[\"$key\"].extras.values // {}" "gitops/overrides/clusters/$cluster/values.yaml") \
-      --set-string "fleet.cluster=$cluster"
-  fi
-}
-```
-
-Only an upstream addon can be bootstrapped this way, and only `cilium` and
-`argocd` need to be: a chart of our own and a Kustomize addon arrive with the
-first sync.
-
-### Cilium
-
-```sh
-kubectl label namespace kube-system pod-security.kubernetes.io/enforce=privileged \
-  pod-security.kubernetes.io/warn=privileged pod-security.kubernetes.io/audit=privileged
-addon cilium kube-system --set prometheus.serviceMonitor.trustCRDsExist=true \
-  | kubectl apply -n kube-system --server-side --field-manager=argocd-controller -f -
+helm dependency build gitops/addons/cilium
+helm template cilium gitops/addons/cilium -n kube-system --include-crds \
+  -f gitops/clusters/loft01/addons/cilium/values.yaml \
+  --set fleet.cluster=loft01 --set-json 'fleet.groups=["prod"]' \
+  | kubectl apply --server-side --field-manager=argocd-controller -f -
 kubectl wait --for=condition=Ready node --all --timeout=10m
 ```
 
-The label comes first because k3s enforces Pod Security `baseline` in every
-unlabelled namespace (`nixos/k3s.nix`) and the Cilium agent is privileged;
-later, Argo sets the same labels from the addon's `podSecurity` in the
-catalog. The `trustCRDsExist` override is only for this first apply: without
-it `helm template` fails, because the chart will not render its
-ServiceMonitors before the Prometheus Operator CRDs exist, and those arrive
-later with the `prometheus_operator_crds` addon. The four `ServiceMonitor`s
-and the `CiliumClusterwideNetworkPolicy` (its CRD comes from Cilium's own
-operator) therefore fail this apply and Argo creates them once the CRDs
-exist. `kubectl apply` keeps going after an unknown kind; the agent and
-operator apply normally, and the command exits non-zero on those five
-resources, which is expected. The addon's extras come with the same render:
-the cluster-wide baseline policy that allows DNS.
+Do **not** add `-n kube-system` to `kubectl apply`: the chart creates the
+`cilium-secrets` namespace and puts Roles there, and `kubectl apply -n` rejects
+an object whose namespace differs. The Helm render already namespaces the
+objects in `kube-system`.
 
-### Argo CD
+The first two passes can report missing Cilium CRDs (the `baseline`
+CiliumClusterwideNetworkPolicy) and the four Prometheus Operator ServiceMonitors.
+That is expected: the Cilium CRDs are created by the operator it is installing,
+and the monitoring CRDs arrive with the `prometheus-operator-crds` addon. Run
+the render and apply once more after the node is Ready, or let Argo apply them.
+
+## 4. Argo CD
 
 ```sh
-kubectl create namespace argocd
-addon argocd argocd \
-  | kubectl apply -n argocd --server-side --field-manager=argocd-controller -f -
+kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+helm dependency build gitops/addons/argocd
+helm template argocd gitops/addons/argocd -n argocd --include-crds \
+  -f gitops/clusters/loft01/addons/argocd/values.yaml \
+  --set fleet.cluster=loft01 --set-json 'fleet.groups=["prod"]' \
+  | kubectl apply --server-side --field-manager=argocd-controller -f -
 kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
 ```
 
-Argo CD's URL and OIDC config are loft01's own values, hence the cluster file;
-the catalog's `values` for `argocd` hold everything every cluster gets. Some
-objects in that render need CRDs that arrive with the fleet (a `Certificate`, a
-`ListenerSet`, an `HTTPRoute` and an `ExternalSecret`). The apply reports them
-and Argo applies them later, once the addons that own the CRDs exist. The
-extras' templates carry no namespace, hence `-n` on both applies; without it
-they land in `default`. Argo CD's `CiliumNetworkPolicy` is applied here
-already, and it allows cluster DNS itself: the cluster-wide baseline that
-allows DNS for everyone only arrives once Argo CD can sync Cilium.
+The render contains a `Certificate`, a `ListenerSet`, an `HTTPRoute` and an
+`ExternalSecret`. Their CRDs arrive with later addons, so this apply reports them
+as not found and continues; Argo creates them after the fleet is up.
 
-The catalog's Argo CD values also install the ApplicationSet health check, and
-the first wave is only ordered if it is there before `root.yaml` is applied:
+Progressive syncs must be on before the first wave:
 
 ```sh
-kubectl -n argocd get cm argocd-cm -o json | jq -r '.data | keys[]' | grep io_ApplicationSet
+kubectl -n argocd get cm argocd-cmd-params-cm \
+  -o jsonpath='{.data.applicationsetcontroller\.enable\.progressive\.syncs}{"\n"}'
+# true
 ```
 
-That must print `resource.customizations.health.argoproj.io_ApplicationSet`. If
-it prints nothing, the catalog's values did not reach this render: fix that
-first, or every wave starts at once.
-
-### Hand over to git
+## 5. Hand over to git
 
 ```sh
-git checkout main
-kubectl apply -f gitops/root.yaml
+kubectl apply -f gitops/bootstrap/root.yaml
+kubectl -n argocd get applicationsets
 kubectl -n argocd get applications
 ```
 
-`root.yaml` creates the `root` Application for `gitops/bootstrap`: the
-`members` Application (the cluster Secrets in `gitops/bootstrap/members/`), the
-global `gitops-addons` ApplicationSet and the `apps` ApplicationSet.
-`gitops-addons` renders the catalog chart `gitops/charts/gitops-addons` for
-every cluster Secret, at the commit its `addons_stack_version` names, as
-`gitops-addons-<cluster>`; that Application emits one ApplicationSet per addon
-the Secret's `enable_` labels switch on, each with the wave the environment's
-overrides give it. `apps` generates one Application per `gitops/apps/<app>/<environment>/`
-— dodde's VM and Immich today. The release names, namespaces and values in the
-templates above match what those Applications render, so Argo adopts Cilium
-and Argo CD and manages everything from git.
+`root` creates the `fleet` and `addons` AppProjects and the fleet
+ApplicationSet; the fleet ApplicationSet creates `cluster-loft01`, which creates
+`loft01-addons` and `loft01-addons-ordered`. The waves are in each addon's
+`addon.yaml`:
 
-## 3. After the fleet is up
+1. cert-manager, envoy-gateway
+2. openbao
+3. external-secrets
+4. argocd, grafana, keycloak, renovate, argo-workflows, immich
 
-There is no Argo CD login yet. `admin.enabled` is `"false"` (the catalog's
-`argocd` values) and the OIDC client lives in Keycloak, which the fleet is
-still bringing up. Bootstrap is driven with `kubectl`; that is also how you
-watch it converge:
+Everything else is unordered and converges whenever its dependencies exist. The
+first certificate can take a few minutes: HTTP-01 goes through the `edge`
+Gateway. `argo-workflows-server` crash-loops until the Keycloak realm exists and
+the OIDC certificate validates; that is expected on a fresh cluster.
+
+If an Application's first operation wedges, terminate the operation rather than
+deleting the Application:
 
 ```sh
-watch kubectl -n argocd get applicationsets    # one per enabled addon, each with its wave
-watch kubectl -n argocd get applications
+nix shell nixpkgs#argocd -c argocd app terminate-op loft01-example
 ```
 
-Each wave starts only once every Application of the waves before it is
-Healthy ([gitops.md](gitops.md), Sync waves); an ApplicationSet's wave is its
-`argocd.argoproj.io/sync-wave` annotation. To see which wave is running and
-what holds it:
+The ApplicationSet or the next auto-sync starts a fresh operation with the
+current sync options. Do not patch `.status` by hand.
+
+## 6. Renovate's GitHub App credentials
+
+OpenBao is up and unsealed, and External Secrets is Healthy. The only secret
+entered by hand is the Renovate GitHub App. The file is plain JSON; keep it
+outside git and store only an age-encrypted copy made with `sops` (the age key
+is in the prerequisites). Never echo it.
+
+Each value must be written without a trailing newline (`jq -j`), and the first
+`kv patch` on a missing path falls back to `kv put`. `kv put` replaces the whole
+path, so use it only for the first property:
 
 ```sh
-kubectl -n argocd get applicationsets -o json | jq -r '.items[] |
-  "\(.metadata.annotations["argocd.argoproj.io/sync-wave"] // "-") \(.metadata.creationTimestamp) \(.metadata.name) \([.status.resources[]?.health.status] | join(","))"' | sort -n
-```
-
-The waves do that waiting, so External Secrets no longer needs a nudge: OpenBao
-is in wave 2 and `external_secrets` in wave 3, so the store and the
-ExternalSecrets that read generated values are created after the store can
-answer, and they sync on their first try — the two-minute `force-sync` loop this
-page used to recommend is gone. What can still hold a wave is the External
-Secrets webhook: an `ExternalSecret` applied in the same minute the webhook
-starts has no endpoint yet, its apply fails, and the Application waits on the
-operation rather than retrying it (the last paragraph of this section is the
-way out). The one that bites is `renovate` in wave 4, right after
-`external_secrets`.
-
-Measured on the rebuild of 2026-10-21: every wave's ApplicationSets existed
-nine minutes after `gitops-addons-loft01` started its sync, one to three minutes
-per wave once the wave before it was Healthy. The waves that take real time are
-wave 1 (cert-manager's first `Certificate` — the `letsencrypt` HTTP-01 challenge
-through the `edge` Gateway — and the OpenBao raft pod) and wave 4 (Keycloak's
-realm and the ExternalSecrets behind it). Renovate's own ExternalSecret waits
-for its credentials, which are entered by hand
-([Secrets entered by hand](#secrets-entered-by-hand)).
-
-### When an Application never finishes its first sync
-
-The controller's `controller.sync.timeout.seconds` (4800, about twice the
-longest first sync in the rebuild) ends an operation that has not finished: its
-phase becomes `Failed` with "Operation terminated, triggered by controller sync
-timeout", and `retry.limit: -1` starts a fresh operation. So a sync that hit a
-webhook that was not ready yet (cert-manager's or External Secrets', in
-practice) recovers by itself, at the latest one timeout later.
-
-If it is still stuck after that, deleting the Application is the fallback, not
-the fix. The generated Applications carry no finalizer, so nothing it created
-is pruned, and its ApplicationSet recreates it within its reconcile interval
-with a fresh operation that applies everything again. Its
-`status.operationState.syncResult` names the tasks that failed, usually with
-`failed calling webhook`; `renovate`'s ExternalSecret was that one in the
-rebuild, and deleting the Application was the fix.
-
-```sh
-kubectl -n argocd get app <name> -o json | jq -r '.status.operationState.syncResult.resources[] | select(.status=="SyncFailed") | "\(.kind)/\(.name): \(.message)"'
-kubectl -n argocd delete application <name>
-```
-
-Once Keycloak and the `wg` Gateway are up, the UI is at
-https://argocd.skinke.net over WireGuard, behind Keycloak. On a workstation
-that means `just kubeconfig` for kubectl and the hosts entries in
-[access.md](access.md) for the sites. `leier` starts from a temporary
-password in OpenBao, which only the admin kubeconfig on loft01 can read at
-this point: the commands are under "First login after a rebuild" in
-[access.md](access.md). That first login registers a security key or passkey
-and sets your own password.
-
-### The Keycloak realm and its state
-
-The realm is not a Job any more: the CronWorkflow `keycloak-realm` in the
-`keycloak` namespace runs `tofu/keycloak/` every 10 minutes
-(`tofu/keycloak` today). On a rebuilt cluster it creates the realm
-on its first run after Keycloak is Ready (or trigger it as in
-[access.md](access.md)). A fresh master realm also gets a `temp-admin` from
-the operator; delete it ([break-glass.md](break-glass.md)).
-
-OpenTofu's state is the Secret `tfstate-default-keycloak` and the Lease
-`lock-tfstate-default-keycloak`, both in `keycloak` and both inside the k3s
-state that the procedures above wipe. A rebuilt cluster has neither, and the
-first run creates the realm.
-
-The two mismatches between state and database behave differently (the first
-one was tested on 2026-10-20 against a temporary Keycloak with a copy of the
-state):
-
-- **Empty database, state still there** (the database was wiped or restored
-  empty, the state was not): every refresh finds its resource gone, so the
-  plan is "49 to add, 0 to change, 0 to destroy" and the run recreates the
-  realm from the config. There is nothing to import, `prevent_destroy` does
-  not block because there is no destroy, and `leier` starts again from the
-  first password in OpenBao.
-- **Realm still there, state Secret lost** (or the state was rolled back):
-  the plan wants to create the existing realm and fails. **`tofu import` is
-  the way back**, one resource at a time (`keycloak_realm` first, then
-  groups, clients, flows, users). Never import into an empty database: there
-  is nothing to import from.
-
-To use the Argo CD UI while Keycloak is still down, temporarily set
-`admin.enabled: "true"` in `gitops/overrides/clusters/loft01/values.yaml`
-(`addons.argocd.values.configs.cm`) and push: `stack release` tags it, and the
-cluster picks it up when its `addons_stack_version` moves to that tag.
-[break-glass.md](break-glass.md) has the password steps. Revert it afterwards.
-
-### Secrets entered by hand
-
-Everything in OpenBao is generated by the addons except the Renovate GitHub
-App (`loft01/renovate`, see [openbao.md](openbao.md)). Keep an
-age-encrypted copy outside git (`sops` with the key from the
-prerequisites) and pipe it back in once OpenBao is up. From a workstation,
-with the admin kubeconfig borrowed as in [break-glass.md](break-glass.md):
-
-```sh
-f=~/homelab-secrets/renovate.json
+f=~/homelab-secrets/renovate.json.sops.json   # plain JSON, sops-encrypted at rest
 for p in app_id installation_id private_key; do
-  sops -d --extract "[\"$p\"]" "$f" | just bao kv patch kv/loft01/renovate "$p=-" \
-    || sops -d --extract "[\"$p\"]" "$f" | just bao kv put kv/loft01/renovate "$p=-"
+  sops -d "$f" | jq -j --arg k "$p" '.[$k]' | just bao kv patch kv/loft01/renovate "$p=-" \
+    || sops -d "$f" | jq -j --arg k "$p" '.[$k]' | just bao kv put kv/loft01/renovate "$p=-"
 done
-kubectl -n renovate annotate externalsecret renovate-github-app force-sync="$(date +%s)" --overwrite
+
+kubectl -n renovate annotate externalsecret renovate-github-app \
+  force-sync="$(date +%s)" --overwrite
 ```
 
-`kv patch` fails on a path that doesn't exist yet, so the first property
-falls back to `kv put`.
+Verify by hash, not by printing the values:
+
+```sh
+for p in app_id installation_id private_key; do
+  a=$(sops -d "$f" | jq -j --arg k "$p" '.[$k]' | sha256sum | cut -c1-16)
+  b=$(just bao kv get -format=json kv/loft01/renovate \
+    | jq -j --arg k "$p" '.data.data[$k]' | sha256sum | cut -c1-16)
+  [ "$a" = "$b" ] && echo "$p ok" || echo "$p MISMATCH"
+done
+```
+
+The `renovate-github-app` ExternalSecret becomes Ready, and the next CronJob run
+authenticates with the App and opens PRs. If it does not, leave the file in place
+and investigate before deleting it.
+
+## 7. Certificates
+
+Every Certificate takes its issuer from `certificateIssuer` in its own addon.
+The checked-in default is `letsencrypt-prod`, so a normal rebuild gets trusted
+certificates without a switch. For a test rebuild that should not consume
+production rate limits, set `certificateIssuer: letsencrypt-staging` in the
+five addon values in one throwaway commit, then change it back. Either way,
+force reissue after switching:
+
+```sh
+for s in argocd/argocd-tls argo/argo-workflows-tls monitoring/grafana-tls \
+  immich/immich-tls keycloak/keycloak-tls; do
+  kubectl -n "${s%%/*}" delete secret "${s##*/}" --ignore-not-found
+done
+```
+
+Then check the public side without `-k`: `photos.skinke.net` and the Keycloak
+realm must serve a trusted certificate. OpenBao's own CA is separate and stays
+self-signed.
+
+## 8. After the fleet is up
+
+- `docs/access.md` has the hosts entries, the WireGuard addresses, the first
+  login and the keycloak-realm procedure. The realm is applied every 10 minutes
+  by the `keycloak-realm` CronWorkflow from `tofu/keycloak`.
+- `capi-argo-bridge` is an addon (`gitops/addons/capi-argo-bridge`); its Go
+  source is in that folder's `src/`, and
+  `.github/workflows/capi-argo-bridge.yml` builds
+  `ghcr.io/leierx/capi-argo-bridge`. It registers Cluster API workload clusters
+  with Argo CD, so such a cluster needs `gitops/clusters/<name>/cluster.yaml`
+  and no `cluster-secret.yaml`.
+- `gitops-check` is the gate for `gitops/**`; it runs render-check and checks
+  1–5 and 10 from [fleet-gitops.md](fleet-gitops.md).

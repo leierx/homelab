@@ -3,7 +3,8 @@
 The pi coding agent runs on loft01, so a long task does not depend on the
 workstation staying awake. It runs as `leier` on the host, unsandboxed: it
 can do everything `leier` can, including `doas` and the admin kubeconfig.
-That is deliberate; see "Deliberate, don't fix" in `AGENTS.md`.
+That is deliberate: the host is a lab, and the session is a convenience, not a
+sandbox.
 
 ## Connect
 
@@ -46,8 +47,7 @@ on loft01 handles pushes.
 ## Change the settings
 
 Edit the `settings` attrset in `nixos/pi/default.nix` (or the files under
-`nixos/pi/`), commit and push, then deploy the host with the pinned rev as
-`AGENTS.md` describes:
+`nixos/pi/`), commit and push, then deploy the host with the pinned rev:
 
 ```sh
 ssh loft01 "doas nixos-rebuild switch --flake 'git+https://github.com/leierx/homelab.git?ref=main&rev=<full sha>#loft01'"

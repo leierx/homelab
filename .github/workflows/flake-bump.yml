@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: "0 10 */2 * *"
   workflow_dispatch:
-  # Nix-only: a check that doesn't run can't be required, and gitops PRs have addon-render (TODO.md, Protect main)
+  # Nix-only: a check that doesn't run can't be required, and gitops PRs have gitops-check
   pull_request:
     paths:
       - flake.nix

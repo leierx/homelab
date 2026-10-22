@@ -53,7 +53,7 @@ The edge login in front of Grafana (Envoy Gateway SecurityPolicy `edge-oidc`,
 client `edge`) keeps Grafana's pre-auth bugs off the internet. With the
 Keycloak session from that login, Grafana's own login is silent. It is cheap
 to drop if it ever gets in the way: delete the SecurityPolicy and its
-ExternalSecret from `gitops/addon-extras/grafana/templates/grafana-route.yaml`. A new public
+ExternalSecret from `gitops/addons/grafana/templates/grafana-route.yaml`. A new public
 site that wants the same gate gets a SecurityPolicy, an `ExternalSecret` for
 `loft01/edge`, and its `https://<host>/oauth2/callback` in the `edge`
 client's `redirectURIs`. The policy names Keycloak's endpoints instead of
@@ -99,12 +99,13 @@ Grafana additionally refuses a token without a tier (`role_attribute_strict`).
 Argo CD has no built-in role between admin and read-only, so operators are
 admins there for now; a custom `role:operator` (sync and actions, no settings)
 can be added to `policy.csv` once someone actually needs the distinction.
-Argo CD's mapping is `policy.csv` in the catalog's `argocd` values, Grafana's
-is `role_attribute_path` in the catalog's `grafana` values
-(`gitops/charts/gitops-addons/values.yaml`),
+Argo CD's mapping is `policy.csv` in the `argocd` addon's values
+(`gitops/addons/argocd/values.yaml`), Grafana's
+is `role_attribute_path` in the `grafana` addon's values
+(`gitops/addons/grafana/values.yaml`),
 Immich's is the `immich` client roles on each group in
 `tofu/keycloak/groups.tf` (the `immich_role` claim),
-Kubernetes' is `gitops/charts/rbac`. Neither `view` nor the operator role can
+Kubernetes' is `gitops/addons/rbac`. Neither `view` nor the operator role can
 read Secrets, and the operator role can't create or patch workloads either:
 that would let it run a pod as any ServiceAccount. Operators deploy through
 Argo CD.
@@ -115,7 +116,7 @@ https://auth.skinke.net/admin/homelab/console/, over WireGuard.
 Argo Workflows has its own SSO RBAC: a ServiceAccount per group, annotated
 with `workflows.argoproj.io/rbac-rule`, and bound to the chart's
 `argo-workflows-admin`/`argo-workflows-edit`/`argo-workflows-view` cluster
-roles (`gitops/addon-extras/argo-workflows/templates/sso.yaml`). Only
+roles (`gitops/addons/argo-workflows/templates/sso.yaml`). Only
 `homelab-admins` has one today, with full admin in every namespace and the
 cluster-scoped `ClusterWorkflowTemplates` the UI lists; to let a future group
 in, add that ServiceAccount, its token Secret and a binding, and keep the
@@ -331,7 +332,7 @@ To change someone's tier, edit their `group_ids` in `users.tf` and push.
    Immich).
 2. Add an `ExternalSecret` for that property in the service's addon, and the
    service's namespace to the `openbao` store's `conditions` in
-   `gitops/addon-extras/external-secrets/`. Both Keycloak and the service read the
+   `gitops/addons/external-secrets/`. Both Keycloak and the service read the
    same value. For a public client, nothing goes to OpenBao.
 3. Point the service at the issuer `https://auth.skinke.net/realms/homelab`
    (no trailing slash) and map the three groups to its roles.

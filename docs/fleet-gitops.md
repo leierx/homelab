@@ -11,10 +11,10 @@ binding: **MUST** and **MUST NOT** are requirements, **SHOULD** is a strong defa
 reason to break. Appendix A contains the exact contents of the Argo CD wiring files; they are part
 of the specification, not examples.
 
-**Paths.** Everything this document describes lives in the repository's `gitops/` folder. Every
-path below is relative to `gitops/` unless it starts with `gitops/`, and every command is run from
-`gitops/`. Inside Argo CD objects, paths are relative to the repository root, so they start with
-`gitops/`.
+**Paths.** Everything this document describes lives in the repository's `gitops/` folder; this
+document itself is `docs/fleet-gitops.md` at the repository root. Every path below is relative to
+`gitops/` unless it starts with `gitops/` or `docs/`, and every command is run from `gitops/`.
+Inside Argo CD objects, paths are relative to the repository root, so they start with `gitops/`.
 
 ## Contents
 
@@ -128,8 +128,6 @@ clusters/
     apps/<app>/
       app.yaml                      Required for each cluster app (section 5.2).
       Chart.yaml | kustomization.yaml | *.yaml
-docs/
-  fleet-gitops.md                   This document.
 tools/
   render-check/                     Offline preview of what Argo CD will generate (section 12).
 ```
@@ -167,6 +165,7 @@ the file when the addon folder is plain YAML.
 | `clusters` | no | `[]` | The addon also runs on these clusters. |
 | `name` | no | folder name | Identity: Application `<cluster>-<name>`, default release name, layer folder name. |
 | `namespace` | no | `name` | Destination namespace (created if missing). |
+| `podSecurity` | no | none | `privileged`, `baseline` or `restricted`: Pod Security labels on the destination namespace (section 5.7). |
 | `wave` | no | none | `1`–`9`. Setting it makes the addon *ordered* (section 8). |
 | `releaseName` | no | `name` | Helm release name. Only used when `type: helm`. |
 | `syncOptions` | no | `[]` | Extra Argo CD sync options, added after the defaults. |
@@ -175,7 +174,7 @@ the file when the addon folder is plain YAML.
 
 Overridable settings (in `groupOverrides` and in `cluster.yaml`): `namespace`, `wave`,
 `releaseName`, `syncOptions`, `ignoreDifferences`, `onRemoval`. Any other key in an override is
-ignored. An override replaces the value; lists are not merged.
+ignored (`podSecurity` belongs to the addon). An override replaces the value; lists are not merged.
 
 Example:
 
@@ -199,6 +198,7 @@ First line **MUST** be `# +argocd:skip-file-rendering`.
 | `type` | yes | | `helm`, `kustomize` or `manifests`. |
 | `onRemoval` | yes | | `delete` or `keep`. |
 | `namespace` | no | app folder name | Destination namespace. |
+| `podSecurity` | no | none | As for addons (section 5.7). |
 | `wave` | no | none | `1`–`9`; makes the app ordered. |
 | `releaseName` | no | app folder name | Helm release name (`type: helm`). |
 | `syncOptions` | no | `[]` | Extra sync options. |
@@ -253,6 +253,9 @@ Optional. Any manifest that results in an Argo CD cluster Secret in namespace `a
 `argocd.argoproj.io/secret-type: cluster` whose `name` equals the cluster folder name. Leave it out
 if clusters are registered another way (Terraform, `argocd cluster add`).
 
+A cluster registration may also come from `capi-argo-bridge`, which writes the Secret from a CAPI
+`Cluster` and needs no `cluster-secret.yaml`.
+
 For the hub itself, register it under its folder name with
 `server: https://kubernetes.default.svc`. The bootstrap files address the hub by that server URL,
 so renaming the hub's cluster entry does not break them.
@@ -280,6 +283,31 @@ so renaming the hub's cluster entry does not break them.
 - **kustomize**: a `kustomization.yaml` (remote resources pinned with `?ref=`).
 - **manifests**: plain YAML files.
 
+### 5.7 Namespaces
+
+Argo CD creates each Application's destination namespace (`CreateNamespace=true` is always on).
+Namespaces are **not** declared as `Namespace` manifests in addons or layers:
+
+- An addon that needs Pod Security labels sets `podSecurity` in `addon.yaml`. The Application then
+  carries `syncPolicy.managedNamespaceMetadata` with the `pod-security.kubernetes.io/enforce`,
+  `warn` and `audit` labels set to that level.
+- Several addons may share a namespace (`telemetry`, `monitoring`, `kube-system`). They **MUST** all
+  set the same `podSecurity`, or none of them.
+- Argo CD never deletes a namespace it created or labelled this way, whatever `onRemoval` says. Empty
+  namespaces left behind after a removal are deleted by hand.
+- Do not write a `Namespace` manifest for a destination namespace: it overrides
+  `managedNamespaceMetadata` and makes the namespace owned by, and deletable with, that one
+  Application. Two exceptions:
+  - a namespace that is **not** any addon's destination (for example a second namespace a chart
+    needs);
+  - a `Namespace` object that upstream ships inside the manifests a `type: kustomize` addon
+    installs. Keep it, patch in the Pod Security labels and
+    `argocd.argoproj.io/sync-options: Delete=false,Prune=false` in the kustomization, and do not set
+    `podSecurity` for that addon.
+
+  Any `Namespace` object that remains **MUST** carry
+  `argocd.argoproj.io/sync-options: Delete=false,Prune=false`.
+
 ---
 
 ## 6. Resolution rules
@@ -298,6 +326,7 @@ For a cluster `C` with groups `G1…Gn` (in `cluster.yaml` order), for an addon 
 5. **Validation**, failing the cluster's ApplicationSets with a clear message:
    - `type` is `helm`, `kustomize` or `manifests`;
    - `onRemoval` is `delete` or `keep`;
+   - `podSecurity`, if set, is `privileged`, `baseline` or `restricted`;
    - a `wave` override is only allowed when `addon.yaml` itself sets a `wave`;
    - `wave` is a whole number from 1 to 9;
    - `decommission` is empty, `detach` or `uninstall`.
@@ -388,9 +417,10 @@ matrix
 ```
 
 The `elementsYaml` templates implement section 6 and emit a single `app` object with every resolved
-field (`kind`, `name`, `dir`, `type`, `namespace`, `wave`, `releaseName`, `syncOptions`,
-`ignoreDifferences`, `onRemoval`). `templatePatch` turns `app` into the Application: name, labels
-(`fleet/cluster`, `fleet/kind`, `fleet/wave`), finalizer, sources, sync policy.
+field (`kind`, `name`, `dir`, `type`, `namespace`, `podSecurity`, `wave`, `releaseName`,
+`syncOptions`, `ignoreDifferences`, `onRemoval`). `templatePatch` turns `app` into the Application:
+name, labels (`fleet/cluster`, `fleet/kind`, `fleet/wave`), finalizer, sources, sync policy
+(including `managedNamespaceMetadata` when `podSecurity` is set).
 
 Each Helm addon Application has three sources: the addon folder with the layer `valueFiles` and
 the injected `fleet` values, a `ref: values` source of the same repo, and a directory source for
@@ -735,8 +765,11 @@ Section 9.3.
 - Addons that share a `name` **MUST** agree on whether they have a `wave`. Otherwise the two
   ApplicationSets fight over one Application.
 - `syncOptions` overrides replace the list from `addon.yaml`; repeat entries you want to keep.
-- `CreateNamespace=true` and `SkipDryRunOnMissingResource=true` are always on. The latter lets layer
-  CRs apply in the same sync as the operator that defines their CRD, with retries until it exists.
+- `CreateNamespace=true`, `SkipDryRunOnMissingResource=true` and `ServerSideApply=true` are always
+  on. The second lets layer CRs apply in the same sync as the operator that defines their CRD, with
+  retries until it exists. Server-side apply avoids the size limit of client-side apply's
+  `last-applied-configuration` annotation, which large CRDs (Gateway API, Prometheus) exceed. Do not
+  repeat any of the three in `syncOptions`.
 - Each addon's layer source walks `gitops/` to apply its include filter. Keep large binary files
   out of `gitops/`.
 - The ordered ApplicationSet logs a warning that its Applications have automated sync set. That is
@@ -771,7 +804,7 @@ This section is the work order for an implementer.
 
 ### 12.2 Steps
 
-1. Add this document as `gitops/docs/fleet-gitops.md`.
+1. Add this document as `docs/fleet-gitops.md` (repository root).
 2. Create every file in Appendix A. Replace:
    - `https://github.com/org/fleet.git` with the real repo URL (all occurrences in
      `bootstrap/root.yaml`, `bootstrap/projects.yaml`, `bootstrap/fleet.yaml`);
@@ -807,12 +840,16 @@ This section is the work order for an implementer.
    - `wave: 2` override in a cluster.yaml for an addon without a wave → "a wave can only be
      overridden …";
    - `decommission: maybe` → "decommission must be detach or uninstall";
+   - `podSecurity: open` → "podSecurity must be privileged, baseline or restricted";
    - two enabled addons with the same `name` on one cluster → duplicate Application names.
 8. Decommission dry runs with render-check, in a throwaway copy: `decommission: detach` keeps every
    Application of that cluster but with `onRemoval=keep` shown for all; `decommission: uninstall`
    shows no Applications for that cluster.
 9. In render-check's `SIM_OUT` output, every Helm source carries `valuesObject.fleet.cluster`
    equal to its cluster.
+10. Every `Namespace` object in a rendered addon (checks 3 and 4) is one of the exceptions in
+    section 5.7 and carries `Delete=false,Prune=false`, and addons sharing a namespace have the same
+    `podSecurity`.
 
 ### 12.4 render-check
 
@@ -917,7 +954,7 @@ spec:
 #
 # The controller gives every `cluster-<cluster>` Application the resources finalizer, so deleting a
 # cluster folder deletes that cluster's ApplicationSets and registration. Always set
-# `decommission:` in cluster.yaml first (see gitops/docs/fleet-gitops.md, "Decommissioning").
+# `decommission:` in cluster.yaml first (see docs/fleet-gitops.md, "Decommissioning").
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -1111,7 +1148,7 @@ spec:
                 {{- if $enabled }}
                 {{- /* 2. Settings: addon.yaml, then groupOverrides in the cluster's group order, then cluster.yaml */}}
                 {{-   $s := dict }}
-                {{-   range $k := list "type" "name" "namespace" "wave" "releaseName" "syncOptions" "ignoreDifferences" "onRemoval" }}
+                {{-   range $k := list "type" "name" "namespace" "podSecurity" "wave" "releaseName" "syncOptions" "ignoreDifferences" "onRemoval" }}
                 {{-     if hasKey $ $k }}{{ $_ := set $s $k (get $ $k) }}{{ end }}
                 {{-   end }}
                 {{-   $ordered := hasKey $s "wave" }}
@@ -1132,6 +1169,9 @@ spec:
                 {{-   if not (has (get $s "onRemoval") (list "delete" "keep")) }}
                 {{-     fail (printf "%s: onRemoval must be delete or keep" $where) }}
                 {{-   end }}
+                {{-   if not (has (toString (get $s "podSecurity")) (list "" "privileged" "baseline" "restricted")) }}
+                {{-     fail (printf "%s: podSecurity must be privileged, baseline or restricted" $where) }}
+                {{-   end }}
                 {{-   if and (hasKey $s "wave") (not $ordered) }}
                 {{-     fail (printf "%s: a wave can only be overridden on addons whose addon.yaml sets one" $where) }}
                 {{-   end }}
@@ -1148,6 +1188,7 @@ spec:
                           "dir" (printf "gitops/addons/%s" $addon)
                           "type" (get $s "type")
                           "namespace" (get $s "namespace" | default $name)
+                          "podSecurity" (toString (get $s "podSecurity"))
                           "wave" (toString (get $s "wave"))
                           "releaseName" (get $s "releaseName" | default $name)
                           "syncOptions" (get $s "syncOptions" | default list)
@@ -1181,7 +1222,7 @@ spec:
                 {{- $out := list }}
                 {{- if ne .decommission "uninstall" }}
                 {{-   $s := dict }}
-                {{-   range $k := list "type" "namespace" "wave" "releaseName" "syncOptions" "ignoreDifferences" "onRemoval" }}
+                {{-   range $k := list "type" "namespace" "podSecurity" "wave" "releaseName" "syncOptions" "ignoreDifferences" "onRemoval" }}
                 {{-     if hasKey $ $k }}{{ $_ := set $s $k (get $ $k) }}{{ end }}
                 {{-   end }}
                 {{-   $ordered := hasKey $s "wave" }}
@@ -1191,6 +1232,9 @@ spec:
                 {{-   end }}
                 {{-   if not (has (get $s "onRemoval") (list "delete" "keep")) }}
                 {{-     fail (printf "%s: onRemoval must be delete or keep" $where) }}
+                {{-   end }}
+                {{-   if not (has (toString (get $s "podSecurity")) (list "" "privileged" "baseline" "restricted")) }}
+                {{-     fail (printf "%s: podSecurity must be privileged, baseline or restricted" $where) }}
                 {{-   end }}
                 {{-   if and $ordered (not (has (toString (get $s "wave")) (list "1" "2" "3" "4" "5" "6" "7" "8" "9"))) }}
                 {{-     fail (printf "%s: wave must be a whole number from 1 to 9" $where) }}
@@ -1202,6 +1246,7 @@ spec:
                           "dir" .path.path
                           "type" (get $s "type")
                           "namespace" (get $s "namespace" | default $app)
+                          "podSecurity" (toString (get $s "podSecurity"))
                           "wave" (toString (get $s "wave"))
                           "releaseName" (get $s "releaseName" | default $app)
                           "syncOptions" (get $s "syncOptions" | default list)
@@ -1285,6 +1330,14 @@ spec:
         automated:
           prune: true
           selfHeal: true
+        {{- with $a.podSecurity }}
+        # Labels the destination namespace. Argo CD never deletes a namespace it labels this way.
+        managedNamespaceMetadata:
+          labels:
+            pod-security.kubernetes.io/enforce: {{ . }}
+            pod-security.kubernetes.io/warn: {{ . }}
+            pod-security.kubernetes.io/audit: {{ . }}
+        {{- end }}
         retry:
           limit: -1
           refresh: true
@@ -1295,6 +1348,7 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - SkipDryRunOnMissingResource=true
+          - ServerSideApply=true
           {{- range $a.syncOptions }}
           - {{ . }}
           {{- end }}

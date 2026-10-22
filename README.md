@@ -22,21 +22,15 @@ real GitOps platform on hardware we own.
   [openbao.md](docs/openbao.md)), and the host auto-upgrades from `main` on
   Fridays.
 - **Cluster.** k3s runs without its own CNI and kube-proxy; Cilium provides
-  both and the network policy engine. Argo CD tracks `HEAD` of `main`. The
-  fleet is [GitOps Bridge v2](https://github.com/gitops-bridge-dev/gitops-bridge/issues/73)
-  as written — BENMALEKarim's single-chart spec in that issue and the
-  [AWS fleet-management workshop](https://github.com/aws-samples/fleet-management-on-amazon-eks-workshop)
-  (MIT-0), with sync waves instead of the issue's dependency webhook.
-  `root.yaml` syncs `gitops/bootstrap/`: the `members` Application (the cluster
-  Secrets under `bootstrap/members/`), the global `gitops-addons`
-  ApplicationSet and the `apps` one. A cluster Secret's `enable_` labels say
-  which addons the cluster runs; the global ApplicationSet renders the catalog
-  chart `charts/gitops-addons` for it with the stack of its Kubernetes minor
-  and its environment's and its own overrides, and that chart emits one
-  ApplicationSet per enabled addon. Upstream chart versions live in
-  `stacks/k8s-<minor>/stack.yaml`, and a `stack-<minor>.<n>` git tag freezes
-  the catalog, the stack, the overrides, the extras and our manifests together.
-  Details: [docs/gitops.md](docs/gitops.md).
+  both and the network policy engine. Argo CD tracks `HEAD` of `main` and
+  deploys the fleet layout in `gitops/`: `root.yaml` syncs the AppProjects and
+  the fleet ApplicationSet; that creates one `cluster-<name>` Application per
+  `gitops/clusters/<name>/cluster.yaml`, which in turn creates the cluster's
+  two ApplicationSets. Addons choose where they run with `groups` and
+  `clusters`, cluster and group layers add configuration, and each addon states
+  its `onRemoval` policy and its wave. The rules, the file reference and the
+  day-to-day changes are in [docs/fleet-gitops.md](docs/fleet-gitops.md);
+  `gitops/tools/render-check/run.sh` previews the result offline.
 - **Edge.** Envoy Gateway terminates TLS on two Gateways: `edge` (NodePort
   30080/30443, reached through the router's port forward) and `wg` (the
   `10.0.0.1` address on WireGuard). Argo CD and Keycloak's admin side are on
@@ -51,19 +45,18 @@ real GitOps platform on hardware we own.
   them. sanoid snapshots the pool, and an off-site borg backup is ready to
   enable.
 - **Workloads.** The management side runs Cluster API, KubeVirt and CDI, so a
-  workload cluster is a VM on this node. An app is
-  `gitops/apps/<app>/<environment>/` — a Kustomize base (dodde's Fedora VM) or
-  its own chart (Immich, whose `Namespace` it ships itself) — and the `apps`
-  ApplicationSet generates it for every cluster of that environment. Today
-  that is dodde's VM and Immich.
-  Their pod and service CIDRs must not overlap `10.42.0.0/16` and
+  workload cluster is a VM on this node. `capi-argo-bridge`
+  (`gitops/addons/capi-argo-bridge`) registers such a cluster with Argo CD; its
+  groups and addons then come from `gitops/clusters/<name>/cluster.yaml`, with
+  no `cluster-secret.yaml` needed. An app that exists on one cluster only is a
+  cluster app under `gitops/clusters/<cluster>/apps/`; everything today is an
+  addon. Their pod and service CIDRs must not overlap `10.42.0.0/16` and
   `10.43.0.0/16`, and they boot from a persistent disk
   (`cluster-template-persistent-storage.yaml`), never a containerDisk.
-- **Tenants.** A tenant is a person whose workload runs here for real rather
-  than for the lab. Today there is one: `dodde`, a Fedora VM for the user's
-  brother, in its own namespace under a default-deny policy that leaves it
-  the public internet and nothing internal. Tenants are production: nothing
-  stops, deletes or recreates one without asking (see `AGENTS.md`).
+- **Lab VM.** `dodde` is a Fedora VM for the user's brother, in its own
+  namespace under a default-deny policy that leaves it the public internet and
+  nothing internal. It is a lab VM, not production: it may become the first
+  production workload in the far future, but today nothing depends on it.
 - **Stateful apps.** CloudNativePG runs Postgres as a `Cluster` inside an
   addon; the app reads the operator-made `<cluster>-app` Secret.
 - **Guardrails.** Namespaces without a Pod Security label get `baseline`,
@@ -79,6 +72,21 @@ real GitOps platform on hardware we own.
   (DaemonSet) tails pod logs and the API server audit log into Loki;
   `kube-state-metrics` and `node-exporter` are the prometheus-community
   charts. Grafana is the one UI, and its alerts show in its own alert list.
+
+## Repository layout
+
+```
+nixos/        the host: disks, k3s, sops-nix, pi
+gitops/
+  bootstrap/  Argo CD wiring (root Application, AppProjects, fleet ApplicationSet)
+  addons/     one folder per addon; capi-argo-bridge keeps its Go source in src/
+  groups/     configuration shared by every cluster with that group tag
+  clusters/   one folder per cluster: cluster.yaml, layers, cluster-only apps
+  tools/      render-check, the offline preview
+tofu/         OpenTofu roots; tofu/keycloak is the realm
+docs/         the guides linked below
+flake.nix     the flake (host and installer)
+```
 
 ## The stack, and why
 
@@ -111,12 +119,12 @@ real GitOps platform on hardware we own.
 | Dashboards and alerts | Grafana | one UI; dashboards as labelled ConfigMaps | AGPL-3.0 | none (Grafana Labs) |
 | Photos | Immich | phone backup, timeline, faces and search, Keycloak SSO | AGPL-3.0 | none (FUTO; single vendor, see principle 5) |
 | Job queue | Valkey | Immich's job queues | BSD-3-Clause | Linux Foundation |
-| Dependency updates | Renovate | stack charts, Actions and `# renovate:` versions, one PR per addon or app | AGPL-3.0 | none (Mend) |
+| Dependency updates | Renovate | wrapper charts, Actions, `# renovate:` versions, one PR per addon folder or OpenTofu root | AGPL-3.0 | none (Mend) |
 
 ## Docs
 
-- [gitops.md](docs/gitops.md) — the fleet: GitOps Bridge v2, the catalog, the
-  stack tags, sync waves, and how to change any of it.
+- [fleet-gitops.md](docs/fleet-gitops.md) — the fleet: layout, rules, waves,
+  removal, and how to change any addon, group or cluster.
 - [bootstrap.md](docs/bootstrap.md) — bare metal to a synced cluster.
 - [operations.md](docs/operations.md) — updates, backups and restore,
   certificates, observability and alerting.
@@ -135,7 +143,3 @@ real GitOps platform on hardware we own.
 | Routine | Interval | Last done |
 | --- | --- | --- |
 | Rotate the sops age key and the WireGuard keys + PSK | yearly | never (age key from 2025-08-16) |
-
-## Deferred work
-
-In [TODO.md](TODO.md), which is the only list of it.
