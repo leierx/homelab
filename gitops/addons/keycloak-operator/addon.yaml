@@ -2,4 +2,5 @@
 type: kustomize
 groups: [prod]
 namespace: keycloak
+podSecurity: restricted
 onRemoval: keep      # owns Keycloak CRDs

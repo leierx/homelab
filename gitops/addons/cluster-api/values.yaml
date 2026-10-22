@@ -19,6 +19,7 @@ cluster-api-operator:
         type: RuntimeDefault
   core:
     cluster-api:
+      createNamespace: false   # the wrapper chart owns the provider namespaces
       version: v1.14.3
       deployment:
         containers:
@@ -31,6 +32,7 @@ cluster-api-operator:
               memory: 512Mi
   bootstrap:
     kubeadm:
+      createNamespace: false
       version: v1.14.3
       deployment:
         containers:
@@ -43,6 +45,7 @@ cluster-api-operator:
               memory: 256Mi
   controlPlane:
     kubeadm:
+      createNamespace: false
       version: v1.14.3
       deployment:
         containers:
@@ -55,6 +58,7 @@ cluster-api-operator:
               memory: 512Mi
   infrastructure:
     kubevirt:
+      createNamespace: false
       version: v0.11.2
       deployment:
         containers:

@@ -2,4 +2,5 @@
 type: helm
 groups: [prod]
 namespace: monitoring
+podSecurity: restricted
 onRemoval: keep      # holds log data

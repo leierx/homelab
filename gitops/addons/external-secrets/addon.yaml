@@ -2,5 +2,6 @@
 type: helm
 groups: [prod]
 namespace: external-secrets
+podSecurity: restricted
 wave: 3
 onRemoval: keep      # owns ExternalSecret/PushSecret CRDs

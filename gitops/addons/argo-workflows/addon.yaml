@@ -2,5 +2,6 @@
 type: helm
 groups: [prod]
 namespace: argo
+podSecurity: restricted
 wave: 4
 onRemoval: keep      # owns Workflow/CronWorkflow CRDs; deleting them deletes workflows

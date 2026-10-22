@@ -9,3 +9,14 @@ metadata:
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/warn: restricted
     pod-security.kubernetes.io/audit: restricted
+{{- /* The provider namespaces are not this addon's destination, so they stay manifests. The chart's
+       createNamespace values are off and these carry the protection annotation instead. */}}
+{{- range $ns := list "capi-system" "kubeadm-bootstrap-system" "kubeadm-control-plane-system" "kubevirt-infrastructure-system" }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $ns }}
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+{{- end }}

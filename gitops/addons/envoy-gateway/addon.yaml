@@ -2,5 +2,6 @@
 type: helm
 groups: [prod]
 namespace: envoy-gateway-system
+podSecurity: restricted
 wave: 1
 onRemoval: keep      # ships Gateway API CRDs; every site depends on the Gateways

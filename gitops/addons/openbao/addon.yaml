@@ -2,5 +2,6 @@
 type: helm
 groups: [prod]
 namespace: openbao
+podSecurity: restricted
 wave: 2
 onRemoval: keep      # holds every secret and its seal/raft data

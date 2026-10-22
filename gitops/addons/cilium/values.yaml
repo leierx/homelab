@@ -1,5 +1,8 @@
 cilium:
   kubeProxyReplacement: true
+  # the chart's second namespace (envoy SDS secrets) is not any addon's destination; keep it
+  secretsNamespaceAnnotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
   bpf:
     masquerade: true
   ipv6:
