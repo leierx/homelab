@@ -1,0 +1,5 @@
+# Groups and the clusters in them. A cluster can also join a group from its own cluster.yaml.
+# `addons:` turns addons on (true) or off (false) for every cluster in the group, over the
+# addon's own clusters/groups; a cluster.yaml entry wins over this.
+prod:
+  clusters: [loft01]

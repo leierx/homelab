@@ -4,4 +4,3 @@ groups: [prod]
 namespace: argocd
 podSecurity: restricted
 releaseName: capi-argo-bridge
-onRemoval: delete    # holds no data and no CRDs; the cluster Secrets are regenerated from the Clusters

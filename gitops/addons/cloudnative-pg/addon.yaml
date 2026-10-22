@@ -3,4 +3,3 @@ type: helm
 groups: [prod]
 namespace: cnpg-system
 podSecurity: restricted
-onRemoval: keep      # owns Postgres CRDs; deleting them deletes every database

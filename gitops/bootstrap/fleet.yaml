@@ -5,9 +5,11 @@
 #      <cluster>-addons and <cluster>-addons-ordered, with the cluster's data patched in, and
 #   2. syncs the cluster's registration (cluster-secret.yaml), if the folder has one.
 #
-# The controller gives every `cluster-<cluster>` Application the resources finalizer, so deleting a
-# cluster folder deletes that cluster's ApplicationSets and registration. Always set
-# `decommission:` in cluster.yaml first (see docs/fleet-gitops.md, "Decommissioning").
+# The cluster's groups are the union of `groups:` in its cluster.yaml (in that order) and every
+# group in gitops/groups.yaml that lists it under `clusters:` (alphabetically, after those).
+#
+# Deleting a cluster folder deletes `cluster-<cluster>`, its ApplicationSets, their Applications and
+# the registration. Generated Applications carry no finalizer, so nothing on the cluster is touched.
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -17,13 +19,24 @@ spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
   generators:
-    - git:
-        repoURL: https://github.com/leierx/homelab.git
-        revision: main
-        files:
-          - path: gitops/clusters/*/cluster.yaml
-          - path: gitops/clusters/*/*/cluster.yaml
-            exclude: true
+    - matrix:
+        generators:
+          # First, so `values` renders against groups.yaml alone; its keys are the group names.
+          - git:
+              repoURL: https://github.com/leierx/homelab.git
+              revision: main
+              pathParamPrefix: groupsFile
+              files:
+                - path: gitops/groups.yaml
+              values:
+                groups: '{{ omit . "groupsFile" | toJson }}'
+          - git:
+              repoURL: https://github.com/leierx/homelab.git
+              revision: main
+              files:
+                - path: gitops/clusters/*/cluster.yaml
+                - path: gitops/clusters/*/*/cluster.yaml
+                  exclude: true
   template:
     metadata:
       name: 'cluster-{{ .path.basename }}'
@@ -42,11 +55,21 @@ spec:
               - target:
                   kind: ApplicationSet
                 patch: |-
+                  {{- $cluster := .path.basename }}
+                  {{- $defs := fromYaml .values.groups }}
+                  {{- $groups := dig "groups" (list) . }}
+                  {{- range $g, $def := $defs }}
+                  {{-   if and (has $cluster (dig "clusters" (list) $def)) (not (has $g $groups)) }}{{ $groups = append $groups $g }}{{ end }}
+                  {{- end }}
+                  {{- $groupAddons := dict }}
+                  {{- range $groups }}
+                  {{-   range $a, $on := dig "addons" (dict) (get $defs . | default dict) }}{{ $_ := set $groupAddons $a $on }}{{ end }}
+                  {{- end }}
                   {{- $element := dict
-                        "cluster" .path.basename
-                        "clusterGroups" (dig "groups" (list) .)
+                        "cluster" $cluster
+                        "clusterGroups" $groups
+                        "groupAddons" $groupAddons
                         "clusterAddons" (dig "addons" (dict) .)
-                        "decommission" (dig "decommission" "" .)
                         "repoURL" "https://github.com/leierx/homelab.git"
                         "revision" "main"
                       | toJson }}

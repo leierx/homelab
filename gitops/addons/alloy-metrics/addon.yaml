@@ -3,4 +3,3 @@ type: helm
 groups: [prod]
 namespace: telemetry
 podSecurity: privileged
-onRemoval: delete      # stateless metrics collector; no CRDs or data

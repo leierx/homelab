@@ -3,4 +3,3 @@ type: helm
 groups: [prod]
 namespace: capi-operator-system
 podSecurity: restricted
-onRemoval: keep      # owns Cluster API CRDs and provider CRs

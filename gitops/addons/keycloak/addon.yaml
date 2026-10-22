@@ -4,4 +4,3 @@ groups: [prod]
 namespace: keycloak
 podSecurity: restricted
 wave: 4
-onRemoval: keep      # holds the realm database and generated client secrets

@@ -3,4 +3,3 @@ type: helm
 groups: [prod]
 namespace: kube-system
 podSecurity: privileged
-onRemoval: delete      # cluster-scoped RBAC only; removed cleanly

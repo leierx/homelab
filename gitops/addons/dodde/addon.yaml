@@ -3,4 +3,3 @@ type: kustomize
 groups: [prod]
 namespace: dodde
 podSecurity: restricted
-onRemoval: keep      # holds the VM disk; deleting the namespace would delete it

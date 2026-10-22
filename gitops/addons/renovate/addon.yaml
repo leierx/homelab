@@ -4,4 +4,3 @@ groups: [prod]
 namespace: renovate
 podSecurity: restricted
 wave: 4
-onRemoval: keep      # cache PVC, and easy to re-enable

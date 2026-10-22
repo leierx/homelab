@@ -3,4 +3,3 @@ type: helm
 groups: [prod]
 namespace: openebs
 podSecurity: privileged
-onRemoval: keep      # CSI driver and StorageClasses; every PVC depends on it

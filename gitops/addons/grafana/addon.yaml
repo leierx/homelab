@@ -4,4 +4,3 @@ groups: [prod]
 namespace: monitoring
 podSecurity: restricted
 wave: 4
-onRemoval: keep      # holds the Grafana database

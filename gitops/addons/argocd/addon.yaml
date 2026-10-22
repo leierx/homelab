@@ -4,4 +4,3 @@ groups: [prod]
 namespace: argocd
 podSecurity: restricted
 wave: 4
-onRemoval: keep      # the hub; owns Argo CRDs and all fleet state
