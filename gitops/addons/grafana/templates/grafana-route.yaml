@@ -85,4 +85,4 @@ spec:
     name: edge-oidc
   data:
     - secretKey: client-secret
-      remoteRef: { key: "{{ required "fleet.cluster" .Values.fleet.cluster }}/edge", property: oidc_client_secret }
+      remoteRef: { key: "{{ required "global.fleet.cluster" .Values.global.fleet.cluster }}/edge", property: oidc_client_secret }

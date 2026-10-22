@@ -1,0 +1,4 @@
+apiVersion: v2
+name: keycloak-operator
+description: Fleet addon for keycloak-operator; the upstream manifests are in manifests/
+version: 1.0.0

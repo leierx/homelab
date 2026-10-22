@@ -1,0 +1,7 @@
+groups: [prod]
+namespace: envoy-gateway-system
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

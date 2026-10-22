@@ -27,7 +27,7 @@ spec:
   data:
     - match:
         secretKey: oidc_client_secret
-        remoteRef: { remoteKey: {{ required "fleet.cluster" .Values.fleet.cluster }}/argo-workflows, property: oidc_client_secret }
+        remoteRef: { remoteKey: {{ required "global.fleet.cluster" .Values.global.fleet.cluster }}/argo-workflows, property: oidc_client_secret }
 ---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
@@ -47,7 +47,7 @@ spec:
         client-secret: '{{ `{{ .oidc_client_secret }}` }}'
   data:
     - secretKey: oidc_client_secret
-      remoteRef: { key: {{ required "fleet.cluster" .Values.fleet.cluster }}/argo-workflows, property: oidc_client_secret }
+      remoteRef: { key: {{ required "global.fleet.cluster" .Values.global.fleet.cluster }}/argo-workflows, property: oidc_client_secret }
 ---
 # SSO RBAC: a user in homelab-admins maps to this ServiceAccount (argo-server-sso.md, "SSO RBAC")
 apiVersion: v1

@@ -22,3 +22,11 @@ patches:
           virtualMachineInstanceProfile:
             customProfile:
               runtimeDefaultProfile: true
+  # the CR waits for the operator to be Healthy
+  - target:
+      kind: KubeVirt
+    patch: |
+      - op: add
+        path: /metadata/annotations
+        value:
+          argocd.argoproj.io/sync-wave: "1"

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: dodde
+description: The dodde Fedora VM
+version: 1.0.0
