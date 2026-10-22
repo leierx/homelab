@@ -7,7 +7,7 @@
   "automergeStrategy": "merge-commit",
   "platformAutomerge": false,
   "kubernetes": {
-    "managerFilePatterns": ["/^gitops/addons/.+\\.ya?ml$/"]
+    "managerFilePatterns": ["/^gitops/(addons|groups|clusters)/.+\\.ya?ml$/"]
   },
   "kustomize": {
     "managerFilePatterns": ["/^gitops/addons/.+/kustomization\\.ya?ml$/"]
@@ -53,9 +53,11 @@
       "automerge": true
     },
     {
+      "description": "gitops has no CI: a chart that does not render stops at Argo CD's ComparisonError and leaves what runs alone",
       "matchFileNames": ["gitops/addons/**"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
-      "automerge": true
+      "automerge": true,
+      "ignoreTests": true
     },
     {
       "matchFileNames": ["gitops/addons/**"],
