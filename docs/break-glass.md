@@ -63,7 +63,7 @@ A forgotten password: `kcadm set-password -r homelab --username <user>
 it alone (`leier` too: OpenBao's `leier_password` is only the first password
 after a rebuild).
 
-Whatever you change by hand in something `iac/tofu/loft01/keycloak` declares (a client,
+Whatever you change by hand in something `tofu/keycloak` declares (a client,
 a flow, a user's groups) is put back by the next run; fix the cause in git.
 A run that dies while holding the state lock leaves the Lease behind; unlock
 it with the same state:

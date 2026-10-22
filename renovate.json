@@ -13,7 +13,7 @@
     "managerFilePatterns": ["/^gitops/addons/.+/kustomization\\.ya?ml$/"]
   },
   "terraform": {
-    "managerFilePatterns": ["/^iac/tofu/.+\\.tf$/"]
+    "managerFilePatterns": ["/^tofu/.+\\.tf$/"]
   },
   "customManagers": [
     {
@@ -42,10 +42,10 @@
       "commitMessageSuffix": "({{ lookup (split packageFileDir '/') 2 }})"
     },
     {
-      "description": "one PR per OpenTofu root: iac/tofu/<cluster>/<root> groups on the root's name",
-      "matchFileNames": ["iac/tofu/**"],
-      "groupName": "{{ lookup (split packageFileDir '/') 3 }}",
-      "commitMessageSuffix": "({{ lookup (split packageFileDir '/') 3 }})"
+      "description": "one PR per OpenTofu root: tofu/<root> groups on the root's name",
+      "matchFileNames": ["tofu/**"],
+      "groupName": "{{ lookup (split packageFileDir '/') 1 }}",
+      "commitMessageSuffix": "({{ lookup (split packageFileDir '/') 1 }})"
     },
     {
       "matchManagers": ["github-actions"],
@@ -64,7 +64,7 @@
     },
     {
       "description": "The Keycloak operator, the image it runs, the realm's provider and the reconcile image wait for review",
-      "matchFileNames": ["gitops/addons/keycloak-operator/**", "gitops/addons/keycloak/**", "iac/tofu/*/keycloak/**"],
+      "matchFileNames": ["gitops/addons/keycloak-operator/**", "gitops/addons/keycloak/**", "tofu/keycloak/**"],
       "automerge": false
     },
     {

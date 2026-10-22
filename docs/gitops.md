@@ -42,7 +42,7 @@ gitops/
 ├── addon-extras/<addon>/                  our files next to an upstream chart
 ├── manifests/<addon>/                     Kustomize addons
 └── apps/<app>/{base,prod}/                workloads
-iac/tofu/<cluster>/<root>/                 was tofu/        (the keycloak realm)
+tofu/<root>/                 was tofu/        (the keycloak realm)
 src/<program>/                             was apps/        (capi-argo-bridge)
 ```
 

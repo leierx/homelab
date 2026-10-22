@@ -88,7 +88,7 @@ How that plays out here:
   (`docs/gitops.md`, "Check a change before it ships"). The render step
   renders every ApplicationSet and every source of every addon and app; an
   addon on its own needs no separate `helm template`.
-- The Keycloak realm (`iac/tofu/loft01/keycloak/`): `tofu fmt -check` and
+- The Keycloak realm (`tofu/keycloak/`): `tofu fmt -check` and
   `tofu validate` (`nix shell nixpkgs#opentofu`); the check that counts is the
   next `keycloak-realm` CronWorkflow run's plan (`kubectl -n keycloak get wf`).
 - `src/capi-argo-bridge`: `gofmt -l .`, `go vet ./...`, `go test ./...`.
@@ -133,7 +133,7 @@ How that plays out here:
   in `overrides/environments/`, for the addons a cluster Secret's `enable_`
   labels switch on.
 - `src/<name>/`: our own Go programs, each with its own workflow and README.
-- `iac/tofu/<cluster>/<root>/` (`iac/tofu/loft01/keycloak/`): realm `homelab` as
+- `tofu/<root>/` (`tofu/keycloak/`): realm `homelab` as
   OpenTofu with the Keycloak provider, run by the `keycloak-realm`
   CronWorkflow (addon `keycloak`).
 - `justfile`: workstation helpers.
@@ -222,8 +222,8 @@ How that plays out here:
   `file://../base`. The `apps` ApplicationSet generates
   `app-<app>-<cluster>` for the cluster's environment, in namespace `<app>`.
   Apps are never in the catalog.
-- OpenTofu lives in `iac/tofu/<cluster>/<root>/`. The keycloak addon's
-  CronWorkflow clones the repo and runs `iac/tofu/<cluster>/keycloak` every 10
+- OpenTofu lives in `tofu/<root>/`. The keycloak addon's
+  CronWorkflow clones the repo and runs `tofu/keycloak` every 10
   minutes.
 - Data-bearing objects carry `argocd.argoproj.io/sync-options:
   Delete=false,Prune=false`.
@@ -252,7 +252,7 @@ How that plays out here:
 - A site: a `Certificate`, a ListenerSet + HTTPRoute per Gateway (`edge` and
   `wg`), an ingress allow from Envoy plus an entry in envoy-gateway's
   `proxies` policy. Public admin UIs sit behind SecurityPolicy `edge-oidc`.
-  SSO: a client in `iac/tofu/loft01/keycloak/clients.tf` (`docs/access.md`).
+  SSO: a client in `tofu/keycloak/clients.tf` (`docs/access.md`).
 
 ## Deliberate, don't "fix"
 

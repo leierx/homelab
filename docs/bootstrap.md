@@ -297,8 +297,8 @@ and sets your own password.
 ### The Keycloak realm and its state
 
 The realm is not a Job any more: the CronWorkflow `keycloak-realm` in the
-`keycloak` namespace runs `iac/tofu/<cluster>/keycloak/` every 10 minutes
-(`iac/tofu/loft01/keycloak` today). On a rebuilt cluster it creates the realm
+`keycloak` namespace runs `tofu/keycloak/` every 10 minutes
+(`tofu/keycloak` today). On a rebuilt cluster it creates the realm
 on its first run after Keycloak is Ready (or trigger it as in
 [access.md](access.md)). A fresh master realm also gets a `temp-admin` from
 the operator; delete it ([break-glass.md](break-glass.md)).

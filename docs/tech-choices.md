@@ -251,7 +251,7 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 - **Need:** the realm (groups, users, clients, flows, session lengths)
   declared in git and re-applied, so a hand-made change is undone and a
   rebuild recreates the same realm.
-- **Choice:** OpenTofu (`iac/tofu/loft01/keycloak/`) with the Keycloak project's own
+- **Choice:** OpenTofu (`tofu/keycloak/`) with the Keycloak project's own
   provider (`keycloak/terraform-provider-keycloak`), run by the Argo
   Workflows CronWorkflow `keycloak-realm` every 10 minutes. The state is a
   Secret and a Lease in `keycloak` (OpenTofu's `kubernetes` backend); client
