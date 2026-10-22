@@ -4,4 +4,3 @@ groups: [prod]
 namespace: openbao
 wave: 2
 onRemoval: keep      # holds every secret and its seal/raft data
-syncOptions: [ServerSideApply=true]   # matches the old global syncOptions; large CRDs exceed the client-side apply annotation limit

@@ -4,4 +4,3 @@ groups: [prod]
 namespace: monitoring
 wave: 4
 onRemoval: keep      # holds the Grafana database
-syncOptions: [ServerSideApply=true]   # matches the old global syncOptions; large CRDs exceed the client-side apply annotation limit
