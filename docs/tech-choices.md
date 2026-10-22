@@ -132,10 +132,12 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 - **Need:** a photo library for the family: phone backup, timeline, map,
   faces and search, reachable from phones on the internet, signing in
   through Keycloak.
-- **Choice:** Immich (addon `immich`, our own manifests), Postgres on
-  CloudNativePG with VectorChord, Valkey for the job queues, machine
-  learning on CPU. Public at `photos.skinke.net` without the `edge-oidc`
-  gate; Immich's own Keycloak login, with password login off, is the guard.
+- **Choice:** Immich (addon `immich`, upstream `immich-charts` for server,
+  machine learning and Valkey, our own templates for the database, PVCs,
+  routes and config secret), Postgres on CloudNativePG with VectorChord,
+  Valkey for the job queues, machine learning on CPU. Public at
+  `photos.skinke.net` without the `edge-oidc` gate; Immich's own Keycloak
+  login, with password login off, is the guard.
 - **Why:** the most complete self-hosted Google Photos replacement, with
   OIDC built in (a role claim for admins, mobile redirect, PKCE) and a
   settings file that locks the admin UI. AGPL-3.0, but single-vendor
@@ -148,17 +150,20 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 
 ### Packaging
 
-- **Choice:** our own manifests in the addon root.
-- **Why not the official chart** (`oci://ghcr.io/immich-app/immich-charts/immich`,
-  principle 2 says upstream first): its config file comes either from
-  inline values (which can't hold the OIDC client secret, and Immich's file
-  can't read the environment) or from an existing Secret, for which it has
-  no restart on change. It sets no security context and no resources, so
-  every container would be overridden through the bjw-s common library's
-  values anyway. And its `appVersion` trails Immich (v3.2.0 in chart 0.13.4
-  while Immich was at v3.3.3), so the image tag needs its own Renovate
-  annotation either way. Switching later is cheap: the stateful parts
-  (PVCs, the CNPG cluster) don't depend on how the Deployments are made.
+- **Choice:** `immich-charts` 0.13.4 for server, machine learning and Valkey;
+  our own templates for the CloudNativePG database, the library and model
+  cache PVCs, the Gateway routes and certificate, the network policy and the
+  config ExternalSecret.
+- **Why:** the upstream chart supports the pieces we need (`existingClaim` for
+  both PVCs, `existingConfiguration` for the config Secret, resources and
+  security contexts through the bjw-s common library, and the metrics
+  ServiceMonitor) and is maintained by the Immich project. Our templates stay
+  where the chart has no opinion: the database is a CloudNativePG `Cluster`,
+  and the config Secret is rendered by External Secrets with the OIDC client
+  secret. The chart's `appVersion` trails the images, so both image tags are
+  pinned explicitly (`v3.3.4`) with a `# renovate:` comment. The config Secret
+  cannot be content-hashed through the subchart, so its name is fixed and a
+  config change needs a rollout restart ([immich.md](immich.md)).
 - **Not an addon:** a one-off workload (a VM, a CAPI `Cluster`) is a cluster
   app under `gitops/clusters/<cluster>/apps/`, not an addon: an addon is for
   things every cluster of a kind runs.
@@ -167,7 +172,8 @@ and the same with `namespace="keycloak"` / `"openbao"`.
 
 - **Choice:** the library on `zfs-thin`, a ZFS filesystem per PVC with
   `recordsize=1M`, thin-provisioned: a 770 GiB `refquota` and no
-  reservation; the database and the model cache on the usual `zfs` zvols.
+  reservation; the database on the usual `zfs` zvol and the model cache on
+  `zfs-thin`.
 - **Why:** photos and videos are large files read whole, the case OpenZFS's
   tuning guide gives 1M records for. Files sit on ZFS directly, checksummed
   and compressed per record without an ext4 layer, a snapshot can be
