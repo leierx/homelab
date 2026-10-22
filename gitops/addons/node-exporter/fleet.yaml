@@ -1,4 +1,4 @@
-groups: [test]
+groups: [prod]
 namespace: telemetry
 managedNamespaceMetadata:
   labels:
