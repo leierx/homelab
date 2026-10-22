@@ -36,7 +36,7 @@ spec:
                 singleBranch: true
                 depth: 1
         container:
-          image: ghcr.io/opentofu/opentofu:{{ .Values.tofu.tag }}
+          image: ghcr.io/opentofu/opentofu:1.13.1
           workingDir: /work/repo/tofu/keycloak
           command: [sh, -c]
           args:
