@@ -6,7 +6,6 @@ argo-cd:
       server.insecure: true
       controller.diff.server.side: true
       controller.sync.timeout.seconds: '4800'
-      applicationsetcontroller.enable.progressive.syncs: 'true'
     rbac:
       policy.csv: 'g, homelab-admins, role:admin
 
