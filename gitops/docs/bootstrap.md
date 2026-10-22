@@ -175,8 +175,9 @@ self-signed.
 
 - `docs/access.md` has the hosts entries, the WireGuard addresses, the first
   login and the keycloak-realm procedure. The realm is applied every 10 minutes
-  by the `keycloak-realm` CronWorkflow from `tofu/keycloak`.
+  by the `keycloak-realm` CronWorkflow from `tofu/keycloak`, which lives in
+  loft01's keycloak layer (`gitops/clusters/loft01/addons/keycloak/`).
 - `capi_argo_bridge` is intentionally not part of the fleet; `src/capi-argo-bridge`
   and its workflow are unchanged.
-- `gitops-check` is the gate for `gitops/**`; it runs render-check and checks
-  2–5 from [fleet-gitops.md](fleet-gitops.md).
+- There is no CI for `gitops/**`; Argo CD is the gate
+  ([fleet-gitops.md](fleet-gitops.md), section 8).
