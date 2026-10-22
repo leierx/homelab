@@ -20,7 +20,7 @@ metadata:
 spec:
   endpointSelector:
     matchLabels:
-      app.kubernetes.io/name: immich-server
+      app.kubernetes.io/name: server
   ingress:
     - fromEndpoints:
         - matchLabels:
@@ -36,12 +36,12 @@ spec:
         - ports: [{ port: "5432", protocol: TCP }]
     - toEndpoints:
         - matchLabels:
-            app.kubernetes.io/name: immich-valkey
+            app.kubernetes.io/name: valkey
       toPorts:
         - ports: [{ port: "6379", protocol: TCP }]
     - toEndpoints:
         - matchLabels:
-            app.kubernetes.io/name: immich-machine-learning
+            app.kubernetes.io/name: machine-learning
       toPorts:
         - ports: [{ port: "3003", protocol: TCP }]
     # Keycloak at the issuer hostname, which resolves to the public address
@@ -56,11 +56,11 @@ metadata:
 spec:
   endpointSelector:
     matchLabels:
-      app.kubernetes.io/name: immich-machine-learning
+      app.kubernetes.io/name: machine-learning
   ingress:
     - fromEndpoints:
         - matchLabels:
-            app.kubernetes.io/name: immich-server
+            app.kubernetes.io/name: server
       toPorts:
         - ports: [{ port: "3003", protocol: TCP }]
   egress:
@@ -76,11 +76,11 @@ metadata:
 spec:
   endpointSelector:
     matchLabels:
-      app.kubernetes.io/name: immich-valkey
+      app.kubernetes.io/name: valkey
   ingress:
     - fromEndpoints:
         - matchLabels:
-            app.kubernetes.io/name: immich-server
+            app.kubernetes.io/name: server
       toPorts:
         - ports: [{ port: "6379", protocol: TCP }]
 ---
@@ -95,7 +95,7 @@ spec:
   ingress:
     - fromEndpoints:
         - matchLabels:
-            app.kubernetes.io/name: immich-server
+            app.kubernetes.io/name: server
       toPorts:
         - ports: [{ port: "5432", protocol: TCP }]
     # the CloudNativePG operator checks the instance's status endpoint

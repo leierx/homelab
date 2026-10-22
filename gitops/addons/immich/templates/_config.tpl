@@ -23,7 +23,3 @@ storageTemplate:
 map:
   enabled: false
 {{- end }}
-{{/* named after the content: a change makes a new Secret, and the server waits for it and restarts */}}
-{{- define "immich.configName" -}}
-immich-config-{{ include "immich.config" . | sha256sum | trunc 8 }}
-{{- end }}
