@@ -84,8 +84,9 @@ jobs:
           for d in gitops/addons/*/; do
             [ -f "$d/addon.yaml" ] || continue
             [ "$(yq -r '.type' "$d/addon.yaml")" = "kustomize" ] || continue
-            kubectl kustomize "$d" >/dev/null
-            echo "rendered $(basename "$d")"
+            name=$(basename "$d")
+            kubectl kustomize "$d" > "/tmp/render-$name.yaml"
+            echo "rendered $name"
           done
 
       - name: 5. bootstrap/cluster has exactly the two ApplicationSets
@@ -98,3 +99,46 @@ jobs:
             echo "::error::bootstrap/cluster rendered ApplicationSets: $names" >&2
             exit 1
           fi
+
+      - name: 10. namespaces are exceptions and protected
+        run: |
+          set -euo pipefail
+          ok=1
+          shared=$(mktemp)
+          for d in gitops/addons/*/; do
+            [ -f "$d/addon.yaml" ] || continue
+            name=$(basename "$d")
+            type=$(yq -r '.type' "$d/addon.yaml")
+            ns=$(yq -r '.namespace // .name // ""' "$d/addon.yaml")
+            [ -n "$ns" ] || ns=$name
+            pss=$(yq -r '.podSecurity // ""' "$d/addon.yaml")
+            printf '%s\t%s\n' "$ns" "$pss" >> "$shared"
+
+            render="/tmp/render-$name.yaml"
+            [ -f "$render" ] || continue
+            # Every Namespace object it renders: either an allowed exception (a kustomize addon's
+            # upstream Namespace, or one that is not a destination) and always protected.
+            while IFS=$'\t' read -r objns ann; do
+              [ -n "$objns" ] || continue
+              if [ "$objns" = "$ns" ] && [ "$type" != "kustomize" ]; then
+                echo "::error::$name declares its destination namespace $objns as a manifest (section 5.7)" >&2
+                ok=0
+              fi
+              case "$ann" in
+                *Delete=false*Prune=false*|*Prune=false*Delete=false*) ;;
+                *)
+                  echo "::error::$name renders Namespace $objns without Delete=false,Prune=false (section 5.7)" >&2
+                  ok=0
+                  ;;
+              esac
+            done < <(yq ea -o=json -I=0 'select(.kind == "Namespace")
+                | {"name": .metadata.name, "ann": (.metadata.annotations."argocd.argoproj.io/sync-options" // "")}' "$render" \
+              | jq -r '[.name, .ann] | @tsv')
+          done
+
+          conflicts=$(sort -u "$shared" | awk -F'\t' '{ if ($1 in seen && seen[$1] != $2) print $1; seen[$1] = $2 }' | sort -u)
+          if [ -n "$conflicts" ]; then
+            echo "::error::addons sharing a namespace disagree on podSecurity: $conflicts" >&2
+            ok=0
+          fi
+          [ "$ok" = 1 ] || exit 1
