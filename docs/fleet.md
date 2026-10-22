@@ -193,8 +193,10 @@ synced, Missing. That trips the Grafana alert for Missing Applications.
 
 Every commit makes each child re-render, including a `helm dependency build`
 with index downloads, because Argo cleans the checkout per revision.
-Measured on loft01 with 28 Applications: the repo-server peaks at about 2.4
-cores for a few seconds after a commit, stays at about 70 MB of memory, and
-a changed child is Synced 20–45 s after a refresh. If that grows into a
+Measured on loft01 with 29 Applications: after a commit the repo-server
+peaks at 2.4–3.9 cores for about 30 s and stays under 75 MB of memory. On
+polling alone, every Application is on the new revision within about 6
+minutes. With a refresh of `cluster-loft01`, a changed child is Synced
+20–45 s after the push. If that grows into a
 problem, add the `argocd.argoproj.io/manifest-generate-paths` annotation to
 the children in `fleet/templates/addons.yaml`.
