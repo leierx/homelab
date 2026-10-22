@@ -114,7 +114,7 @@
     dates = "Fri 02:00";
     randomizedDelaySec = "30min";
     fixedRandomDelay = true;
-    allowReboot = true;
+    allowReboot = false;
     # kernel updates finishing after `upper` are only staged until next week; 04:00 keeps the house asleep
     rebootWindow = {
       lower = "02:00";
