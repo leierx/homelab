@@ -123,6 +123,7 @@
   };
 
   programs.git.enable = true;
+  programs.tmux.enable = true;
   environment.systemPackages = with pkgs; [
     doas-sudo-shim
     jq
