@@ -78,3 +78,16 @@ grafana:
       mountPath: /etc/grafana/provisioning/alerting
       readOnly: true
 certificateIssuer: letsencrypt-prod
+# the monitoring namespace's policy, so Loki's and Mimir's too
+netpol:
+  sameNamespace: true
+  gateway: [3000]
+  # Grafana's sidecars watch ConfigMaps
+  apiServer: true
+  # Grafana: the Keycloak token endpoint (its hostname resolves publicly) and grafana.com dashboards
+  world: [443]
+  ingress:
+    # Alloy pushes metrics and logs
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry

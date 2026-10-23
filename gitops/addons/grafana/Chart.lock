@@ -2,5 +2,8 @@ dependencies:
 - name: grafana
   repository: https://grafana-community.github.io/helm-charts
   version: 14.0.1
-digest: sha256:66c893298b72559cf2a24c6383b3fc5923640966b1b03ad2350e67caf507718a
-generated: "2026-10-21T21:34:56.630774538+02:00"
+- name: netpol
+  repository: file://../../charts/netpol
+  version: 0.1.0
+digest: sha256:a5428f3d8c7dbd7b71dd035b72d8790e469e581e60a8a604593639eae9c8ab82
+generated: "2026-10-23T13:25:13.019433152+02:00"

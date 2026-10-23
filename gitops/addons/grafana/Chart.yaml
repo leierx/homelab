@@ -6,3 +6,6 @@ dependencies:
   - name: grafana
     version: 14.0.1
     repository: https://grafana-community.github.io/helm-charts
+  - name: netpol
+    version: 0.1.0
+    repository: file://../../charts/netpol
