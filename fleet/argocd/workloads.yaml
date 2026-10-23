@@ -1,20 +1,15 @@
-# One Application per (addon x matching cluster).
-#   addon   = every fleet/addons/<name>/addon.yaml
-#   cluster = every Argo CD cluster Secret whose labels satisfy the addon's
+# One Application per (app x matching cluster).
+#   app     = every fleet/apps/<name>/app.yaml
+#   cluster = every Argo CD cluster Secret whose labels satisfy the app's
 #             enablement + placement (see fleet/README.md, "Targeting").
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: addons
+  name: workloads
   namespace: argocd
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
-  syncPolicy:
-    # Removing an addon from a cluster (or deleting this ApplicationSet) deletes
-    # the Application but orphans its resources. Infra (CRDs, ingress, Argo CD
-    # itself) is never garbage-collected implicitly.
-    preserveResourcesOnDeletion: true
   generators:
     - matrix:
         generators:
@@ -22,33 +17,36 @@ spec:
               repoURL: https://github.com/leierx/homelab
               revision: HEAD
               files:
-                - path: fleet/addons/*/addon.yaml
+                - path: fleet/apps/*/app.yaml
           - clusters:
               selector:
                 matchExpressions:
-                  # baseline: every cluster in scope unless labelled addon.fleet/<name>=disabled
-                  # opt-in:   only clusters labelled addon.fleet/<name>=enabled (or =paused)
-                  - key: 'addon.fleet/{{ .path.basename }}'
-                    operator: '{{ if eq .addon.enablement "baseline" }}NotIn{{ else if eq .addon.enablement "opt-in" }}In{{ else }}invalid-enablement{{ end }}'
+                  # baseline: every cluster in scope unless labelled app.fleet/<name>=disabled
+                  # opt-in:   only clusters labelled app.fleet/<name>=enabled (or =paused)
+                  - key: 'app.fleet/{{ .path.basename }}'
+                    operator: '{{ if eq .app.enablement "baseline" }}NotIn{{ else if eq .app.enablement "opt-in" }}In{{ else }}invalid-enablement{{ end }}'
                     values:
-                      - '{{ if eq .addon.enablement "baseline" }}disabled{{ else }}enabled{{ end }}'
-                      - '{{ if eq .addon.enablement "baseline" }}disabled{{ else }}paused{{ end }}'
+                      - '{{ if eq .app.enablement "baseline" }}disabled{{ else }}enabled{{ end }}'
+                      - '{{ if eq .app.enablement "baseline" }}disabled{{ else }}paused{{ end }}'
                   # optional scope; defaults to a requirement every cluster Secret satisfies
-                  - key: '{{ dig "placement" "key" "argocd.argoproj.io/secret-type" .addon }}'
+                  - key: '{{ dig "placement" "key" "argocd.argoproj.io/secret-type" .app }}'
                     operator: In
-                    values: ['{{ dig "placement" "value" "cluster" .addon }}']
+                    values: ['{{ dig "placement" "value" "cluster" .app }}']
   template:
     metadata:
       name: '{{ .nameNormalized }}-{{ .path.basename }}'
       labels:
-        fleet/kind: addon
+        fleet/kind: app
         fleet/component: '{{ .path.basename }}'
         fleet/cluster: '{{ .nameNormalized }}'
+      # Workloads are cleaned up when they stop targeting a cluster.
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
     spec:
-      project: platform
+      project: default
       destination:
         server: '{{ .server }}'
-        namespace: '{{ dig "namespace" .path.basename .addon }}'
+        namespace: '{{ dig "namespace" .path.basename .app }}'
       syncPolicy:
         automated:
           prune: true
@@ -59,7 +57,6 @@ spec:
           - RespectIgnoreDifferences=true
           # CRs rendered by upstream charts (ServiceMonitors, ...) often need CRDs from another addon
           - SkipDryRunOnMissingResource=true
-          - ApplyOutOfSyncOnly=true
         retry:
           limit: 10
           refresh: true
@@ -69,18 +66,18 @@ spec:
             maxDuration: 10m
   # Everything that depends on the descriptor or the cluster's labels: sources
   # (chart, manifests, or both), ignoreDifferences, paused automation, namespace
-  # Pod Security labels. templatePatch cannot change `project`.
+  # Pod Security labels.
   templatePatch: |
     {{- $env := index .metadata.labels "fleet/environment" }}
     {{- $repo := "https://github.com/leierx/homelab" }}
     spec:
       sources:
-      {{- if hasKey .addon "chart" }}
-        - repoURL: {{ .addon.chart.repoURL | quote }}
-          chart: {{ .addon.chart.name | quote }}
-          targetRevision: {{ .addon.chart.version | quote }}
+      {{- if hasKey .app "chart" }}
+        - repoURL: {{ .app.chart.repoURL | quote }}
+          chart: {{ .app.chart.name | quote }}
+          targetRevision: {{ .app.chart.version | quote }}
           helm:
-            releaseName: {{ dig "releaseName" .path.basename .addon | quote }}
+            releaseName: {{ dig "releaseName" .path.basename .app | quote }}
             ignoreMissingValueFiles: true
             valueFiles:
               - $values/{{ .path.path }}/values/default.yaml
@@ -92,7 +89,7 @@ spec:
           targetRevision: HEAD
           ref: values
       {{- end }}
-      {{- if dig "manifests" false .addon }}
+      {{- if dig "manifests" false .app }}
         - repoURL: {{ $repo }}
           targetRevision: HEAD
           path: {{ .path.path }}/manifests
@@ -104,11 +101,11 @@ spec:
             {{- end }}
               - cluster/{{ .name }}
       {{- end }}
-    {{- with dig "ignoreDifferences" (list) .addon }}
+    {{- with dig "ignoreDifferences" (list) .app }}
       ignoreDifferences: {{ toJson . }}
     {{- end }}
-    {{- $paused := eq (index .metadata.labels (printf "addon.fleet/%s" .path.basename)) "paused" }}
-    {{- $podSecurity := dig "podSecurity" "" .addon }}
+    {{- $paused := eq (index .metadata.labels (printf "app.fleet/%s" .path.basename)) "paused" }}
+    {{- $podSecurity := dig "podSecurity" "" .app }}
     {{- if or $paused $podSecurity }}
       syncPolicy:
       {{- if $paused }}

@@ -24,8 +24,9 @@ real GitOps platform on hardware we own.
 - **Cluster.** k3s runs without its own CNI and kube-proxy; Cilium provides
   both and the network policy engine. Argo CD tracks `HEAD` of `main` and
   manages everything in `fleet/`: `fleet/bootstrap/root.yaml` syncs the
-  AppProjects, two ApplicationSets and one labelled cluster Secret per cluster
-  (`fleet/clusters/`). The ApplicationSets create one `<cluster>-<addon>`
+  two ApplicationSets and the management cluster's labelled cluster Secret
+  (`fleet/clusters/`); Cluster API sub-clusters are registered by the
+  CAPI–Argo CD bridge. The ApplicationSets create one `<cluster>-<addon>`
   Application per addon (`fleet/addons/`) and per app (`fleet/apps/`) whose
   targeting matches the cluster's labels. Upstream charts are used directly,
   with layered values and Kustomize manifests per environment and cluster.
@@ -77,8 +78,8 @@ real GitOps platform on hardware we own.
 nixos/          the host: disks, k3s, sops-nix, pi
 fleet/          everything Argo CD deploys (see fleet/README.md)
   bootstrap/    the one file applied by hand
-  platform/     AppProjects and the two ApplicationSets
-  clusters/     one labelled cluster Secret per cluster
+  argocd/       the two ApplicationSets and the default AppProject
+  clusters/     the management cluster's labelled cluster Secret
   addons/       one folder per platform addon: descriptor, values layers, manifests; keycloak's realm is OpenTofu
   apps/         one folder per workload app (immich, dodde)
 docs/           the operating guide for this homelab

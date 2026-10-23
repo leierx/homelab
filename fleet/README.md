@@ -7,7 +7,6 @@ ApplicationSets connect them by matching labels.
 - Argo CD: chart `argo-cd` 10.10.5 (Argo CD v3.5.5), pinned in
   [`addons/argocd/addon.yaml`](addons/argocd/addon.yaml)
 - Repo: `https://github.com/leierx/homelab`, revision `HEAD`
-- Placeholders that need real values are marked `TODO(fleet):`.
 
 ## Contents
 
@@ -31,15 +30,13 @@ ApplicationSets connect them by matching labels.
 ```
 fleet/
 ├── bootstrap/
-│   └── root.yaml                 # the only thing ever applied by hand: AppProject "fleet" + Application "fleet-root"
-├── platform/                     # synced by fleet-root (recursively)
-│   ├── projects/                 # AppProjects: platform, workloads, and a locked-down default
-│   └── applicationsets/
-│       ├── addons.yaml           # addons x clusters -> <cluster>-<addon>
-│       └── workloads.yaml        # apps   x clusters -> <cluster>-<app>
-├── clusters/                     # synced by fleet-root (top level only)
-│   ├── loft01.yaml               # one Argo CD cluster Secret per cluster; labels = tags
-│   └── _templates/               # NOT synced; copy-paste starting points
+│   └── root.yaml                 # the only thing ever applied by hand: Application "fleet-root"
+├── argocd/                       # synced by fleet-root
+│   ├── addons.yaml               # ApplicationSet: addons x clusters -> <cluster>-<addon>
+│   ├── workloads.yaml            # ApplicationSet: apps   x clusters -> <cluster>-<app>
+│   └── default-project.yaml      # Argo CD's default AppProject, which every Application uses
+├── clusters/                     # synced by fleet-root
+│   └── loft01.yaml               # the management cluster's Argo CD cluster Secret; labels = tags
 ├── addons/<addon>/               # cluster addons (platform)
 │   ├── addon.yaml                # descriptor: chart coordinates, targeting, namespace
 │   ├── values/                   # Helm values layers (all optional)
@@ -66,9 +63,9 @@ Addons today: `admission`, `alloy-logs`, `alloy-metrics`, `argocd`,
 How it fits together:
 
 ```
-kubectl apply root.yaml ─► fleet-root (project: fleet)
-                             ├─ bootstrap/         itself + the fleet project
-                             ├─ platform/          projects, ApplicationSets
+kubectl apply root.yaml ─► fleet-root
+                             ├─ bootstrap/         itself
+                             ├─ argocd/            ApplicationSets, default project
                              └─ clusters/*.yaml    cluster Secrets (labels)
                                         │
           ApplicationSet "addons"  ◄────┼────►  ApplicationSet "workloads"
@@ -76,15 +73,15 @@ kubectl apply root.yaml ─► fleet-root (project: fleet)
                  × clusters (selector)  │              × clusters (selector)
                         │                                   │
            <cluster>-<addon> Applications       <cluster>-<app> Applications
-           project: platform                   project: workloads
+           project: default                    project: default
            chart (upstream) + $values (repo)   chart and/or manifests
            and/or manifests (Kustomize)
 ```
 
 Key decisions and why:
 
-- **One manual step.** `bootstrap/root.yaml` contains the `fleet` AppProject and
-  the root Application. The root app syncs `bootstrap/` too, so after the first
+- **One manual step.** `bootstrap/root.yaml` contains the root Application.
+  The root app syncs `bootstrap/` too, so after the first
   apply it manages its own definition. Argo CD itself is an addon
   (`addons/argocd`) that adopts what you applied by hand.
 - **Clusters are data.** A cluster is one Secret with labels. Nothing else in
@@ -97,7 +94,7 @@ Key decisions and why:
   never touches an ApplicationSet.
 - **Descriptors are tiny YAML files**, not Application manifests. They hold only
   what varies (chart coordinates, namespace, targeting, Pod Security level).
-  Everything shared (sync policy, retries, value-file layering, projects) lives
+  Everything shared (sync policy, retries, value-file layering) lives
   once, in the ApplicationSet. This is also what makes versions machine-parseable
   for Renovate.
 - **`templatePatch` builds what depends on the descriptor**: `spec.sources`
@@ -124,8 +121,7 @@ first add its `clusters/<name>.yaml` and override layers (see
 [Clusters](#clusters)). Chart versions below must match the `chart.version` in
 the addon's `addon.yaml`; check them before you run.
 
-1. **Check placeholders.** Search `fleet/` for `TODO(fleet)` and fill in what
-   applies. Commit and push; Argo CD reads from git, not from your checkout.
+1. **Push first.** Argo CD reads from git, not from your checkout.
 
 2. **Network first.** Cilium is the CNI and is itself an addon. Apply it once
    from the same chart and values Argo CD will later adopt, server-side as
@@ -230,9 +226,9 @@ entry; in Argo CD it is called `loft01`.
 
 ## Clusters
 
-A cluster is one file in `fleet/clusters/`. `fleet-root` syncs every `*.yaml`
-at the top level of that directory (subdirectories are ignored, which is why
-`_templates/` is safe).
+A cluster is an Argo CD cluster Secret with labels. The management cluster's is
+`fleet/clusters/<name>.yaml`; sub-clusters built with Cluster API are registered
+by the CAPI–Argo CD bridge, which creates their Secret.
 
 ### Label vocabulary
 
@@ -259,22 +255,15 @@ Application names (`<cluster>-<addon>`), in override paths and in secret paths.
 
 ### Add a cluster
 
-The management cluster is a plain Secret because it needs no credentials.
-Remote clusters need a token and CA, which must not be committed, so they are
-registered as an `ExternalSecret` that renders the cluster Secret from the
-secret store:
-
-1. Put `token` and `caData` for the new cluster under
-   `<management kvPrefix>/clusters/<name>` in OpenBao, e.g.
-   `loft01/clusters/lab1` (see [Secrets](#secrets)).
-2. `cp fleet/clusters/_templates/remote-cluster.yaml fleet/clusters/<name>.yaml`
-   and set the name, server URL and labels.
-3. Add the cluster's override layers where an addon needs per-cluster data (see
+1. Register it: the CAPI–Argo CD bridge does this for a sub-cluster; give its
+   Secret the labels above. Only a management cluster gets a file in
+   `fleet/clusters/`.
+2. Add the cluster's override layers where an addon needs per-cluster data (see
    [what goes in the cluster layer](#what-goes-in-the-cluster-layer)): at least
    `zfs-localpv` (StorageClasses), `envoy-gateway` (WireGuard address),
    `openbao` (`kvPrefix`, storage), `alloy-*` (`CLUSTER_NAME`), `cilium`
    (pod CIDR) and `mimir`/`loki` storage.
-4. Commit.
+3. Commit. Its Applications appear as `<cluster>-<addon>` and `<cluster>-<app>`.
 
 What it then receives is computed from its labels. A cluster labelled
 `fleet/environment: prod`, `fleet/role: workload` gets the platform baseline
@@ -283,7 +272,7 @@ What it then receives is computed from its labels. A cluster labelled
 `app.fleet/immich: enabled` adds Immich; `addon.fleet/cert-manager: disabled`
 removes cert-manager.
 
-To remove a cluster, delete its file. See [deletion](#deletion-and-finalizers)
+To remove a cluster, delete its Secret (its file, or the CAPI cluster). See [deletion](#deletion-and-finalizers)
 for what happens to its workloads.
 
 ## Targeting
@@ -318,8 +307,8 @@ capability label that expresses it.
 ## Addons
 
 Addons are cluster-level infrastructure owned by the platform: CNI, ingress,
-certificates, secrets, storage, telemetry, identity, Argo CD. They are deployed
-with the `platform` project and are never garbage-collected implicitly (see
+certificates, secrets, storage, telemetry, identity, Argo CD. They are never
+garbage-collected implicitly (see
 [deletion](#deletion-and-finalizers)).
 
 Shapes in use:
@@ -354,12 +343,7 @@ Example: metrics-server on every prod cluster.
    ```
 
 2. Optionally add `values/default.yaml` (and `env/`, `cluster/` overrides).
-3. If the chart repo is new, add it to `sourceRepos` in
-   [`platform/projects/platform.yaml`](platform/projects/platform.yaml). This is
-   a deliberate security gate: the project only pulls from listed repos.
-4. If the addon has its own namespace, add it to the deny list in
-   [`platform/projects/workloads.yaml`](platform/projects/workloads.yaml).
-5. Commit. The `addons` ApplicationSet creates `<cluster>-metrics-server` for
+3. Commit. The `addons` ApplicationSet creates `<cluster>-metrics-server` for
    each matching cluster.
 
 An addon that needs its own resources next to the chart (issuers, stores,
@@ -382,9 +366,8 @@ Conventions the addons follow:
 
 ## Workload apps
 
-Workload apps are user-facing services. They live in `fleet/apps/`, use the
-`workloads` project (namespaced resources only, outside platform namespaces) and
-are cleaned up when they stop targeting a cluster. Descriptor schema, layering
+Workload apps are user-facing services. They live in `fleet/apps/` and are
+cleaned up when they stop targeting a cluster. Descriptor schema, layering
 and targeting are identical to addons, with `app:` instead of `addon:` and
 `app.fleet/<name>` cluster labels.
 
@@ -414,9 +397,7 @@ fleet/apps/immich/
     └── cluster/loft01/              # kind: Component — config secret, routes, PVCs, DB size
 ```
 
-New chart repos must be added to `sourceRepos` in
-[`platform/projects/workloads.yaml`](platform/projects/workloads.yaml). Then
-label a cluster `app.fleet/immich: enabled`.
+Then label a cluster `app.fleet/immich: enabled`.
 
 ### Kustomize / plain manifests app
 
@@ -525,11 +506,8 @@ true for every cluster the descriptor targets.
 
 | Wave | Resources |
 |---|---|
-| -10 | AppProject `fleet` |
-| -1 | AppProjects `platform`, `workloads`, `default` |
+| -1 | AppProject `default` |
 | 0 | ApplicationSets, cluster Secrets, `fleet-root` itself |
-
-Projects exist before ApplicationSets generate Applications that reference them.
 
 ### Within an addon/app
 
@@ -590,12 +568,10 @@ makes sync honour them as well as diff.
 
 ## AppProjects
 
-| Project | Used by | Sources | Destinations | Resources |
-|---|---|---|---|---|
-| `fleet` | `fleet-root` | this repo | `argocd` namespace on the management cluster | only AppProject, Application, ApplicationSet, Secret, ExternalSecret |
-| `platform` | addons | this repo + listed chart repos | any cluster, any namespace | all cluster-scoped; namespaced except Argo CD's own kinds (no app/project minting) |
-| `workloads` | apps | this repo + listed chart repos | any cluster, any namespace except the platform's (`kube-*`, `argocd`, `openbao`, `monitoring`, …) | cluster-scoped: `Namespace` only; denies ResourceQuota, LimitRange, Argo CD kinds, SecretStore |
-| `default` | nothing | none | none | none (locked down) |
+Every Application, `fleet-root` included, uses Argo CD's `default` project,
+declared as Argo CD creates it in
+[`argocd/default-project.yaml`](argocd/default-project.yaml): any repo, any
+cluster, any resource. Git is the gate.
 
 ## Secrets
 
@@ -664,7 +640,7 @@ so its own deployment only changes when synced by hand.
 
 ```sh
 # Dry-run against the live cluster Secrets
-argocd appset generate fleet/platform/applicationsets/addons.yaml -o yaml
+argocd appset generate fleet/argocd/addons.yaml -o yaml
 
 # What exists right now
 kubectl -n argocd get applications -l fleet/kind=addon -L fleet/cluster,fleet/component
@@ -684,15 +660,11 @@ closed). Typical messages:
 |---|---|
 | `"invalid-enablement" is not a valid label selector operator` | `enablement` is not `baseline`/`opt-in` |
 | `map has no entry for key "enablement"` / `"chart"` sub-keys | required descriptor field missing or misspelled; or the top-level key is not `addon:`/`app:` |
-| `application references project ... which does not exist` | projects not yet synced; resolves after `fleet-root` syncs |
 
 **Application errors**
 
 | Symptom | Cause / fix |
 |---|---|
-| `application repo ... is not permitted in project` | add the chart repo to the project's `sourceRepos` (OCI: without scheme) |
-| `namespace ... is not permitted in project 'workloads'` | the app targets a platform namespace |
-| `resource ... is not permitted in project` | e.g. a workload chart shipping a ClusterRole; move it to an addon or extend the project deliberately |
 | `no matches for kind` / CRD missing | CRD from another addon not installed yet; retries resolve it |
 | Value change has no effect | file path typo; missing value files are silently skipped. Compare with `argocd app manifests <app>` |
 | Expected app not created | check the cluster labels (`kubectl -n argocd get secret -l argocd.argoproj.io/secret-type=cluster --show-labels`) against the descriptor's enablement/placement |
