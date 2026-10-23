@@ -8,6 +8,10 @@ metadata:
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
+  # a hand-edited syncPolicy (e.g. auto-sync turned off to pause) stays until changed back
+  ignoreApplicationDifferences:
+    - jsonPointers:
+        - /spec/syncPolicy
   generators:
     - git:
         repoURL: https://github.com/leierx/homelab
@@ -34,12 +38,19 @@ spec:
             - clusters/{{ .path.basename }}/values.yaml
           valuesObject:
             cluster: '{{ .path.basename }}'
+      # same for the <cluster>-<addon> Applications: pause one by hand without the chart undoing it
+      ignoreDifferences:
+        - group: argoproj.io
+          kind: Application
+          jsonPointers:
+            - /spec/syncPolicy
       syncPolicy:
         automated:
           prune: true
           selfHeal: true
         syncOptions:
           - ServerSideApply=true
+          - RespectIgnoreDifferences=true
         retry:
           limit: 10
           backoff:
