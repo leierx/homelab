@@ -1,2 +1,2 @@
-# subcharts downloaded by local `helm dependency build` runs
+# addons' subcharts: archives from local `helm dependency build` runs, and unpacked local charts
 addons/*/charts/
