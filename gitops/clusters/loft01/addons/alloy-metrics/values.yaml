@@ -1,2 +1,0 @@
-mimirUrl: http://mimir.monitoring.svc:8080/api/v1/push
-lokiUrl: http://loki.monitoring.svc:3100/loki/api/v1/push
