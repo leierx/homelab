@@ -217,8 +217,14 @@ the addon's `addon.yaml`; check them before you run.
 
 9. **Access.** The local admin is disabled; the UI uses Keycloak SSO once the
    `keycloak` addon is up (`https://argocd.skinke.net`, WireGuard only). Until
-   then, use the CLI against the API server directly: `argocd login --core`
-   (uses your kubeconfig).
+   then, use the CLI against the API server directly. It uses your kubeconfig
+   and looks for Argo CD in the context's namespace, so point that at `argocd`
+   first:
+
+   ```sh
+   kubectl config set-context --current --namespace=argocd
+   argocd login --core
+   ```
 
 From here on, change Cilium and Argo CD only through git.
 
