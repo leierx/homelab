@@ -2,5 +2,8 @@ dependencies:
 - name: renovate
   repository: https://docs.renovatebot.com/helm-charts
   version: 46.378.0
-digest: sha256:42bbe6a52424865587f21dabfe10d3602242a1a3834bed835f24bc6d335899f1
-generated: "2026-10-22T17:20:12.12460619Z"
+- name: netpol
+  repository: file://../../charts/netpol
+  version: 0.1.0
+digest: sha256:82ed0bfa9d7a948cdd0add716e6bfc7c784e3969ed7d8b1e1a9d8623a2a1eb86
+generated: "2026-10-23T13:39:24.163857032+02:00"

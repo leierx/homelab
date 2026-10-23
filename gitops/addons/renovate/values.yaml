@@ -29,3 +29,6 @@ renovate:
   extraVolumes: [{name: github-app-token, configMap: {name: renovate-github-app-token}}]
   extraVolumeMounts: [{name: github-app-token, mountPath: /usr/local/share/github-app-token}]
   resources: {requests: {cpu: 250m, memory: 512Mi}, limits: {memory: 4Gi}}
+# Renovate runs third-party code (package managers, Helm): HTTPS to the internet, nothing in the cluster
+netpol:
+  world: [443]
