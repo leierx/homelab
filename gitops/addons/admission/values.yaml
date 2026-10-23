@@ -1,2 +1,2 @@
 # namespaces whose pods get hostUsers: false (MutatingAdmissionPolicy user-namespaces)
-userNamespaces: []
+userNamespaces: [argo, argocd, cert-manager, cnpg-system, envoy-gateway-system, external-secrets, immich, keycloak, monitoring, openbao, renovate]
