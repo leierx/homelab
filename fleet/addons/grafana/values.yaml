@@ -526,7 +526,38 @@ grafana:
                         type: gt
                         params:
                           - 0
-          - uid: secret-sync-failing
+          - uid: argocd-app-paused
+          title: Argo CD application paused for a week
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: An Argo CD application has had auto-sync off for 7 days, so git changes don't reach it. Pauses kept in git (paused in the cluster's values.yaml) don't count; resume it or move the pause into git.
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 604800
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: count_over_time((max by (name) (argocd_app_info{autosync_enabled="false"}) unless on (name) max by (name) (argocd_app_labels{label_fleet_paused="true"}))[7d:1h]) >= 168
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        - uid: secret-sync-failing
             title: Secret sync failing
             condition: C
             for: 15m

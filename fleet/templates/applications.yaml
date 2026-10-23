@@ -29,6 +29,9 @@ metadata:
   labels:
     fleet/cluster: {{ $cluster }}
     fleet/addon: {{ $name }}
+    {{- if $settings.paused }}
+    fleet/paused: "true"
+    {{- end }}
 spec:
   project: default
   destination:
