@@ -1,14 +1,7 @@
 postgres:
   tag: 18.6-system-trixie
-  storageClass: ''
-  size: ''
 tofu:
   tag: 1.13.1
-clientSecrets:
-- argocd
-- grafana
-- immich
-- edge
-host: ''
-podCIDR: ''
+# OIDC clients whose secrets are generated into OpenBao <cluster>/<name>
+clientSecrets: [argocd, grafana, immich, edge]
 certificateIssuer: letsencrypt-prod
