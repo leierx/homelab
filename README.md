@@ -25,9 +25,10 @@ real GitOps platform on hardware we own.
   both and the network policy engine. Argo CD tracks `HEAD` of `main` and
   renders the fleet chart in `gitops/fleet/`: `root.yaml` creates one
   `cluster-<name>` Application per `gitops/clusters/<name>/cluster.yaml`, and
-  each of those creates one `<name>-<addon>` Application per addon whose
-  `fleet.yaml` selects the cluster. Group and cluster layers add values and
-  manifests. The guide is [docs/README.md](docs/README.md), and
+  each of those creates one `<name>-<addon>` Application per addon the
+  cluster runs: the addons of the groups its `cluster.yaml` lists (each
+  `gitops/groups/<group>/group.yaml`), plus its own. Group and cluster
+  layers add values and manifests. The guide is [docs/README.md](docs/README.md), and
   `helm template` previews everything offline.
 - **Edge.** Envoy Gateway terminates TLS on two Gateways: `edge` (NodePort
   30080/30443, reached through the router's port forward) and `wg` (the
@@ -46,7 +47,7 @@ real GitOps platform on hardware we own.
   workload cluster is a VM on this node. Its folder under `gitops/clusters/`
   holds the CAPI `Cluster` and an ExternalSecret that registers it with Argo
   CD from CAPI's kubeconfig Secret; none exists yet. An app that runs on one
-  cluster only is an addon with `clusters: [<cluster>]` in its `fleet.yaml`.
+  cluster only is in that cluster's `addons:` rather than a group.
   Workload clusters' pod and service CIDRs must not overlap `10.42.0.0/16` and
   `10.43.0.0/16`, and they boot from a persistent disk
   (`cluster-template-persistent-storage.yaml`), never a containerDisk.
@@ -77,9 +78,10 @@ nixos/        the host: disks, k3s, sops-nix, pi
 gitops/
   root.yaml   the one Application applied by hand
   fleet/      the fleet chart: renders cluster-<c> and <c>-<addon> Applications
-  addons/     one folder per addon: fleet.yaml and a chart; keycloak/tofu is the realm
-  groups/     configuration shared by every cluster in a group
-  clusters/   one folder per cluster: cluster.yaml, registration, layers
+  charts/     local charts several addons share (netpol)
+  addons/     one folder per addon: a chart and optional fleet.yaml; keycloak/tofu is the realm
+  groups/     one folder per group: group.yaml (its addons) and shared layers
+  clusters/   one folder per cluster: cluster.yaml (groups, addons, metadata), registration, layers
 docs/         the operating guide
 flake.nix     the flake (host and installer)
 ```

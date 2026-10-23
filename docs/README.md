@@ -11,17 +11,21 @@ Everything Argo CD runs comes from `main`. A push is a deploy.
 gitops/
 ├── root.yaml                 the only manifest applied by hand
 ├── fleet/                    the fleet chart (two templates); reads the folders below via symlinks
-├── addons/<a>/               fleet.yaml + a Helm chart (+ optional manifests/)
-├── groups/<g>/addons/<a>/    optional values.yaml / manifests/ for every cluster in group g
+├── charts/<name>/            local charts several addons share (netpol)
+├── addons/<a>/               a Helm chart, optional fleet.yaml (knobs), optional manifests/
+├── groups/<g>/
+│   ├── group.yaml            the group's addons
+│   └── addons/<a>/           optional values.yaml / manifests/ for every cluster in g
 └── clusters/<c>/
-    ├── cluster.yaml          global.fleet: {cluster, group, domain}
+    ├── cluster.yaml          the cluster's groups, extra addons, exclusions, paused addons,
+    │                         and global.fleet (its name and domain)
     ├── secret.yaml           the cluster's Argo CD registration
     └── addons/<a>/           optional values.yaml / manifests/ for this cluster
 ```
 
 - `root` renders one `cluster-<c>` Application per `clusters/*/cluster.yaml`.
 - `cluster-<c>` renders the cluster's top-level files (the registration) and
-  one `<c>-<a>` Application per addon whose `fleet.yaml` selects the cluster.
+  one `<c>-<a>` Application per addon the cluster runs.
 - The parents (`root`, `cluster-<c>`) have no finalizer and set
   `Delete=false`, so deleting one deletes nothing. They apply server-side;
   keep it that way, or fields they stop rendering never leave the children.
@@ -39,17 +43,61 @@ Argo polls git every 3 minutes. To skip the wait, refresh the parent:
 kubectl -n argocd annotate app cluster-loft01 argocd.argoproj.io/refresh=normal --overwrite
 ```
 
+## What a cluster runs
+
+A cluster runs the addons of all its groups, plus its own `addons:`, minus
+its `exclude:`. Read `clusters/<c>/cluster.yaml`, then the `group.yaml` of
+each group it lists:
+
+```yaml
+# clusters/<c>/cluster.yaml            # groups/<g>/group.yaml
+groups: [prod, single-node]            addons:
+addons: [argocd, immich, ...]            - cilium
+exclude: [...]                           - admission
+paused: [renovate]                       - ...
+global:
+  fleet: {cluster: <c>, domain: skinke.net}
+```
+
+| Key in `cluster.yaml` | Meaning |
+|---|---|
+| `groups` | Ordered. Their addons run here, and their value layers apply in this order. |
+| `addons` | Addons for this cluster only: hub-only ones (argocd, cluster-api) and single-instance apps (keycloak, grafana, immich, ...). An addon a group already brings is an error. |
+| `exclude` | Addons from the groups that this cluster doesn't run. Naming one no group brings is an error. |
+| `paused` | Addons whose Application gets no auto-sync. It must be one the cluster runs. |
+| `global.fleet` | The cluster's metadata: `cluster` (must be the folder name), `domain`. Every chart, subcharts included, reads it as `.Values.global.fleet`. |
+
+`group.yaml` has one key, `addons`. A group exists because its folder and
+`group.yaml` do. `single-node` lists no addons; it holds only values.
+
+The final list, as Argo will see it:
+
+```sh
+helm template c gitops/fleet --set cluster=loft01 | yq -N '.metadata.labels["fleet.skinke.net/addon"]'
+kubectl -n argocd get app -l fleet.skinke.net/cluster=loft01      # what is running
+```
+
+Every name is a reference to a folder. An unknown group, addon or key, a
+duplicate, broken YAML or an `exclude`/`paused` entry that doesn't apply
+**fails that cluster's render**, and the error names the file. Workloads keep
+running, but none of the cluster's Applications change until it's fixed.
+
 ## Check before you push
 
 There's no CI. Render what Argo will render:
 
 ```sh
-helm template c gitops/fleet --set cluster=loft01      # the Applications; fails on a bad fleet.yaml
+helm template c gitops/fleet --set cluster=loft01      # the Applications; fails on a bad name or key
 helm dependency build gitops/addons/<a>
-helm template <a> gitops/addons/<a> -n <namespace> \
-  -f gitops/clusters/loft01/addons/<a>/values.yaml \
-  -f gitops/clusters/loft01/cluster.yaml                # what <c>-<a> applies
+# what <c>-<a> applies, with the value files its Application lists, in order
+c=loft01 a=<a>
+app=$(helm template c gitops/fleet --set cluster=$c | yq "select(.metadata.name == \"$c-$a\")")
+helm template $a gitops/addons/$a -n "$(yq .spec.destination.namespace <<<"$app")" \
+  $(yq '.spec.sources[0].helm.valueFiles[] | "-f ." + .' <<<"$app")
 ```
+
+`helm dependency build` needs `helm repo add` for the addon's https
+repositories only; local charts need nothing.
 
 Argo runs Helm 4; the host's `helm` is 3.x. They differ in places. For
 example, `key: null` in a wrapper's own `values.yaml` deletes a subchart
@@ -63,32 +111,39 @@ Value files, later wins. Argo lists only the files that exist, plus
 
 1. `addons/<a>/values.yaml`: good defaults for any cluster, including
    in-cluster URLs that are the same everywhere (`loki.monitoring.svc`).
-2. `groups/<g>/addons/<a>/values.yaml`: what a whole group shares.
+2. `groups/<g>/addons/<a>/values.yaml`, for each of the cluster's groups in
+   its order: what a whole group shares. `single-node` holds Cilium's
+   localhost API server and single operator replica.
 3. `clusters/<c>/addons/<a>/values.yaml`: hostnames, CIDRs, IPs, storage
    classes and sizes. Nothing else belongs here.
-4. `clusters/<c>/cluster.yaml`: `global.fleet.{cluster,group,domain}`. It
-   reaches every template, subcharts included. Templates name OpenBao paths
-   `{{ .Values.global.fleet.cluster }}/<app>`.
+4. `clusters/<c>/cluster.yaml`: `global.fleet.{cluster,domain}`. It reaches
+   every template, subcharts included. Templates name OpenBao paths
+   `{{ .Values.global.fleet.cluster }}/<app>`. Its selection keys are
+   top-level values too, but no chart reads them.
 
-Upstream chart keys nest under the dependency name at every layer, for example
-`cert-manager: {replicaCount: 2}`. A key at the wrong level is silently
-ignored, so check the render. Keep a value only if it changes the render.
-Alert rules and other bulky content go in `templates/` as files, not in
-values; Grafana's rules are an example (`addons/grafana/templates/_alerts-*.tpl`).
+`manifests/` folders follow the same order: the addon's, each group's, the
+cluster's, each a separate source.
+
+Dependency values nest under the dependency's name (or `alias:`) at every
+layer, upstream and local alike, for example `cert-manager: {replicaCount: 2}`
+or `netpol: {world: [443]}`. A key at the wrong level is silently ignored, so
+check the render. Keep a value only if it changes the render. Alert rules and
+other bulky content go in `templates/` as files, not in values; Grafana's
+rules are an example (`addons/grafana/templates/_alerts-*.tpl`).
 
 ## Add an addon
 
 1. Create `gitops/addons/<a>/` containing:
-   - `Chart.yaml`, with the upstream chart as a dependency if there is one;
+   - `Chart.yaml`, with its dependencies: upstream charts and local
+     subcharts (below);
    - `Chart.lock`, from `helm dependency update gitops/addons/<a>`, committed;
-   - `values.yaml`;
-   - `templates/` for your own objects;
+   - `values.yaml`, with `netpol:` for the namespace's network policy;
+   - `templates/` for the glue: your own objects that aren't a component;
    - optionally `manifests/` for kustomize or raw YAML containing `{{`. Argo
      adds it as a second source.
-2. Write `fleet.yaml`:
+2. Optionally write `fleet.yaml`, the addon's knobs:
 
    ```yaml
-   groups: [prod]                    # the normal selector
    namespace: my-ns                  # default: the folder name
    managedNamespaceMetadata:         # Pod Security for the destination namespace
      labels: {pod-security.kubernetes.io/enforce: restricted, pod-security.kubernetes.io/warn: restricted, pod-security.kubernetes.io/audit: restricted}
@@ -96,33 +151,82 @@ values; Grafana's rules are an example (`addons/grafana/templates/_alerts-*.tpl`
 
    | Key | Meaning |
    |---|---|
-   | `groups` | Runs on every cluster whose `cluster.yaml` group is listed. |
-   | `clusters` | Runs on the named clusters. Use it for hub-only addons (argocd, cluster-api) and single-instance apps (immich, dodde, keycloak, grafana, argo-workflows, renovate). Unioned with `groups`. |
-   | `paused` | Clusters where the Application gets no auto-sync. |
    | `namespace`, `release` | Destination namespace and Helm release. Both default to the folder name. `release` also names the layer folders. |
    | `syncOptions` | Appended to `CreateNamespace`, `ServerSideApply`, `SkipDryRunOnMissingResource`. |
    | `managedNamespaceMetadata`, `ignoreDifferences` | Copied into the Application. |
 
-   An unknown key, an unknown group, an empty file or broken YAML **fails
-   every cluster's render**. Workloads keep running, but no Application
-   changes until it's fixed. A misspelt name in `clusters:` silently matches
-   nothing and **prunes** the addon. Addons whose objects must survive that
-   set `syncOptions: [Delete=false]` (cilium, argocd, cluster-api).
-3. Single-instance apps with state put `Delete=false,Prune=false` on that
-   state, as `argocd.argoproj.io/sync-options` on the PVC or CNPG `Cluster`
-   (immich, keycloak, grafana do).
-4. If it reads secrets, add its namespace to the store `conditions` in
+   Any other key fails the render of every cluster that runs the addon.
+3. Select it: add it to a group's `group.yaml`, or to one cluster's
+   `addons:`.
+4. Addons whose removal would cut off the cluster set app-level
+   `syncOptions: [Delete=false]` (cilium, argocd). Single-instance apps with
+   state put `Delete=false,Prune=false` on that state, as
+   `argocd.argoproj.io/sync-options` on the PVC or CNPG `Cluster` (immich,
+   keycloak, grafana do).
+5. If it reads secrets, add its namespace to the store `conditions` in
    `addons/external-secrets/templates/clustersecretstore.yaml`.
-5. Render, push and refresh. Sync waves: never put anything behind a PVC
+6. Render, push and refresh. Sync waves: never put anything behind a PVC
    (`zfs` and `zfs-thin` bind on first consumer, so the PVC stays Pending), or
    behind something that can't become Healthy until a later wave exists.
 
+### Subchart or template
+
+An addon chart is composed: upstream charts plus local subcharts as
+dependencies, and its own `templates/`.
+
+- **A self-contained component with its own values interface is a local
+  subchart.** It renders a whole thing from a few values, and you could
+  describe it without naming the addon: the namespace's network policy
+  (`netpol`), Mimir as one pod (`addons/mimir/charts/mimir`).
+- **Glue goes in `templates/`:** the objects that wire this addon to the rest
+  (routes, ExternalSecrets, a policy for one of the addon's pods with its
+  own labels, CRs for the addon's operator). If you'd only ever set its
+  values from this one addon, it's glue.
+
+A local subchart lives in one of two places:
+
+| Form | Where | `Chart.yaml` dependency |
+|---|---|---|
+| Shared | `gitops/charts/<name>/` | `{name: netpol, version: 0.1.0, repository: file://../../charts/netpol}` |
+| Unpacked, one addon | `addons/<a>/charts/<name>/`, committed | `{name: mimir, version: 0.1.0, repository: ""}` |
+
+- Its values nest under its name in every layer, or under its `alias:`
+  when the chart is used twice (keycloak uses `netpol` and, as
+  `netpol-tofu`, again for the realm reconcile pod).
+- It gets the cluster's metadata as `.Values.global.fleet`, like every
+  subchart.
+- `Chart.lock` lists local entries too. Argo's repo-server runs
+  `helm dependency build`, which `helm repo add`s only the https and OCI
+  repositories and packs `file://` charts from the checkout; `""` charts are
+  used in place. Renovate's helmv3 manager skips local entries
+  (`local-dependency`, `no-repository`); its `helm dependency update` for a
+  remote bump rewrites only that entry in the lock and leaves `charts/<name>/`
+  directories alone.
+- The lock pins the local chart's version. Edit a local chart freely, but
+  leave its `version`; bumping it means `helm dependency update` on every
+  addon that uses it.
+- `.gitignore` ignores only `charts/*.tgz`, so unpacked charts are committed.
+  The fleet chart's `.helmignore` keeps `addons/*/charts/` out of its
+  `.Files`.
+
+### Network policy
+
+Every addon namespace with a default-deny policy gets it from
+`gitops/charts/netpol`. Its values (see its `values.yaml`): `sameNamespace`,
+`webhook` (from the API server), `gateway: [ports]` (from the Envoy proxies),
+`apiServer`, `dns`, `world: [ports]`, plus raw `ingress:`/`egress:` rules
+after those. A policy that allows nothing still renders an empty `{}` rule
+each way, because Cilium rejects a policy without rules. Extra policies for
+single pods stay in the addon's `templates/`, unless they're the same
+component (keycloak's reconcile pod uses a second `netpol`). The cluster-wide
+baseline (DNS for every pod, scraping by alloy-metrics) is
+`addons/cilium/templates/baseline-policy.yaml`.
+
 ## Pause an addon
 
-Add the cluster to `paused:` in its `fleet.yaml` and push. The Application
+Add it to `paused:` in the cluster's `cluster.yaml` and push. The Application
 loses `automated`; if an operation is mid-retry, also run
-`argocd app terminate-op <c>-<a>`. Remove the cluster from `paused:` to
-resume.
+`argocd app terminate-op <c>-<a>`. Remove it from `paused:` to resume.
 
 Pausing is git-only. Turning auto-sync **off** in the UI is reverted by the
 parent within seconds. Turning it **on** in the UI for an addon paused in git
@@ -134,9 +238,10 @@ automerge lands minor and patch bumps straight on `main`.
 
 ## Remove an addon
 
-Deselect it: drop the group or cluster from its `fleet.yaml`, or delete the
-folder. The parent prunes the Application, and its finalizer deletes what it
-managed. It keeps CRDs, objects marked `Delete=false`, objects with
+Drop it from the group's or the cluster's list, add it to the cluster's
+`exclude:`, or delete the folder after removing every reference to it. The
+parent prunes the Application, and its finalizer deletes what it managed. It
+keeps CRDs, objects marked `Delete=false`, objects with
 `helm.sh/resource-policy: keep`, and everything when the addon sets
 app-level `Delete=false`. Clean those up by hand if you mean it.
 
@@ -149,23 +254,25 @@ adopts the live objects.
 1. Create `gitops/clusters/<c>/cluster.yaml`:
 
    ```yaml
+   groups: [prod]
+   addons: []
    global:
-     fleet: {cluster: <c>, group: test, domain: skinke.net}
+     fleet: {cluster: <c>, domain: skinke.net}
    ```
 
-   The group must be listed in `gitops/fleet/values.yaml`.
+   Each group needs `gitops/groups/<g>/group.yaml`; a new group is a new
+   folder.
 2. Add the registration as `secret.yaml`, with the annotation
    `argocd.argoproj.io/sync-options: Prune=false`. For the hub it's a plain
    cluster Secret (see loft01's). For a Cluster API (CAPK) cluster it's an
    ExternalSecret that builds the Argo CD cluster Secret from CAPI's
    `<c>-kubeconfig`, next to a `capi.yaml` holding the CAPI `Cluster`, also
    `Prune=false`.
-3. Add per-cluster values under `clusters/<c>/addons/<a>/` for every selected
-   addon that needs hostnames, CIDRs, IPs or storage. A workload cluster's pod
+3. Add per-cluster values under `clusters/<c>/addons/<a>/` for every addon it
+   runs that needs hostnames, CIDRs, IPs or storage. A workload cluster's pod
    and service CIDRs must not overlap loft01's `10.42.0.0/16` and
    `10.43.0.0/16`.
-4. Push. `cluster-<c>` appears and creates `<c>-<a>` for every addon in its
-   group.
+4. Push. `cluster-<c>` appears and creates `<c>-<a>` for every addon it runs.
 
 ## Remove a cluster
 
@@ -196,6 +303,7 @@ kubectl label ns kube-system pod-security.kubernetes.io/{enforce,warn,audit}=pri
 helm repo add cilium https://helm.cilium.io; helm repo add argo https://argoproj.github.io/argo-helm
 for a in cilium argocd; do helm dependency build gitops/addons/$a; done
 helm template cilium gitops/addons/cilium -n kube-system --include-crds \
+  -f gitops/groups/single-node/addons/cilium/values.yaml \
   -f gitops/clusters/loft01/addons/cilium/values.yaml -f gitops/clusters/loft01/cluster.yaml \
   | kubectl apply --server-side --field-manager=argocd-controller -f -
 kubectl wait --for=condition=Ready node --all --timeout=10m
