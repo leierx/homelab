@@ -1,5 +1,2 @@
 loki:
-  singleBinary:
-    persistence:
-      storageClass: zfs
-      size: 50Gi
+  singleBinary: {persistence: {storageClass: zfs, size: 50Gi}}
