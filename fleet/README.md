@@ -546,6 +546,14 @@ resolve through two defaults: `SkipDryRunOnMissingResource=true` lets the sync b
 planned although a CRD is missing, and retries (up to 10, backing off to 10
 minutes, picking up new commits) re-apply once it exists.
 
+A retry only starts once the sync operation ends, and an operation with a
+failed resource still waits for the rest of its wave to become healthy. So a
+resource that can fail this way must not share a wave with something that
+cannot become healthy without it, or the sync waits forever. Put it in wave
+`-1` (OpenBao's Certificates, which its StatefulSet mounts), or remove the
+dependency (dodde's DataVolume binds immediately instead of waiting for its
+VirtualMachine).
+
 ### Deletion and finalizers
 
 | Object | Finalizer | Effect of deletion |

@@ -1,8 +1,11 @@
 # a CA of its own: only External Secrets and the bao CLI need to trust it
+# wave -1: the StatefulSet mounts openbao-tls; failing in its wave would leave the sync waiting on it forever
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: openbao-selfsigned
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   selfSigned: {}
 ---
@@ -10,6 +13,8 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: openbao-ca
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   isCA: true
   commonName: openbao-ca
@@ -25,6 +30,8 @@ apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: openbao-ca
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   ca:
     secretName: openbao-ca
@@ -33,6 +40,8 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: openbao-tls
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   secretName: openbao-tls
   privateKey:

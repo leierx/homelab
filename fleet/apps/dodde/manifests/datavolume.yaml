@@ -5,6 +5,8 @@ metadata:
   namespace: dodde
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
+    # import without waiting for the VM, whose CRD comes from another app; otherwise a failed VM leaves the sync waiting on this forever
+    cdi.kubevirt.io/storage.bind.immediate.requested: "true"
 spec:
   source:
     http:
