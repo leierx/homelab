@@ -1,71 +1,35 @@
 cluster-api-operator:
   enableHelmHook: false
   resources:
-    manager:
-      requests:
-        cpu: 10m
-        memory: 64Mi
-      limits:
-        cpu: null
-        memory: 256Mi
+    manager: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}
   containerSecurityContext:
     manager:
       runAsNonRoot: true
       allowPrivilegeEscalation: false
-      capabilities:
-        drop:
-        - ALL
-      seccompProfile:
-        type: RuntimeDefault
+      capabilities: {drop: [ALL]}
+      seccompProfile: {type: RuntimeDefault}
+  # the wrapper chart owns the provider namespaces (templates/namespace.yaml), hence createNamespace: false
   core:
     cluster-api:
-      createNamespace: false   # the wrapper chart owns the provider namespaces
+      createNamespace: false
       version: v1.14.3
       deployment:
-        containers:
-        - name: manager
-          resources:
-            requests:
-              cpu: 10m
-              memory: 64Mi
-            limits:
-              memory: 512Mi
+        containers: [{name: manager, resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 512Mi}}}]
   bootstrap:
     kubeadm:
       createNamespace: false
       version: v1.14.3
       deployment:
-        containers:
-        - name: manager
-          resources:
-            requests:
-              cpu: 10m
-              memory: 64Mi
-            limits:
-              memory: 256Mi
+        containers: [{name: manager, resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}}]
   controlPlane:
     kubeadm:
       createNamespace: false
       version: v1.14.3
       deployment:
-        containers:
-        - name: manager
-          resources:
-            requests:
-              cpu: 10m
-              memory: 64Mi
-            limits:
-              memory: 512Mi
+        containers: [{name: manager, resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 512Mi}}}]
   infrastructure:
     kubevirt:
       createNamespace: false
       version: v0.11.2
       deployment:
-        containers:
-        - name: manager
-          resources:
-            requests:
-              cpu: 10m
-              memory: 64Mi
-            limits:
-              memory: 256Mi
+        containers: [{name: manager, resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}}]
