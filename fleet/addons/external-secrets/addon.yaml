@@ -1,0 +1,11 @@
+# The secrets slot. Workloads only ever reference the ClusterSecretStore named
+# `fleet-secrets`; which backend sits behind it is decided in manifests/.
+addon:
+  enablement: opt-in
+  namespace: external-secrets
+  # Keep repoURL -> name -> version in this order; Renovate parses it.
+  chart:
+    repoURL: https://charts.external-secrets.io
+    name: external-secrets
+    version: 2.13.0
+  manifests: true

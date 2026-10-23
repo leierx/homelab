@@ -1,0 +1,103 @@
+# One Application per (addon x matching cluster).
+#   addon   = every fleet/addons/<name>/addon.yaml
+#   cluster = every Argo CD cluster Secret whose labels satisfy the addon's
+#             enablement + placement (see fleet/README.md, "Targeting").
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: addons
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  syncPolicy:
+    # Removing an addon from a cluster (or deleting this ApplicationSet) deletes
+    # the Application but orphans its resources. Infra (CRDs, ingress, Argo CD
+    # itself) is never garbage-collected implicitly.
+    preserveResourcesOnDeletion: true
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/leierx/homelab
+              revision: HEAD
+              files:
+                - path: fleet/addons/*/addon.yaml
+          - clusters:
+              selector:
+                matchExpressions:
+                  # baseline: every cluster unless labelled addon.fleet/<name>=disabled
+                  # opt-in:   only clusters labelled addon.fleet/<name>=enabled
+                  - key: 'addon.fleet/{{ .path.basename }}'
+                    operator: '{{ if eq .addon.enablement "baseline" }}NotIn{{ else if eq .addon.enablement "opt-in" }}In{{ else }}invalid-enablement{{ end }}'
+                    values: ['{{ if eq .addon.enablement "baseline" }}disabled{{ else }}enabled{{ end }}']
+                  # optional scope; defaults to a requirement every cluster Secret satisfies
+                  - key: '{{ dig "placement" "key" "argocd.argoproj.io/secret-type" .addon }}'
+                    operator: In
+                    values: ['{{ dig "placement" "value" "cluster" .addon }}']
+  template:
+    metadata:
+      name: '{{ .nameNormalized }}-{{ .path.basename }}'
+      labels:
+        fleet/kind: addon
+        fleet/component: '{{ .path.basename }}'
+        fleet/cluster: '{{ .nameNormalized }}'
+    spec:
+      project: platform
+      destination:
+        server: '{{ .server }}'
+        namespace: '{{ dig "namespace" .path.basename .addon }}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - RespectIgnoreDifferences=true
+          - ApplyOutOfSyncOnly=true
+        retry:
+          limit: 10
+          backoff:
+            duration: 15s
+            factor: 2
+            maxDuration: 10m
+  # Sources are assembled here because they depend on what the descriptor
+  # declares (chart, manifests, or both). templatePatch cannot change `project`.
+  templatePatch: |
+    {{- $env := index .metadata.labels "fleet/environment" }}
+    {{- $repo := "https://github.com/leierx/homelab" }}
+    spec:
+      sources:
+      {{- if hasKey .addon "chart" }}
+        - repoURL: {{ .addon.chart.repoURL | quote }}
+          chart: {{ .addon.chart.name | quote }}
+          targetRevision: {{ .addon.chart.version | quote }}
+          helm:
+            releaseName: {{ dig "releaseName" .path.basename .addon | quote }}
+            ignoreMissingValueFiles: true
+            valueFiles:
+              - $values/{{ .path.path }}/values/default.yaml
+            {{- if $env }}
+              - $values/{{ .path.path }}/values/env/{{ $env }}.yaml
+            {{- end }}
+              - $values/{{ .path.path }}/values/cluster/{{ .name }}.yaml
+        - repoURL: {{ $repo }}
+          targetRevision: HEAD
+          ref: values
+      {{- end }}
+      {{- if dig "manifests" false .addon }}
+        - repoURL: {{ $repo }}
+          targetRevision: HEAD
+          path: {{ .path.path }}/manifests
+          kustomize:
+            ignoreMissingComponents: true
+            components:
+            {{- if $env }}
+              - env/{{ $env }}
+            {{- end }}
+              - cluster/{{ .name }}
+      {{- end }}
+    {{- with dig "ignoreDifferences" (list) .addon }}
+      ignoreDifferences: {{ toJson . }}
+    {{- end }}

@@ -1,0 +1,2 @@
+global:
+  domain: argocd.TODO-fleet.example.com # TODO(fleet): public hostname of the Argo CD UI on this cluster

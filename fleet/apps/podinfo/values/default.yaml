@@ -1,0 +1,16 @@
+# Chart: https://github.com/stefanprodan/podinfo/tree/master/charts/podinfo
+replicaCount: 1
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+  hosts:
+    - host: podinfo.TODO-fleet.example.com # TODO(fleet): override per cluster in values/cluster/<name>.yaml
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: podinfo-tls
+      hosts:
+        - podinfo.TODO-fleet.example.com # TODO(fleet): override per cluster in values/cluster/<name>.yaml

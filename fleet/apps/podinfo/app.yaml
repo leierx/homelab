@@ -1,0 +1,9 @@
+# Example Helm workload. Deployed only to clusters labelled app.fleet/podinfo=enabled.
+app:
+  enablement: opt-in
+  namespace: podinfo
+  # Keep repoURL -> name -> version in this order; Renovate parses it.
+  chart:
+    repoURL: https://stefanprodan.github.io/podinfo
+    name: podinfo
+    version: 6.15.0

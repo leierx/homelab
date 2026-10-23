@@ -1,0 +1,47 @@
+# Template for registering a remote cluster (example values: lab1). Not synced
+# (fleet-root reads only the top level of fleet/clusters/). Copy to
+# fleet/clusters/<name>.yaml and adjust name, server and labels.
+#
+# Credentials never touch git: they are pulled from the `fleet-secrets` store
+# (requires addon.fleet/external-secrets=enabled on the management cluster).
+# Store layout expected: key `clusters/<name>` with properties `token` and `caData`.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: cluster-lab1
+  namespace: argocd
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: fleet-secrets
+  target:
+    name: cluster-lab1
+    creationPolicy: Owner
+    template:
+      engineVersion: v2
+      metadata:
+        labels:
+          argocd.argoproj.io/secret-type: cluster
+          fleet/environment: lab
+          fleet/role: workload
+          fleet/region: home
+          # capability.fleet/loadbalancer: "true"
+          # addon.fleet/<addon>: enabled|disabled
+          # app.fleet/<app>: enabled|disabled
+        annotations:
+          fleet/description: Example remote lab cluster
+      data:
+        name: lab1
+        server: https://lab1.TODO-fleet.example.com:6443 # TODO(fleet): API server URL
+        config: |
+          {"bearerToken":"{{ .token }}","tlsClientConfig":{"insecure":false,"caData":"{{ .caData }}"}}
+  data:
+    - secretKey: token
+      remoteRef:
+        key: clusters/lab1
+        property: token
+    - secretKey: caData
+      remoteRef:
+        key: clusters/lab1
+        property: caData

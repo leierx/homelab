@@ -1,0 +1,50 @@
+// Renovate configuration for fleet/.
+// Version sources Renovate understands:
+//   fleet/{addons,apps}/<name>/{addon,app}.yaml  `chart:` block (repoURL -> name -> version)
+//   fleet/{addons,apps}/<name>/values/**.yaml     image.repository / image.tag style Helm values
+//   fleet/{addons,apps}/<name>/manifests/**       kustomization `images:` and plain `image:` fields
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: ['config:recommended'],
+  includePaths: ['fleet/**'],
+  labels: ['dependencies'],
+  customManagers: [
+    {
+      customType: 'regex',
+      description: 'Helm charts pinned in fleet addon/app descriptors',
+      managerFilePatterns: ['/^fleet/(addons|apps)/[^/]+/(addon|app)\\.yaml$/'],
+      matchStrings: [
+        'chart:\\s*\\n\\s+repoURL:\\s*"?(?<registryUrl>https?://[^\\s"]+)"?\\s*\\n\\s+name:\\s*"?(?<depName>[^\\s"]+)"?\\s*\\n\\s+version:\\s*"?(?<currentValue>[^\\s"]+)"?',
+      ],
+      datasourceTemplate: 'helm',
+    },
+  ],
+  'helm-values': {
+    managerFilePatterns: ['/^fleet/(addons|apps)/[^/]+/values/.+\\.ya?ml$/'],
+  },
+  kubernetes: {
+    managerFilePatterns: ['/^fleet/(addons|apps)/[^/]+/manifests/.+\\.ya?ml$/'],
+  },
+  packageRules: [
+    {
+      description: 'Label PRs by fleet area',
+      matchFileNames: ['fleet/addons/**'],
+      addLabels: ['fleet/addon'],
+    },
+    {
+      description: 'Label PRs by fleet area',
+      matchFileNames: ['fleet/apps/**'],
+      addLabels: ['fleet/app'],
+    },
+    {
+      description: 'Major bumps wait for explicit approval on the Dependency Dashboard',
+      matchUpdateTypes: ['major'],
+      dependencyDashboardApproval: true,
+    },
+    {
+      description: 'Argo CD upgrades itself; never batch it with anything else',
+      matchDepNames: ['argo-cd'],
+      dependencyDashboardApproval: true,
+    },
+  ],
+}

@@ -1,0 +1,10 @@
+addon:
+  enablement: baseline
+  namespace: cert-manager
+  # Keep repoURL -> name -> version in this order; Renovate parses it.
+  chart:
+    repoURL: https://charts.jetstack.io
+    name: cert-manager
+    version: v1.21.2
+  # ClusterIssuers in manifests/ (layered with manifests/env/<env>, manifests/cluster/<name>).
+  manifests: true

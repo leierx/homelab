@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: workloads
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  description: User applications (fleet/apps). Namespaced resources only, never in platform namespaces.
+  # Every upstream chart repository used by fleet/apps must be listed here.
+  sourceRepos:
+    - https://github.com/leierx/homelab
+    - https://stefanprodan.github.io/podinfo
+  destinations:
+    - server: "*"
+      namespace: "!kube-*"
+    - server: "*"
+      namespace: "!argocd"
+    - server: "*"
+      namespace: "!cert-manager"
+    - server: "*"
+      namespace: "!external-secrets"
+    - server: "*"
+      namespace: "!traefik"
+    - server: "*"
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceBlacklist:
+    - group: ""
+      kind: ResourceQuota
+    - group: ""
+      kind: LimitRange
+    - group: argoproj.io
+      kind: "*"
+    - group: external-secrets.io
+      kind: SecretStore

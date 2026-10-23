@@ -1,0 +1,71 @@
+# The single manual entrypoint. Apply once, after Argo CD is installed:
+#   kubectl apply -n argocd -f fleet/bootstrap/root.yaml
+# From then on fleet-root syncs this file too, so it manages itself.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: fleet
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  description: Management plane - the root app, AppProjects, ApplicationSets and cluster registrations.
+  sourceRepos:
+    - https://github.com/leierx/homelab
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: argoproj.io
+      kind: AppProject
+    - group: argoproj.io
+      kind: Application
+    - group: argoproj.io
+      kind: ApplicationSet
+    - group: ""
+      kind: Secret
+    - group: external-secrets.io
+      kind: ExternalSecret
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fleet-root
+  namespace: argocd
+  # No resources-finalizer: deleting the root app must never cascade into the fleet.
+spec:
+  project: fleet
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  sources:
+    - repoURL: https://github.com/leierx/homelab
+      targetRevision: HEAD
+      path: fleet/bootstrap
+      directory:
+        include: "*.yaml"
+    - repoURL: https://github.com/leierx/homelab
+      targetRevision: HEAD
+      path: fleet/platform
+      directory:
+        recurse: true
+        include: "*.yaml"
+    - repoURL: https://github.com/leierx/homelab
+      targetRevision: HEAD
+      path: fleet/clusters
+      directory:
+        include: "*.yaml"
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - PruneLast=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m

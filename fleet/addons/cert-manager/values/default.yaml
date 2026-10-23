@@ -1,0 +1,13 @@
+# Chart: https://cert-manager.io/docs/installation/helm/
+crds:
+  enabled: true
+  # Uninstalling the chart must never delete every Certificate in the cluster.
+  keep: true
+
+global:
+  leaderElection:
+    namespace: cert-manager
+
+# Helm hook Job; redundant under Argo CD health checks and a frequent source of stuck syncs.
+startupapicheck:
+  enabled: false

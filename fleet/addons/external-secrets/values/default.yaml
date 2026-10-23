@@ -1,0 +1,4 @@
+# Chart: https://external-secrets.io/latest/introduction/getting-started/
+installCRDs: true
+serviceMonitor:
+  enabled: false

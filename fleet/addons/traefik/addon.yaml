@@ -1,0 +1,12 @@
+# Baseline on every cluster that can hand out LoadBalancer IPs.
+addon:
+  enablement: baseline
+  placement:
+    key: capability.fleet/loadbalancer
+    value: "true"
+  namespace: traefik
+  # Keep repoURL -> name -> version in this order; Renovate parses it.
+  chart:
+    repoURL: https://traefik.github.io/charts
+    name: traefik
+    version: 42.1.3

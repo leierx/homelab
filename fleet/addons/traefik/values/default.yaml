@@ -1,0 +1,17 @@
+# Chart: https://github.com/traefik/traefik-helm-chart
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: traefik
+
+providers:
+  kubernetesCRD:
+    enabled: true
+  kubernetesIngress:
+    enabled: true
+    publishedService:
+      enabled: true
+
+service:
+  spec:
+    type: LoadBalancer

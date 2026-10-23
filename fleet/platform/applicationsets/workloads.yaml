@@ -1,0 +1,100 @@
+# One Application per (app x matching cluster).
+#   app     = every fleet/apps/<name>/app.yaml
+#   cluster = every Argo CD cluster Secret whose labels satisfy the app's
+#             enablement + placement (see fleet/README.md, "Targeting").
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: workloads
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/leierx/homelab
+              revision: HEAD
+              files:
+                - path: fleet/apps/*/app.yaml
+          - clusters:
+              selector:
+                matchExpressions:
+                  # baseline: every cluster (in scope) unless labelled app.fleet/<name>=disabled
+                  # opt-in:   only clusters labelled app.fleet/<name>=enabled
+                  - key: 'app.fleet/{{ .path.basename }}'
+                    operator: '{{ if eq .app.enablement "baseline" }}NotIn{{ else if eq .app.enablement "opt-in" }}In{{ else }}invalid-enablement{{ end }}'
+                    values: ['{{ if eq .app.enablement "baseline" }}disabled{{ else }}enabled{{ end }}']
+                  # optional scope; defaults to a requirement every cluster Secret satisfies
+                  - key: '{{ dig "placement" "key" "argocd.argoproj.io/secret-type" .app }}'
+                    operator: In
+                    values: ['{{ dig "placement" "value" "cluster" .app }}']
+  template:
+    metadata:
+      name: '{{ .nameNormalized }}-{{ .path.basename }}'
+      labels:
+        fleet/kind: app
+        fleet/component: '{{ .path.basename }}'
+        fleet/cluster: '{{ .nameNormalized }}'
+      # Workloads are cleaned up when they stop targeting a cluster.
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: workloads
+      destination:
+        server: '{{ .server }}'
+        namespace: '{{ dig "namespace" .path.basename .app }}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - RespectIgnoreDifferences=true
+        retry:
+          limit: 10
+          backoff:
+            duration: 15s
+            factor: 2
+            maxDuration: 10m
+  # Sources are assembled here because they depend on what the descriptor
+  # declares (chart, manifests, or both). templatePatch cannot change `project`.
+  templatePatch: |
+    {{- $env := index .metadata.labels "fleet/environment" }}
+    {{- $repo := "https://github.com/leierx/homelab" }}
+    spec:
+      sources:
+      {{- if hasKey .app "chart" }}
+        - repoURL: {{ .app.chart.repoURL | quote }}
+          chart: {{ .app.chart.name | quote }}
+          targetRevision: {{ .app.chart.version | quote }}
+          helm:
+            releaseName: {{ dig "releaseName" .path.basename .app | quote }}
+            ignoreMissingValueFiles: true
+            valueFiles:
+              - $values/{{ .path.path }}/values/default.yaml
+            {{- if $env }}
+              - $values/{{ .path.path }}/values/env/{{ $env }}.yaml
+            {{- end }}
+              - $values/{{ .path.path }}/values/cluster/{{ .name }}.yaml
+        - repoURL: {{ $repo }}
+          targetRevision: HEAD
+          ref: values
+      {{- end }}
+      {{- if dig "manifests" false .app }}
+        - repoURL: {{ $repo }}
+          targetRevision: HEAD
+          path: {{ .path.path }}/manifests
+          kustomize:
+            ignoreMissingComponents: true
+            components:
+            {{- if $env }}
+              - env/{{ $env }}
+            {{- end }}
+              - cluster/{{ .name }}
+      {{- end }}
+    {{- with dig "ignoreDifferences" (list) .app }}
+      ignoreDifferences: {{ toJson . }}
+    {{- end }}
