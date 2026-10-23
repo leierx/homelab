@@ -6,3 +6,6 @@ dependencies:
   - name: gateway-helm
     version: v1.9.2
     repository: oci://docker.io/envoyproxy
+  - name: netpol
+    version: 0.1.0
+    repository: file://../../charts/netpol
