@@ -19,7 +19,6 @@ let
       enabled = true;
       maxRetries = 10;
       baseDelayMs = 3000;
-      # the 60s default clamps the backoff long before the last retries
       maxAgentDelayMs = 3000000;
     };
 
@@ -73,32 +72,11 @@ in
     pi
     pkgs.gh
   ];
-  programs.tmux.enable = true;
-  programs.tmux.extraConfig = ''
-    set -s extended-keys on
-    set -s extended-keys-format csi-u
-  '';
 
   programs.git.config = {
     user.name = "Lars Smith Eier";
     user.email = "larssmitheier@protonmail.com";
     credential."https://github.com".helper = "!gh auth git-credential";
-  };
-
-  users.users.leier.linger = true;
-
-  systemd.user.services.pi = {
-    wantedBy = [ "default.target" ];
-    restartIfChanged = false;
-    serviceConfig = {
-      Type = "forking";
-      Restart = "always";
-      WorkingDirectory = "/home/leier/pi-agent";
-      # ssh's login shell sets TMUX_TMPDIR from /etc/set-environment; match its socket
-      Environment = [ "TMUX_TMPDIR=%t" ];
-      ExecStart = "${lib.getExe pkgs.tmux} new-session -d -s pi -c /home/leier/pi-agent ${lib.getExe pkgs.bash} -lc pi";
-      ExecStop = "${lib.getExe pkgs.tmux} kill-session -t pi";
-    };
   };
 
   systemd.tmpfiles.rules = [
