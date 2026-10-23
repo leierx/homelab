@@ -2,7 +2,7 @@
 let
   yaml = pkgs.formats.yaml { };
 
-  # kubectl logs in through Keycloak (realm homelab, client kubernetes); groups map to RBAC in gitops/charts/rbac
+  # kubectl logs in through Keycloak (realm homelab, client kubernetes); groups map to RBAC in gitops/addons/rbac
   authentication = yaml.generate "k3s-authentication.yaml" {
     apiVersion = "apiserver.config.k8s.io/v1";
     kind = "AuthenticationConfiguration";
@@ -128,7 +128,7 @@ let
           }
         ];
       }
-      # every pod, so admission policies' audit annotations (gitops/charts/admission) reach the log
+      # every pod, so admission policies' audit annotations (gitops/addons/admission) reach the log
       {
         level = "Metadata";
         resources = [
