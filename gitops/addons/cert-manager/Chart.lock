@@ -2,5 +2,8 @@ dependencies:
 - name: cert-manager
   repository: https://charts.jetstack.io
   version: v1.21.2
-digest: sha256:78b3b840087123e24f7d988d64360d9f69a120a8f9aee40d2303667837f64779
-generated: "2026-10-21T21:34:08.892950836+02:00"
+- name: netpol
+  repository: file://../../charts/netpol
+  version: 0.1.0
+digest: sha256:1526d75e5ada404756a5d4d0e775350193297ba498b52445a58b2af0c6b95207
+generated: "2026-10-23T13:22:11.079178321+02:00"

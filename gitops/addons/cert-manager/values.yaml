@@ -9,3 +9,9 @@ cert-manager:
     resources: {requests: {cpu: 10m, memory: 128Mi}, limits: {memory: 512Mi}}
   startupapicheck:
     resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 64Mi}}
+netpol:
+  sameNamespace: true
+  webhook: true
+  apiServer: true
+  # Let's Encrypt, and the HTTP-01 self-check against the sites' public address
+  world: [443, 80]
