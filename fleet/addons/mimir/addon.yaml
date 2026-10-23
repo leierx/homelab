@@ -1,3 +1,4 @@
 # Mimir as one -target=all pod: mimir-distributed has no monolithic mode, so
+# this is a small hand-written StatefulSet rather than the upstream chart.
 namespace: monitoring
 podSecurity: restricted

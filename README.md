@@ -23,13 +23,13 @@ real GitOps platform on hardware we own.
   Fridays.
 - **Cluster.** k3s runs without its own CNI and kube-proxy; Cilium provides
   both and the network policy engine. Argo CD tracks `HEAD` of `main` and
-  manages everything in `fleet/`: `fleet/bootstrap/root.yaml` syncs the
-  two ApplicationSets and the management cluster's labelled cluster Secret
-  (`fleet/clusters/`); Cluster API sub-clusters are registered by the
-  CAPI–Argo CD bridge. The ApplicationSets create one `<cluster>-<addon>`
-  Application per addon (`fleet/addons/`) and per app (`fleet/apps/`) whose
-  targeting matches the cluster's labels. Upstream charts are used directly,
-  with layered values and Kustomize manifests per environment and cluster.
+  manages everything in `fleet/`: `fleet/bootstrap/root.yaml` syncs one
+  ApplicationSet, which gives each cluster folder (`fleet/clusters/<cluster>/`)
+  an Application that lists its addons; each becomes a `<cluster>-<addon>`
+  Application. An addon (`fleet/addons/`) is a Helm chart wrapping its upstream
+  chart, or Kustomize over upstream release manifests; the cluster folder adds
+  its values and plain manifests. Cluster API sub-clusters are registered by
+  the CAPI–Argo CD bridge.
   The guide is [fleet/README.md](fleet/README.md).
 - **Edge.** Envoy Gateway terminates TLS on two Gateways: `edge` (NodePort
   30080/30443, reached through the router's port forward) and `wg` (the
@@ -45,10 +45,9 @@ real GitOps platform on hardware we own.
   them. sanoid snapshots the pool, and an off-site borg backup is ready to
   enable.
 - **Workloads.** The management side runs Cluster API, KubeVirt and CDI, so a
-  workload cluster is a VM on this node. It is registered by one file in
-  `fleet/clusters/` (an ExternalSecret that renders the Argo CD cluster
-  Secret); none exists yet. User-facing apps live in `fleet/apps/` and opt in
-  per cluster with an `app.fleet/<app>: enabled` label.
+  workload cluster is a VM on this node. The CAPI–Argo CD bridge registers it
+  in Argo CD, and a `fleet/clusters/<name>/` folder says what it runs; none
+  exists yet.
   Workload clusters' pod and service CIDRs must not overlap `10.42.0.0/16` and
   `10.43.0.0/16`, and they boot from a persistent disk
   (`cluster-template-persistent-storage.yaml`), never a containerDisk.
@@ -78,10 +77,10 @@ real GitOps platform on hardware we own.
 nixos/          the host: disks, k3s, sops-nix, pi
 fleet/          everything Argo CD deploys (see fleet/README.md)
   bootstrap/    the one file applied by hand
-  argocd/       the two ApplicationSets and the default AppProject
-  clusters/     the management cluster's labelled cluster Secret
-  addons/       one folder per platform addon: descriptor, values layers, manifests; keycloak's realm is OpenTofu
-  apps/         one folder per workload app (immich, dodde)
+  argocd/       the ApplicationSet, loft01's cluster Secret and the default AppProject
+  templates/    the fleet chart: a cluster's addons as Applications
+  clusters/     one folder per cluster: its addons, values and own manifests (loft01's dodde)
+  addons/       one Helm chart (or Kustomize directory) per addon; keycloak's realm is OpenTofu
 docs/           the operating guide for this homelab
 renovate.json5  Renovate configuration
 flake.nix       the flake (host and installer)
@@ -94,7 +93,7 @@ flake.nix       the flake (host and installer)
 | Host OS | NixOS | the whole host is one repo, with atomic upgrades and rollback | MIT (nixpkgs), LGPL-2.1 (Nix) | NixOS Foundation |
 | Kubernetes | k3s | one binary, bundled containerd and SQLite, and no CNI to remove | Apache-2.0 | CNCF (sandbox) |
 | Network and policy | Cilium | eBPF dataplane, kube-proxy replacement, NetworkPolicy engine | Apache-2.0 | CNCF (graduated) |
-| GitOps | Argo CD (ApplicationSets) + Helm + Kustomize | a push to `main` is a deploy; upstream charts render in-cluster, clusters are selected by labels | Apache-2.0 | CNCF (graduated) |
+| GitOps | Argo CD (an ApplicationSet) + Helm + Kustomize | a push to `main` is a deploy; upstream charts render in-cluster, each cluster lists its addons | Apache-2.0 | CNCF (graduated) |
 | TLS certificates | cert-manager | Let's Encrypt issuance and renewal from one `ClusterIssuer` | Apache-2.0 | CNCF (graduated) |
 | Edge and routing | Envoy Gateway (Gateway API) | two Gateways, OIDC filter, HTTP-01 solver | Apache-2.0 | CNCF (Envoy, graduated) |
 | Identity and SSO | Keycloak (Keycloak Operator) | OIDC with a groups claim, mandatory second factor | Apache-2.0 | CNCF (incubating) |

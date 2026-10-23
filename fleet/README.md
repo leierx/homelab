@@ -1,11 +1,11 @@
 # fleet
 
 GitOps for every cluster in the homelab, driven by Argo CD 3.x from this one
-directory. Clusters are data, addons and apps are directories, and two
-ApplicationSets connect them by matching labels.
+directory. An addon is a Helm chart (or a Kustomize directory), a cluster is a
+folder that lists its addons, and one ApplicationSet connects them.
 
-- Argo CD: chart `argo-cd` 10.10.5 (Argo CD v3.5.5), pinned in
-  [`addons/argocd/addon.yaml`](addons/argocd/addon.yaml)
+- Argo CD: chart `argo-cd` 10.10.5 (Argo CD v3.5.5), a dependency in
+  [`addons/argocd/Chart.yaml`](addons/argocd/Chart.yaml)
 - Repo: `https://github.com/leierx/homelab`, revision `HEAD`
 
 ## Contents
@@ -13,113 +13,79 @@ ApplicationSets connect them by matching labels.
 1. [Architecture](#architecture)
 2. [Bootstrap a new management cluster](#bootstrap-a-new-management-cluster)
 3. [Clusters](#clusters)
-4. [Targeting](#targeting)
-5. [Addons](#addons)
-6. [Workload apps](#workload-apps)
-7. [Descriptor reference](#descriptor-reference)
-8. [Values layering and precedence](#values-layering-and-precedence)
-9. [Sync waves, ordering and deletion](#sync-waves-ordering-and-deletion)
-10. [AppProjects](#appprojects)
-11. [Secrets](#secrets)
-12. [Renovate](#renovate)
-13. [Troubleshooting](#troubleshooting)
-14. [Non-goals](#non-goals)
+4. [Addons](#addons)
+5. [Sync, ordering, pausing and deletion](#sync-ordering-pausing-and-deletion)
+6. [AppProjects](#appprojects)
+7. [Secrets](#secrets)
+8. [Renovate](#renovate)
+9. [Troubleshooting](#troubleshooting)
+10. [Non-goals](#non-goals)
 
 ## Architecture
 
 ```
 fleet/
-├── bootstrap/
-│   └── root.yaml                 # the only thing ever applied by hand: Application "fleet-root"
+├── bootstrap/root.yaml           # the only thing ever applied by hand: Application "fleet-root"
 ├── argocd/                       # synced by fleet-root
-│   ├── addons.yaml               # ApplicationSet: addons x clusters -> <cluster>-<addon>
-│   ├── workloads.yaml            # ApplicationSet: apps   x clusters -> <cluster>-<app>
+│   ├── clusters.yaml             # ApplicationSet: one Application <cluster> per clusters/<cluster>/
+│   ├── cluster-loft01.yaml       # the management cluster's Argo CD cluster Secret
 │   └── default-project.yaml      # Argo CD's default AppProject, which every Application uses
-├── clusters/                     # synced by fleet-root
-│   └── loft01.yaml               # the management cluster's Argo CD cluster Secret; labels = tags
-├── addons/<addon>/               # cluster addons (platform)
-│   ├── addon.yaml                # descriptor: chart coordinates, targeting, namespace
-│   ├── values/                   # Helm values layers (all optional)
-│   │   ├── default.yaml
-│   │   ├── env/<environment>.yaml
-│   │   └── cluster/<cluster>.yaml
-│   └── manifests/                # optional Kustomize source
-│       ├── kustomization.yaml    #   base (kind: Kustomization)
-│       ├── env/<environment>/    #   layer (kind: Component)
-│       └── cluster/<cluster>/    #   layer (kind: Component)
-└── apps/<app>/                   # workload apps; same layout, app.yaml instead of addon.yaml
+├── Chart.yaml, values.yaml,      # the fleet chart: renders one <cluster>-<addon> Application
+│   templates/applications.yaml   #   per addon a cluster lists
+├── addons/<addon>/               # shared addons
+│   ├── addon.yaml                #   namespace, podSecurity, ignoreDifferences
+│   ├── Chart.yaml                #   Helm: the upstream chart as a dependency
+│   ├── values.yaml               #     defaults; the upstream chart's under its name
+│   ├── templates/                #     the addon's own resources
+│   └── kustomization.yaml        #   or Kustomize (upstream release manifests), or plain manifests
+└── clusters/<cluster>/
+    ├── values.yaml               # the addons this cluster runs
+    └── <addon>/                  # per addon: values.yaml for this cluster, plus plain manifests;
+                                  #   with no shared addon of that name, a cluster-only addon
 ```
 
-Renovate's configuration is `renovate.json5` at the repository root (Renovate
-only reads it there).
-
-Addons today: `admission`, `alloy-logs`, `alloy-metrics`, `argocd`,
-`argo-workflows`, `cdi`, `cert-manager`, `cilium`, `cloudnative-pg`,
-`cluster-api`, `envoy-gateway`, `external-secrets`, `grafana`, `keycloak`,
-`keycloak-operator`, `kube-state-metrics`, `kubevirt`, `loki`, `mimir`,
-`node-exporter`, `openbao`, `prometheus-operator-crds`, `rbac`, `renovate`,
-`zfs-localpv`. Apps: `immich`, `dodde`.
-
-How it fits together:
-
 ```
-kubectl apply root.yaml ─► fleet-root
-                             ├─ bootstrap/         itself
-                             ├─ argocd/            ApplicationSets, default project
-                             └─ clusters/*.yaml    cluster Secrets (labels)
-                                        │
-          ApplicationSet "addons"  ◄────┼────►  ApplicationSet "workloads"
-          git files addons/*/addon.yaml │       git files apps/*/app.yaml
-                 × clusters (selector)  │              × clusters (selector)
-                        │                                   │
-           <cluster>-<addon> Applications       <cluster>-<app> Applications
-           project: default                    project: default
-           chart (upstream) + $values (repo)   chart and/or manifests
-           and/or manifests (Kustomize)
+kubectl apply root.yaml ─► fleet-root ─► argocd/: ApplicationSet "clusters", cluster Secret, default project
+                                                      │  git directories clusters/*
+                                                      ▼
+                                      Application loft01 = fleet chart + clusters/loft01/values.yaml
+                                                      │  one per listed addon
+                                                      ▼
+                       loft01-<addon>: addons/<addon> (Helm or Kustomize)
+                                       + clusters/loft01/<addon>/values.yaml (Helm values)
+                                       + clusters/loft01/<addon>/*.yaml (plain manifests)
 ```
 
-Key decisions and why:
+Why it is shaped this way:
 
-- **One manual step.** `bootstrap/root.yaml` contains the root Application.
-  The root app syncs `bootstrap/` too, so after the first
-  apply it manages its own definition. Argo CD itself is an addon
-  (`addons/argocd`) that adopts what you applied by hand.
-- **Clusters are data.** A cluster is one Secret with labels. Nothing else in
-  the repo names a cluster, except its own override layer
-  (`values/cluster/<name>.yaml`, `manifests/cluster/<name>/`).
-- **Two ApplicationSets total, not one per addon.** Each is a matrix of a git
-  files generator (one descriptor per addon/app) × the cluster generator. The
-  descriptor's targeting fields are interpolated into the cluster generator's
-  label selector, so every addon/app picks its own clusters. Adding an addon
-  never touches an ApplicationSet.
-- **Descriptors are tiny YAML files**, not Application manifests. They hold only
-  what varies (chart coordinates, namespace, targeting, Pod Security level).
-  Everything shared (sync policy, retries, value-file layering) lives
-  once, in the ApplicationSet. This is also what makes versions machine-parseable
-  for Renovate.
-- **`templatePatch` builds what depends on the descriptor**: `spec.sources`
-  (chart, manifests, or both), namespace metadata, per-descriptor
-  `ignoreDifferences`, and pausing automation per cluster.
-- **`goTemplate` with `missingkey=error`.** Typos fail loudly instead of rendering
-  empty strings. Optional fields are read with `dig` and a default.
-- **Fail closed.** If any descriptor fails to render, the whole ApplicationSet
-  stops reconciling (Argo CD behaviour) and reports the error; existing
-  Applications are left untouched rather than deleted.
-- **Upstream Helm charts via multi-source.** The chart comes straight from its
-  upstream repo (HTTP or OCI); values come from this repo through a
-  `ref: values` source. Nothing is vendored or wrapped. Whatever a chart does
-  not provide is plain Kustomize in `manifests/`.
-- **Server-side apply everywhere** (`ServerSideApply=true`, plus server-side diff
-  enabled in Argo CD), which avoids last-applied annotation size limits on
+- **One manual step.** `bootstrap/root.yaml` is the root Application. It syncs
+  `bootstrap/` too, so after the first apply it manages its own definition.
+  Argo CD itself is an addon (`addons/argocd`) that adopts what you applied by
+  hand.
+- **An addon is a normal Helm chart.** The upstream chart is a dependency in
+  `Chart.yaml`, the addon's own resources (network policies, issuers,
+  databases, secrets) are `templates/`, and anything a cluster must decide
+  (hostnames, storage classes and sizes, addresses) is a value. Nothing is
+  vendored: Argo CD runs `helm dependency build` itself. Upstream projects
+  without a Helm chart (KubeVirt, CDI, the Keycloak operator) stay Kustomize
+  over their release manifests.
+- **A cluster is a folder.** `clusters/<cluster>/values.yaml` lists its
+  addons; `clusters/<cluster>/<addon>/` adapts one. A folder there that is not
+  a shared addon is the cluster's own (`clusters/loft01/dodde`, a VM only
+  loft01 runs). The cluster's Application is the fleet chart with that values
+  file, so the cluster is a Helm app whose addons are Applications.
+- **One ApplicationSet**, over `clusters/*`. Adding an addon or a cluster never
+  touches it.
+- **Server-side apply everywhere** (`ServerSideApply=true`, plus server-side
+  diff enabled in Argo CD), which avoids last-applied annotation size limits on
   large CRDs and lets controllers own the fields they mutate.
 
 ## Bootstrap a new management cluster
 
 Plain commands, run by hand from the repository root with your `kubectl`
 context on the new cluster. The examples use `loft01`; for another cluster,
-first add its `clusters/<name>.yaml` and override layers (see
-[Clusters](#clusters)). Chart versions below must match the `chart.version` in
-the addon's `addon.yaml`; check them before you run.
+first add its `clusters/<name>/` folder and its cluster Secret in `argocd/`
+(see [Clusters](#clusters)).
 
 1. **Push first.** Argo CD reads from git, not from your checkout.
 
@@ -132,34 +98,33 @@ the addon's `addon.yaml`; check them before you run.
    kubectl label ns kube-system pod-security.kubernetes.io/enforce=privileged \
      pod-security.kubernetes.io/warn=privileged pod-security.kubernetes.io/audit=privileged --overwrite
 
-   helm template cilium cilium --repo https://helm.cilium.io --version 1.20.3 \
-     -n kube-system --include-crds \
-     -f fleet/addons/cilium/values/default.yaml \
-     -f fleet/addons/cilium/values/cluster/loft01.yaml \
+   helm dependency build fleet/addons/cilium
+   helm template cilium fleet/addons/cilium -n kube-system --include-crds \
+     -f fleet/clusters/loft01/cilium/values.yaml --set fleet.cluster=loft01 \
      | kubectl apply --server-side --field-manager=argocd-controller -f -
 
    kubectl wait --for=condition=Ready node --all --timeout=10m
    ```
 
    `Error from server (NotFound): ... (patch servicemonitors.monitoring.coreos.com ...)`
-   for the four ServiceMonitors is expected: their CRDs arrive later with `prometheus-operator-crds`, and Argo CD creates them
-   then.
+   for the four ServiceMonitors is expected: their CRDs arrive later with
+   `prometheus-operator-crds`, and Argo CD creates them then. The same goes for
+   anything else whose CRD isn't there yet.
 
 3. **Install Argo CD once**, the same way:
 
    ```sh
    kubectl create namespace argocd
 
-   helm template argocd argo-cd --repo https://argoproj.github.io/argo-helm --version 10.10.5 \
-     -n argocd --include-crds \
-     -f fleet/addons/argocd/values/default.yaml \
-     -f fleet/addons/argocd/values/cluster/loft01.yaml \
+   helm dependency build fleet/addons/argocd
+   helm template argocd fleet/addons/argocd -n argocd --include-crds \
+     -f fleet/clusters/loft01/argocd/values.yaml --set fleet.cluster=loft01 \
      | kubectl apply --server-side --field-manager=argocd-controller -f -
 
    kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
    ```
 
-   The release names (`cilium`, `argocd`) must match the descriptors.
+   The release names (`cilium`, `argocd`) must match the addon names.
 
 4. **Out-of-band secrets.** OpenBao auto-unseals with a static key read from the
    Secret `openbao/openbao-seal-key` (key `key`). It must exist before OpenBao
@@ -180,11 +145,11 @@ the addon's `addon.yaml`; check them before you run.
    kubectl -n argocd get applications -w
    ```
 
-   Expect `fleet-root`, then one `loft01-<addon>` per addon and `loft01-immich`,
-   `loft01-dodde`. Some retry a few times while CRDs and webhooks from other
-   addons appear; that is expected (see [ordering](#sync-waves-ordering-and-deletion)).
-   `loft01-renovate` stays OutOfSync because the cluster pauses it; sync it by
-   hand when you want it.
+   Expect `fleet-root`, then `loft01`, then one `loft01-<addon>` per addon in
+   `clusters/loft01/values.yaml`. Some retry a few times while CRDs and webhooks from other
+   addons appear; that is expected (see [ordering](#sync-ordering-pausing-and-deletion)).
+   `loft01-renovate` stays OutOfSync because loft01 pauses it; sync it by hand
+   when you want it.
 
 7. **Restart the application controller once** when everything has synced. It
    caches the API list from before the CRDs existed, so charts that check
@@ -220,296 +185,125 @@ the addon's `addon.yaml`; check them before you run.
 
 From here on, change Cilium and Argo CD only through git.
 
-The management cluster registers itself with `server:
-https://kubernetes.default.svc`, which replaces Argo CD's implicit `in-cluster`
-entry; in Argo CD it is called `loft01`.
+The management cluster registers itself (`argocd/cluster-loft01.yaml`) with
+`server: https://kubernetes.default.svc` under the name `loft01`, which its
+Applications target.
 
 ## Clusters
 
-A cluster is an Argo CD cluster Secret with labels. The management cluster's is
-`fleet/clusters/<name>.yaml`; sub-clusters built with Cluster API are registered
-by the CAPI–Argo CD bridge, which creates their Secret.
+A cluster is an Argo CD cluster Secret plus a folder, both named after it. The
+name must be a lowercase DNS label: it appears in Application names
+(`<cluster>-<addon>`), in folder names and in OpenBao paths
+(`<cluster>/<app>`).
 
-### Label vocabulary
+- **Registration.** The management cluster's Secret is
+  `argocd/cluster-loft01.yaml`. Its annotation
+  `argocd.argoproj.io/sync-options: Prune=false` keeps a mistaken delete from
+  removing every Application on it. Sub-clusters built with Cluster API are
+  registered by the CAPI–Argo CD bridge, which creates their Secret.
+- **`clusters/<cluster>/values.yaml`** lists the addons it runs:
 
-| Label | Values | Required | Meaning |
-|---|---|---|---|
-| `argocd.argoproj.io/secret-type` | `cluster` | yes | Makes it an Argo CD cluster |
-| `fleet/environment` | e.g. `prod`, `lab` | yes | Selects the `env/<environment>` layer; `prod` receives the platform baseline |
-| `fleet/role` | `management`, `workload` | yes | `management` receives Argo CD and the fleet-wide services |
-| `fleet/region` | free text | no | Site/location; usable as a placement key |
-| `capability.fleet/<capability>` | `"true"` | no | What the cluster can offer; usable as a placement key |
-| `addon.fleet/<addon>` | `enabled` / `paused` / `disabled` | no | Opt into an opt-in addon, pause its automated sync, or opt out of a baseline addon |
-| `app.fleet/<app>` | `enabled` / `paused` / `disabled` | no | Same, for workload apps |
+  ```yaml
+  addons:
+    cilium: {}
+    immich: {}
+    renovate: {paused: true}   # no automated sync, see pausing
+  ```
 
-`paused` keeps the Application but removes its automated sync, so nothing
-changes until someone syncs it by hand. `loft01` uses it for `renovate`.
-
-Annotations are free-form metadata (`fleet/description`, …). They are available
-to ApplicationSet templates as `.metadata.annotations`. The management
-cluster's Secret also carries `argocd.argoproj.io/sync-options: Prune=false`:
-removing that file by mistake must not delete every Application on it.
-
-Cluster names (`stringData.name`) must be lowercase DNS labels: they appear in
-Application names (`<cluster>-<addon>`), in override paths and in secret paths.
+  Each name is `addons/<name>/`, or `clusters/<cluster>/<name>/` when no shared
+  addon has that name.
+- **`clusters/<cluster>/<addon>/`** adapts a shared addon for this cluster:
+  `values.yaml` is Helm values on top of the addon's own, and every other
+  `*.yaml` is a plain manifest synced in the same Application (certificates,
+  routes, PVCs, secrets naming the cluster's OpenBao path). Plain means not
+  templated, so ExternalSecret templates keep their `{{ }}`.
 
 ### Add a cluster
 
-1. Register it: the CAPI–Argo CD bridge does this for a sub-cluster; give its
-   Secret the labels above. Only a management cluster gets a file in
-   `fleet/clusters/`.
-2. Add the cluster's override layers where an addon needs per-cluster data (see
-   [what goes in the cluster layer](#what-goes-in-the-cluster-layer)): at least
-   `zfs-localpv` (StorageClasses), `envoy-gateway` (WireGuard address),
-   `openbao` (`kvPrefix`, storage), `alloy-*` (`CLUSTER_NAME`), `cilium`
-   (pod CIDR) and `mimir`/`loki` storage.
-3. Commit. Its Applications appear as `<cluster>-<addon>` and `<cluster>-<app>`.
+1. Register it (the bridge, or a Secret in `argocd/` for a management cluster).
+2. Create `clusters/<name>/values.yaml` with its addons, and a folder per addon
+   that needs cluster data. loft01's shows what that is: `zfs-localpv`
+   (StorageClasses), `envoy-gateway` (WireGuard address), `openbao`
+   (`kvPrefix`, storage), `cilium` (pod CIDR), `mimir`/`loki` storage, and
+   hostnames wherever there is a route.
+3. Commit. The ApplicationSet creates `<name>`, which creates `<name>-<addon>`
+   for each addon.
 
-What it then receives is computed from its labels. A cluster labelled
-`fleet/environment: prod`, `fleet/role: workload` gets the platform baseline
-(every addon placed on `fleet/environment=prod`, see [Targeting](#targeting));
-`fleet/role: management` adds Argo CD and the fleet-wide services;
-`app.fleet/immich: enabled` adds Immich; `addon.fleet/cert-manager: disabled`
-removes cert-manager.
-
-To remove a cluster, delete its Secret (its file, or the CAPI cluster). See [deletion](#deletion-and-finalizers)
-for what happens to its workloads.
-
-## Targeting
-
-Every addon/app descriptor states **enablement** and optionally **placement**.
-The ApplicationSet turns them into two label-selector requirements on the
-cluster Secrets:
-
-| `enablement` | Requirement | Meaning |
-|---|---|---|
-| `baseline` | `addon.fleet/<name> NotIn (disabled)` | every cluster in scope, unless it opts out |
-| `opt-in` | `addon.fleet/<name> In (enabled, paused)` | only clusters that opt in |
-
-(`app.fleet/<name>` for workload apps.)
-
-| `placement` | Requirement |
-|---|---|
-| omitted | none (all cluster Secrets) |
-| `{key: K, value: V}` | `K In (V)` |
-
-Both requirements must hold. In this repo:
-
-| Descriptor | enablement | placement | Lands on |
-|---|---|---|---|
-| `admission`, `alloy-*`, `cdi`, `cert-manager`, `cilium`, `cloudnative-pg`, `envoy-gateway`, `external-secrets`, `keycloak-operator`, `kube-state-metrics`, `kubevirt`, `loki`, `mimir`, `node-exporter`, `openbao`, `prometheus-operator-crds`, `rbac`, `zfs-localpv` | baseline | `fleet/environment=prod` | every prod cluster not opting out |
-| `argocd`, `argo-workflows`, `cluster-api`, `grafana`, `keycloak`, `renovate` | baseline | `fleet/role=management` | management clusters |
-| `apps/immich`, `apps/dodde` | opt-in | – | clusters with `app.fleet/<app>: enabled` |
-
-Placement takes a single key/value. If you need "A or B", give the clusters a
-capability label that expresses it.
+To remove a cluster, delete its folder and its Secret.
 
 ## Addons
 
-Addons are cluster-level infrastructure owned by the platform: CNI, ingress,
-certificates, secrets, storage, telemetry, identity, Argo CD. They are never
-garbage-collected implicitly (see
-[deletion](#deletion-and-finalizers)).
+Every addon is one Application per cluster, `<cluster>-<addon>`, in the
+addon's namespace. `addon.yaml` holds what the Application needs:
 
-Shapes in use:
-
-| Shape | Example | Descriptor |
+| Field | Default | Notes |
 |---|---|---|
-| Upstream chart only | `loki`, `kube-state-metrics` | `chart:` |
-| Upstream chart + own resources | `cert-manager` (ClusterIssuers, network policies) | `chart:` + `manifests: true` |
-| OCI chart | `envoy-gateway` (`repoURL: docker.io/envoyproxy`) | `chart:` without a scheme |
-| Upstream release manifests | `kubevirt`, `cdi`, `keycloak-operator` | `manifests: true`, remote resources in `kustomization.yaml` |
-| Own manifests only | `admission`, `rbac`, `mimir`, `keycloak` | `manifests: true` |
+| `namespace` | the addon's name | destination namespace, created if missing |
+| `podSecurity` | – | `privileged` / `baseline` / `restricted`: Pod Security `enforce`, `warn` and `audit` labels on the namespace |
+| `ignoreDifferences` | – | passed to `spec.ignoreDifferences` |
+
+The rest decides the source:
+
+| The addon has | It renders as | Examples |
+|---|---|---|
+| `Chart.yaml` | Helm, release name = addon name, values `values.yaml` then `clusters/<cluster>/<addon>/values.yaml` | most addons |
+| `kustomization.yaml` | Kustomize | `kubevirt`, `cdi`, `keycloak-operator` (upstream release manifests), `admission`, `rbac`, `clusters/loft01/dodde` |
+| neither | plain manifests | – |
+
+A Helm addon also gets `fleet.cluster` (the cluster's name) as a value, e.g.
+for Alloy's `CLUSTER_NAME`.
 
 ### Add an addon
 
-Example: metrics-server on every prod cluster.
+Example: metrics-server.
 
-1. Create the descriptor:
+```yaml
+# fleet/addons/metrics-server/addon.yaml
+# metrics-server for kubectl top and the HPA.
+namespace: kube-system
+podSecurity: privileged
+```
 
-   ```yaml
-   # fleet/addons/metrics-server/addon.yaml
-   addon:
-     enablement: baseline
-     placement:
-       key: fleet/environment
-       value: prod
-     namespace: kube-system
-     podSecurity: privileged
-     chart:
-       repoURL: https://kubernetes-sigs.github.io/metrics-server
-       name: metrics-server
-       version: 3.14.0
-   ```
+```yaml
+# fleet/addons/metrics-server/Chart.yaml
+apiVersion: v2
+name: metrics-server
+version: 0.1.0
+dependencies:
+  - name: metrics-server
+    repository: https://kubernetes-sigs.github.io/metrics-server
+    version: 3.14.0
+```
 
-2. Optionally add `values/default.yaml` (and `env/`, `cluster/` overrides).
-3. Commit. The `addons` ApplicationSet creates `<cluster>-metrics-server` for
-   each matching cluster.
-
-An addon that needs its own resources next to the chart (issuers, stores,
-policies, routes) sets `manifests: true` and puts a Kustomize base in
-`manifests/`. Resources that need the chart's CRDs *and* running webhooks get
-`argocd.argoproj.io/sync-wave: "1"` (see
-`addons/cert-manager/manifests/cluster-issuers.yaml`).
+Then values under the dependency's name in `values.yaml`
+(`metrics-server: {...}`), own resources in `templates/`, and the addon listed
+in the `values.yaml` of each cluster that should run it. OCI charts use
+`repository: oci://<registry>/<path>`.
 
 Conventions the addons follow:
 
 - Every namespace an addon owns gets a default-deny `CiliumNetworkPolicy` named
-  `default` in `manifests/network-policy.yaml`, plus explicit allow rules. The
-  cluster-wide baseline (`addons/cilium/manifests/baseline-policy.yaml`) only
-  adds DNS and metrics scraping.
-- Data-bearing resources (databases, PVCs, namespaces created by manifests)
+  `default` (`templates/network-policy.yaml`), plus explicit allow rules. A
+  policy with no rules is rejected by Cilium's CRD; write `- {}` rules for
+  that case. The cluster-wide baseline
+  (`addons/cilium/templates/baseline-policy.yaml`) only adds DNS and metrics
+  scraping.
+- Data-bearing resources (databases, PVCs, namespaces created by an addon)
   carry `argocd.argoproj.io/sync-options: Delete=false,Prune=false`.
 - Routes are Gateway API: a `Certificate`, a `ListenerSet` per Gateway (`edge`
-  public, `wg` WireGuard-only) and an `HTTPRoute`, in the cluster layer because
-  they name hostnames.
+  public, `wg` WireGuard-only) and an `HTTPRoute`. They name hostnames, so they
+  are plain manifests in the cluster's folder.
+- Pin each version once. Immich's VectorChord version is one value used by
+  both the Database and the extension image.
 
-## Workload apps
+## Sync, ordering, pausing and deletion
 
-Workload apps are user-facing services. They live in `fleet/apps/` and are
-cleaned up when they stop targeting a cluster. Descriptor schema, layering
-and targeting are identical to addons, with `app:` instead of `addon:` and
-`app.fleet/<name>` cluster labels.
+Every addon Application: automated with `prune` and `selfHeal`;
+`CreateNamespace`, `ServerSideApply`, `RespectIgnoreDifferences`,
+`SkipDryRunOnMissingResource`, `ApplyOutOfSyncOnly`; retry 10 times with
+backoff 15s ×2 up to 10m, refreshing to the latest commit on each retry.
 
-### Helm app (with extra manifests)
-
-```yaml
-# fleet/apps/immich/app.yaml
-app:
-  enablement: opt-in
-  namespace: immich
-  podSecurity: restricted
-  chart:
-    repoURL: ghcr.io/immich-app/immich-charts   # OCI: no scheme
-    name: immich
-    version: 0.13.4
-  manifests: true
-```
-
-```
-fleet/apps/immich/
-├── app.yaml
-├── values/default.yaml              # chart values (image tags with `# renovate:` hints)
-└── manifests/
-    ├── kustomization.yaml           # base: database, network policies
-    ├── database.yaml
-    ├── network-policy.yaml
-    └── cluster/loft01/              # kind: Component — config secret, routes, PVCs, DB size
-```
-
-Then label a cluster `app.fleet/immich: enabled`.
-
-### Kustomize / plain manifests app
-
-```yaml
-# fleet/apps/dodde/app.yaml
-app:
-  enablement: opt-in
-  namespace: dodde
-  podSecurity: restricted
-  manifests: true
-```
-
-```
-fleet/apps/dodde/manifests/
-├── kustomization.yaml          # kind: Kustomization (base) listing the files below
-├── datavolume.yaml
-├── virtualmachine.yaml
-├── network-policy.yaml
-├── env/<environment>/          # kind: Component, optional
-└── cluster/<name>/             # kind: Component, optional
-```
-
-Plain manifests are just a `kustomization.yaml` listing them. Leave
-`metadata.namespace` unset (or equal to the descriptor's namespace); the
-destination namespace is applied by Argo CD.
-
-## Descriptor reference
-
-`addon.yaml` (top-level key `addon:`) and `app.yaml` (top-level key `app:`)
-accept the same fields. The descriptor name is its directory name.
-
-| Field | Required | Default | Notes |
-|---|---|---|---|
-| `enablement` | yes | – | `baseline` or `opt-in` |
-| `placement.key` / `placement.value` | no | all clusters | one label requirement, see [Targeting](#targeting) |
-| `namespace` | no | directory name | destination namespace, created if missing |
-| `podSecurity` | no | – | `privileged` / `baseline` / `restricted`: Pod Security `enforce`, `warn` and `audit` labels on the namespace Argo CD creates |
-| `chart.repoURL` / `chart.name` / `chart.version` | one of chart/manifests | – | upstream Helm chart; HTTP(S) repo URL, or an OCI registry path **without** `oci://`. Keep this key order (Renovate) |
-| `releaseName` | no | directory name | Helm release name |
-| `manifests` | one of chart/manifests | `false` | also sync `manifests/` with Kustomize |
-| `ignoreDifferences` | no | – | passed verbatim to `spec.ignoreDifferences` |
-
-Generated Application: name `<cluster>-<dir>`, labels `fleet/kind`
-(`addon`/`app`), `fleet/component`, `fleet/cluster`.
-
-Fixed sync policy for every generated Application: automated with `prune` and
-`selfHeal` (unless the cluster pauses it); `CreateNamespace`, `ServerSideApply`,
-`RespectIgnoreDifferences`, `SkipDryRunOnMissingResource` (addons also
-`ApplyOutOfSyncOnly`); retry 10 times with backoff 15s ×2 up to 10m, refreshing
-to the latest commit on each retry.
-
-## Values layering and precedence
-
-For a descriptor in directory `D`, deployed to cluster `C` whose
-`fleet/environment` is `E`:
-
-| Order | Helm (`values/`) | Kustomize (`manifests/`) |
-|---|---|---|
-| 1 (lowest) | chart defaults | base `kustomization.yaml` |
-| 2 | `values/default.yaml` | – |
-| 3 | `values/env/E.yaml` | Component `env/E/` |
-| 4 (highest) | `values/cluster/C.yaml` | Component `cluster/C/` |
-
-Every layer is optional. Missing Helm files are skipped
-(`ignoreMissingValueFiles`), missing Component directories are skipped
-(`ignoreMissingComponents`). Helm merges maps deeply but **replaces lists**, so
-a later layer that sets a list must restate the whole list.
-
-Worked example, Cilium agent resources:
-
-```yaml
-# chart default                 resources: {}
-# values/default.yaml           resources: {requests: {cpu: 100m, memory: 512Mi}}
-# values/cluster/loft01.yaml    resources: {requests: {memory: 2560Mi}}
-```
-
-| Cluster | Effective `resources.requests` |
-|---|---|
-| `loft01` | `cpu: 100m`, `memory: 2560Mi` (maps merge; the cluster layer wins on `memory`) |
-| any other prod cluster | `cpu: 100m`, `memory: 512Mi` |
-
-The generated value-file list for `loft01` is:
-
-```
-$values/fleet/addons/cilium/values/default.yaml
-$values/fleet/addons/cilium/values/env/prod.yaml        (absent, skipped)
-$values/fleet/addons/cilium/values/cluster/loft01.yaml
-```
-
-The same idea for Kustomize: `addons/envoy-gateway/manifests/cluster/loft01/`
-patches loft01's WireGuard address into the `wg` EnvoyProxy, and
-`addons/keycloak/manifests/cluster/loft01/` adds the hostname, routes and
-secret references. If a cluster has no `fleet/environment` label, the env layer
-is omitted rather than pointing at `env/`.
-
-### What goes in the cluster layer
-
-Anything that names or depends on a specific cluster: hostnames, IP addresses,
-pod CIDRs, storage classes and sizes, and secret paths (`<cluster>/<app>` in
-OpenBao). Everything in `default.yaml` and the base `kustomization.yaml` must be
-true for every cluster the descriptor targets.
-
-## Sync waves, ordering and deletion
-
-### Within the root app
-
-| Wave | Resources |
-|---|---|
-| -1 | AppProject `default` |
-| 0 | ApplicationSets, cluster Secrets, `fleet-root` itself |
-
-### Within an addon/app
+### Within an addon
 
 Chart resources are wave 0. Argo CD applies CRDs before other kinds within a
 wave. Custom resources that need the chart's CRDs *and* running webhooks
@@ -537,33 +331,33 @@ the External Secrets webhook isn't ready when an app first syncs, the
 ExternalSecret fails while the workload that needs its Secret waits in the
 same wave. End it with `argocd app terminate-op <app>` (see step 9 for the CLI) and it retries.
 
+### Pausing
+
+Turn auto-sync off on any Application by hand (UI, or
+`kubectl -n argocd patch app <app> --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}'`);
+nothing undoes it, because the ApplicationSet and the cluster Applications
+ignore `spec.syncPolicy`. Set it back the same way. A pause that belongs in
+git is `paused: true` in the cluster's `values.yaml`, which also labels the
+Application `fleet/paused: "true"`. For the same reason that only applies when
+the Application is created: on an existing one, also turn auto-sync off by
+hand. An application paused by hand for a week alerts in Grafana; one labelled
+`fleet/paused` doesn't.
+
 ### Deletion and finalizers
 
-| Object | Finalizer | Effect of deletion |
-|---|---|---|
-| `fleet-root` | none | everything it created stays |
-| addon Applications | none (`preserveResourcesOnDeletion: true`) | Application removed, cluster resources orphaned |
-| workload Applications | `resources-finalizer.argocd.argoproj.io` | Application and its resources deleted, except those marked `Delete=false` |
-
-Consequences:
-
-- Turning an addon off for a cluster (`addon.fleet/x: disabled`) removes the
-  Application only; clean up by hand if you really want it gone. CRDs and data
-  are never deleted by accident.
-- Turning a workload off deletes it from the cluster; its PVCs and databases
-  survive because they carry `Delete=false,Prune=false`.
-- When a cluster is decommissioned, delete its workloads first (or the
-  finalizer will wait on an unreachable cluster). If it is already gone, remove
-  the finalizer from its stuck Applications:
-  `kubectl -n argocd patch app <cluster>-<app> --type=merge -p '{"metadata":{"finalizers":null}}'`.
+No Application has a resources finalizer. Removing an addon from a cluster's
+`values.yaml` (or deleting `fleet-root`, the ApplicationSet or a cluster
+Application) deletes the Application and leaves its resources running; clean
+up by hand if you really want them gone. CRDs and data are never deleted by
+accident.
 
 ### ignoreDifferences
 
 Fleet-wide rules live in Argo CD's config
-([`addons/argocd/values/default.yaml`](addons/argocd/values/default.yaml),
+([`addons/argocd/values.yaml`](addons/argocd/values.yaml),
 `resource.customizations.ignoreDifferences.*`): injected `caBundle` fields on
-webhook configurations, CRD conversion webhooks and APIServices. Per-addon/app
-rules go in the descriptor's `ignoreDifferences`. `RespectIgnoreDifferences=true`
+webhook configurations, CRD conversion webhooks and APIServices. Per-addon
+rules go in its `addon.yaml` `ignoreDifferences`. `RespectIgnoreDifferences=true`
 makes sync honour them as well as diff.
 
 ## AppProjects
@@ -587,13 +381,13 @@ Nothing secret is stored in git. The slot is the
 
 Both stores are backed by [OpenBao](addons/openbao) (KV v2 mount `kv`,
 Kubernetes auth). OpenBao's policies grant each cluster only `kv/<kvPrefix>/*`,
-where `kvPrefix` is set in `addons/openbao/values/cluster/<name>.yaml`. Each
+where `kvPrefix` is set in `clusters/<cluster>/openbao/values.yaml`. Each
 store also lists the namespaces allowed to use it (`spec.conditions`); add a
 namespace there when a new addon needs secrets.
 
 To plug in a different backend, change only the two `provider:` blocks in
-[`addons/external-secrets/manifests/cluster-secret-stores.yaml`](addons/external-secrets/manifests/cluster-secret-stores.yaml)
-(or vary them per cluster with a Component); consumers do not change.
+[`addons/external-secrets/templates/cluster-secret-stores.yaml`](addons/external-secrets/templates/cluster-secret-stores.yaml)
+(or vary them per cluster with values); consumers do not change.
 
 The only secrets created by hand are the backend's own bootstrap material
 (OpenBao's static seal key, see [Bootstrap](#bootstrap-a-new-management-cluster))
@@ -608,88 +402,50 @@ versions live (Renovate reads its configuration only from the root).
 
 | What | Where | Manager |
 |---|---|---|
-| Helm chart versions (HTTP repos) | `chart:` block in `addons/*/addon.yaml`, `apps/*/app.yaml` | custom regex, datasource `helm` |
-| Helm chart versions (OCI) | same, `repoURL` without a scheme | custom regex, datasource `docker` |
-| Image tags in Helm values | `image.repository` + `image.tag` in `*/values/**.yaml` | `helm-values` |
+| Upstream charts | `dependencies` in `addons/*/Chart.yaml` | `helmv3` |
+| Image tags in Helm values | `image.repository` + `image.tag` in `values.yaml` | `helm-values` |
 | Anything else | the value on the line after `# renovate: datasource=<ds> depName=<name>` (optionally `versioning=`, `extractVersion=`) | custom regex |
-| Image tags in Kustomize | `images:` in `manifests/**/kustomization.yaml` | `kustomize` |
+| Image tags in Kustomize | `images:` in `kustomization.yaml` | `kustomize` |
 | Remote bases | `?ref=` and GitHub release download URLs in `kustomization.yaml` | `kustomize`, custom regex (`github-releases`) |
-| Images in plain manifests | `image:` in `manifests/**.yaml` | `kubernetes` |
-| OpenTofu providers | `manifests/**/*.tf` | `terraform` (OpenTofu registry) |
+| Images in plain manifests | `image:` in `addons/**`, `clusters/**` | `kubernetes` |
+| OpenTofu providers | `addons/keycloak/tofu/*.tf` | `terraform` (OpenTofu registry) |
 
-Rules:
+Major updates and every Argo CD chart update wait for approval on the
+Dependency Dashboard. Argo CD upgrades itself when its PR merges, so review
+those individually.
 
-- Keep `repoURL`, `name`, `version` in that order and on consecutive lines in
-  the `chart:` block; the regex depends on it.
-- Pin each version in exactly one place. When one version must appear twice,
-  derive the second copy with a Kustomize `replacements` entry (see
-  `apps/immich/manifests/kustomization.yaml`, which derives the VectorChord
-  image tag from the Database's extension version).
-- Major updates and every Argo CD chart update wait for approval on the
-  Dependency Dashboard. Argo CD upgrades itself when its PR merges, so review
-  those individually.
-
-A merged Renovate PR is a normal git change: the ApplicationSet re-renders and
-every targeted cluster syncs the new version. The in-cluster Renovate runs from
-the `renovate` addon; on `loft01` it is paused (`addon.fleet/renovate: paused`),
-so its own deployment only changes when synced by hand.
+A merged Renovate PR is a normal git change: every cluster running the addon
+syncs the new version. The in-cluster Renovate runs from the `renovate` addon;
+on `loft01` it is paused, so its own deployment only changes when synced by
+hand.
 
 ## Troubleshooting
 
-**See what an ApplicationSet generates**
-
 ```sh
-# Dry-run against the live cluster Secrets
-argocd appset generate fleet/argocd/addons.yaml -o yaml
+# what a cluster's Application renders (its addon Applications)
+helm template loft01 fleet -f fleet/clusters/loft01/values.yaml --set cluster=loft01
 
-# What exists right now
-kubectl -n argocd get applications -l fleet/kind=addon -L fleet/cluster,fleet/component
+# one addon, as Argo CD renders it for loft01
+helm dependency build fleet/addons/grafana
+helm template grafana fleet/addons/grafana -n monitoring \
+  -f fleet/clusters/loft01/grafana/values.yaml --set fleet.cluster=loft01
+
+# what exists right now
 kubectl -n argocd get applications -l fleet/cluster=loft01
+kubectl -n argocd get applicationset clusters -o jsonpath='{.status.conditions}' | jq
 ```
-
-**ApplicationSet errors.** Check its conditions:
-
-```sh
-kubectl -n argocd get applicationset addons -o jsonpath='{.status.conditions}' | jq
-```
-
-Any descriptor that fails to render stops the whole ApplicationSet (fail
-closed). Typical messages:
-
-| Message | Cause |
-|---|---|
-| `"invalid-enablement" is not a valid label selector operator` | `enablement` is not `baseline`/`opt-in` |
-| `map has no entry for key "enablement"` / `"chart"` sub-keys | required descriptor field missing or misspelled; or the top-level key is not `addon:`/`app:` |
-
-**Application errors**
 
 | Symptom | Cause / fix |
 |---|---|
+| `loft01` app fails: `addon x: neither addons/x/ nor clusters/loft01/x/ has an addon.yaml` | a name in `values.yaml` with no addon behind it |
 | `no matches for kind` / CRD missing | CRD from another addon not installed yet; retries resolve it |
-| Value change has no effect | file path typo; missing value files are silently skipped. Compare with `argocd app manifests <app>` |
-| Expected app not created | check the cluster labels (`kubectl -n argocd get secret -l argocd.argoproj.io/secret-type=cluster --show-labels`) against the descriptor's enablement/placement |
-| App never syncs on its own | the cluster labels it `paused`; sync by hand or remove the label |
+| Value change has no effect | file path typo; missing value files are skipped. Compare with `argocd app manifests <app>` |
+| `helm dependency build` fails in the app | chart version or repository wrong in `Chart.yaml` |
+| App never syncs on its own | it is paused, see [pausing](#pausing) |
 | `ExternalSecret` not ready, "namespace not allowed" | add the namespace to the store's `spec.conditions` |
-| Application stuck deleting | workload finalizer waiting for an unreachable cluster, see [deletion](#deletion-and-finalizers) |
 
-**Render locally before pushing**
-
-```sh
-# Helm part: the chart at the descriptor's version, with the layers that exist for the cluster, in order
-helm template cilium cilium --repo https://helm.cilium.io --version 1.20.3 -n kube-system \
-  -f fleet/addons/cilium/values/default.yaml \
-  -f fleet/addons/cilium/values/cluster/loft01.yaml
-
-# OCI chart: oci://<repoURL>/<name>
-helm template envoy-gateway oci://docker.io/envoyproxy/gateway-helm --version v1.9.2 \
-  -n envoy-gateway-system -f fleet/addons/envoy-gateway/values/default.yaml
-
-# Kustomize part with a layer: work on a copy, because `kustomize edit` modifies the kustomization
-cp -r fleet/addons/keycloak/manifests /tmp/keycloak-manifests
-cd /tmp/keycloak-manifests
-kustomize edit add component cluster/loft01
-kustomize build .
-```
+The host's `helm` may be 3.x while Argo CD renders with Helm 4; check a
+Helm-sensitive change with a Helm 4 binary.
 
 ## Non-goals
 

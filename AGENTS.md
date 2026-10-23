@@ -11,7 +11,7 @@ Notes for coding agents working in this repo. Humans: start at `README.md`.
   on Fridays from 02:00 and switches to it. `allowReboot` decides whether
   a kernel or initrd change also reboots the host.
 - Renovate runs in-cluster; on loft01 it is paused
-  (`addon.fleet/renovate: paused` in `fleet/clusters/loft01.yaml`).
+  (`renovate: {paused: true}` in `fleet/clusters/loft01/values.yaml`).
 
 Don't push to `main` unless asked to, and render before you push.
 
@@ -20,24 +20,27 @@ Don't push to `main` unless asked to, and render before you push.
 `fleet/README.md` is the reference; read it before changing anything under
 `fleet/`.
 
-- `fleet/clusters/<c>.yaml`: one Argo CD cluster Secret; its labels decide
-  what the cluster runs.
-- `fleet/addons/<a>/addon.yaml`, `fleet/apps/<a>/app.yaml`: descriptors
-  (chart coordinates, namespace, enablement, placement, `podSecurity`).
-  Upstream charts are used directly; nothing is wrapped or vendored.
-- Layers, later wins: `values/default.yaml`, `values/env/<env>.yaml`,
-  `values/cluster/<c>.yaml`; Kustomize base `manifests/`, then Components
-  `manifests/env/<env>/`, `manifests/cluster/<c>/`.
-- Every namespace's default-deny policy is `manifests/network-policy.yaml`
+- `fleet/clusters/<c>/values.yaml`: the addons cluster `<c>` runs. The
+  ApplicationSet renders the fleet chart (`fleet/Chart.yaml`,
+  `fleet/templates/`) with it, one `<c>-<addon>` Application per addon.
+- `fleet/addons/<a>/`: a Helm chart (upstream chart as a `Chart.yaml`
+  dependency, values under its name, own resources in `templates/`) or a
+  Kustomize directory; `addon.yaml` holds namespace, `podSecurity`,
+  `ignoreDifferences`.
+- `fleet/clusters/<c>/<a>/`: `values.yaml` for that cluster plus plain
+  (untemplated) manifests; with no `fleet/addons/<a>`, the addon itself.
+- Every namespace's default-deny policy is `templates/network-policy.yaml`
   (`CiliumNetworkPolicy` `default`). A policy with no rules is rejected by
   Cilium's CRD; write `- {}` rules for that case.
-- `fleet/addons/keycloak/manifests/tofu/` is the realm. It ships as a
+- `fleet/addons/<a>/templates/` is Helm-templated: escape a literal `{{` (ESO
+  and Argo Workflows templates) or put the manifest in the cluster folder.
+- `fleet/addons/keycloak/tofu/` is the realm. It ships as a
   ConfigMap and a CronWorkflow applies it every 10 minutes.
 - `nixos/` is the host. `nixos/secrets.yaml` is sops (age), host secrets only.
 
 ## Checking a change
 
-See "Render locally before pushing" in `fleet/README.md`. For hosts:
+See "Troubleshooting" in `fleet/README.md` for rendering. For hosts:
 
 ```sh
 nix build .#nixosConfigurations.loft01.config.system.build.toplevel
@@ -49,16 +52,17 @@ change with a Helm 4 binary.
 
 ## Rules that bite
 
-- Cluster layer holds only what names a cluster: hostnames, CIDRs, IPs,
+- The cluster folder holds only what names a cluster: hostnames, CIDRs, IPs,
   storage classes and sizes, OpenBao paths. Keep a line only if removing it
   changes the render.
-- Stateful resources (PVCs, CNPG `Cluster`s, namespaces from manifests) carry
+- Stateful resources (PVCs, CNPG `Cluster`s, namespaces an addon creates) carry
   `argocd.argoproj.io/sync-options: Delete=false,Prune=false`.
 - Sync waves are only for objects inside one addon. Never put a wave behind
   a PVC (the zfs classes bind on first consumer), or behind anything that
   can't become Healthy until a later wave exists.
-- A descriptor that fails to render stops its whole ApplicationSet (nothing is
-  deleted). Check `kubectl -n argocd get applicationset addons -o yaml`.
+- An addon name in a cluster's `values.yaml` with no addon behind it fails the
+  whole cluster Application (`kubectl -n argocd get app loft01`); nothing is
+  deleted.
 - OpenBao paths are `<cluster>/<app>`. Generated secrets come from Password
   generators plus PushSecrets into `fleet-secrets-push`. The only secret
   entered by hand is Renovate's GitHub App, in OpenBao.

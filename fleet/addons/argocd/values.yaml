@@ -7,7 +7,7 @@ argo-cd:
       admin.enabled: 'false'
 
       # Fleet-wide ignoreDifferences for fields that controllers rewrite at runtime.
-      # Per-addon/app rules go in the descriptor's `ignoreDifferences` instead.
+      # Per-addon rules go in its addon.yaml `ignoreDifferences` instead.
       resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
         jqPathExpressions:
           - '.webhooks[]?.clientConfig.caBundle'
@@ -50,7 +50,7 @@ argo-cd:
   server:
     metrics: {enabled: true, serviceMonitor: {enabled: true}}
     resources: {requests: {cpu: 20m, memory: 64Mi}, limits: {memory: 256Mi}}
-  # the fleet's addons and workloads are ApplicationSets
+  # the fleet's clusters are an ApplicationSet
   applicationSet:
     metrics: {enabled: true, serviceMonitor: {enabled: true}}
     resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}

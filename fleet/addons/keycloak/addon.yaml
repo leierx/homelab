@@ -1,2 +1,4 @@
 # Keycloak (realm `homelab`) for the whole fleet: a Keycloak CR for the
+# keycloak-operator addon, its CloudNativePG database, and a CronWorkflow that
+# reconciles the realm from OpenTofu (tofu/).
 podSecurity: restricted

@@ -11,11 +11,11 @@ Everything Argo CD runs comes from `fleet/` on `main`. A push is a deploy.
 Argo polls git every 3 minutes; to skip the wait, refresh an Application:
 
 ```sh
-kubectl -n argocd annotate app fleet-root argocd.argoproj.io/refresh=normal --overwrite   # projects, ApplicationSets, cluster Secrets
+kubectl -n argocd annotate app fleet-root argocd.argoproj.io/refresh=normal --overwrite   # the ApplicationSet, cluster Secret, default project
 kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal --overwrite
 ```
 
-There's no CI. Render before you push (see "Render locally before pushing" in
+There's no CI. Render before you push (see "Troubleshooting" in
 [fleet/README.md](../fleet/README.md#troubleshooting)). Argo CD renders Helm
 charts with Helm 4; the host's `helm` may be 3.x, and the two differ in places
 (for example how a chart's `key: null` defaults render). When in doubt, repeat
@@ -78,7 +78,7 @@ besides restarting the application controller once (as that guide says):
   `nixos/secrets.yaml`. **Losing that key and the age key loses every
   secret.**
 - On first start it initializes itself from the `initialize` blocks in
-  `fleet/addons/openbao/values/default.yaml`: the `kv` mount, Kubernetes auth, and the
+  `fleet/addons/openbao/values.yaml`: the `kv` mount, Kubernetes auth, and the
   `external-secrets`, `external-secrets-push` and `admin` roles. That yields
   no root token and no recovery keys. Later changes go through `just bao`;
   mirror them in the `initialize` blocks.
@@ -91,13 +91,13 @@ besides restarting the application controller once (as that guide says):
   `updatePolicy: IfNotExists` into `ClusterSecretStore/fleet-secrets-push`. The
   first value sticks and survives anything OpenBao survives. Both stores
   refuse namespaces missing from their `conditions`
-  (`fleet/addons/external-secrets/manifests/cluster-secret-stores.yaml`).
+  (`fleet/addons/external-secrets/templates/cluster-secret-stores.yaml`).
 - To rotate a generated value, overwrite it:
   `head -c 48 /dev/urandom | base64 | tr -d '+/=\n' | just bao kv patch kv/<c>/<app> <prop>=-`.
   Then force-sync the ExternalSecret
   (`kubectl annotate externalsecret <name> force-sync=$(date +%s) --overwrite`)
   and restart pods that read it from env. A Keycloak client secret also needs
-  its `client_secret_wo_version` bumped in `fleet/addons/keycloak/manifests/tofu/clients.tf`.
+  its `client_secret_wo_version` bumped in `fleet/addons/keycloak/tofu/clients.tf`.
 - sops holds only host secrets, which must exist before the cluster does:
   WireGuard keys, the SSH host key and the seal key. Every Kubernetes secret
   lives only in OpenBao.
@@ -105,7 +105,7 @@ besides restarting the application controller once (as that guide says):
 ## Access
 
 - Keycloak (`https://auth.skinke.net`, realm `homelab`) is the only identity
-  provider. The realm is code: `fleet/addons/keycloak/manifests/tofu/` ships as a ConfigMap,
+  provider. The realm is code: `fleet/addons/keycloak/tofu/` ships as a ConfigMap,
   and the `keycloak-realm` CronWorkflow applies it every 10 minutes, undoing
   hand-made changes to anything it manages.
 - Tiers come from the `groups` claim:
@@ -135,7 +135,7 @@ besides restarting the application controller once (as that guide says):
      a passkey, and set a password.
   3. Run `git pull && just kubeconfig` on workstations, because the CA is new.
 - **Onboarding:** add a `keycloak_user` and its groups in
-  `fleet/addons/keycloak/manifests/tofu/users.tf` and push. Then set a temporary password in
+  `fleet/addons/keycloak/tofu/users.tf` and push. Then set a temporary password in
   the admin console over WireGuard. Emails must be unique, because Grafana
   needs that.
 
@@ -167,12 +167,12 @@ Start with `ssh loft01`: it uses an SSH key over WireGuard, not SSO, and
   `tofu force-unlock <id>` in a reconcile pod.
 - **Local admins are off by design.** Argo CD: set
   `configs.cm.admin.enabled: "true"` in
-  `fleet/addons/argocd/values/cluster/loft01.yaml`, push, and read
+  `fleet/clusters/loft01/argocd/values.yaml` (under `argo-cd:`), push, and read
   `argocd-initial-admin-secret` (or skip the UI: `argocd login --core`).
   Grafana: set `grafana.ini.auth.disable_login_form: false` in
-  `fleet/addons/grafana/values/cluster/loft01.yaml`; the password is
+  `fleet/clusters/loft01/grafana/values.yaml` (under `grafana:`); the password is
   `kv/loft01/grafana` `admin_password`. Immich: set `passwordLogin.enabled`
-  in `fleet/apps/immich/manifests/cluster/loft01/config.yaml`, restart
+  in `fleet/clusters/loft01/immich/config.yaml`, restart
   `deploy/immich-server`, and run `immich-admin reset-admin-password`. Revert
   each when you're done. A local login to Grafana or Argo CD, any login to
   Keycloak's `master` realm other than `bootstrap-admin`, and OpenBao's admin

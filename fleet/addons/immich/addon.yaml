@@ -1,2 +1,2 @@
-# Immich photo library. Opt-in: clusters labelled app.fleet/immich=enabled.
+# Immich photo library.
 podSecurity: restricted

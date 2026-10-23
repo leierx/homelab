@@ -1,3 +1,4 @@
 # Keycloak operator from the upstream kustomization. It watches only its own
+# namespace, so the Keycloak CR (addon keycloak) lives in `keycloak` too.
 namespace: keycloak
 podSecurity: restricted

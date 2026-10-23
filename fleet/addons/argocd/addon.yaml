@@ -1,2 +1,3 @@
 # Argo CD manages itself. Installed once by hand with these exact chart
+# coordinates and values (see fleet/README.md, "Bootstrap"), then adopted here.
 podSecurity: restricted
