@@ -1,3 +1,14 @@
 cloudnative-pg:
   resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}
   monitoring: {podMonitorEnabled: true}
+netpol:
+  webhook: true
+  apiServer: true
+  egress:
+    # every Postgres instance's status endpoint, wherever its Cluster lives
+    - toEndpoints:
+        - matchExpressions:
+            - {key: k8s:io.kubernetes.pod.namespace, operator: Exists}
+            - {key: cnpg.io/cluster, operator: Exists}
+      toPorts:
+        - ports: [{port: "8000", protocol: TCP}]
