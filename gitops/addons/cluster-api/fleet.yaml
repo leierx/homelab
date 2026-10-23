@@ -1,5 +1,4 @@
 namespace: capi-operator-system
-syncOptions: [Delete=false]
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted
