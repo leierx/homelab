@@ -50,9 +50,11 @@ fleet/
 │       ├── kustomization.yaml    #   base (kind: Kustomization)
 │       ├── env/<environment>/    #   layer (kind: Component)
 │       └── cluster/<cluster>/    #   layer (kind: Component)
-├── apps/<app>/                   # workload apps; same layout, app.yaml instead of addon.yaml
-└── renovate.json5                # where Renovate finds versions in this tree
+└── apps/<app>/                   # workload apps; same layout, app.yaml instead of addon.yaml
 ```
+
+Renovate's configuration is `renovate.json5` at the repository root (Renovate
+only reads it there).
 
 Addons today: `admission`, `alloy-logs`, `alloy-metrics`, `argocd`,
 `argo-workflows`, `cdi`, `cert-manager`, `cilium`, `cloudnative-pg`,
@@ -592,14 +594,14 @@ To plug in a different backend, change only the two `provider:` blocks in
 
 The only secrets created by hand are the backend's own bootstrap material
 (OpenBao's static seal key, see [Bootstrap](#bootstrap-a-new-management-cluster))
-and values only a human can provide (e.g. the Renovate GitHub App's private key,
-written to `<cluster>/renovate` in OpenBao).
+and values only a human can provide (the Renovate GitHub App, written to
+`<cluster>/renovate` in OpenBao by hand). No Kubernetes secret is kept in a
+file in this repository, encrypted or not.
 
 ## Renovate
 
-[`renovate.json5`](renovate.json5) tells Renovate where versions live. Renovate
-only reads configuration from the repository root, so the root config must
-extend this file.
+[`renovate.json5`](../renovate.json5) at the repository root tells Renovate where
+versions live (Renovate reads its configuration only from the root).
 
 | What | Where | Manager |
 |---|---|---|
@@ -610,6 +612,7 @@ extend this file.
 | Image tags in Kustomize | `images:` in `manifests/**/kustomization.yaml` | `kustomize` |
 | Remote bases | `?ref=` and GitHub release download URLs in `kustomization.yaml` | `kustomize`, custom regex (`github-releases`) |
 | Images in plain manifests | `image:` in `manifests/**.yaml` | `kubernetes` |
+| OpenTofu providers | `manifests/**/*.tf` | `terraform` (OpenTofu registry) |
 
 Rules:
 

@@ -1,2 +1,0 @@
-# addons' subcharts: archives from local `helm dependency build` runs, and unpacked local charts
-addons/*/charts/

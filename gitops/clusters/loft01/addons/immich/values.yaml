@@ -1,5 +1,0 @@
-host: photos.skinke.net
-keycloakHost: auth.skinke.net
-library: {storageClass: zfs-thin, size: 770Gi}
-modelCache: {storageClass: zfs-thin, size: 10Gi}
-postgres: {storageClass: zfs, size: 20Gi}

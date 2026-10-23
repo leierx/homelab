@@ -1,9 +1,0 @@
-dependencies:
-- name: immich
-  repository: oci://ghcr.io/immich-app/immich-charts
-  version: 0.13.4
-- name: netpol
-  repository: file://../../charts/netpol
-  version: 0.1.0
-digest: sha256:ce8cc41d3bcf88c519837bf92bac19800eb76a1460568b53820f77cc53cca3db
-generated: "2026-10-23T13:26:04.879344949+02:00"

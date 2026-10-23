@@ -1,8 +1,0 @@
-apiVersion: v2
-name: mimir
-description: Fleet wrapper for the local mimir chart in charts/mimir
-version: 0.0.0
-dependencies:
-  - name: mimir
-    version: 0.1.0
-    repository: ""

@@ -1,4 +1,0 @@
-apiVersion: v2
-name: kubevirt
-description: Fleet addon for kubevirt; the upstream manifests are in manifests/
-version: 1.0.0

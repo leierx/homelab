@@ -1,7 +1,3 @@
 result
 result-*
 .terraform/
-
-# Subcharts downloaded by `helm dependency build` when rendering locally
-gitops/**/charts/*.tgz
-

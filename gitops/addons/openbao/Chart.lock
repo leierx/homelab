@@ -1,9 +1,0 @@
-dependencies:
-- name: openbao
-  repository: https://openbao.github.io/openbao-helm
-  version: 0.30.4
-- name: netpol
-  repository: file://../../charts/netpol
-  version: 0.1.0
-digest: sha256:b974711611d121c6eb9234a3f4d3634593b881f4e9e5e65d0f7d743dc71d30ee
-generated: "2026-10-23T13:38:32.690255334+02:00"

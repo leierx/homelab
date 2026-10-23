@@ -1,6 +1,0 @@
-namespace: capi-operator-system
-managedNamespaceMetadata:
-  labels:
-    pod-security.kubernetes.io/enforce: restricted
-    pod-security.kubernetes.io/warn: restricted
-    pod-security.kubernetes.io/audit: restricted

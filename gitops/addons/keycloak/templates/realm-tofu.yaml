@@ -1,7 +1,0 @@
-# realm homelab's OpenTofu root (tofu/), mounted by the keycloak-realm CronWorkflow
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: keycloak-realm-tofu
-data:
-{{ (.Files.Glob "tofu/*").AsConfig | indent 2 }}

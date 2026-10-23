@@ -1,9 +1,0 @@
-dependencies:
-- name: argo-workflows
-  repository: https://argoproj.github.io/argo-helm
-  version: 2.0.14
-- name: netpol
-  repository: file://../../charts/netpol
-  version: 0.1.0
-digest: sha256:ef6fc0d1afc29a56e9a268443b5a0c238ec10c4ff8a557717478c537a865055c
-generated: "2026-10-23T13:20:16.539897387+02:00"

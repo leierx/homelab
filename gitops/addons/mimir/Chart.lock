@@ -1,6 +1,0 @@
-dependencies:
-- name: mimir
-  repository: ""
-  version: 0.1.0
-digest: sha256:2f19eeae1d325eb90999a3971c6b3fb6267f15f36cbe195f2b34ea74ee2904b3
-generated: "2026-10-23T13:41:40.450102334+02:00"

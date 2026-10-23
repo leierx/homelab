@@ -1,9 +1,0 @@
-dependencies:
-- name: external-secrets
-  repository: https://charts.external-secrets.io
-  version: 2.13.0
-- name: netpol
-  repository: file://../../charts/netpol
-  version: 0.1.0
-digest: sha256:93e7109772a8a1eb2f3511d51fdb63c839223d536fe5fee252bb93305decb5ac
-generated: "2026-10-23T13:24:23.446899148+02:00"

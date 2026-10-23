@@ -1,2 +1,0 @@
-mimir:
-  storage: {storageClassName: zfs, size: 100Gi}

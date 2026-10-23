@@ -1,9 +1,0 @@
-dependencies:
-- name: gateway-helm
-  repository: oci://docker.io/envoyproxy
-  version: v1.9.2
-- name: netpol
-  repository: file://../../charts/netpol
-  version: 0.1.0
-digest: sha256:d7d04b79bbc0747d78f81eaa1b52c77762a4397fa877d909effee0e7d1c7e154
-generated: "2026-10-23T13:23:33.013321035+02:00"

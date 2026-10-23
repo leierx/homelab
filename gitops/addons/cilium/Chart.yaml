@@ -1,8 +1,0 @@
-apiVersion: v2
-name: cilium
-description: Fleet wrapper for the upstream cilium chart
-version: 1.0.0
-dependencies:
-  - name: cilium
-    version: 1.20.3
-    repository: https://helm.cilium.io

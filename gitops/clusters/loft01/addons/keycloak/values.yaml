@@ -1,3 +1,0 @@
-host: auth.skinke.net
-podCIDR: 10.42.0.0/16
-postgres: {storageClass: zfs, size: 5Gi}

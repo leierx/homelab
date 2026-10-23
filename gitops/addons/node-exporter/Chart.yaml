@@ -1,8 +1,0 @@
-apiVersion: v2
-name: node-exporter
-description: Fleet wrapper for the upstream prometheus-node-exporter chart
-version: 1.0.0
-dependencies:
-  - name: prometheus-node-exporter
-    version: 4.60.0
-    repository: https://prometheus-community.github.io/helm-charts

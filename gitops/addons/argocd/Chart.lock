@@ -1,9 +1,0 @@
-dependencies:
-- name: argo-cd
-  repository: https://argoproj.github.io/argo-helm
-  version: 10.10.5
-- name: netpol
-  repository: file://../../charts/netpol
-  version: 0.1.0
-digest: sha256:7e23a6a990f424175bcfc72b3bd642b79cf35438257b4bb4eae36791208c34d0
-generated: "2026-10-23T13:21:02.862623254+02:00"

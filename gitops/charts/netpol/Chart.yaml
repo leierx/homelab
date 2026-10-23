@@ -1,5 +1,0 @@
-apiVersion: v2
-name: netpol
-description: A default-deny CiliumNetworkPolicy and the allow rules addons share
-# addons lock this exact version; leave it, or every addon's Chart.lock needs `helm dependency update`
-version: 0.1.0

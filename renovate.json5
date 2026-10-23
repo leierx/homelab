@@ -1,14 +1,16 @@
-// Renovate configuration for fleet/.
+// Renovate configuration for this repository (Renovate reads it only from the repo root).
 // Version sources Renovate understands:
-//   fleet/{addons,apps}/<name>/{addon,app}.yaml  `chart:` block (repoURL -> name -> version)
+//   fleet/{addons,apps}/<name>/{addon,app}.yaml  `chart:` block (repoURL -> name -> version; HTTP or OCI)
 //   fleet/{addons,apps}/<name>/values/**.yaml     image.repository / image.tag style Helm values
 //   fleet/{addons,apps}/<name>/manifests/**       kustomization `images:` and plain `image:` fields,
-//                                                 remote bases (?ref=, GitHub release download URLs)
+//                                                 remote bases (?ref=, GitHub release download URLs),
+//                                                 OpenTofu providers
 //   anywhere in fleet/                            a value on the line after `# renovate: datasource=... depName=...`
+//   .github/workflows/                            GitHub Actions, pinned to digests
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
-  extends: ['config:recommended'],
-  includePaths: ['fleet/**'],
+  extends: ['config:recommended', 'helpers:pinGitHubActionDigests'],
+  includePaths: ['fleet/**', '.github/**'],
   labels: ['dependencies'],
   customManagers: [
     {
@@ -64,6 +66,12 @@
       description: 'Label PRs by fleet area',
       matchFileNames: ['fleet/apps/**'],
       addLabels: ['fleet/app'],
+    },
+    {
+      description: 'OpenTofu roots resolve providers from the OpenTofu registry, not Terraform',
+      matchFileNames: ['fleet/**'],
+      matchDatasources: ['terraform-provider', 'terraform-module'],
+      registryUrls: ['https://registry.opentofu.org'],
     },
     {
       description: 'Major bumps wait for explicit approval on the Dependency Dashboard',

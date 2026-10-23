@@ -1,3 +1,0 @@
-openbao:
-  server:
-    dataStorage: {storageClass: zfs, size: 2Gi}

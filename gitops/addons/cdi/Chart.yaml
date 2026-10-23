@@ -1,4 +1,0 @@
-apiVersion: v2
-name: cdi
-description: Fleet addon for cdi; the upstream manifests are in manifests/
-version: 1.0.0

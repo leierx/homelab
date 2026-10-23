@@ -1,9 +1,0 @@
-dependencies:
-- name: netpol
-  repository: file://../../charts/netpol
-  version: 0.1.0
-- name: netpol
-  repository: file://../../charts/netpol
-  version: 0.1.0
-digest: sha256:b4327916f3cc7387725035225efc39ad11d3d36abe7886a924e830949d56e3ae
-generated: "2026-10-23T13:37:30.881748208+02:00"

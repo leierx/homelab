@@ -1,9 +1,0 @@
-dependencies:
-- name: cloudnative-pg
-  repository: https://cloudnative-pg.github.io/charts
-  version: 0.29.1
-- name: netpol
-  repository: file://../../charts/netpol
-  version: 0.1.0
-digest: sha256:dde874694f448802422f6ed33d0cb479af1c1d7306e8b8b20d30d866cc35d31d
-generated: "2026-10-23T13:22:51.268141504+02:00"

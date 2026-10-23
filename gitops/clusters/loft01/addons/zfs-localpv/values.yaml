@@ -1,5 +1,0 @@
-# zfs: ext4 zvols, for databases and anything that needs a normal filesystem
-# zfs-thin: ZFS filesystems with 1M records, for bulk files; never databases
-storageClasses:
-  - {name: zfs, poolname: tank, fstype: ext4, thinprovision: false, default: true}
-  - {name: zfs-thin, poolname: tank, fstype: zfs, thinprovision: true, recordsize: 1M}

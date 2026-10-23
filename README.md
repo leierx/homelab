@@ -23,13 +23,13 @@ real GitOps platform on hardware we own.
   Fridays.
 - **Cluster.** k3s runs without its own CNI and kube-proxy; Cilium provides
   both and the network policy engine. Argo CD tracks `HEAD` of `main` and
-  renders the fleet chart in `gitops/fleet/`: `root.yaml` creates one
-  `cluster-<name>` Application per `gitops/clusters/<name>/cluster.yaml`, and
-  each of those creates one `<name>-<addon>` Application per addon the
-  cluster runs: the addons of the groups its `cluster.yaml` lists (each
-  `gitops/groups/<group>/group.yaml`), plus its own. Group and cluster
-  layers add values and manifests. The guide is [docs/README.md](docs/README.md), and
-  `helm template` previews everything offline.
+  manages everything in `fleet/`: `fleet/bootstrap/root.yaml` syncs the
+  AppProjects, two ApplicationSets and one labelled cluster Secret per cluster
+  (`fleet/clusters/`). The ApplicationSets create one `<cluster>-<addon>`
+  Application per addon (`fleet/addons/`) and per app (`fleet/apps/`) whose
+  targeting matches the cluster's labels. Upstream charts are used directly,
+  with layered values and Kustomize manifests per environment and cluster.
+  The guide is [fleet/README.md](fleet/README.md).
 - **Edge.** Envoy Gateway terminates TLS on two Gateways: `edge` (NodePort
   30080/30443, reached through the router's port forward) and `wg` (the
   `10.0.0.1` address on WireGuard). Argo CD and Keycloak's admin side are on
@@ -44,10 +44,10 @@ real GitOps platform on hardware we own.
   them. sanoid snapshots the pool, and an off-site borg backup is ready to
   enable.
 - **Workloads.** The management side runs Cluster API, KubeVirt and CDI, so a
-  workload cluster is a VM on this node. Its folder under `gitops/clusters/`
-  holds the CAPI `Cluster` and an ExternalSecret that registers it with Argo
-  CD from CAPI's kubeconfig Secret; none exists yet. An app that runs on one
-  cluster only is in that cluster's `addons:` rather than a group.
+  workload cluster is a VM on this node. It is registered by one file in
+  `fleet/clusters/` (an ExternalSecret that renders the Argo CD cluster
+  Secret); none exists yet. User-facing apps live in `fleet/apps/` and opt in
+  per cluster with an `app.fleet/<app>: enabled` label.
   Workload clusters' pod and service CIDRs must not overlap `10.42.0.0/16` and
   `10.43.0.0/16`, and they boot from a persistent disk
   (`cluster-template-persistent-storage.yaml`), never a containerDisk.
@@ -74,16 +74,16 @@ real GitOps platform on hardware we own.
 ## Repository layout
 
 ```
-nixos/        the host: disks, k3s, sops-nix, pi
-gitops/
-  root.yaml   the one Application applied by hand
-  fleet/      the fleet chart: renders cluster-<c> and <c>-<addon> Applications
-  charts/     local charts several addons share (netpol)
-  addons/     one folder per addon: a chart and optional fleet.yaml; keycloak/tofu is the realm
-  groups/     one folder per group: group.yaml (its addons) and shared layers
-  clusters/   one folder per cluster: cluster.yaml (groups, addons, metadata), registration, layers
-docs/         the operating guide
-flake.nix     the flake (host and installer)
+nixos/          the host: disks, k3s, sops-nix, pi
+fleet/          everything Argo CD deploys (see fleet/README.md)
+  bootstrap/    the one file applied by hand
+  platform/     AppProjects and the two ApplicationSets
+  clusters/     one labelled cluster Secret per cluster
+  addons/       one folder per platform addon: descriptor, values layers, manifests; keycloak's realm is OpenTofu
+  apps/         one folder per workload app (immich, dodde)
+docs/           the operating guide for this homelab
+renovate.json5  Renovate configuration
+flake.nix       the flake (host and installer)
 ```
 
 ## The stack, and why
@@ -93,7 +93,7 @@ flake.nix     the flake (host and installer)
 | Host OS | NixOS | the whole host is one repo, with atomic upgrades and rollback | MIT (nixpkgs), LGPL-2.1 (Nix) | NixOS Foundation |
 | Kubernetes | k3s | one binary, bundled containerd and SQLite, and no CNI to remove | Apache-2.0 | CNCF (sandbox) |
 | Network and policy | Cilium | eBPF dataplane, kube-proxy replacement, NetworkPolicy engine | Apache-2.0 | CNCF (graduated) |
-| GitOps | Argo CD + Helm | a push to `main` is a deploy; charts render in-cluster | Apache-2.0 | CNCF (graduated) |
+| GitOps | Argo CD (ApplicationSets) + Helm + Kustomize | a push to `main` is a deploy; upstream charts render in-cluster, clusters are selected by labels | Apache-2.0 | CNCF (graduated) |
 | TLS certificates | cert-manager | Let's Encrypt issuance and renewal from one `ClusterIssuer` | Apache-2.0 | CNCF (graduated) |
 | Edge and routing | Envoy Gateway (Gateway API) | two Gateways, OIDC filter, HTTP-01 solver | Apache-2.0 | CNCF (Envoy, graduated) |
 | Identity and SSO | Keycloak (Keycloak Operator) | OIDC with a groups claim, mandatory second factor | Apache-2.0 | CNCF (incubating) |
@@ -117,13 +117,14 @@ flake.nix     the flake (host and installer)
 | Dashboards and alerts | Grafana | one UI; dashboards as labelled ConfigMaps | AGPL-3.0 | none (Grafana Labs) |
 | Photos | Immich | phone backup, timeline, faces and search, Keycloak SSO | AGPL-3.0 | none (FUTO; single vendor, see principle 5) |
 | Job queue | Valkey | Immich's job queues | BSD-3-Clause | Linux Foundation |
-| Dependency updates | Renovate | wrapper charts, Actions, `# renovate:` versions, one PR per addon folder | AGPL-3.0 | none (Mend) |
+| Dependency updates | Renovate | chart pins, images, Actions, `# renovate:` versions | AGPL-3.0 | none (Mend) |
 
 ## Docs
 
-[docs/README.md](docs/README.md) is the operating guide: adding addons and
-clusters, values, pausing, removal, bootstrap from scratch, secrets, access
-and break-glass.
+[fleet/README.md](fleet/README.md) explains the GitOps structure: adding
+addons, apps and clusters, targeting, values layering, pausing, removal and
+troubleshooting. [docs/README.md](docs/README.md) is the operating guide for
+this homelab: bootstrap from scratch, secrets, access and break-glass.
 
 ## Manual routines
 
