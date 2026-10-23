@@ -1,18 +1,4 @@
-# default-deny; each part reaches only what it needs (DNS and metrics scraping come from the cluster baseline)
-apiVersion: cilium.io/v2
-kind: CiliumNetworkPolicy
-metadata:
-  name: default
-spec:
-  endpointSelector: {}
-  enableDefaultDeny:
-    ingress: true
-    egress: true
-  ingress:
-    - {}
-  egress:
-    - {}
----
+# netpol's default-deny allows nothing here; each part reaches only what it needs (DNS and metrics scraping come from the cluster baseline)
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:

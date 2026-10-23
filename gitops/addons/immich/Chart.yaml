@@ -5,3 +5,6 @@ dependencies:
   - name: immich
     version: 0.13.4
     repository: oci://ghcr.io/immich-app/immich-charts
+  - name: netpol
+    version: 0.1.0
+    repository: file://../../charts/netpol
