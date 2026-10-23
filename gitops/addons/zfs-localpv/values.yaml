@@ -1,22 +1,8 @@
 zfs-localpv:
-  analytics:
-    enabled: false
+  analytics: {enabled: false}
+  # NixOS keeps zfs here, not in /sbin
+  zfs: {bin: /run/current-system/sw/bin/zfs}
   zfsController:
-    resources:
-      requests:
-        cpu: 5m
-        memory: 16Mi
-      limits:
-        memory: 128Mi
+    resources: {requests: {cpu: 5m, memory: 16Mi}, limits: {memory: 128Mi}}
   zfsNode:
-    resources:
-      requests:
-        cpu: 5m
-        memory: 16Mi
-      limits:
-        memory: 256Mi
-# Classes are defined per cluster (they name that cluster's zpools). The cluster layer lists them:
-#   zfs       - fstype ext4, not thin: databases and anything needing a normal filesystem
-#   zfs-thin  - fstype zfs, recordsize 1M, thin-provisioned: bulk files (media, backups, caches).
-#               Recordsize is an upper bound, so small files are not wasted; do not put databases here
-storageClasses: []
+    resources: {requests: {cpu: 5m, memory: 16Mi}, limits: {memory: 256Mi}}
