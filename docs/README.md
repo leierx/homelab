@@ -173,7 +173,10 @@ Start with `ssh loft01`: it uses an SSH key over WireGuard, not SSO, and
   `kv/loft01/grafana` `admin_password`. Immich: set `passwordLogin.enabled`
   in `fleet/apps/immich/manifests/cluster/loft01/config.yaml`, restart
   `deploy/immich-server`, and run `immich-admin reset-admin-password`. Revert
-  each when you're done.
+  each when you're done. A local login to Grafana or Argo CD, any login to
+  Keycloak's `master` realm other than `bootstrap-admin`, and OpenBao's admin
+  role each alert (Grafana, folder `homelab`, group `security`). Immich has no
+  login signal; the kube-audit alerts catch the `kubectl exec` it needs.
 - **Keycloak's database is lost:** an empty realm comes back on the next
   realm run, but users start from their first password and second factor
   again. A realm that still exists after its OpenTofu state Secret was lost

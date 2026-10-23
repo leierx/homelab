@@ -41,6 +41,9 @@ spec:
       value: "true"
     - name: event-metrics-user-enabled
       value: "true"
+    # client_id lets the master-realm login alert skip bootstrap-admin, the realm reconcile's client
+    - name: event-metrics-user-tags
+      value: realm,clientId
   resources:
     requests: { cpu: 200m, memory: 1Gi }
     limits: { memory: 2Gi }

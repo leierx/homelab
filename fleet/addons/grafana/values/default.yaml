@@ -205,6 +205,101 @@ alerting:
                       type: gt
                       params:
                         - 0
+        # The counters below start existing at their first increment, which increase() can't see;
+        # the `unless … offset` half catches a series that has just appeared.
+        - uid: grafana-local-login
+          title: Grafana break-glass login
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: Someone logged in to Grafana with a password instead of Keycloak; the only password account is the break-glass admin.
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: sum(increase(grafana_authn_authn_successful_login_total{client="auth.client.form"}[10m])) > 0 or sum(grafana_authn_authn_successful_login_total{client="auth.client.form"} unless grafana_authn_authn_successful_login_total{client="auth.client.form"} offset 10m)
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        - uid: argocd-local-login
+          title: Argo CD break-glass login
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: Someone logged in to Argo CD with a local account's password (the break-glass admin); SSO logins don't go through SessionService.Create.
+          data:
+            - refId: A
+              datasourceUid: loki
+              relativeTimeRange:
+                from: 300
+                to: 0
+              model:
+                refId: A
+                queryType: instant
+                expr: sum(count_over_time({namespace="argocd", container="server"} |= "session.SessionService" | logfmt | msg="finished call" | grpc_service="session.SessionService" | grpc_method="Create" | grpc_code="OK" [5m]))
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        - uid: keycloak-master-login
+          title: Keycloak master realm login
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Break-glass in Keycloak: a user logged in to the master realm (it has none), or a master client other than bootstrap-admin, which the realm reconcile uses, got a token.'
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: sum by (event, client_id) (increase(keycloak_user_events_total{realm="master", event=~"login|client_login", error="", client_id!="bootstrap-admin"}[10m])) > 0 or sum by (event, client_id) (keycloak_user_events_total{realm="master", event=~"login|client_login", error="", client_id!="bootstrap-admin"} unless keycloak_user_events_total{realm="master", event=~"login|client_login", error="", client_id!="bootstrap-admin"} offset 10m)
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
         - uid: admission-policy-warning
           title: Pod breaks an admission policy
           condition: C
