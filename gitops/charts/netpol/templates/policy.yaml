@@ -29,6 +29,11 @@
 {{- end }}
 {{- $in = concat $in .ingress }}
 {{- $out = concat $out .egress }}
+{{- /* Cilium rejects a policy without rules; an empty rule allows nothing */}}
+{{- if not (or $in $out) }}
+{{- $in = list (dict) }}
+{{- $out = list (dict) }}
+{{- end }}
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
