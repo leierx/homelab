@@ -11,7 +11,8 @@ Notes for coding agents working in this repo. Humans: start at `README.md`.
   on Fridays from 02:00 and switches to it. `allowReboot` decides whether
   a kernel or initrd change also reboots the host.
 - Renovate runs in-cluster; on loft01 `loft01-renovate` is paused by hand
-  (auto-sync off), because with no CI an auto-synced Renovate automerges
+  (`spec.syncPolicy.automated.enabled: false`; removing `automated` doesn't
+  stick), because with no CI an auto-synced Renovate automerges
   minor/patch bumps straight onto main.
 
 Don't push to `main` unless asked to, and render before you push.

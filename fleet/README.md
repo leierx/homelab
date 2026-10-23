@@ -148,8 +148,10 @@ first add its `clusters/<name>/` folder and its cluster Secret in `argocd/`
    Expect `fleet-root`, then `loft01`, then one `loft01-<addon>` per addon in
    `clusters/loft01/values.yaml`. Some retry a few times while CRDs and webhooks from other
    addons appear; that is expected (see [ordering](#sync-ordering-pausing-and-deletion)).
-   `loft01-renovate` syncs like the rest; [pause it](#pausing) by hand if
-   Renovate shouldn't run yet (it can't log in before step 8 anyway).
+   `loft01-renovate` syncs like the rest. [Pause it](#pausing) by hand and
+   delete its CronJob (`kubectl -n renovate delete cronjob renovate`) unless
+   Renovate should run: with no CI it automerges minor/patch bumps onto main.
+   It can't log in before step 8 anyway.
 
 7. **Restart the application controller once** when everything has synced. It
    caches the API list from before the CRDs existed, so charts that check
@@ -332,11 +334,17 @@ same wave. End it with `argocd app terminate-op <app>` (see step 9 for the CLI) 
 
 ### Pausing
 
-Turn auto-sync off on any Application by hand (UI, or
-`kubectl -n argocd patch app <app> --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}'`);
-nothing undoes it, because the ApplicationSet and the cluster Applications
-ignore `spec.syncPolicy`. Set it back the same way. An application paused for
-a week alerts in Grafana.
+Turn auto-sync off on any Application by setting `automated.enabled: false`:
+
+```sh
+kubectl -n argocd patch app <app> --type merge -p '{"spec":{"syncPolicy":{"automated":{"enabled":false}}}}'
+```
+
+Nothing undoes it, because the ApplicationSet and the cluster Applications
+ignore `spec.syncPolicy`; set `true` to resume. Don't pause by removing
+`automated` (as the UI's "Disable auto-sync" does): an ignored field that is
+missing live gets the rendered value back on the next sync, which turns
+auto-sync on again. An application paused for a week alerts in Grafana.
 
 ### Deletion and finalizers
 
