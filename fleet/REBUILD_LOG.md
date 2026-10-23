@@ -49,6 +49,13 @@ what worked, commit, and log it below.
 | 19:51 | Host cluster state deleted |
 | 19:53 | `fleet` merged into `main`, pushed |
 | 19:55 | Waiting for reboot |
+| 19:56 | Rebooted; k3s up, node NotReady, `openbao-seal-key.yaml` rendered into the manifests dir |
+| 19:57 | Step 1: no `TODO(fleet)` applies to loft01 (only the remote-cluster template and the now-moot cutover note); chart versions match |
+| 19:57 | Step 2: Cilium applied (30 s); 4 ServiceMonitor errors as expected (wording differs, snag 2) |
+| 19:59 | Node Ready (1 min) |
+| 19:59 | Step 3: Argo CD applied cleanly (7 s), all Available at 20:00 |
+| 20:00 | Step 4: seal-key Secret present (sops-nix via k3s manifests); repo is public, no repo Secret needed. README: added a check command |
+| 20:00 | Step 5: root applied (`fleet` AppProject, `fleet-root`) |
 
 ## Snags
 
@@ -69,6 +76,16 @@ what worked, commit, and log it below.
   commands: list loop devices and mounts under `/var/lib/{kubelet,rancher,cni}`,
   unmount until nothing prints, and `rm -rf --one-file-system`, which refuses
   to cross into a mount.
+
+### 2. Step 2: the ServiceMonitor error text differs from the README
+
+- **Step:** bootstrap step 2.
+- **Expected:** "resource mapping not found" errors for ServiceMonitors.
+- **Happened:** `Error from server (NotFound): the server could not find the
+  requested resource (patch servicemonitors.monitoring.coreos.com …)`, four
+  times. Same cause (CRD missing); server-side apply reports it this way.
+- **Held up:** 0.
+- **Improvement (done, `fleet/README.md`):** quote the actual error.
 
 ## Smooth but fragile
 

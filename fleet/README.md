@@ -145,8 +145,8 @@ the addon's `addon.yaml`; check them before you run.
    kubectl wait --for=condition=Ready node --all --timeout=10m
    ```
 
-   "resource mapping not found" errors for ServiceMonitors are expected: their
-   CRDs arrive later with `prometheus-operator-crds`, and Argo CD creates them
+   `Error from server (NotFound): ... (patch servicemonitors.monitoring.coreos.com ...)`
+   for the four ServiceMonitors is expected: their CRDs arrive later with `prometheus-operator-crds`, and Argo CD creates them
    then.
 
 3. **Install Argo CD once**, the same way:
@@ -167,8 +167,10 @@ the addon's `addon.yaml`; check them before you run.
 
 4. **Out-of-band secrets.** OpenBao auto-unseals with a static key read from the
    Secret `openbao/openbao-seal-key` (key `key`). It must exist before OpenBao
-   starts and never lives in this tree. If the repository is private, also give
-   Argo CD read access (a `repository`-type Secret in `argocd`).
+   starts and never lives in this tree. On loft01 sops-nix provides it through
+   k3s's auto-deploy manifests; check with
+   `kubectl -n openbao get secret openbao-seal-key`. If the repository is
+   private, also give Argo CD read access (a `repository`-type Secret in `argocd`).
 
 5. **Apply the root:**
 
