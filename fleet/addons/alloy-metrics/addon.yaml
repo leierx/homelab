@@ -1,0 +1,15 @@
+# Alloy as a clustered StatefulSet: metrics to Mimir, cluster events to Loki.
+addon:
+  enablement: baseline
+  placement:
+    key: fleet/environment
+    value: prod
+  namespace: telemetry
+  podSecurity: privileged
+  # Keep repoURL -> name -> version in this order; Renovate parses it.
+  chart:
+    repoURL: https://grafana.github.io/helm-charts
+    name: alloy
+    version: 1.14.2
+  # Alloy config, env and RBAC
+  manifests: true

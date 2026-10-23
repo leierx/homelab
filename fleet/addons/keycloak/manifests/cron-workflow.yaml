@@ -1,0 +1,110 @@
+# reconciles realm homelab from manifests/tofu/ (the keycloak-realm-tofu ConfigMap); the CRD comes from addon argo-workflows; every 10 minutes; git wins over hand-made changes
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: keycloak-realm
+spec:
+  schedules:
+    - "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  suspend: false
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  workflowSpec:
+    serviceAccountName: keycloak-tofu
+    entrypoint: reconcile
+    volumes:
+      - name: tofu
+        configMap:
+          name: keycloak-realm-tofu
+      - name: work
+        emptyDir: {}
+    templates:
+      - name: reconcile
+        metadata:
+          labels:
+            app.kubernetes.io/name: keycloak-tofu
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 8737
+          seccompProfile:
+            type: RuntimeDefault
+        container:
+          image: ghcr.io/opentofu/opentofu:1.13.1
+          workingDir: /work
+          volumeMounts:
+            - { name: tofu, mountPath: /tofu, readOnly: true }
+            - { name: work, mountPath: /work }
+          command: [sh, -c]
+          args:
+            - |
+              set -eu
+              # the CronWorkflow fires before Keycloak is Ready on a fresh cluster
+              tries=50
+              until wget -q -O /dev/null http://keycloak-service:8080/realms/master; do
+                tries=$((tries - 1))
+                [ "$tries" -gt 0 ] || { echo "keycloak-service did not answer"; exit 1; }
+                sleep 10
+              done
+              # tofu init writes .terraform/ next to the root, so it runs on a copy
+              cp /tofu/*.tf /tofu/.terraform.lock.hcl .
+              tofu init -input=false
+              tofu plan -out=plan
+              tofu apply plan
+          env:
+            - { name: HOME, value: /tmp }
+          envFrom:
+            - secretRef:
+                name: keycloak-tofu
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 50m, memory: 256Mi }
+            limits: { memory: 1Gi }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: keycloak-tofu
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: keycloak-tofu
+rules:
+  # the kubernetes backend: Secret tfstate-default-keycloak, Lease lock-tfstate-default-keycloak
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [list]
+  - apiGroups: [""]
+    resources: [secrets]
+    resourceNames: [tfstate-default-keycloak]
+    verbs: [get, update, patch, delete]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [create]
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    resourceNames: [lock-tfstate-default-keycloak]
+    verbs: [get, update, patch, delete]
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [create]
+  # Argo's executor reports each template's result here
+  - apiGroups: [argoproj.io]
+    resources: [workflowtaskresults]
+    verbs: [create, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: keycloak-tofu
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: keycloak-tofu
+subjects:
+  - kind: ServiceAccount
+    name: keycloak-tofu

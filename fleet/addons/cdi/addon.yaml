@@ -1,0 +1,8 @@
+# Containerized Data Importer from the upstream release manifests (no official Helm chart).
+addon:
+  enablement: baseline
+  placement:
+    key: fleet/environment
+    value: prod
+  namespace: cdi
+  manifests: true

@@ -2,7 +2,9 @@
 // Version sources Renovate understands:
 //   fleet/{addons,apps}/<name>/{addon,app}.yaml  `chart:` block (repoURL -> name -> version)
 //   fleet/{addons,apps}/<name>/values/**.yaml     image.repository / image.tag style Helm values
-//   fleet/{addons,apps}/<name>/manifests/**       kustomization `images:` and plain `image:` fields
+//   fleet/{addons,apps}/<name>/manifests/**       kustomization `images:` and plain `image:` fields,
+//                                                 remote bases (?ref=, GitHub release download URLs)
+//   anywhere in fleet/                            a value on the line after `# renovate: datasource=... depName=...`
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: ['config:recommended'],
@@ -17,6 +19,33 @@
         'chart:\\s*\\n\\s+repoURL:\\s*"?(?<registryUrl>https?://[^\\s"]+)"?\\s*\\n\\s+name:\\s*"?(?<depName>[^\\s"]+)"?\\s*\\n\\s+version:\\s*"?(?<currentValue>[^\\s"]+)"?',
       ],
       datasourceTemplate: 'helm',
+    },
+    {
+      customType: 'regex',
+      description: 'OCI Helm charts (scheme-less repoURL, as Argo CD expects) in fleet descriptors',
+      managerFilePatterns: ['/^fleet/(addons|apps)/[^/]+/(addon|app)\\.yaml$/'],
+      matchStrings: [
+        'chart:\\s*\\n\\s+repoURL:\\s*"?(?<packageName>[a-z0-9.-]+\\.[a-z]+/[^\\s":]+)"?\\s*\\n\\s+name:\\s*"?(?<depName>[^\\s"]+)"?\\s*\\n\\s+version:\\s*"?(?<currentValue>[^\\s"]+)"?',
+      ],
+      datasourceTemplate: 'docker',
+      packageNameTemplate: '{{{packageName}}}/{{{depName}}}',
+    },
+    {
+      customType: 'regex',
+      description: 'Values annotated with a `# renovate:` comment on the line above',
+      managerFilePatterns: ['/^fleet/.+\\.ya?ml$/'],
+      matchStrings: [
+        '#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+versioning=(?<versioning>\\S+))?(\\s+extractVersion=(?<extractVersion>\\S+))?\\s*\\n[^\\n]*[:=]\\s*"?(?<currentValue>[^\\s":]+)"?\\s*(\\n|$)',
+      ],
+    },
+    {
+      customType: 'regex',
+      description: 'GitHub release assets referenced from kustomizations',
+      managerFilePatterns: ['/^fleet/.+/kustomization\\.ya?ml$/'],
+      matchStrings: [
+        'https://github\\.com/(?<depName>[^/\\s]+/[^/\\s]+)/releases/download/(?<currentValue>[^/\\s]+)/',
+      ],
+      datasourceTemplate: 'github-releases',
     },
   ],
   'helm-values': {

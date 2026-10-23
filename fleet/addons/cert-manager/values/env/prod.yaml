@@ -1,9 +1,0 @@
-replicaCount: 2
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
-webhook:
-  replicaCount: 2
-  podDisruptionBudget:
-    enabled: true
-    minAvailable: 1

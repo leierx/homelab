@@ -1,29 +1,49 @@
-# Wave 1: applied only after the chart (wave 0: CRDs, controller, webhook) is healthy.
-# SkipDryRunOnMissingResource lets the very first sync plan these before the CRDs exist.
+# Two issuers, identical except for the name, ACME server and account key Secret.
+# Every Certificate names one, so switching between staging and production is one line per Certificate.
+# Wave 1: only after the chart's CRDs, controller and webhook are healthy.
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
-  name: selfsigned
+  name: letsencrypt-staging
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
-  selfSigned: {}
+  acme:
+    email: larssmitheier@protonmail.com
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - http01:
+          gatewayHTTPRoute:
+            # the solver is reached through the edge Gateway; admission refuses the default NodePort
+            serviceType: ClusterIP
+            parentRefs:
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: edge
+                namespace: envoy-gateway-system
+                sectionName: http
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
-  name: letsencrypt
+  name: letsencrypt-prod
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   acme:
+    email: larssmitheier@protonmail.com
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: TODO-fleet@example.com # TODO(fleet): ACME account e-mail
     privateKeySecretRef:
-      name: letsencrypt-account-key
+      name: letsencrypt-prod-account-key
     solvers:
       - http01:
-          ingress:
-            ingressClassName: traefik
+          gatewayHTTPRoute:
+            serviceType: ClusterIP
+            parentRefs:
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: edge
+                namespace: envoy-gateway-system
+                sectionName: http

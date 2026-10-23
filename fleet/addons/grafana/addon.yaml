@@ -1,0 +1,14 @@
+# Grafana for the fleet: Mimir and Loki datasources, provisioned alert rules, Keycloak SSO.
+addon:
+  enablement: baseline
+  placement:
+    key: fleet/role
+    value: management
+  namespace: monitoring
+  podSecurity: restricted
+  # Keep repoURL -> name -> version in this order; Renovate parses it.
+  chart:
+    repoURL: https://grafana-community.github.io/helm-charts
+    name: grafana
+    version: 14.0.1
+  manifests: true

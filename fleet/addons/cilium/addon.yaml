@@ -1,0 +1,15 @@
+# The CNI. Everything else depends on it.
+addon:
+  enablement: baseline
+  placement:
+    key: fleet/environment
+    value: prod
+  namespace: kube-system
+  podSecurity: privileged
+  # Keep repoURL -> name -> version in this order; Renovate parses it.
+  chart:
+    repoURL: https://helm.cilium.io
+    name: cilium
+    version: 1.20.3
+  # cluster-wide baseline network policy
+  manifests: true

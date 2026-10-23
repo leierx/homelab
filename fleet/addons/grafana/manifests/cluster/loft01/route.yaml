@@ -1,0 +1,106 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grafana
+spec:
+  secretName: grafana-tls
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  dnsNames:
+    - metrics.skinke.net
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: grafana-edge
+spec:
+  parentRef:
+    name: edge
+    namespace: envoy-gateway-system
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: metrics.skinke.net
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: grafana-tls
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: grafana-edge
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: grafana-edge
+  hostnames:
+    - metrics.skinke.net
+  rules:
+    - backendRefs:
+        - name: grafana
+          port: 80
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: grafana-wg
+spec:
+  parentRef:
+    name: wg
+    namespace: envoy-gateway-system
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: metrics.skinke.net
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: grafana-tls
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: grafana-wg
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: grafana-wg
+  hostnames:
+    - metrics.skinke.net
+  rules:
+    - backendRefs:
+        - name: grafana
+          port: 80
+---
+# public requests log in to Keycloak (client edge) before Grafana sees them; wg peers skip this
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: edge-oidc
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: grafana-edge
+  oidc:
+    provider:
+      issuer: https://auth.skinke.net/realms/homelab
+      # given, not discovered: Envoy Gateway fetches discovery once and never retries, and Keycloak may come up later
+      authorizationEndpoint: https://auth.skinke.net/realms/homelab/protocol/openid-connect/auth
+      tokenEndpoint: https://auth.skinke.net/realms/homelab/protocol/openid-connect/token
+      endSessionEndpoint: https://auth.skinke.net/realms/homelab/protocol/openid-connect/logout
+    clientID: edge
+    clientSecret:
+      name: edge-oidc
+    redirectURL: https://metrics.skinke.net/oauth2/callback
+    logoutPath: /oauth2/logout

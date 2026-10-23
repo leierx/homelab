@@ -1,0 +1,15 @@
+# Cluster API operator and providers (core, kubeadm, KubeVirt) on the management cluster.
+addon:
+  enablement: baseline
+  placement:
+    key: fleet/role
+    value: management
+  namespace: capi-operator-system
+  podSecurity: restricted
+  # Keep repoURL -> name -> version in this order; Renovate parses it.
+  chart:
+    repoURL: https://kubernetes-sigs.github.io/cluster-api-operator
+    name: cluster-api-operator
+    version: 0.30.0
+  # the provider namespaces
+  manifests: true

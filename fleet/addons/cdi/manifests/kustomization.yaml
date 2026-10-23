@@ -1,0 +1,67 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - https://github.com/kubevirt/containerized-data-importer/releases/download/v1.66.1/cdi-operator.yaml
+  - https://github.com/kubevirt/containerized-data-importer/releases/download/v1.66.1/cdi-cr.yaml
+patches:
+  # cdi-operator strips v1alpha1 from its own CRD, so applying it leaves the app OutOfSync forever
+  - target:
+      kind: CustomResourceDefinition
+      name: cdis.cdi.kubevirt.io
+    patch: |
+      - op: test
+        path: /spec/versions/0/name
+        value: v1alpha1
+      - op: remove
+        path: /spec/versions/0
+  - target:
+      kind: Namespace
+      name: cdi
+    patch: |
+      - op: add
+        path: /metadata/annotations/argocd.argoproj.io~1sync-options
+        value: Delete=false,Prune=false
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1enforce
+        value: restricted
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1warn
+        value: restricted
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1audit
+        value: restricted
+  - target:
+      kind: CDI
+    patch: |
+      - op: add
+        path: /spec/customizeComponents
+        value:
+          patches:
+            - resourceType: Deployment
+              resourceName: cdi-apiserver
+              type: strategic
+              patch: '{"spec":{"template":{"spec":{"containers":[{"name":"cdi-apiserver","resources":{"limits":{"memory":"512Mi"}}}]}}}}'
+            - resourceType: Deployment
+              resourceName: cdi-deployment
+              type: strategic
+              patch: '{"spec":{"template":{"spec":{"containers":[{"name":"cdi-deployment","resources":{"limits":{"memory":"512Mi"}}}]}}}}'
+            - resourceType: Deployment
+              resourceName: cdi-uploadproxy
+              type: strategic
+              patch: '{"spec":{"template":{"spec":{"containers":[{"name":"cdi-uploadproxy","resources":{"limits":{"memory":"512Mi"}}}]}}}}'
+  - target:
+      kind: Deployment
+      name: cdi-operator
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/resources/limits
+        value:
+          memory: 512Mi
+  # the CR waits for the operator to be Healthy
+  - target:
+      kind: CDI
+    patch: |
+      - op: add
+        path: /metadata/annotations
+        value:
+          argocd.argoproj.io/sync-wave: "1"

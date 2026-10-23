@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - listener.yaml
+  - secrets.yaml
+patches:
+  - target:
+      group: k8s.keycloak.org
+      kind: Keycloak
+      name: keycloak
+    patch: |
+      - op: add
+        path: /spec/hostname
+        value:
+          hostname: https://auth.skinke.net
+      # the Envoy proxies, on the pod network
+      - op: add
+        path: /spec/additionalOptions/0
+        value:
+          name: proxy-trusted-addresses
+          value: 10.42.0.0/16
+  - target:
+      group: postgresql.cnpg.io
+      kind: Cluster
+      name: keycloak-db
+    patch: |
+      - op: replace
+        path: /spec/storage
+        value:
+          storageClass: zfs
+          size: 5Gi

@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - database.yaml
+  - keycloak.yaml
+  - secrets.yaml
+  - cron-workflow.yaml
+  - network-policy.yaml
+configMapGenerator:
+  # realm homelab's OpenTofu root, mounted by the keycloak-realm CronWorkflow
+  - name: keycloak-realm-tofu
+    files:
+      - tofu/clients.tf
+      - tofu/flows.tf
+      - tofu/groups.tf
+      - tofu/providers.tf
+      - tofu/realm.tf
+      - tofu/users.tf
+      - tofu/variables.tf
+      - tofu/versions.tf
+      - tofu/.terraform.lock.hcl
+    options:
+      # referenced by name from the CronWorkflow, which kustomize does not rewrite
+      disableNameSuffixHash: true

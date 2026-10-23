@@ -1,9 +1,0 @@
-# Example Kustomize workload. Deployed to every lab cluster unless a cluster
-# is labelled app.fleet/whoami=disabled.
-app:
-  enablement: baseline
-  placement:
-    key: fleet/environment
-    value: lab
-  namespace: whoami
-  manifests: true

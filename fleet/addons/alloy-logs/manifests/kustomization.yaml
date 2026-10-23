@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - rbac.yaml
+generatorOptions:
+  # referenced by name from the Helm values; Alloy's config-reloader picks up changes
+  disableNameSuffixHash: true
+configMapGenerator:
+  - name: alloy-logs
+    files:
+      - config.alloy
+  - name: alloy-logs-env
+    literals:
+      - LOKI_URL=http://loki.monitoring.svc:3100/loki/api/v1/push
+      # k3s's audit log; on a cluster without one the pipeline just finds no file
+      - AUDIT_LOG_PATH=/var/log/kubernetes/audit.log

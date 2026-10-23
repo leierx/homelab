@@ -21,11 +21,13 @@ spec:
           - clusters:
               selector:
                 matchExpressions:
-                  # baseline: every cluster (in scope) unless labelled app.fleet/<name>=disabled
-                  # opt-in:   only clusters labelled app.fleet/<name>=enabled
+                  # baseline: every cluster in scope unless labelled app.fleet/<name>=disabled
+                  # opt-in:   only clusters labelled app.fleet/<name>=enabled (or =paused)
                   - key: 'app.fleet/{{ .path.basename }}'
                     operator: '{{ if eq .app.enablement "baseline" }}NotIn{{ else if eq .app.enablement "opt-in" }}In{{ else }}invalid-enablement{{ end }}'
-                    values: ['{{ if eq .app.enablement "baseline" }}disabled{{ else }}enabled{{ end }}']
+                    values:
+                      - '{{ if eq .app.enablement "baseline" }}disabled{{ else }}enabled{{ end }}'
+                      - '{{ if eq .app.enablement "baseline" }}disabled{{ else }}paused{{ end }}'
                   # optional scope; defaults to a requirement every cluster Secret satisfies
                   - key: '{{ dig "placement" "key" "argocd.argoproj.io/secret-type" .app }}'
                     operator: In
@@ -53,14 +55,18 @@ spec:
           - CreateNamespace=true
           - ServerSideApply=true
           - RespectIgnoreDifferences=true
+          # CRs rendered by upstream charts (ServiceMonitors, ...) often need CRDs from another addon
+          - SkipDryRunOnMissingResource=true
         retry:
           limit: 10
+          refresh: true
           backoff:
             duration: 15s
             factor: 2
             maxDuration: 10m
-  # Sources are assembled here because they depend on what the descriptor
-  # declares (chart, manifests, or both). templatePatch cannot change `project`.
+  # Everything that depends on the descriptor or the cluster's labels: sources
+  # (chart, manifests, or both), ignoreDifferences, paused automation, namespace
+  # Pod Security labels. templatePatch cannot change `project`.
   templatePatch: |
     {{- $env := index .metadata.labels "fleet/environment" }}
     {{- $repo := "https://github.com/leierx/homelab" }}
@@ -97,4 +103,19 @@ spec:
       {{- end }}
     {{- with dig "ignoreDifferences" (list) .app }}
       ignoreDifferences: {{ toJson . }}
+    {{- end }}
+    {{- $paused := eq (index .metadata.labels (printf "app.fleet/%s" .path.basename)) "paused" }}
+    {{- $podSecurity := dig "podSecurity" "" .app }}
+    {{- if or $paused $podSecurity }}
+      syncPolicy:
+      {{- if $paused }}
+        automated: null
+      {{- end }}
+      {{- with $podSecurity }}
+        managedNamespaceMetadata:
+          labels:
+            pod-security.kubernetes.io/enforce: {{ . }}
+            pod-security.kubernetes.io/warn: {{ . }}
+            pod-security.kubernetes.io/audit: {{ . }}
+      {{- end }}
     {{- end }}

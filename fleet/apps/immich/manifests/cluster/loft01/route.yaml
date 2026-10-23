@@ -1,0 +1,92 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: immich
+spec:
+  secretName: immich-tls
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  dnsNames:
+    - photos.skinke.net
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: immich-edge
+spec:
+  parentRef:
+    name: edge
+    namespace: envoy-gateway-system
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: photos.skinke.net
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: immich-tls
+---
+# public without the edge login: the phone app can't get through it, so Immich's own SSO login guards it
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: immich-edge
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: immich-edge
+  hostnames:
+    - photos.skinke.net
+  rules:
+    - backendRefs:
+        - name: immich-server
+          port: 2283
+      # no 15 s cap (Envoy's default) on downloading or streaming a large original
+      timeouts:
+        request: 0s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: immich-wg
+spec:
+  parentRef:
+    name: wg
+    namespace: envoy-gateway-system
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: photos.skinke.net
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: immich-tls
+---
+# public without the edge login: the phone app can't get through it, so Immich's own SSO login guards it
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: immich-wg
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: immich-wg
+  hostnames:
+    - photos.skinke.net
+  rules:
+    - backendRefs:
+        - name: immich-server
+          port: 2283
+      # no 15 s cap (Envoy's default) on downloading or streaming a large original
+      timeouts:
+        request: 0s

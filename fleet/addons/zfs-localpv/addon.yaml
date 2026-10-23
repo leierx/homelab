@@ -1,0 +1,14 @@
+# OpenEBS ZFS LocalPV CSI driver. StorageClasses name a host's pool, so they are per cluster.
+addon:
+  enablement: baseline
+  placement:
+    key: fleet/environment
+    value: prod
+  namespace: openebs
+  podSecurity: privileged
+  # Keep repoURL -> name -> version in this order; Renovate parses it.
+  chart:
+    repoURL: https://openebs.github.io/zfs-localpv
+    name: zfs-localpv
+    version: 2.11.2
+  manifests: true

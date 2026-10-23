@@ -1,0 +1,9 @@
+# Cluster-wide admission policies (ValidatingAdmissionPolicy / MutatingAdmissionPolicy).
+addon:
+  enablement: baseline
+  placement:
+    key: fleet/environment
+    value: prod
+  namespace: kube-system
+  podSecurity: privileged
+  manifests: true

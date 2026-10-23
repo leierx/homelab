@@ -1,8 +1,13 @@
-# The secrets slot. Workloads only ever reference the ClusterSecretStore named
-# `fleet-secrets`; which backend sits behind it is decided in manifests/.
+# The secrets slot. Everything reads secrets through the ClusterSecretStore
+# `fleet-secrets` (and writes generated ones through `fleet-secrets-push`);
+# which backend sits behind them is decided in manifests/ only.
 addon:
-  enablement: opt-in
+  enablement: baseline
+  placement:
+    key: fleet/environment
+    value: prod
   namespace: external-secrets
+  podSecurity: restricted
   # Keep repoURL -> name -> version in this order; Renovate parses it.
   chart:
     repoURL: https://charts.external-secrets.io

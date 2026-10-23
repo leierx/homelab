@@ -1,0 +1,13 @@
+addon:
+  enablement: baseline
+  placement:
+    key: fleet/environment
+    value: prod
+  namespace: cnpg-system
+  podSecurity: restricted
+  # Keep repoURL -> name -> version in this order; Renovate parses it.
+  chart:
+    repoURL: https://cloudnative-pg.github.io/charts
+    name: cloudnative-pg
+    version: 0.29.1
+  manifests: true

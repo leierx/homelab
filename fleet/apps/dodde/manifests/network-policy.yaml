@@ -1,0 +1,41 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: vm-isolation
+  namespace: dodde
+spec:
+  # every VM's pod, not CDI's importer, which needs cluster DNS for the image URL
+  endpointSelector:
+    matchLabels:
+      kubevirt.io: virt-launcher
+  egressDeny:
+    # the baseline CCNP allows cluster DNS to every pod; deny beats allow
+    - toEntities: [cluster]
+---
+# Default-deny for the namespace, then SSH in and the public internet out.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default
+  namespace: dodde
+spec:
+  endpointSelector: {}
+  enableDefaultDeny:
+    ingress: true
+    egress: true
+  ingress:
+    # SSH from loft01, which is also what virtctl ssh uses
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "22", protocol: TCP}
+  egress:
+    # every port and protocol to the public internet, nothing private (pod/service CIDRs, wg0, LAN, iLO, loft01)
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 169.254.0.0/16
+            - 100.64.0.0/10

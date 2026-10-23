@@ -1,10 +1,14 @@
 addon:
   enablement: baseline
+  placement:
+    key: fleet/environment
+    value: prod
   namespace: cert-manager
+  podSecurity: restricted
   # Keep repoURL -> name -> version in this order; Renovate parses it.
   chart:
     repoURL: https://charts.jetstack.io
     name: cert-manager
     version: v1.21.2
-  # ClusterIssuers in manifests/ (layered with manifests/env/<env>, manifests/cluster/<name>).
+  # ClusterIssuers and network policies
   manifests: true

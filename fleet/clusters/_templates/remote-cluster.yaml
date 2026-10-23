@@ -3,8 +3,9 @@
 # fleet/clusters/<name>.yaml and adjust name, server and labels.
 #
 # Credentials never touch git: they are pulled from the `fleet-secrets` store
-# (requires addon.fleet/external-secrets=enabled on the management cluster).
-# Store layout expected: key `clusters/<name>` with properties `token` and `caData`.
+# (the management cluster runs the external-secrets addon, backed by OpenBao).
+# Store layout expected: key `<management kvPrefix>/clusters/<name>` (OpenBao only lets the
+# management cluster read its own prefix) with properties `token` and `caData`.
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
@@ -39,9 +40,9 @@ spec:
   data:
     - secretKey: token
       remoteRef:
-        key: clusters/lab1
+        key: loft01/clusters/lab1
         property: token
     - secretKey: caData
       remoteRef:
-        key: clusters/lab1
+        key: loft01/clusters/lab1
         property: caData

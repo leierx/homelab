@@ -10,18 +10,46 @@ spec:
   # Every upstream chart repository used by fleet/apps must be listed here.
   sourceRepos:
     - https://github.com/leierx/homelab
-    - https://stefanprodan.github.io/podinfo
+    # OCI Helm repositories (no scheme)
+    - ghcr.io/immich-app/immich-charts
+  # Anywhere except the platform's namespaces (keep in sync when an addon gets a new namespace).
   destinations:
     - server: "*"
       namespace: "!kube-*"
     - server: "*"
+      namespace: "!argo"
+    - server: "*"
       namespace: "!argocd"
+    - server: "*"
+      namespace: "!capi-*"
+    - server: "*"
+      namespace: "!cdi"
     - server: "*"
       namespace: "!cert-manager"
     - server: "*"
+      namespace: "!cnpg-system"
+    - server: "*"
+      namespace: "!envoy-gateway-system"
+    - server: "*"
       namespace: "!external-secrets"
     - server: "*"
-      namespace: "!traefik"
+      namespace: "!keycloak"
+    - server: "*"
+      namespace: "!kubeadm-*"
+    - server: "*"
+      namespace: "!kubevirt"
+    - server: "*"
+      namespace: "!kubevirt-infrastructure-system"
+    - server: "*"
+      namespace: "!monitoring"
+    - server: "*"
+      namespace: "!openbao"
+    - server: "*"
+      namespace: "!openebs"
+    - server: "*"
+      namespace: "!renovate"
+    - server: "*"
+      namespace: "!telemetry"
     - server: "*"
       namespace: "*"
   clusterResourceWhitelist:
