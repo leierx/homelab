@@ -1,4 +1,0 @@
-# Nothing cluster-agnostic: every StorageClass names a pool on a specific host (cluster/<name>/).
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources: []

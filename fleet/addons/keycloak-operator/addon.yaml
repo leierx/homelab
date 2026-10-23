@@ -1,10 +1,3 @@
 # Keycloak operator from the upstream kustomization. It watches only its own
-# namespace, so the Keycloak CR (addon keycloak) lives in `keycloak` too.
-addon:
-  enablement: baseline
-  placement:
-    key: fleet/environment
-    value: prod
-  namespace: keycloak
-  podSecurity: restricted
-  manifests: true
+namespace: keycloak
+podSecurity: restricted

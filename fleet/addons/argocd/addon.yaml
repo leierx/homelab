@@ -1,17 +1,2 @@
 # Argo CD manages itself. Installed once by hand with these exact chart
-# coordinates and values (see fleet/README.md, "Bootstrap"), then adopted here.
-addon:
-  enablement: baseline
-  placement:
-    key: fleet/role
-    value: management
-  namespace: argocd
-  releaseName: argocd
-  podSecurity: restricted
-  # Keep repoURL -> name -> version in this order; Renovate parses it.
-  chart:
-    repoURL: https://argoproj.github.io/argo-helm
-    name: argo-cd
-    version: 10.10.5
-  # network policy; per cluster: UI listener, OIDC client secret
-  manifests: true
+podSecurity: restricted

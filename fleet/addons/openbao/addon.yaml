@@ -1,14 +1,2 @@
 # OpenBao: the secret backend behind the fleet-secrets stores (addon external-secrets).
-addon:
-  enablement: baseline
-  placement:
-    key: fleet/environment
-    value: prod
-  namespace: openbao
-  podSecurity: restricted
-  # Keep repoURL -> name -> version in this order; Renovate parses it.
-  chart:
-    repoURL: https://openbao.github.io/openbao-helm
-    name: openbao
-    version: 0.30.4
-  manifests: true
+podSecurity: restricted

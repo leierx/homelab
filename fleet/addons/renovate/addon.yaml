@@ -1,14 +1,2 @@
 # Self-hosted Renovate (CronJob) for this repository, authenticated as a GitHub App.
-addon:
-  enablement: baseline
-  placement:
-    key: fleet/role
-    value: management
-  namespace: renovate
-  podSecurity: restricted
-  # Keep repoURL -> name -> version in this order; Renovate parses it.
-  chart:
-    repoURL: https://docs.renovatebot.com/helm-charts
-    name: renovate
-    version: 46.378.0
-  manifests: true
+podSecurity: restricted

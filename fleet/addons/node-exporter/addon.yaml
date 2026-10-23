@@ -1,12 +1,2 @@
-addon:
-  enablement: baseline
-  placement:
-    key: fleet/environment
-    value: prod
-  namespace: telemetry
-  podSecurity: privileged
-  # Keep repoURL -> name -> version in this order; Renovate parses it.
-  chart:
-    repoURL: https://prometheus-community.github.io/helm-charts
-    name: prometheus-node-exporter
-    version: 4.60.0
+namespace: telemetry
+podSecurity: privileged

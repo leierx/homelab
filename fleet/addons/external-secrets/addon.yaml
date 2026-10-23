@@ -1,16 +1,2 @@
 # The secrets slot. Everything reads secrets through the ClusterSecretStore
-# `fleet-secrets` (and writes generated ones through `fleet-secrets-push`);
-# which backend sits behind them is decided in manifests/ only.
-addon:
-  enablement: baseline
-  placement:
-    key: fleet/environment
-    value: prod
-  namespace: external-secrets
-  podSecurity: restricted
-  # Keep repoURL -> name -> version in this order; Renovate parses it.
-  chart:
-    repoURL: https://charts.external-secrets.io
-    name: external-secrets
-    version: 2.13.0
-  manifests: true
+podSecurity: restricted

@@ -1,10 +1,3 @@
 # Mimir as one -target=all pod: mimir-distributed has no monolithic mode, so
-# this is a small hand-written StatefulSet rather than the upstream chart.
-addon:
-  enablement: baseline
-  placement:
-    key: fleet/environment
-    value: prod
-  namespace: monitoring
-  podSecurity: restricted
-  manifests: true
+namespace: monitoring
+podSecurity: restricted

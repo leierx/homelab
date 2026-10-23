@@ -1,9 +1,1 @@
 # KubeVirt from the upstream release manifests (no official Helm chart).
-# The upstream namespace stays privileged: virt-handler runs privileged and hostPID.
-addon:
-  enablement: baseline
-  placement:
-    key: fleet/environment
-    value: prod
-  namespace: kubevirt
-  manifests: true

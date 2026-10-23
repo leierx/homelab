@@ -1,15 +1,3 @@
 # Gateway API controller and the two Gateways every site attaches to:
-# `edge` (public, via the router's port forward) and `wg` (WireGuard peers only).
-addon:
-  enablement: baseline
-  placement:
-    key: fleet/environment
-    value: prod
-  namespace: envoy-gateway-system
-  podSecurity: restricted
-  # Keep repoURL -> name -> version in this order; Renovate parses it. OCI: no scheme.
-  chart:
-    repoURL: docker.io/envoyproxy
-    name: gateway-helm
-    version: v1.9.2
-  manifests: true
+namespace: envoy-gateway-system
+podSecurity: restricted

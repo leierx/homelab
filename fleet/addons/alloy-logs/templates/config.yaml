@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-logs
+data:
+  config.alloy: |
+    {{- .Files.Get "config.alloy" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-logs-env
+data:
+  LOKI_URL: http://loki.monitoring.svc:3100/loki/api/v1/push
+  AUDIT_LOG_PATH: /var/log/kubernetes/audit.log
+  # the cluster label on every series and log line
+  CLUSTER_NAME: {{ .Values.fleet.cluster }}

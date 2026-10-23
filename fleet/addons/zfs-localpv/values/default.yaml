@@ -1,7 +1,0 @@
-analytics: {enabled: false}
-# NixOS keeps zfs here, not in /sbin
-zfs: {bin: /run/current-system/sw/bin/zfs}
-zfsController:
-  resources: {requests: {cpu: 5m, memory: 16Mi}, limits: {memory: 128Mi}}
-zfsNode:
-  resources: {requests: {cpu: 5m, memory: 16Mi}, limits: {memory: 256Mi}}

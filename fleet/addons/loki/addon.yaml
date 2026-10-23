@@ -1,13 +1,3 @@
 # Loki, single binary on the filesystem. Grafana's namespace policy covers it.
-addon:
-  enablement: baseline
-  placement:
-    key: fleet/environment
-    value: prod
-  namespace: monitoring
-  podSecurity: restricted
-  # Keep repoURL -> name -> version in this order; Renovate parses it.
-  chart:
-    repoURL: https://grafana-community.github.io/helm-charts
-    name: loki
-    version: 19.0.3
+namespace: monitoring
+podSecurity: restricted

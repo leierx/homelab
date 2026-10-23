@@ -1,7 +1,0 @@
-# single node: the only node runs the API server
-k8sServiceHost: 127.0.0.1
-k8sServicePort: 6443
-# the chart's second replica can't share the node with the first
-operator: {replicas: 1}
-ipam: {operator: {clusterPoolIPv4PodCIDRList: [10.42.0.0/16]}}
-resources: {requests: {memory: 2560Mi}}

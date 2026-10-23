@@ -1,0 +1,19 @@
+# loft01: the single-node management cluster Argo CD runs in, registered under its own name so
+# Applications can target it as `destination.name: loft01`. Sub-clusters are registered by the
+# CAPI-Argo CD bridge.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cluster-loft01
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+  annotations:
+    # never prune the management cluster's own registration: every loft01 Application targets it
+    argocd.argoproj.io/sync-options: Prune=false
+type: Opaque
+stringData:
+  name: loft01
+  server: https://kubernetes.default.svc
+  config: |
+    {"tlsClientConfig":{"insecure":false}}

@@ -1,4 +1,0 @@
-# OpenBao KV prefix this cluster's ExternalSecrets read from (kv/<kvPrefix>/<app>)
-kvPrefix: loft01
-server:
-  dataStorage: {storageClass: zfs, size: 2Gi}

@@ -1,6 +1,0 @@
-# dodde's Fedora VM (KubeVirt). Opt-in: clusters labelled app.fleet/dodde=enabled.
-app:
-  enablement: opt-in
-  namespace: dodde
-  podSecurity: restricted
-  manifests: true

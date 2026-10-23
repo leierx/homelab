@@ -1,0 +1,6 @@
+hostname: https://auth.skinke.net
+proxyTrustedAddresses: 10.42.0.0/16
+database:
+  storage:
+    storageClass: zfs
+    size: 5Gi

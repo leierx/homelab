@@ -1,14 +1,3 @@
 # Argo Workflows, one instance for the fleet; runs the platform's CronWorkflows (e.g. the Keycloak realm).
-addon:
-  enablement: baseline
-  placement:
-    key: fleet/role
-    value: management
-  namespace: argo
-  podSecurity: restricted
-  # Keep repoURL -> name -> version in this order; Renovate parses it.
-  chart:
-    repoURL: https://argoproj.github.io/argo-helm
-    name: argo-workflows
-    version: 2.0.14
-  manifests: true
+namespace: argo
+podSecurity: restricted

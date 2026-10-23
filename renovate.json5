@@ -1,8 +1,8 @@
 // Renovate configuration for this repository (Renovate reads it only from the repo root).
 // Version sources Renovate understands:
-//   fleet/{addons,apps}/<name>/{addon,app}.yaml  `chart:` block (repoURL -> name -> version; HTTP or OCI)
-//   fleet/{addons,apps}/<name>/values/**.yaml     image.repository / image.tag style Helm values
-//   fleet/{addons,apps}/<name>/manifests/**       kustomization `images:` and plain `image:` fields,
+//   fleet/addons/<name>/Chart.yaml                upstream charts, as Helm dependencies (helmv3)
+//   fleet/**/values.yaml                          image.repository / image.tag style Helm values
+//   fleet/addons/**, fleet/clusters/**            kustomization `images:` and plain `image:` fields,
 //                                                 remote bases (?ref=, GitHub release download URLs),
 //                                                 OpenTofu providers
 //   anywhere in fleet/                            a value on the line after `# renovate: datasource=... depName=...`
@@ -14,25 +14,6 @@
   includePaths: ['fleet/**', '.github/**', 'nixos/**'],
   labels: ['dependencies'],
   customManagers: [
-    {
-      customType: 'regex',
-      description: 'Helm charts pinned in fleet addon/app descriptors',
-      managerFilePatterns: ['/^fleet/(addons|apps)/[^/]+/(addon|app)\\.yaml$/'],
-      matchStrings: [
-        'chart:\\s*\\n\\s+repoURL:\\s*"?(?<registryUrl>https?://[^\\s"]+)"?\\s*\\n\\s+name:\\s*"?(?<depName>[^\\s"]+)"?\\s*\\n\\s+version:\\s*"?(?<currentValue>[^\\s"]+)"?',
-      ],
-      datasourceTemplate: 'helm',
-    },
-    {
-      customType: 'regex',
-      description: 'OCI Helm charts (scheme-less repoURL, as Argo CD expects) in fleet descriptors',
-      managerFilePatterns: ['/^fleet/(addons|apps)/[^/]+/(addon|app)\\.yaml$/'],
-      matchStrings: [
-        'chart:\\s*\\n\\s+repoURL:\\s*"?(?<packageName>[a-z0-9.-]+\\.[a-z]+/[^\\s":]+)"?\\s*\\n\\s+name:\\s*"?(?<depName>[^\\s"]+)"?\\s*\\n\\s+version:\\s*"?(?<currentValue>[^\\s"]+)"?',
-      ],
-      datasourceTemplate: 'docker',
-      packageNameTemplate: '{{{packageName}}}/{{{depName}}}',
-    },
     {
       customType: 'regex',
       description: 'Values annotated with a `# renovate:` comment on the line above',
@@ -59,10 +40,10 @@
     },
   ],
   'helm-values': {
-    managerFilePatterns: ['/^fleet/(addons|apps)/[^/]+/values/.+\\.ya?ml$/'],
+    managerFilePatterns: ['/^fleet/.+/values\\.ya?ml$/'],
   },
   kubernetes: {
-    managerFilePatterns: ['/^fleet/(addons|apps)/[^/]+/manifests/.+\\.ya?ml$/'],
+    managerFilePatterns: ['/^fleet/(addons|clusters)/.+\\.ya?ml$/'],
   },
   packageRules: [
     {
@@ -72,8 +53,8 @@
     },
     {
       description: 'Label PRs by fleet area',
-      matchFileNames: ['fleet/apps/**'],
-      addLabels: ['fleet/app'],
+      matchFileNames: ['fleet/clusters/**'],
+      addLabels: ['fleet/cluster'],
     },
     {
       description: 'OpenTofu roots resolve providers from the OpenTofu registry, not Terraform',

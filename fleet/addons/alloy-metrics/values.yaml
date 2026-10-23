@@ -1,0 +1,16 @@
+# Chart: https://github.com/grafana/alloy/tree/main/operations/helm/charts/alloy
+alloy:
+  alloy:
+    configMap: {create: false, name: alloy-metrics}
+    clustering: {enabled: true, name: alloy-metrics}
+    envFrom: [{configMapRef: {name: alloy-metrics-env}}]
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities: {drop: [ALL]}
+      seccompProfile: {type: RuntimeDefault}
+    resources: {requests: {cpu: 100m, memory: 512Mi}, limits: {memory: 2Gi}}
+  rbac: {create: false}
+  controller: {type: statefulset}
+  configReloader:
+    resources: {requests: {memory: 16Mi}, limits: {memory: 64Mi}}
+  crds: {create: false}

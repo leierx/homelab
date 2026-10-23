@@ -23,11 +23,6 @@ spec:
       path: fleet/argocd
       directory:
         include: "*.yaml"
-    - repoURL: https://github.com/leierx/homelab
-      targetRevision: HEAD
-      path: fleet/clusters
-      directory:
-        include: "*.yaml"
   syncPolicy:
     automated:
       prune: true
