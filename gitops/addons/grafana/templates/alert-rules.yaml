@@ -1,0 +1,14 @@
+{{- /* The alert rules (templates/_alerts-*.tpl) as Grafana provisioning files. The name carries
+       their hash, so a rule change gives the Deployment a new volume and rolls Grafana. */ -}}
+{{- define "homelab.alerts.configMap" -}}
+grafana-alert-rules-{{ cat (include "homelab.alerts.security" .) (include "homelab.alerts.health" .) | sha256sum | trunc 8 }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "homelab.alerts.configMap" . }}
+data:
+  security.yaml: |
+    {{- include "homelab.alerts.security" . | nindent 4 }}
+  health.yaml: |
+    {{- include "homelab.alerts.health" . | nindent 4 }}
