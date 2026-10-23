@@ -19,7 +19,7 @@ real GitOps platform on hardware we own.
 
 - **Host.** `nixos/` defines the host declaratively. disko lays out the disks,
   sops-nix holds the few host-only secrets (see
-  [openbao.md](docs/openbao.md)), and the host auto-upgrades from `main` on
+  [docs/README.md](docs/README.md)), and the host auto-upgrades from `main` on
   Fridays.
 - **Cluster.** k3s runs without its own CNI and kube-proxy; Cilium provides
   both and the network policy engine. Argo CD tracks `HEAD` of `main` and
@@ -27,7 +27,7 @@ real GitOps platform on hardware we own.
   `cluster-<name>` Application per `gitops/clusters/<name>/cluster.yaml`, and
   each of those creates one `<name>-<addon>` Application per addon whose
   `fleet.yaml` selects the cluster. Group and cluster layers add values and
-  manifests. The guide is [docs/fleet.md](docs/fleet.md), and
+  manifests. The guide is [docs/README.md](docs/README.md), and
   `helm template` previews everything offline.
 - **Edge.** Envoy Gateway terminates TLS on two Gateways: `edge` (NodePort
   30080/30443, reached through the router's port forward) and `wg` (the
@@ -80,7 +80,7 @@ gitops/
   addons/     one folder per addon: fleet.yaml and a chart; keycloak/tofu is the realm
   groups/     configuration shared by every cluster in a group
   clusters/   one folder per cluster: cluster.yaml, registration, layers
-docs/         the guides linked below
+docs/         the operating guide
 flake.nix     the flake (host and installer)
 ```
 
@@ -119,20 +119,9 @@ flake.nix     the flake (host and installer)
 
 ## Docs
 
-- [fleet.md](docs/fleet.md) — the fleet chart: layout, `fleet.yaml`, values,
-  pausing, removal, and how to change any addon, group or cluster.
-- [bootstrap.md](docs/bootstrap.md) — bare metal to a synced cluster.
-- [operations.md](docs/operations.md) — updates, backups and restore,
-  certificates, observability and alerting.
-- [access.md](docs/access.md) — who can do what, the tiers, onboarding.
-- [openbao.md](docs/openbao.md) — secrets: the store, the flow, rotation.
-- [break-glass.md](docs/break-glass.md) — getting back in when SSO is broken.
-- [immich.md](docs/immich.md) — photos: what runs, logins and the phone app,
-  bulk upload, restore, upgrades.
-- [pi.md](docs/pi.md) — the pi coding agent on loft01: connect, login,
-  settings.
-- [tech-choices.md](docs/tech-choices.md) — why each piece, what was
-  rejected, and the free-software audit.
+[docs/README.md](docs/README.md) is the operating guide: adding addons and
+clusters, values, pausing, removal, bootstrap from scratch, secrets, access
+and break-glass.
 
 ## Manual routines
 

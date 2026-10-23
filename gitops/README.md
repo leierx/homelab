@@ -1,8 +1,7 @@
 # gitops
 
-Everything Argo CD deploys. The guide is [docs/fleet.md](../docs/fleet.md),
-and the procedure from an empty cluster is
-[docs/bootstrap.md](../docs/bootstrap.md).
+Everything Argo CD deploys. How to operate it, including bootstrap from an
+empty cluster: [docs/README.md](../docs/README.md).
 
 ```
 root.yaml    the one Application applied by hand; renders fleet/ in root mode

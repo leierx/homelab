@@ -62,7 +62,7 @@
       "automerge": false
     },
     {
-      "description": "Immich, its Postgres and VectorChord wait for review: upgrades can need manual steps (docs/immich.md)",
+      "description": "Immich, its Postgres and VectorChord wait for review: upgrades can need manual steps",
       "matchFileNames": ["gitops/addons/immich/**"],
       "automerge": false
     },
