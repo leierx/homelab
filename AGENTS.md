@@ -19,12 +19,15 @@ Don't push to `main` unless asked to, and render before you push.
 ## Layout
 
 - `gitops/fleet/` is the fleet chart: two templates that turn `fleet.yaml`
-  files into Argo CD Applications. Read `docs/fleet.md` before changing
-  anything under `gitops/`. The design is issue #88.
+  files into Argo CD Applications. Read `docs/README.md` (the only doc)
+  before changing anything under `gitops/`. The design is issue #88.
 - `gitops/addons/<a>/` holds `fleet.yaml` plus a Helm chart. Upstream values
   nest under the dependency name.
 - `gitops/clusters/<c>/` holds `cluster.yaml` (`global.fleet`), `secret.yaml`
   and per-addon layers.
+- Grafana's alert rules are `gitops/addons/grafana/templates/_alerts-*.tpl`.
+  The ConfigMap name hashes them, so an edit rolls Grafana; keep `{{` out of
+  the rules, or escape it.
 - `gitops/addons/keycloak/tofu/` is the realm. It ships as a ConfigMap and a
   CronWorkflow applies it every 10 minutes.
 - `nixos/` is the host. `nixos/secrets.yaml` is sops (age).
@@ -45,6 +48,13 @@ subchart default only in Helm 3. Check a Helm-sensitive change with a Helm 4
 binary.
 
 ## Rules that bite
+
+- Values: the addon layer holds defaults for any cluster, including in-cluster
+  URLs. The cluster layer holds only hostnames, CIDRs, IPs, storage classes
+  and sizes. Keep a line only if removing it changes the render.
+- Single-instance apps (immich, dodde, keycloak, grafana, argo-workflows,
+  renovate) and hub-only addons use `clusters: [loft01]`, not `groups:`.
+  Stateful ones mark their PVC or CNPG `Cluster` `Delete=false,Prune=false`.
 
 - `fleet.yaml` accepts only these keys: `groups`, `clusters`, `paused`,
   `namespace`, `release`, `syncOptions`, `managedNamespaceMetadata`,
@@ -73,7 +83,11 @@ binary.
 - `nixos-rebuild switch --flake .#loft01 --sudo` builds as the user. Plain
   `sudo nixos-rebuild` can't read the user-owned checkout.
 - OpenBao admin: `just bao <args>`. There is no root token and there are no
-  recovery keys (`docs/openbao.md`).
+  recovery keys.
+- After a bootstrap, Argo's application controller keeps the API list from
+  before the CRDs existed until it restarts, and charts that gate on
+  `.Capabilities` drop their ServiceMonitors. Restart it once
+  (`docs/README.md`, bootstrap).
 
 ## Commits
 
