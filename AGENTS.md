@@ -11,20 +11,35 @@ Notes for coding agents working in this repo. Humans: start at `README.md`.
   on Fridays from 02:00 and switches to it. `allowReboot` decides whether
   a kernel or initrd change also reboots the host.
 - Renovate (in-cluster) automerges minor and patch bumps under
-  `gitops/addons/**` with nothing to wait for. When it must not run, its
-  `fleet.yaml` has `paused: [loft01]`.
+  `gitops/addons/**` with nothing to wait for. When it must not run, it's
+  in loft01's `paused:` (it is now).
 
 Don't push to `main` unless asked to, and render before you push.
 
 ## Layout
 
-- `gitops/fleet/` is the fleet chart: two templates that turn `fleet.yaml`
-  files into Argo CD Applications. Read `docs/README.md` (the only doc)
-  before changing anything under `gitops/`. The design is issue #88.
-- `gitops/addons/<a>/` holds `fleet.yaml` plus a Helm chart. Upstream values
-  nest under the dependency name.
-- `gitops/clusters/<c>/` holds `cluster.yaml` (`global.fleet`), `secret.yaml`
-  and per-addon layers.
+- `gitops/fleet/` is the fleet chart: two templates that turn the cluster
+  and group files into Argo CD Applications. Read `docs/README.md` (the only
+  doc) before changing anything under `gitops/`. The design is issue #88.
+- What a cluster runs: `gitops/clusters/<c>/cluster.yaml` lists its `groups`
+  (ordered), its own `addons`, `exclude` and `paused`;
+  `gitops/groups/<g>/group.yaml` lists each group's `addons`. Union of the
+  groups' addons, plus the cluster's, minus `exclude`. The rendered list:
+  `helm template c gitops/fleet --set cluster=<c> | yq -N '.metadata.labels["fleet.skinke.net/addon"]'`.
+- `cluster.yaml` also holds `global.fleet` (`cluster`, `domain`), the last
+  value layer, which every chart and subchart sees.
+- `gitops/addons/<a>/` is a Helm chart plus an optional `fleet.yaml` of
+  per-addon knobs. Dependency values (upstream or local) nest under the
+  dependency name, or its `alias:`.
+- Local subcharts: shared ones in `gitops/charts/<name>/` via
+  `repository: file://../../charts/<name>` (netpol), one-addon ones unpacked
+  in `addons/<a>/charts/<name>/` with `repository: ""` (mimir). A
+  self-contained component with its own values interface is a subchart;
+  glue stays in `templates/`. Don't bump a local chart's `version`: every
+  user's `Chart.lock` pins it.
+- Every namespace's default-deny CiliumNetworkPolicy is `netpol:` in the
+  addon's values. A policy with no rules is rejected by Cilium's CRD, and
+  Argo can still show it Synced; netpol renders `{}` rules for that case.
 - Grafana's alert rules are `gitops/addons/grafana/templates/_alerts-*.tpl`.
   The ConfigMap name hashes them, so an edit rolls Grafana; keep `{{` out of
   the rules, or escape it.
@@ -35,10 +50,10 @@ Don't push to `main` unless asked to, and render before you push.
 ## Checking a change
 
 ```sh
-helm template c gitops/fleet --set cluster=loft01            # the Applications; fails on bad fleet.yaml
+helm template c gitops/fleet --set cluster=loft01            # the Applications; fails on a bad name or key
 helm dependency build gitops/addons/<a>
-helm template <a> gitops/addons/<a> -n <ns> \
-  -f gitops/clusters/loft01/addons/<a>/values.yaml -f gitops/clusters/loft01/cluster.yaml
+helm template <a> gitops/addons/<a> -n <ns> -f ...           # the value files the Application lists, in order
+                                                              # (docs/README.md, "Check before you push")
 nix build .#nixosConfigurations.loft01.config.system.build.toplevel   # host changes
 ```
 
@@ -52,15 +67,18 @@ binary.
 - Values: the addon layer holds defaults for any cluster, including in-cluster
   URLs. The cluster layer holds only hostnames, CIDRs, IPs, storage classes
   and sizes. Keep a line only if removing it changes the render.
+- Value layers, later wins: `addons/<a>/values.yaml`, then
+  `groups/<g>/addons/<a>/values.yaml` per group in the cluster's order, then
+  `clusters/<c>/addons/<a>/values.yaml`, then `clusters/<c>/cluster.yaml`.
 - Single-instance apps (immich, dodde, keycloak, grafana, argo-workflows,
-  renovate) and hub-only addons use `clusters: [loft01]`, not `groups:`.
-  Stateful ones mark their PVC or CNPG `Cluster` `Delete=false,Prune=false`.
-
-- `fleet.yaml` accepts only these keys: `groups`, `clusters`, `paused`,
-  `namespace`, `release`, `syncOptions`, `managedNamespaceMetadata`,
-  `ignoreDifferences`. Anything else fails every cluster's render.
-- A misspelt name in `clusters:` silently prunes the addon. Addons whose
-  objects must survive that set `syncOptions: [Delete=false]`.
+  renovate) and hub-only addons (argocd, cluster-api) go in the cluster's
+  `addons:`, not a group. Stateful ones mark their PVC or CNPG `Cluster`
+  `Delete=false,Prune=false`; cilium and argocd set app-level
+  `Delete=false`, because removing them cuts off the cluster.
+- Every name in `cluster.yaml` and `group.yaml` must be a folder, and only
+  known keys are allowed (`fleet.yaml`: `namespace`, `release`,
+  `syncOptions`, `managedNamespaceMetadata`, `ignoreDifferences`). A bad one
+  fails that cluster's render with the file's name; nothing is pruned.
 - Sync waves are only for objects inside one addon. Never put a wave behind
   a PVC (the zfs classes bind on first consumer), or behind anything that
   can't become Healthy until a later wave exists.
