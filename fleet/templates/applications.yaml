@@ -6,8 +6,7 @@ and any other manifests, synced next to the addon.
 Its addon.yaml holds namespace (default: the addon's name), podSecurity and ignoreDifferences.
 */ -}}
 {{- $cluster := required "cluster is set by the ApplicationSet" .Values.cluster }}
-{{- range $name, $settings := .Values.addons }}
-{{- $settings = $settings | default dict }}
+{{- range $name := .Values.addons }}
 {{- $local := printf "clusters/%s/%s" $cluster $name }}
 {{- $shared := $.Files.Get (printf "addons/%s/addon.yaml" $name) | ne "" }}
 {{- $dir := ternary (printf "addons/%s" $name) $local $shared }}
@@ -29,9 +28,6 @@ metadata:
   labels:
     fleet/cluster: {{ $cluster }}
     fleet/addon: {{ $name }}
-    {{- if $settings.paused }}
-    fleet/paused: "true"
-    {{- end }}
 spec:
   project: default
   destination:
@@ -67,11 +63,9 @@ spec:
   ignoreDifferences: {{ toJson . }}
   {{- end }}
   syncPolicy:
-    {{- if not $settings.paused }}
     automated:
       prune: true
       selfHeal: true
-    {{- end }}
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true

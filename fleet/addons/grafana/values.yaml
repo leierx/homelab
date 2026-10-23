@@ -535,7 +535,7 @@ grafana:
           labels:
             severity: warning
           annotations:
-            summary: An Argo CD application has had auto-sync off for 7 days, so git changes don't reach it. Pauses kept in git (paused in the cluster's values.yaml) don't count; resume it or move the pause into git.
+            summary: An Argo CD application has had auto-sync off for 7 days, so git changes don't reach it. Resume it, or take the addon out of the cluster's values.yaml.
           data:
             - refId: A
               datasourceUid: mimir
@@ -545,7 +545,7 @@ grafana:
               model:
                 refId: A
                 instant: true
-                expr: count_over_time((max by (name) (argocd_app_info{autosync_enabled="false"}) unless on (name) max by (name) (argocd_app_labels{label_fleet_paused="true"}))[7d:1h]) >= 168
+                expr: count_over_time((max by (name) (argocd_app_info{autosync_enabled="false"}))[7d:1h]) >= 168
             - refId: C
               datasourceUid: __expr__
               model:

@@ -2,6 +2,5 @@
 cluster: ""
 repoURL: https://github.com/leierx/homelab
 revision: HEAD
-# per cluster (clusters/<cluster>/values.yaml): addon name -> settings. Listed means installed.
-#   paused: true    no automated sync; changes wait for a manual sync
-addons: {}
+# per cluster (clusters/<cluster>/values.yaml): the addons it runs
+addons: []

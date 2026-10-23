@@ -148,8 +148,8 @@ first add its `clusters/<name>/` folder and its cluster Secret in `argocd/`
    Expect `fleet-root`, then `loft01`, then one `loft01-<addon>` per addon in
    `clusters/loft01/values.yaml`. Some retry a few times while CRDs and webhooks from other
    addons appear; that is expected (see [ordering](#sync-ordering-pausing-and-deletion)).
-   `loft01-renovate` stays OutOfSync because loft01 pauses it; sync it by hand
-   when you want it.
+   `loft01-renovate` syncs like the rest; [pause it](#pausing) by hand if
+   Renovate shouldn't run yet (it can't log in before step 8 anyway).
 
 7. **Restart the application controller once** when everything has synced. It
    caches the API list from before the CRDs existed, so charts that check
@@ -205,9 +205,8 @@ name must be a lowercase DNS label: it appears in Application names
 
   ```yaml
   addons:
-    cilium: {}
-    immich: {}
-    renovate: {paused: true}   # no automated sync, see pausing
+    - cilium
+    - immich
   ```
 
   Each name is `addons/<name>/`, or `clusters/<cluster>/<name>/` when no shared
@@ -336,12 +335,8 @@ same wave. End it with `argocd app terminate-op <app>` (see step 9 for the CLI) 
 Turn auto-sync off on any Application by hand (UI, or
 `kubectl -n argocd patch app <app> --type merge -p '{"spec":{"syncPolicy":{"automated":null}}}'`);
 nothing undoes it, because the ApplicationSet and the cluster Applications
-ignore `spec.syncPolicy`. Set it back the same way. A pause that belongs in
-git is `paused: true` in the cluster's `values.yaml`, which also labels the
-Application `fleet/paused: "true"`. For the same reason that only applies when
-the Application is created: on an existing one, also turn auto-sync off by
-hand. An application paused by hand for a week alerts in Grafana; one labelled
-`fleet/paused` doesn't.
+ignore `spec.syncPolicy`. Set it back the same way. An application paused for
+a week alerts in Grafana.
 
 ### Deletion and finalizers
 
@@ -416,8 +411,8 @@ those individually.
 
 A merged Renovate PR is a normal git change: every cluster running the addon
 syncs the new version. The in-cluster Renovate runs from the `renovate` addon;
-on `loft01` it is paused, so its own deployment only changes when synced by
-hand.
+on `loft01` it is paused by hand, so its own deployment only changes when
+synced by hand.
 
 ## Troubleshooting
 

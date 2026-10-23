@@ -36,11 +36,7 @@ argo-cd:
   notifications: {enabled: false}
 
   controller:
-    metrics:
-      enabled: true
-      serviceMonitor: {enabled: true}
-      # argocd_app_labels: the paused-application alert skips pauses kept in git
-      applicationLabels: {enabled: true, labels: [fleet/paused]}
+    metrics: {enabled: true, serviceMonitor: {enabled: true}}
     resources: {requests: {cpu: 250m, memory: 1Gi}, limits: {memory: 4Gi}}
   repoServer:
     metrics: {enabled: true, serviceMonitor: {enabled: true}}

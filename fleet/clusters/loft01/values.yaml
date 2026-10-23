@@ -1,31 +1,30 @@
 # loft01: the single-node management cluster (Argo CD, identity, telemetry, Immich, dodde).
 # Each addon below is addons/<name>/, or clusters/loft01/<name>/ for dodde, which only loft01 runs.
 addons:
-  admission: {}
-  alloy-logs: {}
-  alloy-metrics: {}
-  argocd: {}
-  argo-workflows: {}
-  cdi: {}
-  cert-manager: {}
-  cilium: {}
-  cloudnative-pg: {}
-  cluster-api: {}
-  dodde: {}
-  envoy-gateway: {}
-  external-secrets: {}
-  grafana: {}
-  immich: {}
-  keycloak: {}
-  keycloak-operator: {}
-  kube-state-metrics: {}
-  kubevirt: {}
-  loki: {}
-  mimir: {}
-  node-exporter: {}
-  openbao: {}
-  prometheus-operator-crds: {}
-  rbac: {}
-  # with no CI checks, an auto-synced Renovate automerges minor/patch bumps straight onto main
-  renovate: {paused: true}
-  zfs-localpv: {}
+  - admission
+  - alloy-logs
+  - alloy-metrics
+  - argocd
+  - argo-workflows
+  - cdi
+  - cert-manager
+  - cilium
+  - cloudnative-pg
+  - cluster-api
+  - dodde
+  - envoy-gateway
+  - external-secrets
+  - grafana
+  - immich
+  - keycloak
+  - keycloak-operator
+  - kube-state-metrics
+  - kubevirt
+  - loki
+  - mimir
+  - node-exporter
+  - openbao
+  - prometheus-operator-crds
+  - rbac
+  - renovate
+  - zfs-localpv

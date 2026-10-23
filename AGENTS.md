@@ -10,8 +10,9 @@ Notes for coding agents working in this repo. Humans: start at `README.md`.
 - `nixos/**`, `flake.*` → the host's `nixos-upgrade` timer builds `main#loft01`
   on Fridays from 02:00 and switches to it. `allowReboot` decides whether
   a kernel or initrd change also reboots the host.
-- Renovate runs in-cluster; on loft01 it is paused
-  (`renovate: {paused: true}` in `fleet/clusters/loft01/values.yaml`).
+- Renovate runs in-cluster; on loft01 `loft01-renovate` is paused by hand
+  (auto-sync off), because with no CI an auto-synced Renovate automerges
+  minor/patch bumps straight onto main.
 
 Don't push to `main` unless asked to, and render before you push.
 
