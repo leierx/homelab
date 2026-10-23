@@ -5,3 +5,33 @@ tofu:
 # OIDC clients whose secrets are generated into OpenBao <cluster>/<name>
 clientSecrets: [argocd, grafana, immich, edge]
 certificateIssuer: letsencrypt-prod
+netpol:
+  # the reconcile pod and Keycloak's own traffic: Postgres, JGroups
+  sameNamespace: true
+  gateway: [8080]
+  # the Keycloak operator and the Postgres instance manager
+  apiServer: true
+  ingress:
+    # the CloudNativePG operator checks the instance's status endpoint
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: cnpg-system
+      toPorts:
+        - ports: [{port: "8000", protocol: TCP}]
+# the reconcile pod: Keycloak, DNS, the API server for its state, and the OpenTofu registry
+netpol-tofu:
+  name: keycloak-tofu
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak-tofu
+  apiServer: true
+  dns: true
+  # registry.opentofu.org and the provider release downloads
+  world: [443]
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: keycloak
+            app.kubernetes.io/name: keycloak
+      toPorts:
+        - ports: [{port: "8080", protocol: TCP}]
