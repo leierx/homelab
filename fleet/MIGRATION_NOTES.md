@@ -124,7 +124,6 @@ existed; nothing needed converting to Deployments.
 | Two Grafana alert summaries reworded (no references to removed repo paths/tools) | wording only |
 | `loft01` cluster Secret gains fleet labels; `config` gains a trailing newline | cluster as data |
 
-Everything else renders identically (see [Validation](#validation)).
 
 ## Cutover on the live cluster
 
@@ -172,29 +171,3 @@ recreated.
 Rollback: delete `fleet-root` and the two ApplicationSets with
 `--cascade=orphan`, re-apply the old root from git history.
 
-## Validation
-
-Done offline (no cluster available):
-
-- **ApplicationSet generation** with the real Argo CD v3.5.6 ApplicationSet code
-  (generators, goTemplate, templatePatch, project source/destination checks)
-  against `fleet/` and the `loft01` Secret: 25 addon + 2 workload Applications,
-  the same 27 names as before. Also checked with synthetic `lab`/`prod`/unlabelled
-  clusters, and that a broken descriptor fails closed.
-- **Golden comparison.** Every old Application was rendered as Argo CD would
-  (wrapper charts with `helm dependency build`, layered values, Kustomize) and
-  compared object-by-object with the new rendering: **528 objects identical**;
-  every remaining difference is listed in the table above.
-- **Schemas.** `kubeconform -strict` on all rendered objects (Kubernetes 1.36
-  schemas, CRD schemas generated from the CRDs in the render, plus the public
-  CRD catalog) and on all Argo CD objects against the v3.5.6 CRDs. Remaining
-  reports are offline-only false positives that apply equally to the old
-  render: ESO `Password.spec.noUpper` "missing" (the CRD defaults it) and CDI
-  `DataVolume.spec.source.http.checksum` (catalog schema older than CDI 1.66).
-- **Renovate** (44.79) config validation and a `--dry-run=lookup`: Helm charts
-  (HTTP and OCI), `# renovate:` annotations, Kustomize images, remote
-  bases and release URLs are extracted.
-
-Not validated: anything that needs a live cluster (actual sync, webhooks,
-health, ESO against OpenBao, the cutover itself), and GitHub-hosted lookups that
-need a token (`kubevirt`, `cdi`, `keycloak-k8s-resources`).

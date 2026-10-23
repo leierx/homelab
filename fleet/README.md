@@ -7,8 +7,7 @@ ApplicationSets connect them by matching labels.
 - Argo CD: chart `argo-cd` 10.10.5 (Argo CD v3.5.5), pinned in
   [`addons/argocd/addon.yaml`](addons/argocd/addon.yaml)
 - Repo: `https://github.com/leierx/homelab`, revision `HEAD`
-- Placeholders that need real values are marked `TODO(fleet):`. List them with
-  `grep -rn 'TODO(fleet)' fleet/`
+- Placeholders that need real values are marked `TODO(fleet):`.
 
 ## Contents
 
@@ -85,7 +84,7 @@ Key decisions and why:
 - **One manual step.** `bootstrap/root.yaml` contains the `fleet` AppProject and
   the root Application. The root app syncs `bootstrap/` too, so after the first
   apply it manages its own definition. Argo CD itself is an addon
-  (`addons/argocd`) that adopts the Helm release you installed by hand.
+  (`addons/argocd`) that adopts what you applied by hand.
 - **Clusters are data.** A cluster is one Secret with labels. Nothing else in
   the repo names a cluster, except its own override layer
   (`values/cluster/<name>.yaml`, `manifests/cluster/<name>/`).
@@ -117,49 +116,65 @@ Key decisions and why:
 
 ## Bootstrap a new management cluster
 
-Prerequisites: a reachable Kubernetes cluster as your current `kubectl` context,
-`helm` ≥ 3.14, `yq` v4, `kubectl`, and a checkout of this repo (commands run
-from its root). The examples use `loft01`; for a different cluster, first
-create its `clusters/<name>.yaml` and override layers (see [Clusters](#clusters)).
+Plain commands, run by hand from the repository root with your `kubectl`
+context on the new cluster. The examples use `loft01`; for another cluster,
+first add its `clusters/<name>.yaml` and override layers (see
+[Clusters](#clusters)). Chart versions below must match the `chart.version` in
+the addon's `addon.yaml`; check them before you run.
 
-1. **Check placeholders**: `grep -rn 'TODO(fleet)' fleet/`. Commit and push any
-   change; Argo CD reads from git, not from your checkout.
+1. **Check placeholders.** Search `fleet/` for `TODO(fleet)` and fill in what
+   applies. Commit and push; Argo CD reads from git, not from your checkout.
 
-2. **Network first.** Cilium is the CNI and is itself an addon. If the cluster
-   has no CNI yet, install it once with the exact chart and values Argo CD will
-   later adopt:
+2. **Network first.** Cilium is the CNI and is itself an addon. Apply it once
+   from the same chart and values Argo CD will later adopt, server-side as
+   Argo CD's field manager so the hand-over is seamless and no Helm release is
+   left behind. `kube-system` must allow privileged pods first:
 
    ```sh
-   d=fleet/addons/cilium
-   helm upgrade --install cilium cilium --repo "$(yq .addon.chart.repoURL $d/addon.yaml)" \
-     --version "$(yq .addon.chart.version $d/addon.yaml)" --namespace kube-system \
-     -f $d/values/default.yaml -f $d/values/cluster/loft01.yaml --wait
+   kubectl label ns kube-system pod-security.kubernetes.io/enforce=privileged \
+     pod-security.kubernetes.io/warn=privileged pod-security.kubernetes.io/audit=privileged --overwrite
+
+   helm template cilium cilium --repo https://helm.cilium.io --version 1.20.3 \
+     -n kube-system --include-crds \
+     -f fleet/addons/cilium/values/default.yaml \
+     -f fleet/addons/cilium/values/cluster/loft01.yaml \
+     | kubectl apply --server-side --field-manager=argocd-controller -f -
+
+   kubectl wait --for=condition=Ready node --all --timeout=10m
    ```
 
-3. **Install Argo CD once with Helm**, the same way:
+   "resource mapping not found" errors for ServiceMonitors are expected: their
+   CRDs arrive later with `prometheus-operator-crds`, and Argo CD creates them
+   then.
+
+3. **Install Argo CD once**, the same way:
 
    ```sh
-   d=fleet/addons/argocd
-   helm upgrade --install argocd argo-cd --repo "$(yq .addon.chart.repoURL $d/addon.yaml)" \
-     --version "$(yq .addon.chart.version $d/addon.yaml)" \
-     --namespace argocd --create-namespace \
-     -f $d/values/default.yaml -f $d/values/cluster/loft01.yaml --wait
+   kubectl create namespace argocd
+
+   helm template argocd argo-cd --repo https://argoproj.github.io/argo-helm --version 10.10.5 \
+     -n argocd --include-crds \
+     -f fleet/addons/argocd/values/default.yaml \
+     -f fleet/addons/argocd/values/cluster/loft01.yaml \
+     | kubectl apply --server-side --field-manager=argocd-controller -f -
+
+   kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
    ```
 
    The release names (`cilium`, `argocd`) must match the descriptors.
 
 4. **Out-of-band secrets.** OpenBao auto-unseals with a static key read from the
-   Secret `openbao/openbao-seal-key` (key `key`). Create it before OpenBao
-   starts; it never lives in git. If the repository is private, also give
+   Secret `openbao/openbao-seal-key` (key `key`). It must exist before OpenBao
+   starts and never lives in this tree. If the repository is private, also give
    Argo CD read access (a `repository`-type Secret in `argocd`).
 
-5. **Apply the root**:
+5. **Apply the root:**
 
    ```sh
    kubectl apply -n argocd -f fleet/bootstrap/root.yaml
    ```
 
-6. **Watch it converge**:
+6. **Watch it converge:**
 
    ```sh
    kubectl -n argocd get applications -w
@@ -171,15 +186,25 @@ create its `clusters/<name>.yaml` and override layers (see [Clusters](#clusters)
    `loft01-renovate` stays OutOfSync because the cluster pauses it; sync it by
    hand when you want it.
 
-7. **Access.** The local admin is disabled; the UI uses Keycloak SSO once the
-   `keycloak` addon is up (`https://argocd.skinke.net`, WireGuard only). Until
-   then, use the CLI against the API server directly:
-   `argocd login --core` (uses your kubeconfig).
+7. **Restart the application controller once** when everything has synced. It
+   caches the API list from before the CRDs existed, so charts that check
+   `.Capabilities` for ServiceMonitors leave them out until it restarts:
 
-From here on, change Cilium and Argo CD only through git. Their Helm release
-records from steps 2–3 go stale and can be deleted
-(`kubectl -n argocd delete secret -l owner=helm,name=argocd`, and the same for
-`cilium` in `kube-system`) without touching any running resource.
+   ```sh
+   kubectl -n argocd rollout restart statefulset/argocd-application-controller
+   ```
+
+8. **Hand-entered secrets.** Put the Renovate GitHub App (`app_id`,
+   `installation_id`, `private_key`) into OpenBao at `loft01/renovate`; it is
+   the only value that is neither generated nor host-provisioned (see
+   [Secrets](#secrets)).
+
+9. **Access.** The local admin is disabled; the UI uses Keycloak SSO once the
+   `keycloak` addon is up (`https://argocd.skinke.net`, WireGuard only). Until
+   then, use the CLI against the API server directly: `argocd login --core`
+   (uses your kubeconfig).
+
+From here on, change Cilium and Argo CD only through git.
 
 The management cluster registers itself with `server:
 https://kubernetes.default.svc`, which replaces Argo CD's implicit `in-cluster`
@@ -648,18 +673,20 @@ closed). Typical messages:
 **Render locally before pushing**
 
 ```sh
-# Helm part for cluster loft01 (prod)
-d=fleet/addons/cert-manager
-helm template cert-manager cert-manager \
-  --repo "$(yq .addon.chart.repoURL $d/addon.yaml)" \
-  --version "$(yq .addon.chart.version $d/addon.yaml)" \
-  $(for f in $d/values/default.yaml $d/values/env/prod.yaml $d/values/cluster/loft01.yaml; do [ -f "$f" ] && echo "-f $f"; done)
+# Helm part: the chart at the descriptor's version, with the layers that exist for the cluster, in order
+helm template cilium cilium --repo https://helm.cilium.io --version 1.20.3 -n kube-system \
+  -f fleet/addons/cilium/values/default.yaml \
+  -f fleet/addons/cilium/values/cluster/loft01.yaml
 
-# OCI chart: helm template <release> oci://<repoURL>/<name> --version <version> ...
+# OCI chart: oci://<repoURL>/<name>
+helm template envoy-gateway oci://docker.io/envoyproxy/gateway-helm --version v1.9.2 \
+  -n envoy-gateway-system -f fleet/addons/envoy-gateway/values/default.yaml
 
-# Kustomize part with layers (work on a copy; `kustomize edit` modifies files)
-tmp=$(mktemp -d) && cp -r fleet/addons/keycloak/manifests/. "$tmp" && \
-  (cd "$tmp" && kustomize edit add component cluster/loft01 && kustomize build .)
+# Kustomize part with a layer: work on a copy, because `kustomize edit` modifies the kustomization
+cp -r fleet/addons/keycloak/manifests /tmp/keycloak-manifests
+cd /tmp/keycloak-manifests
+kustomize edit add component cluster/loft01
+kustomize build .
 ```
 
 ## Non-goals
