@@ -9,11 +9,5 @@ mimir:
     max_global_series_per_user: 3000000
     max_label_names_per_series: 50
     otel_metric_suffixes_enabled: true
-  storage:
-    storageClassName: ""
-    size: ""
   goMemLimit: 3600MiB
-  resources:
-    requests: { cpu: 200m, memory: 1Gi }
-    limits: { memory: 4Gi }
-
+  resources: {requests: {cpu: 200m, memory: 1Gi}, limits: {memory: 4Gi}}
