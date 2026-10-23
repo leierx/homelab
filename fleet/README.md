@@ -554,7 +554,10 @@ resource that can fail this way must not share a wave with something that
 cannot become healthy without it, or the sync waits forever. Put it in wave
 `-1` (OpenBao's Certificates, which its StatefulSet mounts), or remove the
 dependency (dodde's DataVolume binds immediately instead of waiting for its
-VirtualMachine).
+VirtualMachine). ExternalSecrets have the same shape and are not fixed yet: if
+the External Secrets webhook isn't ready when an app first syncs, the
+ExternalSecret fails while the workload that needs its Secret waits in the
+same wave. End it with `argocd app terminate-op <app>` (see step 9 for the CLI) and it retries.
 
 ### Deletion and finalizers
 

@@ -7,7 +7,7 @@ server:
   extraEnvironmentVars: {BAO_CACERT: /openbao/tls/ca.crt}
   volumes:
     - {name: tls, secret: {secretName: openbao-tls}}
-    # created out-of-band on the host, never in git (see MIGRATION_NOTES.md)
+    # created out-of-band on the host, never in git (fleet/README.md, bootstrap step 4)
     - {name: seal-key, secret: {secretName: openbao-seal-key}}
   volumeMounts:
     - {name: tls, mountPath: /openbao/tls, readOnly: true}

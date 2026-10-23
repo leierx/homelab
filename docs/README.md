@@ -122,7 +122,9 @@ besides restarting the application controller once (as that guide says):
   - WireGuard only (`wg` Gateway, 10.0.0.1): Argo CD, Argo Workflows,
     Keycloak's admin console and `master` realm, and Grafana directly.
 
-  On wg0, map the hostnames to 10.0.0.1.
+  On wg0, map the hostnames to 10.0.0.1. From loft01 itself the public names
+  don't answer (the router has no NAT hairpin); test a Gateway with
+  `curl --resolve <host>:443:<gateway IP>` instead.
 - kubectl from a workstation: `just kubeconfig`, `ssh -fN loft01` (forwards
   6443), then a Keycloak login via `kubectl oidc-login`.
 - **First login after a rebuild:**
