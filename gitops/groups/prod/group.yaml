@@ -1,0 +1,27 @@
+# every production cluster
+addons:
+  # network and access
+  - cilium
+  - admission
+  - rbac
+  - envoy-gateway
+  - cert-manager
+  # storage and databases
+  - zfs-localpv
+  - cloudnative-pg
+  # secrets
+  - openbao
+  - external-secrets
+  # virtual machines
+  - kubevirt
+  - cdi
+  # identity
+  - keycloak-operator
+  # telemetry
+  - prometheus-operator-crds
+  - alloy-logs
+  - alloy-metrics
+  - kube-state-metrics
+  - node-exporter
+  - loki
+  - mimir

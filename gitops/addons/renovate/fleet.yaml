@@ -1,6 +1,3 @@
-clusters: [loft01]
-# paused during the rebuild: unpausing deploys it, and with no checks its automerge lands straight on main
-paused: [loft01]
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted

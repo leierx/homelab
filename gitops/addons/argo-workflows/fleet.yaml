@@ -1,4 +1,3 @@
-clusters: [loft01]
 namespace: argo
 managedNamespaceMetadata:
   labels:

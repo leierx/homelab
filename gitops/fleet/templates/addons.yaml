@@ -1,18 +1,44 @@
 {{- with $c := .Values.cluster }}
-{{- $meta := fromYaml ($.Files.Get (printf "clusters/%s/cluster.yaml" $c)) }}
-{{- if $meta.Error }}{{ fail (printf "clusters/%s/cluster.yaml: %s" $c $meta.Error) }}{{ end }}
-{{- $g := $meta.global.fleet.group }}
-{{- if ne $meta.global.fleet.cluster $c }}{{ fail (printf "clusters/%s/cluster.yaml: cluster must be %s" $c $c) }}{{ end }}
-{{- if not (has $g $.Values.groups) }}{{ fail (printf "clusters/%s/cluster.yaml: unknown group %s" $c $g) }}{{ end }}
-{{- range $path, $_ := $.Files.Glob "addons/*/fleet.yaml" }}
-{{- $a := base (dir $path) }}
+{{- $cf := printf "clusters/%s/cluster.yaml" $c }}
+{{- $cl := fromYaml ($.Files.Get $cf) }}
+{{- if $cl.Error }}{{ fail (printf "%s: %s" $cf $cl.Error) }}{{ end }}
+{{- range $k, $_ := omit $cl "groups" "addons" "exclude" "paused" "global" }}{{ fail (printf "%s: unknown key %s" $cf $k) }}{{ end }}
+{{- if ne (dig "global" "fleet" "cluster" "" $cl) $c }}{{ fail (printf "%s: global.fleet.cluster must be %s" $cf $c) }}{{ end }}
+{{- /* $from: addon -> the first of the cluster's groups that lists it */}}
+{{- $from := dict }}
+{{- range $g := $cl.groups | default list }}
+{{- $gf := printf "groups/%s/group.yaml" $g }}
+{{- if not ($.Files.Glob $gf) }}{{ fail (printf "%s: unknown group %s (no %s)" $cf $g $gf) }}{{ end }}
+{{- $gr := fromYaml ($.Files.Get $gf) }}
+{{- if $gr.Error }}{{ fail (printf "%s: %s" $gf $gr.Error) }}{{ end }}
+{{- range $k, $_ := omit $gr "addons" }}{{ fail (printf "%s: unknown key %s" $gf $k) }}{{ end }}
+{{- range $a := $gr.addons | default list }}
+{{- if not ($.Files.Glob (printf "addons/%s/Chart.yaml" $a)) }}{{ fail (printf "%s: unknown addon %s" $gf $a) }}{{ end }}
+{{- if not (hasKey $from $a) }}{{ $_ := set $from $a $g }}{{ end }}
+{{- end }}
+{{- end }}
+{{- $run := deepCopy $from }}
+{{- range $a := $cl.addons | default list }}
+{{- if not ($.Files.Glob (printf "addons/%s/Chart.yaml" $a)) }}{{ fail (printf "%s: unknown addon %s" $cf $a) }}{{ end }}
+{{- if hasKey $from $a }}{{ fail (printf "%s: addon %s already comes from group %s" $cf $a (get $from $a)) }}{{ end }}
+{{- $_ := set $run $a $c }}
+{{- end }}
+{{- range $a := $cl.exclude | default list }}
+{{- if not (hasKey $from $a) }}{{ fail (printf "%s: exclude %s: none of its groups lists it" $cf $a) }}{{ end }}
+{{- $_ := unset $run $a }}
+{{- end }}
+{{- range $a := $cl.paused | default list }}
+{{- if not (hasKey $run $a) }}{{ fail (printf "%s: paused %s: the cluster doesn't run it" $cf $a) }}{{ end }}
+{{- end }}
+{{- range $a := keys $run | sortAlpha }}
+{{- $path := printf "addons/%s/fleet.yaml" $a }}
 {{- $s := fromYaml ($.Files.Get $path) }}
 {{- if $s.Error }}{{ fail (printf "%s: %s" $path $s.Error) }}{{ end }}
-{{- if not $s }}{{ fail (printf "%s: empty" $path) }}{{ end }}
-{{- range $k, $_ := omit $s "groups" "clusters" "paused" "namespace" "release" "syncOptions" "ignoreDifferences" "managedNamespaceMetadata" }}{{ fail (printf "%s: unknown key %s" $path $k) }}{{ end }}
-{{- range $s.groups }}{{ if not (has . $.Values.groups) }}{{ fail (printf "%s: unknown group %s" $path .) }}{{ end }}{{ end }}
-{{- if or (has $c ($s.clusters | default list)) (has $g ($s.groups | default list)) }}
+{{- range $k, $_ := omit $s "namespace" "release" "syncOptions" "ignoreDifferences" "managedNamespaceMetadata" }}{{ fail (printf "%s: unknown key %s" $path $k) }}{{ end }}
 {{- $r := $s.release | default $a }}
+{{- $layers := list }}
+{{- range $g := $cl.groups | default list }}{{ $layers = append $layers (printf "groups/%s/addons/%s" $g $r) }}{{ end }}
+{{- $layers = append $layers (printf "clusters/%s/addons/%s" $c $r) }}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -31,21 +57,21 @@ spec:
       helm:
         releaseName: {{ $r }}
         valueFiles:
-        {{- range list (printf "groups/%s/addons/%s/values.yaml" $g $r) (printf "clusters/%s/addons/%s/values.yaml" $c $r) }}
-        {{- if $.Files.Get . }}
-          - /gitops/{{ . }}
+        {{- range $layers }}
+        {{- if $.Files.Get (printf "%s/values.yaml" .) }}
+          - /gitops/{{ . }}/values.yaml
         {{- end }}
         {{- end }}
-          - /gitops/clusters/{{ $c }}/cluster.yaml
-    {{- range list (printf "addons/%s/manifests" $a) (printf "clusters/%s/addons/%s/manifests" $c $r) }}
-    {{- if $.Files.Glob (printf "%s/**" .) }}
+          - /gitops/{{ $cf }}
+    {{- range prepend $layers (printf "addons/%s" $a) }}
+    {{- if $.Files.Glob (printf "%s/manifests/**" .) }}
     - repoURL: {{ $.Values.repoURL }}
       targetRevision: main
-      path: gitops/{{ . }}
+      path: gitops/{{ . }}/manifests
     {{- end }}
     {{- end }}
   syncPolicy:
-    {{- if not (has $c ($s.paused | default list)) }}
+    {{- if not (has $a ($cl.paused | default list)) }}
     automated: {prune: true, selfHeal: true}
     {{- end }}
     retry: {limit: -1, refresh: true, backoff: {duration: 10s, factor: 2, maxDuration: 3m}}
@@ -56,6 +82,5 @@ spec:
   {{- with $s.ignoreDifferences }}
   ignoreDifferences: {{ toJson . }}
   {{- end }}
-{{- end }}
 {{- end }}
 {{- end }}

@@ -1,4 +1,3 @@
-groups: [prod]
 namespace: kube-system
 syncOptions: [Delete=false]
 managedNamespaceMetadata:

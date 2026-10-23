@@ -1,4 +1,3 @@
-groups: [prod]
 namespace: cnpg-system
 managedNamespaceMetadata:
   labels:

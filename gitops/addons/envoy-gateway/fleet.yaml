@@ -1,4 +1,3 @@
-groups: [prod]
 namespace: envoy-gateway-system
 managedNamespaceMetadata:
   labels:

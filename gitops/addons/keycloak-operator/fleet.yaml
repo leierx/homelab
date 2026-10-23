@@ -1,4 +1,3 @@
-groups: [prod]
 namespace: keycloak
 managedNamespaceMetadata:
   labels:

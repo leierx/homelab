@@ -1,5 +1,3 @@
 repoURL: https://github.com/leierx/homelab.git
-# every group a cluster.yaml or fleet.yaml may name
-groups: [prod, test]
 # empty: root mode; set by cluster-<c>
 cluster: ""
