@@ -196,10 +196,22 @@ the addon's `addon.yaml`; check them before you run.
    kubectl -n argocd rollout restart statefulset/argocd-application-controller
    ```
 
-8. **Hand-entered secrets.** Put the Renovate GitHub App (`app_id`,
-   `installation_id`, `private_key`) into OpenBao at `loft01/renovate`; it is
-   the only value that is neither generated nor host-provisioned (see
-   [Secrets](#secrets)).
+8. **Seed the Renovate GitHub App** (`app_id`, `installation_id`,
+   `private_key`) into OpenBao at `loft01/renovate`. It is the only value that
+   is neither generated nor host-provisioned; its recovery copy is the
+   `renovate` keys in `nixos/secrets.yaml` (SOPS, decryptable on the host
+   only). On loft01, piped so the values are never printed:
+
+   ```sh
+   nix shell nixpkgs#sops
+   sudo env SOPS_AGE_KEY_FILE=/var/lib/sops-nix/key.txt "$(command -v sops)" -d --extract '["renovate"]["app_id"]' nixos/secrets.yaml \
+     | just bao kv put kv/loft01/renovate app_id=-
+   sudo env SOPS_AGE_KEY_FILE=/var/lib/sops-nix/key.txt "$(command -v sops)" -d --extract '["renovate"]["installation_id"]' nixos/secrets.yaml \
+     | just bao kv patch kv/loft01/renovate installation_id=-
+   sudo env SOPS_AGE_KEY_FILE=/var/lib/sops-nix/key.txt "$(command -v sops)" -d --extract '["renovate"]["private_key"]' nixos/secrets.yaml \
+     | just bao kv patch kv/loft01/renovate private_key=-
+   ```
+
 
 9. **Access.** The local admin is disabled; the UI uses Keycloak SSO once the
    `keycloak` addon is up (`https://argocd.skinke.net`, WireGuard only). Until
@@ -594,9 +606,10 @@ To plug in a different backend, change only the two `provider:` blocks in
 
 The only secrets created by hand are the backend's own bootstrap material
 (OpenBao's static seal key, see [Bootstrap](#bootstrap-a-new-management-cluster))
-and values only a human can provide (the Renovate GitHub App, written to
-`<cluster>/renovate` in OpenBao by hand). No Kubernetes secret is kept in a
-file in this repository, encrypted or not.
+and values only a human can provide (the Renovate GitHub App, seeded into
+`<cluster>/renovate` in OpenBao from its SOPS recovery copy in
+`nixos/secrets.yaml`). No other Kubernetes secret is kept in a file in this
+repository.
 
 ## Renovate
 

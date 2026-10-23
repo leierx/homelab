@@ -1,6 +1,6 @@
 # Migration notes
 
-Open items from moving loft01 onto `fleet/`. Delete this file once both are done.
+Open items from moving loft01 onto `fleet/`. Delete this file once the cutover is done.
 
 ## TODO(fleet): cutover on loft01
 
@@ -33,26 +33,8 @@ resource tracking stays valid and nothing is recreated.
 5. Check: `kubectl get externalsecrets,pushsecrets -A` all Ready, Grafana shows
    the `homelab` alert folder, Argo CD SSO works.
 
-## TODO(fleet): Renovate credentials out of SOPS
+## Renovate credentials
 
-Renovate's GitHub App lives in OpenBao `kv/loft01/renovate` (read by
-`fleet/addons/renovate`). A copy is still in `nixos/secrets.yaml` under
-`renovate`; SOPS should hold host secrets only. Removing it needs the age key,
-so it was not done here. On loft01, with `sops` available
-(`nix shell nixpkgs#sops`):
-
-1. Compare each value with OpenBao by hash, never printing it. For `app_id`:
-
-   ```sh
-   sudo env SOPS_AGE_KEY_FILE=/var/lib/sops-nix/key.txt sops -d --extract '["renovate"]["app_id"]' nixos/secrets.yaml | sha256sum
-   just bao kv get -field=app_id kv/loft01/renovate | sha256sum
-   ```
-
-   Repeat with `installation_id` and `private_key`. All three pairs must match.
-
-2. Remove the key; `sops unset` keeps every other key and the encryption metadata:
-
-   ```sh
-   sudo env SOPS_AGE_KEY_FILE=/var/lib/sops-nix/key.txt sops unset nixos/secrets.yaml '["renovate"]'
-   sudo chown leier:users nixos/secrets.yaml
-   ```
+Runtime source: OpenBao `kv/loft01/renovate`, read by `fleet/addons/renovate`.
+Recovery source: the `renovate` keys in `nixos/secrets.yaml`, kept on purpose;
+after a rebuild, seed OpenBao from them (fleet/README.md, bootstrap step 8).
