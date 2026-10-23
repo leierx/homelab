@@ -1,12 +1,12 @@
 # mimir-distributed has no monolithic mode, so Mimir is one -target=all pod
-{{- with .Values.mimir }}
+{{- with .Values }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mimir
 data:
   mimir.yaml: |
-    {{- include "observability.mimirConfig" $ | nindent 4 }}
+    {{- include "mimir.config" $ | nindent 4 }}
 ---
 apiVersion: v1
 kind: Service
@@ -40,7 +40,7 @@ spec:
       labels:
         app.kubernetes.io/name: mimir
       annotations:
-        checksum/config: {{ include "observability.mimirConfig" $ | sha256sum }}
+        checksum/config: {{ include "mimir.config" $ | sha256sum }}
     spec:
       automountServiceAccountToken: false
       securityContext:

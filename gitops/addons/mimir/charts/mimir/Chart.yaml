@@ -1,0 +1,5 @@
+apiVersion: v2
+name: mimir
+description: Mimir as one -target=all pod; mimir-distributed has no monolithic mode
+# the addon's Chart.lock pins this version; leave it, or run `helm dependency update` on the addon
+version: 0.1.0

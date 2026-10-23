@@ -1,4 +1,4 @@
-{{- define "observability.mimirConfig" -}}
+{{- define "mimir.config" -}}
 multitenancy_enabled: false
 usage_stats:
   enabled: false
@@ -44,6 +44,6 @@ store_gateway:
   sharding_ring:
     replication_factor: 1
 limits:
-  compactor_blocks_retention_period: {{ .Values.mimir.retention }}
-  {{- toYaml .Values.mimir.limits | nindent 2 }}
+  compactor_blocks_retention_period: {{ .Values.retention }}
+  {{- toYaml .Values.limits | nindent 2 }}
 {{- end }}
