@@ -26,3 +26,10 @@ argo-workflows:
     sso: {enabled: true, scopes: [groups]}
     resources: {requests: {cpu: 20m, memory: 128Mi}, limits: {memory: 512Mi}}
 certificateIssuer: letsencrypt-prod
+netpol:
+  # the wg Gateway's proxy
+  gateway: [2746]
+  apiServer: true
+  # Keycloak's token and userinfo endpoints (public address), and GitHub
+  # for the git input artifacts workflows fetch
+  world: [443]
