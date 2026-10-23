@@ -6,3 +6,6 @@ dependencies:
   - name: openbao
     version: 0.30.4
     repository: https://openbao.github.io/openbao-helm
+  - name: netpol
+    version: 0.1.0
+    repository: file://../../charts/netpol
