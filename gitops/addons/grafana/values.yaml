@@ -21,7 +21,9 @@ grafana:
       role_attribute_path: contains(groups, 'homelab-admins') && 'GrafanaAdmin' || contains(groups, 'homelab-operators') && 'Editor' || contains(groups, 'homelab-viewers') && 'Viewer' || ''
       role_attribute_strict: true
   deploymentStrategy: {type: Recreate}
-  persistence: {enabled: true}
+  persistence:
+    enabled: true
+    annotations: {argocd.argoproj.io/sync-options: 'Delete=false,Prune=false'}
   initChownData: {enabled: false}
   securityContext:
     fsGroupChangePolicy: OnRootMismatch
