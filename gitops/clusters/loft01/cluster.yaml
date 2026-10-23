@@ -1,5 +1,5 @@
 # loft01: the hub
-groups: [prod]
+groups: [prod, single-node]
 addons:
   # the hub's own
   - argocd

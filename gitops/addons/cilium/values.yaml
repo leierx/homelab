@@ -29,7 +29,6 @@ cilium:
     resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 1Gi}}
     prometheus: {serviceMonitor: {enabled: true}}
   operator:
-    replicas: 1
     resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}
     prometheus: {serviceMonitor: {enabled: true}}
     dashboards: {enabled: true, annotations: {grafana_folder: Cilium}}
