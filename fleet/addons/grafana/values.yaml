@@ -527,37 +527,37 @@ grafana:
                         params:
                           - 0
           - uid: argocd-app-paused
-          title: Argo CD application paused for a week
-          condition: C
-          for: 0s
-          noDataState: OK
-          execErrState: Error
-          labels:
-            severity: warning
-          annotations:
-            summary: An Argo CD application has had auto-sync off for 7 days, so git changes don't reach it. Resume it, or take the addon out of the cluster's values.yaml.
-          data:
-            - refId: A
-              datasourceUid: mimir
-              relativeTimeRange:
-                from: 604800
-                to: 0
-              model:
-                refId: A
-                instant: true
-                expr: count_over_time((max by (name) (argocd_app_info{autosync_enabled="false"}))[7d:1h]) >= 168
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                refId: C
-                type: threshold
-                expression: A
-                conditions:
-                  - evaluator:
-                      type: gt
-                      params:
-                        - 0
-        - uid: secret-sync-failing
+            title: Argo CD application paused for a week
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: An Argo CD application has had auto-sync off for 7 days, so git changes don't reach it. Resume it, or take the addon out of the cluster's values.yaml.
+            data:
+              - refId: A
+                datasourceUid: mimir
+                relativeTimeRange:
+                  from: 604800
+                  to: 0
+                model:
+                  refId: A
+                  instant: true
+                  expr: count_over_time((max by (name) (argocd_app_info{autosync_enabled="false"}))[7d:1h]) >= 168
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          - uid: secret-sync-failing
             title: Secret sync failing
             condition: C
             for: 15m
