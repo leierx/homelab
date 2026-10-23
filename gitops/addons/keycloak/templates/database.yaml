@@ -2,6 +2,9 @@ apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
   name: keycloak-db
+  annotations:
+    # the realm's users and their second factors; removing the addon must not drop them
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
 spec:
   instances: 1
   imageName: ghcr.io/cloudnative-pg/postgresql:{{ .Values.postgres.tag }}

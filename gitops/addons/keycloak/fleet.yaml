@@ -1,4 +1,4 @@
-groups: [prod]
+clusters: [loft01]
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted
