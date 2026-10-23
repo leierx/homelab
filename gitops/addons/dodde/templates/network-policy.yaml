@@ -1,33 +1,6 @@
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: default
-  namespace: dodde
-spec:
-  endpointSelector: {}
-  enableDefaultDeny:
-    ingress: true
-    egress: true
-  egress:
-    # every port and protocol to the public internet, nothing private (pod/service CIDRs, wg0, LAN, iLO, loft01)
-    - toCIDRSet:
-        - cidr: 0.0.0.0/0
-          except:
-            - 10.0.0.0/8
-            - 172.16.0.0/12
-            - 192.168.0.0/16
-            - 169.254.0.0/16
-            - 100.64.0.0/10
-  ingress:
-    # SSH from loft01, which is also what virtctl ssh uses
-    - fromEntities: [host]
-      toPorts:
-        - ports:
-            - { port: "22", protocol: TCP }
----
-apiVersion: cilium.io/v2
-kind: CiliumNetworkPolicy
-metadata:
   name: vm-isolation
   namespace: dodde
 spec:
