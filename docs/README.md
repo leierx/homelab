@@ -62,9 +62,8 @@ APIs register, cert-manager restarting until the Gateway API CRDs exist, and
 argo-workflows-server crash-looping until the Keycloak realm exists. Then,
 besides restarting the application controller once (as that guide says):
 
-1. **Seed Renovate's GitHub App** from sops into OpenBao, as in step 8 of the
-   fleet bootstrap. It's the only secret entered by hand; `nixos/secrets.yaml`
-   keeps the recovery copy. Never print the values.
+1. **Enter Renovate's GitHub App** into OpenBao, as in step 8 of the fleet
+   bootstrap. It's the only secret entered by hand, and it lives nowhere else.
 
 2. **Certificates:** Let's Encrypt allows 5 certificates per identical name
    set per week. If you rebuild several times a week, save the TLS Secrets
@@ -99,9 +98,9 @@ besides restarting the application controller once (as that guide says):
   (`kubectl annotate externalsecret <name> force-sync=$(date +%s) --overwrite`)
   and restart pods that read it from env. A Keycloak client secret also needs
   its `client_secret_wo_version` bumped in `fleet/addons/keycloak/manifests/tofu/clients.tf`.
-- sops holds what must exist before the cluster does (WireGuard keys, the SSH
-  host key, the seal key) and the recovery copy of Renovate's GitHub App.
-  Every other Kubernetes secret lives only in OpenBao.
+- sops holds only host secrets, which must exist before the cluster does:
+  WireGuard keys, the SSH host key and the seal key. Every Kubernetes secret
+  lives only in OpenBao.
 
 ## Access
 

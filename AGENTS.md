@@ -33,8 +33,7 @@ Don't push to `main` unless asked to, and render before you push.
   Cilium's CRD; write `- {}` rules for that case.
 - `fleet/addons/keycloak/manifests/tofu/` is the realm. It ships as a
   ConfigMap and a CronWorkflow applies it every 10 minutes.
-- `nixos/` is the host. `nixos/secrets.yaml` is sops (age): host secrets plus the recovery copy of
-  Renovate's GitHub App. Don't remove the `renovate` keys.
+- `nixos/` is the host. `nixos/secrets.yaml` is sops (age), host secrets only.
 
 ## Checking a change
 
@@ -62,7 +61,7 @@ change with a Helm 4 binary.
   deleted). Check `kubectl -n argocd get applicationset addons -o yaml`.
 - OpenBao paths are `<cluster>/<app>`. Generated secrets come from Password
   generators plus PushSecrets into `fleet-secrets-push`. The only secret
-  entered by hand is Renovate's GitHub App, seeded into OpenBao from sops.
+  entered by hand is Renovate's GitHub App, in OpenBao.
 
 ## Secrets and the host
 
