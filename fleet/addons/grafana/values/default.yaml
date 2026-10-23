@@ -503,7 +503,7 @@ alerting:
           labels:
             severity: warning
           annotations:
-            summary: An Argo CD application has been Degraded, Missing or Unknown for 15 minutes.
+            summary: An Argo CD application has been Degraded, Missing or Unknown for 15 minutes. A paused application (no auto-sync) that was never synced is Missing by design and doesn't count.
           data:
             - refId: A
               datasourceUid: mimir
@@ -513,7 +513,7 @@ alerting:
               model:
                 refId: A
                 instant: true
-                expr: max by (name, health_status) (argocd_app_info{health_status!~"Healthy|Progressing|Suspended"})
+                expr: max by (name, health_status) (argocd_app_info{health_status!~"Healthy|Progressing|Suspended"} unless argocd_app_info{health_status="Missing", autosync_enabled="false"})
             - refId: C
               datasourceUid: __expr__
               model:
