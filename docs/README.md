@@ -31,12 +31,25 @@ Prune=false`. Their pod and service CIDRs must not overlap loft01's
 
 Run this on loft01, where `KUBECONFIG` is the k3s admin kubeconfig. The host
 comes from `nixos/`: `nixos-anywhere` or the offline installer ISO, each with
-the sops age key at `/var/lib/sops-nix/key.txt`. To rebuild only the cluster:
-stop k3s, run `k3s-killall.sh`, delete `/var/lib/rancher/k3s`,
-`/var/lib/kubelet`, `/etc/rancher/k3s`, `/var/lib/cni`, Cilium's CNI files
-and every dataset under `tank`, then reboot. If a VM's block PVC is held by a
-loop device, `losetup -d` it first. sops-nix puts the OpenBao seal-key Secret
-back in k3s's manifests at boot.
+the sops age key at `/var/lib/sops-nix/key.txt`. To rebuild only the cluster,
+keeping the host:
+
+```sh
+sudo systemctl stop k3s
+sudo k3s-killall.sh
+# a VM's block PVC stays attached to a loop device, and its devtmpfs bind mount
+# stays under /var/lib/kubelet; rm -rf through that mount would delete /dev nodes
+sudo losetup -a                         # then: sudo losetup -d /dev/loopN for each tank zvol
+mount | grep -E '/var/lib/(kubelet|rancher|cni)'   # then: sudo umount <path> for each; must print nothing
+# PVC data: park it (sudo zfs create -o mountpoint=none tank/<name>; sudo zfs rename tank/pvc-<id> tank/<name>/<label>)
+# or destroy it (sudo zfs destroy -r tank/pvc-<id>), one dataset at a time
+sudo rm -rf --one-file-system /var/lib/rancher/k3s /var/lib/kubelet /etc/rancher/k3s /var/lib/cni \
+  /etc/cni/net.d/05-cilium.conflist /opt/cni/bin/cilium-cni
+sudo reboot
+```
+
+The reboot clears Cilium's BPF state and interfaces, and sops-nix puts the
+OpenBao seal-key Secret back in k3s's manifests.
 
 Then follow "Bootstrap a new management cluster" in
 [fleet/README.md](../fleet/README.md#bootstrap-a-new-management-cluster): label
