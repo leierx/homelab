@@ -99,26 +99,26 @@ extraObjects:
                 fleet.io/enabled: "true"
       template:
         metadata:
-          name: "fleet-{{ .name }}"
+          name: 'fleet-{{ `{{ .name }}` }}'
           namespace: argocd
           labels:
-            fleet.io/cluster: "{{ .name }}"
+            fleet.io/cluster: '{{ `{{ .name }}` }}'
         spec:
           project: default
           destination:
-            server: "{{ .server }}"
+            server: '{{ `{{ .server }}` }}'
             namespace: argocd
           source:
-            repoURL: '{{ index .metadata.annotations "fleet.io/repo-url" }}'
-            targetRevision: '{{ index .metadata.annotations "fleet.io/target-revision" }}'
+            repoURL: '{{ `{{ index .metadata.annotations "fleet.io/repo-url" }}` }}'
+            targetRevision: '{{ `{{ index .metadata.annotations "fleet.io/target-revision" }}` }}'
             path: fleet
             helm:
               valueFiles:
-                - "clusters/{{ .name }}/cluster.yaml"
+                - 'clusters/{{ `{{ .name }}` }}/cluster.yaml'
               valuesObject:
                 cluster:
-                  name: "{{ .name }}"
-                  server: "{{ .server }}"
+                  name: '{{ `{{ .name }}` }}'
+                  server: '{{ `{{ .server }}` }}'
           ignoreDifferences:
             - group: argoproj.io
               kind: Application
