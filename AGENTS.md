@@ -7,8 +7,8 @@ Instructions for coding agents working in this repository.
 - `fleet/` — GitOps fleet controller rendered by Argo CD with Helm (no helper
   scripts, no CI). Read `fleet/README.md` before modifying anything in `fleet/`.
 - `tofu/` — OpenTofu roots (e.g. `tofu/keycloak/`).
-- `applications/` — First-party controllers/apps built with Nix and exposed via
-  `flake.nix` (e.g. `applications/capi-argo-bridge/`).
+- `packages/` — First-party controllers/apps built with Nix and exposed via
+  `flake.nix` (e.g. `packages/capi-argo-bridge/`).
 - `nixos/` — Declarative NixOS configuration for `loft01` (disko, k3s,
   sops-nix, WireGuard).
 - `docs/README.md` — Operational runbook for `loft01` (bootstrap, teardown,

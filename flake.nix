@@ -41,7 +41,7 @@
       packages.x86_64-linux =
         let
           pkgs = nixpkgs.legacyPackages.x86_64-linux;
-          capi-argo-bridge = pkgs.callPackage ./applications/capi-argo-bridge { };
+          capi-argo-bridge = pkgs.callPackage ./packages/capi-argo-bridge { };
         in
         {
           inherit capi-argo-bridge;
