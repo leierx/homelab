@@ -1,4 +1,3 @@
-fullnameOverride: smartctl-exporter
 nameOverride: smartctl-exporter
 rbac: {create: false}
 serviceAccount: {create: false}
