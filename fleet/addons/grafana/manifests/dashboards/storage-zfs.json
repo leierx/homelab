@@ -1,0 +1,1833 @@
+{
+  "uid": "storage-zfs",
+  "title": "Storage / ZFS",
+  "tags": [
+    "storage",
+    "homelab"
+  ],
+  "timezone": "",
+  "schemaVersion": 42,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "editable": true,
+  "graphTooltip": 1,
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 100,
+      "type": "row",
+      "title": "Pool",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Pool health",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 4,
+        "h": 5
+      },
+      "description": "pdf/zfs_exporter health code: 0 ONLINE, 1 DEGRADED, 2 FAULTED, 3 OFFLINE, 4 UNAVAIL, 5 REMOVED, 6 SUSPENDED. The alert fires when health + readonly > 0. The instance label keeps same-named pools on different nodes separate.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_pool_health",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{pool}} {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "ONLINE",
+                  "color": "green",
+                  "index": 0
+                },
+                "1": {
+                  "text": "DEGRADED",
+                  "color": "red",
+                  "index": 1
+                },
+                "2": {
+                  "text": "FAULTED",
+                  "color": "red",
+                  "index": 2
+                },
+                "3": {
+                  "text": "OFFLINE",
+                  "color": "red",
+                  "index": 3
+                },
+                "4": {
+                  "text": "UNAVAIL",
+                  "color": "red",
+                  "index": 4
+                },
+                "5": {
+                  "text": "REMOVED",
+                  "color": "red",
+                  "index": 5
+                },
+                "6": {
+                  "text": "SUSPENDED",
+                  "color": "red",
+                  "index": 6
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Read-only",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 1,
+        "w": 3,
+        "h": 5
+      },
+      "description": "zfs_pool_readonly: 0 read-write, 1 read-only. Part of the zfs-pool-unhealthy alert condition.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_pool_readonly",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{pool}} {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "read-write",
+                  "index": 0,
+                  "color": "green"
+                },
+                "1": {
+                  "text": "READ-ONLY",
+                  "index": 1,
+                  "color": "red"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 3,
+      "type": "bargauge",
+      "title": "Allocated / size",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 7,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "description": "Physical pool allocation over the alert threshold (80%): zfs_pool_allocated_bytes / zfs_pool_size_bytes. This excludes zvol refreservations; the Reserved vs available panel shows the space that actually limits new PVCs and snapshots.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_pool_allocated_bytes / zfs_pool_size_bytes",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{pool}} {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.8
+              }
+            ]
+          },
+          "max": 1,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "auto",
+        "sizing": "auto",
+        "minVizHeight": 16,
+        "minVizWidth": 8
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Free",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 13,
+        "y": 1,
+        "w": 4,
+        "h": 5
+      },
+      "description": "zfs_pool_free_bytes, from zpool list free.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_pool_free_bytes",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{pool}} {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Fragmentation",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 17,
+        "y": 1,
+        "w": 3,
+        "h": 5
+      },
+      "description": "zfs_pool_fragmentation_ratio is already a 0..1 ratio. No alert covers fragmentation; the colours are informational.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_pool_fragmentation_ratio",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{pool}} {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 0.75
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Leaked / freeing",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 5
+      },
+      "description": "zfs_pool_leaked_bytes (red above 0) and zfs_pool_freeing_bytes. Both are normally 0.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_pool_leaked_bytes",
+          "instant": true,
+          "range": false,
+          "legendFormat": "leaked {{pool}} {{instance}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_pool_freeing_bytes",
+          "instant": true,
+          "range": false,
+          "legendFormat": "freeing {{pool}} {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 101,
+      "type": "row",
+      "title": "Capacity",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Allocation over time",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 12,
+        "h": 9
+      },
+      "description": "Physical allocation ratio over time. This is the same metric as the 80% alert and excludes refreservations. The fill-rate projection is the instant Days until 80% stat, so the graph and stat cannot disagree. The dashed line is the alert threshold.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_pool_allocated_bytes / zfs_pool_size_bytes",
+          "instant": false,
+          "range": true,
+          "legendFormat": "allocated {{pool}} {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisPlacement": "auto",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.8
+              }
+            ]
+          },
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "min",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Days until 80%",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 7,
+        "w": 4,
+        "h": 9
+      },
+      "description": "Fill-rate projection from the last 7 days of physical allocation, evaluated once. May be empty while the pool is static or shrinking: no value means no growth at the current rate, not a broken panel. This excludes refreservations, so it is not a promise that new PVCs will fit.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "clamp_min((0.8 * zfs_pool_size_bytes - zfs_pool_allocated_bytes) / (deriv(zfs_pool_allocated_bytes[7d]) > 0) / 86400, 0)",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{pool}} {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Allocated",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 7,
+        "w": 4,
+        "h": 9
+      },
+      "description": "Physical allocation, matches zpool list allocated. It excludes zvol refreservations; the Reserved vs available panel shows those.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_pool_allocated_bytes",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{pool}} {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "Size",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 7,
+        "w": 4,
+        "h": 9
+      },
+      "description": "zpool size (4 x 2-way mirrors of 900 GB SAS disks).",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_pool_size_bytes",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{pool}} {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 102,
+      "type": "row",
+      "title": "Reservations",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Reserved vs available (tank)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 24,
+        "h": 7
+      },
+      "description": "The tank root dataset. `used` includes the child PVCs' refreservations (zfs-localpv sets refreservation = volsize on the zfs class); `available` is what ZFS will still hand to new datasets and snapshots. zpool allocated and the 80% alert ignore reservations, so the pool can look ~0% used while this available value is exhausted and zfs-thin writes/sanoid snapshots start failing.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_dataset_used_bytes{name=\"tank\"}",
+          "instant": false,
+          "range": true,
+          "legendFormat": "used (incl. reservations) {{instance}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_dataset_available_bytes{name=\"tank\"}",
+          "instant": false,
+          "range": true,
+          "legendFormat": "available {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisPlacement": "auto",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "min",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 103,
+      "type": "row",
+      "title": "Datasets",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Per-PVC datasets",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 24,
+        "h": 11
+      },
+      "description": "One row per dataset per zfs-exporter instance. Instant queries keep the instance label and group by name/type/instance so a multi-node fleet cannot merge same-named datasets; the column is named exporter because the metric exposes the exporter pod IP, not a node label. Columns come from Merge, Group by (name, type, instance), Sort by and Organize fields. namespace/claim come from kube_persistentvolumeclaim_info.volumename; the root dataset has no PV, so they stay blank. `usedbydataset` is the live data and leads the table; on thick zvols `used` is volsize + snapshots and stays flat. `snapshots` and `reservation` are the exporter's usedbysnapshots/usedbyrefreservation properties. `compression` is 1 / zfs_dataset_compression_ratio, matching `zfs get compressratio` (1.50x means logical data is 1.5 times the on-disk size). `quota`, `refquota` (filesystems) and `volsize` (zvols) are separate properties; 0 or unset/inapplicable shows as \u2014. `written` resets at each snapshot.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_dataset_used_bytes",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_dataset_used_by_dataset_bytes",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "format": "table"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_dataset_used_by_snapshot_bytes",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "format": "table"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_dataset_used_by_referenced_reservation_bytes",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "format": "table"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "1 / zfs_dataset_compression_ratio",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "format": "table"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_dataset_quota_bytes",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "format": "table"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_dataset_referenced_quota_bytes",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "format": "table"
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_dataset_volume_size_bytes",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "format": "table"
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "zfs_dataset_written_bytes",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "format": "table"
+        },
+        {
+          "refId": "J",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "label_replace(zfs_dataset_used_bytes, \"volumename\", \"$1\", \"name\", \"tank/(pvc-.*)\")\n        * on(volumename) group_left(pvc_namespace, pvc_claim)\n        max by (volumename, pvc_namespace, pvc_claim) (\n          label_replace(label_replace(kube_persistentvolumeclaim_info, \"pvc_namespace\", \"$1\", \"namespace\", \"(.*)\"),\n                        \"pvc_claim\", \"$1\", \"persistentvolumeclaim\", \"(.*)\"))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "name": {
+                "operation": "groupby",
+                "aggregations": []
+              },
+              "type": {
+                "operation": "groupby",
+                "aggregations": []
+              },
+              "instance": {
+                "operation": "groupby",
+                "aggregations": []
+              },
+              "pvc_namespace": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "lastNotNull"
+                ]
+              },
+              "pvc_claim": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "lastNotNull"
+                ]
+              },
+              "Value #A": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "max"
+                ]
+              },
+              "Value #B": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "max"
+                ]
+              },
+              "Value #C": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "max"
+                ]
+              },
+              "Value #D": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "max"
+                ]
+              },
+              "Value #E": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "max"
+                ]
+              },
+              "Value #F": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "max"
+                ]
+              },
+              "Value #G": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "max"
+                ]
+              },
+              "Value #H": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "max"
+                ]
+              },
+              "Value #I": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "max"
+                ]
+              },
+              "Value #J": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "max"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "name",
+                "desc": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Value #J (max)": true
+            },
+            "renameByName": {
+              "name": "dataset",
+              "instance": "exporter",
+              "pvc_namespace (lastNotNull)": "namespace",
+              "pvc_claim (lastNotNull)": "claim",
+              "Value #A (max)": "used",
+              "Value #B (max)": "usedbydataset",
+              "Value #C (max)": "snapshots",
+              "Value #D (max)": "reservation",
+              "Value #E (max)": "compression",
+              "Value #F (max)": "quota",
+              "Value #G (max)": "refquota",
+              "Value #H (max)": "volsize",
+              "Value #I (max)": "written",
+              "Value #J (max)": "pvc_info"
+            },
+            "indexByName": {
+              "name": 0,
+              "type": 1,
+              "instance": 2,
+              "pvc_namespace (lastNotNull)": 3,
+              "pvc_claim (lastNotNull)": 4,
+              "Value #B (max)": 5,
+              "Value #A (max)": 6,
+              "Value #C (max)": 7,
+              "Value #D (max)": 8,
+              "Value #E (max)": 9,
+              "Value #F (max)": 10,
+              "Value #G (max)": 11,
+              "Value #H (max)": 12,
+              "Value #I (max)": 13,
+              "Value #J (max)": 14
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pvc_info"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dataset"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 320
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "type"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 100
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "volume": {
+                        "text": "zvol",
+                        "index": 0
+                      },
+                      "filesystem": {
+                        "text": "filesystem",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "exporter"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "namespace"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "claim"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 160
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "usedbydataset"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "used"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "snapshots"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "reservation"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "compression"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "x"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "quota"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "\u2014",
+                        "index": 0
+                      }
+                    }
+                  },
+                  {
+                    "type": "special",
+                    "options": {
+                      "match": "null",
+                      "result": {
+                        "text": "\u2014",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "refquota"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "\u2014",
+                        "index": 0
+                      }
+                    }
+                  },
+                  {
+                    "type": "special",
+                    "options": {
+                      "match": "null",
+                      "result": {
+                        "text": "\u2014",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "volsize"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "\u2014",
+                        "index": 0
+                      }
+                    }
+                  },
+                  {
+                    "type": "special",
+                    "options": {
+                      "match": "null",
+                      "result": {
+                        "text": "\u2014",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "written"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "bargauge",
+      "title": "Top datasets by growth (24 h)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 24,
+        "h": 8
+      },
+      "description": "clamp_min(delta(zfs_dataset_used_by_dataset_bytes[24h]), 0) for live exporter series, top 8. delta() is used instead of increase() because usedbydataset is a gauge (increase() treats any freed blocks or compaction dip as a counter reset). On zfs-localpv's thick zvols `used` is flat (volsize + snapshots), so usedbydataset is the live data. The aggregate root dataset is excluded.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "topk(8, clamp_min(delta(zfs_dataset_used_by_dataset_bytes{name=~\"tank/.+\"}[24h]) and on(pod, instance, name) zfs_dataset_used_by_dataset_bytes, 0))",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{instance}} {{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "auto",
+        "sizing": "auto",
+        "minVizHeight": 16,
+        "minVizWidth": 8
+      }
+    },
+    {
+      "id": 104,
+      "type": "row",
+      "title": "ARC",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 44,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "ARC size vs cap",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 45,
+        "w": 12,
+        "h": 8
+      },
+      "description": "node_zfs_arc_size against node_zfs_arc_c_max (64 GiB, zfs.zfs_arc_max in nixos/hardware.nix). max by (instance) deduplicates node-exporter pod rollouts while keeping each node separate.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "max by (instance) (node_zfs_arc_size)",
+          "instant": false,
+          "range": true,
+          "legendFormat": "ARC size {{instance}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "max by (instance) (node_zfs_arc_c_max)",
+          "instant": false,
+          "range": true,
+          "legendFormat": "cap {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisPlacement": "auto",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "min",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "ARC breakdown",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 45,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Honest stack: data + metadata + headers + other = arc_size. `other` is the remainder (bonus, dbuf, dnode and abd waste) so the stack cannot over- or under-count. max by (instance) deduplicates node-exporter pod rollouts while keeping each node separate.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "max by (instance) (node_zfs_arc_data_size)",
+          "instant": false,
+          "range": true,
+          "legendFormat": "data {{instance}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "max by (instance) (node_zfs_arc_metadata_size)",
+          "instant": false,
+          "range": true,
+          "legendFormat": "metadata {{instance}}"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "max by (instance) (node_zfs_arc_hdr_size)",
+          "instant": false,
+          "range": true,
+          "legendFormat": "headers {{instance}}"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "max by (instance) (node_zfs_arc_size - node_zfs_arc_data_size - node_zfs_arc_metadata_size - node_zfs_arc_hdr_size)",
+          "instant": false,
+          "range": true,
+          "legendFormat": "other {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisPlacement": "auto",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "min",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "Demand hit ratio",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "mimir"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 53,
+        "w": 24,
+        "h": 5
+      },
+      "description": "Demand data+metadata hits over all demand accesses per node, $__rate_interval, averaged over the dashboard range. Prefetch hits are excluded (demand only).",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "mimir"
+          },
+          "expr": "(sum by (instance) (rate(node_zfs_arc_demand_data_hits[$__rate_interval])) + sum by (instance) (rate(node_zfs_arc_demand_metadata_hits[$__rate_interval]))) / (sum by (instance) (rate(node_zfs_arc_demand_data_hits[$__rate_interval])) + sum by (instance) (rate(node_zfs_arc_demand_data_misses[$__rate_interval])) + sum by (instance) (rate(node_zfs_arc_demand_metadata_hits[$__rate_interval])) + sum by (instance) (rate(node_zfs_arc_demand_metadata_misses[$__rate_interval])))",
+          "instant": false,
+          "range": true,
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.8
+              },
+              {
+                "color": "green",
+                "value": 0.9
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true
+      }
+    }
+  ],
+  "links": []
+}
