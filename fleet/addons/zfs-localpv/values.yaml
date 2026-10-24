@@ -2,6 +2,10 @@ analytics: {enabled: false}
 # NixOS keeps zfs here, not in /sbin
 zfs: {bin: /run/current-system/sw/bin/zfs}
 zfsController:
+  # sanoid on the host manages ZFS snapshots; nothing uses Kubernetes VolumeSnapshots
+  snapshotController: {enabled: false}
   resources: {requests: {cpu: 5m, memory: 16Mi}, limits: {memory: 128Mi}}
 zfsNode:
+  # "All" puts the deprecated beta.kubernetes.io/* node labels into the CSI topology
+  allowedTopologyKeys: "openebs.io/nodeid,kubernetes.io/hostname"
   resources: {requests: {cpu: 5m, memory: 16Mi}, limits: {memory: 256Mi}}

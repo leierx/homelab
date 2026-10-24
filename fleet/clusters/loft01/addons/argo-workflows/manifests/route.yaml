@@ -47,3 +47,5 @@ spec:
     - backendRefs:
         - name: argo-workflows-server
           port: 2746
+      # log tails are server-sent events that follow a pod; the gateway-wide 300 s cap cuts them
+      timeouts: {request: 0s}

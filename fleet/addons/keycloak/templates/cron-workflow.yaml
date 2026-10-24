@@ -52,22 +52,22 @@ templates:
         requests: { cpu: 50m, memory: 256Mi }
         limits: { memory: 1Gi }
 {{- end -}}
-# reconciles realm homelab from tofu/ (the keycloak-realm-tofu ConfigMap); the CRD comes from addon argo-workflows; every 10 minutes; git wins over hand-made changes
+# reconciles realm homelab from tofu/ (the keycloak-realm-tofu ConfigMap); the CRD comes from addon argo-workflows; hourly; git wins over hand-made changes
 apiVersion: argoproj.io/v1alpha1
 kind: CronWorkflow
 metadata:
   name: keycloak-realm
 spec:
   schedules:
-    - "*/10 * * * *"
+    - "0 * * * *"
   concurrencyPolicy: Forbid
   suspend: false
-  successfulJobsHistoryLimit: 1
+  successfulJobsHistoryLimit: 5
   failedJobsHistoryLimit: 3
   workflowSpec:
 {{ include "keycloak.reconcileWorkflowSpec" . | indent 4 }}
 ---
-# runs once on sync so a fresh cluster doesn't wait up to 10m for the first CronWorkflow tick
+# runs once on sync so a fresh cluster or config change doesn't wait up to 1h for the next CronWorkflow tick
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:

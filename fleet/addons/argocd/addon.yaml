@@ -2,6 +2,7 @@ namespace: argocd
 podSecurity: restricted
 dependencies:
   - cilium
+  - prometheus-operator-crds
 helm:
   repoURL: https://argoproj.github.io/argo-helm
   chart: argo-cd

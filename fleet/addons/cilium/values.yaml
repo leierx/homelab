@@ -1,4 +1,5 @@
 kubeProxyReplacement: true
+rollOutCiliumPods: true
 secretsNamespaceAnnotations:
   argocd.argoproj.io/sync-options: Delete=false,Prune=false
 bpf: {masquerade: true}
@@ -23,9 +24,11 @@ dashboards: {enabled: true, annotations: {grafana_folder: Cilium}}
 resources: {requests: {cpu: 100m, memory: 512Mi}}
 initResources: {requests: {cpu: 10m, memory: 16Mi}, limits: {memory: 256Mi}}
 envoy:
+  rollOutPods: true
   resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 1Gi}}
   prometheus: {serviceMonitor: {enabled: true}}
 operator:
+  rollOutPods: true
   resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}
   prometheus: {serviceMonitor: {enabled: true}}
   dashboards: {enabled: true, annotations: {grafana_folder: Cilium}}

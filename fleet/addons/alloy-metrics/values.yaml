@@ -7,8 +7,10 @@ alloy:
     capabilities: {drop: [ALL]}
     seccompProfile: {type: RuntimeDefault}
   resources: {requests: {cpu: 100m, memory: 512Mi}, limits: {memory: 2Gi}}
+  enableReporting: false
 rbac: {create: false}
 controller: {type: statefulset}
 configReloader:
   resources: {requests: {memory: 16Mi}, limits: {memory: 64Mi}}
 crds: {create: false}
+serviceMonitor: {enabled: true}

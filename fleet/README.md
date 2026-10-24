@@ -118,12 +118,13 @@ enabled addons in dependency wave order:
 
 - **Wave 0:** `prometheus-operator-crds`
 - **Wave 1:** `cilium`
-- **Wave 2:** `admission`, `cdi`, `cert-manager`, `cloudnative-pg`, `envoy-gateway`, `kube-state-metrics`, `kubevirt`, `node-exporter`, `rbac`, `zfs-localpv`
-- **Wave 3:** `cluster-api`, `dodde`, `loki`, `mimir`, `openbao`
-- **Wave 4:** `alloy-logs`, `alloy-metrics`, `capi-argo-bridge`, `external-secrets`
-- **Wave 5:** `argo-workflows`, `renovate`
-- **Wave 6:** `keycloak`
-- **Wave 7:** `argocd`, `grafana`, `immich`
+- **Wave 2:** `admission`, `cdi`, `cloudnative-pg`, `envoy-gateway`, `kube-state-metrics`, `kubevirt`, `node-exporter`, `rbac`, `smartctl-exporter`, `zfs-exporter`, `zfs-localpv`
+- **Wave 3:** `cert-manager`, `dodde`, `loki`, `mimir`
+- **Wave 4:** `alloy-logs`, `alloy-metrics`, `cluster-api`, `openbao`
+- **Wave 5:** `capi-argo-bridge`, `external-secrets`
+- **Wave 6:** `argo-workflows`, `renovate`
+- **Wave 7:** `keycloak`
+- **Wave 8:** `argocd`, `grafana`, `immich`
 
 ## Addon Reference (`addon.yaml`)
 

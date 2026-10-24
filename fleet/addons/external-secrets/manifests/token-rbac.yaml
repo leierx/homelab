@@ -1,0 +1,27 @@
+# serviceAccountTokenCreate is off (values.yaml): only the two ClusterSecretStore identities may be tokenized.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: external-secrets-token
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+rules:
+  - apiGroups: [""]
+    resources: [serviceaccounts/token]
+    resourceNames: [external-secrets, external-secrets-push]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: external-secrets-token
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: external-secrets-token
+subjects:
+  - kind: ServiceAccount
+    name: external-secrets
+    namespace: external-secrets

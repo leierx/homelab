@@ -10,28 +10,33 @@ on:
 
 permissions:
   contents: read
-  packages: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
     runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31
 
-      - name: Build and test capi-argo-bridge
-        run: nix build -L .#capi-argo-bridge .#capi-argo-bridge-image
+      - name: Build and test capi-argo-bridge image
+        id: build
+        run: |
+          image=$(nix build -L --no-link --print-out-paths .#capi-argo-bridge-image)
+          echo "image=$image" >> "$GITHUB_OUTPUT"
 
-      - if: github.event_name != 'pull_request'
+      - if: github.ref == 'refs/heads/main'
         name: Push container image to GHCR
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -euo pipefail
-          image=$(nix build --no-link --print-out-paths .#capi-argo-bridge-image)
-          repo="ghcr.io/${GITHUB_REPOSITORY_OWNER}/capi-argo-bridge"
-          creds="${GITHUB_ACTOR}:${GITHUB_TOKEN}"
-          nix run nixpkgs#skopeo -- copy --dest-creds "$creds" \
-            "docker-archive:${image}" "docker://${repo}:main"
-          nix run nixpkgs#skopeo -- copy --dest-creds "$creds" \
-            "docker-archive:${image}" "docker://${repo}:0.1.${GITHUB_RUN_NUMBER}"
+          skopeo copy \
+            --dest-creds "${GITHUB_ACTOR}:${GITHUB_TOKEN}" \
+            "docker-archive:${{ steps.build.outputs.image }}" \
+            "docker://ghcr.io/${GITHUB_REPOSITORY_OWNER}/capi-argo-bridge:0.1.${GITHUB_RUN_NUMBER}"
