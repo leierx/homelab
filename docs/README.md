@@ -6,12 +6,11 @@ composition, see [fleet/README.md](../fleet/README.md).
 
 ## Overview
 
-`loft01` is a single-node NixOS + k3s cluster running on an HPE ProLiant DL360
-Gen9. It is now **production**: it holds real data (Immich photo library,
-Grafana metrics, OpenBao secrets) with no backup cluster to fall back on. Treat
-every destructive operation — teardown, `zfs destroy`, deleting PVCs or stateful
-CRs — as data loss until proven otherwise. Stateful resources carry
-`argocd.argoproj.io/sync-options: Delete=false,Prune=false` for this reason.
+`loft01` is a single-node NixOS + k3s cluster on an HPE ProLiant DL360 Gen9 and
+the **production** cluster: it holds real data (Immich photo library, Grafana
+metrics, OpenBao secrets) with no backup. Treat deleting PVCs or stateful CRs as
+data loss; they carry `argocd.argoproj.io/sync-options: Delete=false,Prune=false`
+for that reason.
 
 Git (`main`) is the single source of truth:
 
@@ -28,62 +27,6 @@ To trigger an immediate git refresh without waiting for Argo CD's 3-minute poll:
 kubectl -n argocd annotate app fleet-loft01 argocd.argoproj.io/refresh=normal --overwrite
 kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal --overwrite
 ```
-
-## Full Teardown and Rebuild (`loft01`)
-
-Last resort only — this destroys all cluster state and, if the ZFS dataset
-deletion step is run, the photo library and all other data on `tank`. Prefer
-recovering the cluster (or pruning a single broken addon) over a teardown. If
-you do tear down:
-
-- Copy the admin kubeconfig, WireGuard config, and anything else you need off
-  the host first.
-- Leave the ZFS dataset deletion loop out unless you have confirmed the data is
-  backed up or truly disposable.
-
-To tear down the running k3s cluster and storage on `loft01` while keeping the
-NixOS host:
-
-```sh
-sudo systemctl stop k3s
-sudo losetup -D
-sudo k3s-killall.sh
-
-# Destroy PVC datasets and snapshots on the ZFS pool if wiping storage clean
-for ds in $(zfs list -H -o name -r -d 1 tank | grep -v "^tank$"); do
-  sudo zfs destroy -r "$ds"
-done
-for snap in $(zfs list -H -t snapshot -o name tank); do
-  sudo zfs destroy "$snap"
-done
-
-sudo rm -rf --one-file-system \
-  /var/lib/rancher/k3s \
-  /var/lib/kubelet \
-  /etc/rancher/k3s \
-  /var/lib/cni \
-  /etc/cni/net.d/05-cilium.conflist \
-  /opt/cni/bin/cilium-cni
-
-sudo reboot
-```
-
-After rebooting, `sops-nix` automatically places `openbao-seal-key` in k3s's
-manifests directory. Since Keycloak OIDC is not running yet on a fresh cluster,
-grab the k3s admin kubeconfig over an SSH tunnel (`127.0.0.1:6443`), then run
-the 3 bootstrap commands from
-[fleet/README.md](../fleet/README.md#3-step-bootstrap):
-
-```sh
-ssh -o ClearAllForwardings=yes loft01 'sudo cat /etc/rancher/k3s/k3s.yaml' > /tmp/loft01-admin.kubeconfig
-chmod 600 /tmp/loft01-admin.kubeconfig
-ssh -fN loft01
-export KUBECONFIG=/tmp/loft01-admin.kubeconfig
-```
-
-1. Apply Cilium (`helm template ... | kubectl apply`)
-2. Apply Argo CD (`helm template ... | kubectl apply`)
-3. Apply the cluster Secret (`kubectl apply -f fleet/clusters/loft01/cluster-secret.yaml`)
 
 ## Secrets (OpenBao & External Secrets)
 

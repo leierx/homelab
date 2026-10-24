@@ -4,6 +4,7 @@ metadata:
   name: immich-db
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   instances: 1
   # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
@@ -34,6 +35,7 @@ metadata:
   name: immich
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   cluster:
     name: immich-db

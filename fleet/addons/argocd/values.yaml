@@ -67,8 +67,6 @@ extraObjects:
     metadata:
       name: default
       namespace: argocd
-      annotations:
-        argocd.argoproj.io/sync-wave: "-1"
     spec:
       sourceRepos: ["*"]
       destinations:

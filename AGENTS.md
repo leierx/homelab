@@ -11,12 +11,12 @@ Instructions for coding agents working in this repository.
   `flake.nix` (e.g. `packages/capi-argo-bridge/`).
 - `nixos/` — Declarative NixOS configuration for `loft01` (disko, k3s,
   sops-nix, WireGuard).
-- `docs/README.md` — Operational runbook for `loft01` (bootstrap, teardown,
-  OpenBao secrets, SSO, break-glass).
+- `docs/README.md` — Operational runbook for `loft01` (OpenBao secrets, SSO,
+  break-glass).
 
-`loft01` is production: it holds real data (Immich photo library, Grafana
-metrics, OpenBao secrets). Do not tear down, wipe, or re-bootstrap it, and
-delete nothing stateful without explicit instruction to do so.
+`loft01` is production: its data (Immich photo library, Grafana metrics,
+OpenBao secrets) has no backup. Do not tear it down, and delete nothing stateful
+without explicit instruction.
 
 ## How `/fleet` Works
 

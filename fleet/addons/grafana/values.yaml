@@ -1,4 +1,3 @@
-fullnameOverride: grafana
 testFramework: {enabled: false}
 admin: {existingSecret: grafana}
 envValueFrom:
@@ -26,7 +25,6 @@ persistence:
 initChownData: {enabled: false}
 securityContext:
   fsGroupChangePolicy: OnRootMismatch
-  seccompProfile: {type: RuntimeDefault}
 resources: {requests: {cpu: 50m, memory: 256Mi}, limits: {memory: 1Gi}}
 downloadDashboards:
   resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {memory: 64Mi}}

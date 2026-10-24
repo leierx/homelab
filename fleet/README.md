@@ -65,9 +65,8 @@ fleet/
 
 ## 3-Step Bootstrap
 
-Run from the repository root against a fresh cluster (example: `loft01`). These
-steps are one-shot — `loft01` is already running in prod, so do not re-apply or
-re-bootstrap against it.
+Run from the repository root on a fresh cluster (example: `loft01`). These steps
+are one-shot: `loft01` is already bootstrapped, so don't re-apply them.
 
 ### 1. Apply Cilium
 
