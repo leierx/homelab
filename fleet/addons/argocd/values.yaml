@@ -17,7 +17,7 @@ configs:
       end
       return hs
 
-    resource.customizations.health.v1_PersistentVolumeClaim: |
+    resource.customizations.health.PersistentVolumeClaim: |
       hs = {}
       if obj.status ~= nil and obj.status.phase ~= nil then
         if obj.status.phase == "Pending" then
