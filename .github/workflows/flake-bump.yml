@@ -63,7 +63,8 @@ jobs:
           if [ -z "$changes" ]; then changes='- `flake.lock`: see the diff'; fi
 
           git checkout -b "$branch"
-          git -c user.name=github-actions -c user.email=github-actions@noreply.github.com \
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -m "chore: bump flake.lock" -- flake.lock
           git push origin "$branch"
 
