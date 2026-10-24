@@ -46,6 +46,8 @@ spec:
     - toEntities: [kube-apiserver]
 ---
 # Default-deny for the whole namespace; smartctl-exporter needs no egress at all.
+# The lists stay empty on purpose: a rule ("- {}") would allow everything, an
+# empty list allows nothing and the CRD requires at least one of the two.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
@@ -55,7 +57,5 @@ spec:
   enableDefaultDeny:
     ingress: true
     egress: true
-  ingress:
-    - {}
-  egress:
-    - {}
+  ingress: []
+  egress: []
