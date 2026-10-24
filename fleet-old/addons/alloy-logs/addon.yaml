@@ -1,0 +1,3 @@
+# Alloy as a DaemonSet: pod logs and the API server audit log to Loki.
+namespace: telemetry
+podSecurity: privileged

@@ -1,6 +1,6 @@
 // Renovate configuration for this repository (Renovate reads it only from the repo root).
 // Version sources Renovate understands:
-//   fleet/addons/<name>/Chart.yaml                upstream charts, as Helm dependencies (helmv3)
+//   fleet/**/addon.yaml                           upstream charts (`# renovate:` above targetRevision)
 //   fleet/**/values.yaml                          image.repository / image.tag style Helm values
 //   fleet/addons/**, fleet/clusters/**            kustomization `images:` and plain `image:` fields,
 //                                                 remote bases (?ref=, GitHub release download URLs),
@@ -19,7 +19,7 @@
       description: 'Values annotated with a `# renovate:` comment on the line above',
       managerFilePatterns: ['/^fleet/.+\\.ya?ml$/'],
       matchStrings: [
-        '#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+versioning=(?<versioning>\\S+))?(\\s+extractVersion=(?<extractVersion>\\S+))?\\s*\\n[^\\n]*[:=]\\s*"?(?<currentValue>[^\\s":]+)"?\\s*(\\n|$)',
+        '#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+registryUrl=(?<registryUrl>\\S+))?(\\s+versioning=(?<versioning>\\S+))?(\\s+extractVersion=(?<extractVersion>\\S+))?\\s*\\n[^\\n]*[:=]\\s*"?(?<currentValue>[^\\s":]+)"?\\s*(\\n|$)',
       ],
     },
     {

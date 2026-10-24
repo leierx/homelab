@@ -1,3 +1,11 @@
-# Argo Workflows, one instance for the fleet; runs the platform's CronWorkflows (e.g. the Keycloak realm).
 namespace: argo
 podSecurity: restricted
+dependencies:
+  - cilium
+  - external-secrets
+  - prometheus-operator-crds
+helm:
+  repoURL: https://argoproj.github.io/argo-helm
+  chart: argo-workflows
+  # renovate: datasource=helm depName=argo-workflows registryUrl=https://argoproj.github.io/argo-helm
+  targetRevision: 2.0.14

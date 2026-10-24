@@ -1,3 +1,9 @@
-# OpenEBS ZFS LocalPV CSI driver. StorageClasses name a host's pool, so they are per cluster.
 namespace: openebs
 podSecurity: privileged
+dependencies:
+  - cilium
+helm:
+  repoURL: https://openebs.github.io/zfs-localpv
+  chart: zfs-localpv
+  # renovate: datasource=helm depName=zfs-localpv registryUrl=https://openebs.github.io/zfs-localpv
+  targetRevision: 2.11.2

@@ -1,57 +1,139 @@
-# Argo CD defaults for every management cluster.
-# Chart: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
-argo-cd:
-  configs:
-    cm:
-      # SSO only (oidc.config per cluster); break-glass is `argocd --core` with a kubeconfig
-      admin.enabled: 'false'
+configs:
+  cm:
+    admin.enabled: 'false'
 
-      # Fleet-wide ignoreDifferences for fields that controllers rewrite at runtime.
-      # Per-addon rules go in its addon.yaml `ignoreDifferences` instead.
-      resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
-        jqPathExpressions:
-          - '.webhooks[]?.clientConfig.caBundle'
-      resource.customizations.ignoreDifferences.admissionregistration.k8s.io_ValidatingWebhookConfiguration: |
-        jqPathExpressions:
-          - '.webhooks[]?.clientConfig.caBundle'
-      resource.customizations.ignoreDifferences.apiextensions.k8s.io_CustomResourceDefinition: |
-        jqPathExpressions:
-          - '.spec.conversion.webhook.clientConfig.caBundle'
-      resource.customizations.ignoreDifferences.apiregistration.k8s.io_APIService: |
-        jqPathExpressions:
-          - '.spec.caBundle'
-    params:
-      # TLS ends at the Envoy Gateways
-      server.insecure: true
-      # pairs with the ServerSideApply sync option used fleet-wide
-      controller.diff.server.side: true
-      controller.sync.timeout.seconds: '4800'
-    rbac:
-      policy.csv: |
-        g, homelab-admins, role:admin
-        g, homelab-operators, role:admin
-        g, homelab-viewers, role:readonly
+    resource.customizations.health.argoproj.io_Application: |
+      hs = {}
+      hs.status = "Progressing"
+      hs.message = ""
+      if obj.status ~= nil then
+        if obj.status.health ~= nil then
+          hs.status = obj.status.health.status
+          if obj.status.health.message ~= nil then
+            hs.message = obj.status.health.message
+          end
+        end
+        if obj.status.sync ~= nil and obj.status.sync.status == "OutOfSync" and hs.status == "Healthy" then
+          hs.status = "Progressing"
+          hs.message = "Application is OutOfSync"
+        end
+      end
+      return hs
 
-  dex: {enabled: false}
-  notifications: {enabled: false}
+    resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
+      jqPathExpressions:
+        - '.webhooks[]?.clientConfig.caBundle'
+    resource.customizations.ignoreDifferences.admissionregistration.k8s.io_ValidatingWebhookConfiguration: |
+      jqPathExpressions:
+        - '.webhooks[]?.clientConfig.caBundle'
+    resource.customizations.ignoreDifferences.apiextensions.k8s.io_CustomResourceDefinition: |
+      jqPathExpressions:
+        - '.spec.conversion.webhook.clientConfig.caBundle'
+    resource.customizations.ignoreDifferences.apiregistration.k8s.io_APIService: |
+      jqPathExpressions:
+        - '.spec.caBundle'
+  params:
+    server.insecure: true
+    controller.diff.server.side: true
+    controller.sync.timeout.seconds: '4800'
+  rbac:
+    policy.csv: |
+      g, homelab-admins, role:admin
+      g, homelab-operators, role:admin
+      g, homelab-viewers, role:readonly
 
-  controller:
-    metrics: {enabled: true, serviceMonitor: {enabled: true}}
-    resources: {requests: {cpu: 250m, memory: 1Gi}, limits: {memory: 4Gi}}
-  repoServer:
-    metrics: {enabled: true, serviceMonitor: {enabled: true}}
-    resources: {requests: {cpu: 50m, memory: 128Mi}, limits: {memory: 1Gi}}
-    copyutil:
-      resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {memory: 64Mi}}
-  server:
-    metrics: {enabled: true, serviceMonitor: {enabled: true}}
-    resources: {requests: {cpu: 20m, memory: 64Mi}, limits: {memory: 256Mi}}
-  # the fleet's clusters are an ApplicationSet
-  applicationSet:
-    metrics: {enabled: true, serviceMonitor: {enabled: true}}
-    resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}
-  redis:
-    automountServiceAccountToken: false
-    resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 256Mi}}
-  redisSecretInit:
+dex: {enabled: false}
+notifications: {enabled: false}
+
+controller:
+  metrics: {enabled: true, serviceMonitor: {enabled: true}}
+  resources: {requests: {cpu: 250m, memory: 1Gi}, limits: {memory: 4Gi}}
+repoServer:
+  metrics: {enabled: true, serviceMonitor: {enabled: true}}
+  resources: {requests: {cpu: 50m, memory: 128Mi}, limits: {memory: 1Gi}}
+  copyutil:
     resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {memory: 64Mi}}
+server:
+  metrics: {enabled: true, serviceMonitor: {enabled: true}}
+  resources: {requests: {cpu: 20m, memory: 64Mi}, limits: {memory: 256Mi}}
+applicationSet:
+  metrics: {enabled: true, serviceMonitor: {enabled: true}}
+  resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}
+redis:
+  automountServiceAccountToken: false
+  resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 256Mi}}
+redisSecretInit:
+  resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {memory: 64Mi}}
+
+extraObjects:
+  - apiVersion: argoproj.io/v1alpha1
+    kind: AppProject
+    metadata:
+      name: default
+      namespace: argocd
+      annotations:
+        argocd.argoproj.io/sync-wave: "-1"
+    spec:
+      sourceRepos: ["*"]
+      destinations:
+        - server: "*"
+          namespace: "*"
+      clusterResourceWhitelist:
+        - group: "*"
+          kind: "*"
+  - apiVersion: argoproj.io/v1alpha1
+    kind: ApplicationSet
+    metadata:
+      name: fleet-root
+      namespace: argocd
+    spec:
+      goTemplate: true
+      goTemplateOptions: ["missingkey=error"]
+      ignoreApplicationDifferences:
+        - jsonPointers:
+            - /spec/syncPolicy
+      generators:
+        - clusters:
+            selector:
+              matchLabels:
+                fleet.io/enabled: "true"
+      template:
+        metadata:
+          name: "fleet-{{ .name }}"
+          namespace: argocd
+          labels:
+            fleet.io/cluster: "{{ .name }}"
+        spec:
+          project: default
+          destination:
+            server: "{{ .server }}"
+            namespace: argocd
+          source:
+            repoURL: '{{ index .metadata.annotations "fleet.io/repo-url" }}'
+            targetRevision: '{{ index .metadata.annotations "fleet.io/target-revision" }}'
+            path: fleet
+            helm:
+              valueFiles:
+                - "clusters/{{ .name }}/cluster.yaml"
+              valuesObject:
+                cluster:
+                  name: "{{ .name }}"
+                  server: "{{ .server }}"
+          ignoreDifferences:
+            - group: argoproj.io
+              kind: Application
+              jsonPointers:
+                - /spec/syncPolicy
+          syncPolicy:
+            automated:
+              prune: true
+              selfHeal: true
+            syncOptions:
+              - ServerSideApply=true
+              - RespectIgnoreDifferences=true
+            retry:
+              limit: 10
+              backoff:
+                duration: 10s
+                factor: 2
+                maxDuration: 5m

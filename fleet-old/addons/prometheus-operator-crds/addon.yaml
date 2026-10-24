@@ -1,0 +1,3 @@
+# ServiceMonitor/PodMonitor/... CRDs for everything that ships them; no operator (Alloy scrapes).
+namespace: monitoring
+podSecurity: restricted

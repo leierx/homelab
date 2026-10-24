@@ -1,2 +1,12 @@
-# Immich photo library.
+namespace: immich
 podSecurity: restricted
+dependencies:
+  - cilium
+  - cloudnative-pg
+  - external-secrets
+  - prometheus-operator-crds
+helm:
+  repoURL: oci://ghcr.io/immich-app/immich-charts
+  chart: immich
+  # renovate: datasource=docker depName=ghcr.io/immich-app/immich-charts/immich
+  targetRevision: 0.13.4

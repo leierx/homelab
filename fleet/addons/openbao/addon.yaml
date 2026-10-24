@@ -1,2 +1,12 @@
-# OpenBao: the secret backend behind the fleet-secrets stores (addon external-secrets).
+namespace: openbao
 podSecurity: restricted
+dependencies:
+  - cilium
+  - cert-manager
+  - zfs-localpv
+  - prometheus-operator-crds
+helm:
+  repoURL: https://openbao.github.io/openbao-helm
+  chart: openbao
+  # renovate: datasource=helm depName=openbao registryUrl=https://openbao.github.io/openbao-helm
+  targetRevision: 0.30.4

@@ -1,0 +1,652 @@
+# Chart: https://github.com/grafana-community/helm-charts/tree/main/charts/grafana
+grafana:
+  fullnameOverride: grafana
+  testFramework: {enabled: false}
+  admin: {existingSecret: grafana}
+  envValueFrom:
+    GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: {secretKeyRef: {name: grafana, key: oidc-client-secret}}
+  grafana.ini:
+    server:
+      root_url: https://%(domain)s/
+    auth: {disable_login_form: true}
+    auth.basic: {enabled: false}
+    auth.generic_oauth:
+      enabled: true
+      name: Keycloak
+      client_id: grafana
+      scopes: openid email profile
+      use_pkce: true
+      allow_sign_up: true
+      allow_assign_grafana_admin: true
+      login_attribute_path: preferred_username
+      role_attribute_path: contains(groups, 'homelab-admins') && 'GrafanaAdmin' || contains(groups, 'homelab-operators') && 'Editor' || contains(groups, 'homelab-viewers') && 'Viewer' || ''
+      role_attribute_strict: true
+  deploymentStrategy: {type: Recreate}
+  persistence:
+    enabled: true
+    annotations: {argocd.argoproj.io/sync-options: 'Delete=false,Prune=false'}
+  initChownData: {enabled: false}
+  securityContext:
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile: {type: RuntimeDefault}
+  resources: {requests: {cpu: 50m, memory: 256Mi}, limits: {memory: 1Gi}}
+  downloadDashboards:
+    resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {memory: 64Mi}}
+  serviceMonitor: {enabled: true}
+  sidecar:
+    resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}
+    dashboards:
+      enabled: true
+      searchNamespace: ALL
+      folderAnnotation: grafana_folder
+      skipReload: true
+      provider: {foldersFromFilesStructure: true}
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Mimir
+          uid: mimir
+          type: prometheus
+          url: http://mimir:8080/prometheus
+          isDefault: true
+          jsonData: {prometheusType: Mimir, httpMethod: POST, timeInterval: 60s}
+        - {name: Loki, uid: loki, type: loki, url: 'http://loki:3100'}
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - {name: kubernetes, folder: Kubernetes, type: file, options: {path: /var/lib/grafana/dashboards/kubernetes}}
+        - {name: platform, folder: Platform, type: file, options: {path: /var/lib/grafana/dashboards/platform}}
+  # grafana.com dashboards, downloaded at startup
+  dashboards:
+    kubernetes:
+      k8s-views-global: {gnetId: 15757, revision: 43}
+      k8s-views-namespaces: {gnetId: 15758, revision: 46}
+      k8s-views-nodes: {gnetId: 15759, revision: 40}
+      k8s-views-pods: {gnetId: 15760, revision: 41}
+      k8s-system-api-server: {gnetId: 15761, revision: 21}
+      node-exporter-full: {gnetId: 1860, revision: 45}
+    platform:
+      argocd-operational: {gnetId: 19993, revision: 9}
+      argocd-application: {gnetId: 19974, revision: 8}
+      cert-manager: {gnetId: 20842, revision: 3}
+      envoy-gateway: {gnetId: 24460}
+  # Alert rules as provisioning files; the chart puts them in its ConfigMap, so a change rolls Grafana.
+  alerting:
+    security.yaml:
+      apiVersion: 1
+      groups:
+      - orgId: 1
+        name: security
+        folder: homelab
+        interval: 1m
+        rules:
+          - uid: admin-kubeconfig-used
+            title: Admin kubeconfig used
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: 'The host''s system:masters certificate was used: break-glass, or someone who shouldn''t have it.'
+            data:
+              - refId: A
+                datasourceUid: loki
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                model:
+                  refId: A
+                  queryType: instant
+                  expr: sum(count_over_time({job="kube-audit"} | json | user_username="system:admin" [5m]))
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          - uid: rbac-changed-by-person
+            title: RBAC changed outside Argo CD
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: A role or binding was created, changed or deleted by something other than a ServiceAccount.
+            data:
+              - refId: A
+                datasourceUid: loki
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                model:
+                  refId: A
+                  queryType: instant
+                  expr: sum by (user_username, objectRef_resource, objectRef_name) (count_over_time({job="kube-audit"} | json | objectRef_apiGroup="rbac.authorization.k8s.io" | verb=~"create|update|patch|delete" | user_username!~"system:serviceaccount:.*" | requestURI!~".*dryRun=All.*" [5m]))
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          - uid: secrets-or-exec-by-person
+            title: Secrets read or pods entered by a person
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: info
+            annotations:
+              summary: Someone logged in through Keycloak read a Secret or used exec, attach or port-forward.
+            data:
+              - refId: A
+                datasourceUid: loki
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                model:
+                  refId: A
+                  queryType: instant
+                  expr: sum by (user_username, objectRef_namespace, objectRef_resource, objectRef_subresource) (count_over_time({job="kube-audit"} | json | user_username=~"oidc:.*" | objectRef_resource="secrets" or objectRef_subresource=~"exec|attach|portforward" [5m]))
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          - uid: openbao-admin-login
+            title: OpenBao admin login
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: info
+            annotations:
+              summary: Something logged in to OpenBao with the admin role (the bao CLI through kubectl exec, or a minted openbao-admin token).
+            data:
+              - refId: A
+                datasourceUid: loki
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                model:
+                  refId: A
+                  queryType: instant
+                  expr: sum(count_over_time({namespace="openbao", container="openbao"} |= "\"type\":\"response\"" | json | auth_metadata_role="admin" [5m]))
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          # The counters below start existing at their first increment, which increase() can't see;
+          # the `unless … offset` half catches a series that has just appeared.
+          - uid: grafana-local-login
+            title: Grafana break-glass login
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: Someone logged in to Grafana with a password instead of Keycloak; the only password account is the break-glass admin.
+            data:
+              - refId: A
+                datasourceUid: mimir
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                model:
+                  refId: A
+                  instant: true
+                  expr: sum(increase(grafana_authn_authn_successful_login_total{client="auth.client.form"}[10m])) > 0 or sum(grafana_authn_authn_successful_login_total{client="auth.client.form"} unless grafana_authn_authn_successful_login_total{client="auth.client.form"} offset 10m)
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          - uid: argocd-local-login
+            title: Argo CD break-glass login
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: Someone logged in to Argo CD with a local account's password (the break-glass admin); SSO logins don't go through SessionService.Create.
+            data:
+              - refId: A
+                datasourceUid: loki
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                model:
+                  refId: A
+                  queryType: instant
+                  expr: sum(count_over_time({namespace="argocd", container="server"} |= "session.SessionService" | logfmt | msg="finished call" | grpc_service="session.SessionService" | grpc_method="Create" | grpc_code="OK" [5m]))
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          - uid: keycloak-master-login
+            title: Keycloak master realm login
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: 'Break-glass in Keycloak: a user logged in to the master realm (it has none), or a master client other than bootstrap-admin, which the realm reconcile uses, got a token.'
+            data:
+              - refId: A
+                datasourceUid: mimir
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                model:
+                  refId: A
+                  instant: true
+                  expr: sum by (event, client_id) (increase(keycloak_user_events_total{realm="master", event=~"login|client_login", error="", client_id!="bootstrap-admin"}[10m])) > 0 or sum by (event, client_id) (keycloak_user_events_total{realm="master", event=~"login|client_login", error="", client_id!="bootstrap-admin"} unless keycloak_user_events_total{realm="master", event=~"login|client_login", error="", client_id!="bootstrap-admin"} offset 10m)
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          - uid: admission-policy-warning
+            title: Pod breaks an admission policy
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: info
+            annotations:
+              summary: A pod was admitted despite a Warn/Audit policy (addon admission), e.g. a CPU limit or a missing memory limit.
+            data:
+              - refId: A
+                datasourceUid: loki
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                model:
+                  refId: A
+                  queryType: instant
+                  expr: sum by (objectRef_namespace) (count_over_time({job="kube-audit"} |= "validation.policy.admission.k8s.io/validation_failure" | json [5m]))
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          - uid: network-policy-drops
+            title: Traffic dropped by network policy
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: 'Cilium denied traffic: a missing allow rule, or something probing where it shouldn''t.'
+            data:
+              - refId: A
+                datasourceUid: mimir
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                model:
+                  refId: A
+                  instant: true
+                  expr: sum by (source, destination) (increase(hubble_drop_total{reason="POLICY_DENIED"}[5m])) > 0
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+    health.yaml:
+      apiVersion: 1
+      groups:
+      - orgId: 1
+        name: health
+        folder: homelab
+        interval: 1m
+        rules:
+          - uid: volume-filling-up
+            title: Volume over 85% full
+            condition: C
+            for: 15m
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: A PVC is over 85% full.
+            data:
+              - refId: A
+                datasourceUid: mimir
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                model:
+                  refId: A
+                  instant: true
+                  expr: max by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes) > 0.85
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          - uid: pod-restarting
+            title: Pod restarting
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: A container restarted more than three times in 15 minutes.
+            data:
+              - refId: A
+                datasourceUid: mimir
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                model:
+                  refId: A
+                  instant: true
+                  expr: sum by (namespace, pod) (increase(kube_pod_container_status_restarts_total[15m])) > 3
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          - uid: node-not-ready
+            title: Node not ready
+            condition: C
+            for: 5m
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: critical
+            annotations:
+              summary: A node has been NotReady for 5 minutes.
+            data:
+              - refId: A
+                datasourceUid: mimir
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                model:
+                  refId: A
+                  instant: true
+                  expr: max by (node) (kube_node_status_condition{condition="Ready", status="true"} == 0) + 1
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          - uid: workflow-failed
+            title: Workflow started by a CronWorkflow failed
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: A workflow entered the Failed phase in the last 15 minutes. Every standing workflow here is started by a CronWorkflow (the controller's counter has no cron label).
+            data:
+              - refId: A
+                datasourceUid: mimir
+                relativeTimeRange:
+                  from: 900
+                  to: 0
+                model:
+                  refId: A
+                  instant: true
+                  expr: sum by (namespace) (increase(argo_workflows_total_count{phase="Failed"}[15m])) > 0
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          - uid: argocd-app-unhealthy
+            title: Argo CD application unhealthy
+            condition: C
+            for: 15m
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: An Argo CD application has been Degraded, Missing or Unknown for 15 minutes. A paused application (no auto-sync) that was never synced is Missing by design and doesn't count.
+            data:
+              - refId: A
+                datasourceUid: mimir
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                model:
+                  refId: A
+                  instant: true
+                  expr: max by (name, health_status) (argocd_app_info{health_status!~"Healthy|Progressing|Suspended"} unless argocd_app_info{health_status="Missing", autosync_enabled="false"})
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          - uid: argocd-app-paused
+            title: Argo CD application paused for a week
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: An Argo CD application has had auto-sync off for 7 days, so git changes don't reach it. Resume it, or take the addon out of the cluster's values.yaml.
+            data:
+              - refId: A
+                datasourceUid: mimir
+                relativeTimeRange:
+                  from: 604800
+                  to: 0
+                model:
+                  refId: A
+                  instant: true
+                  expr: count_over_time((max by (name) (argocd_app_info{autosync_enabled="false"}))[7d:1h]) >= 168
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          - uid: secret-sync-failing
+            title: Secret sync failing
+            condition: C
+            for: 15m
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: An ExternalSecret or PushSecret has not been Ready for 15 minutes.
+            data:
+              - refId: A
+                datasourceUid: mimir
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                model:
+                  refId: A
+                  instant: true
+                  expr: max by (exported_namespace, name) ({__name__=~"externalsecret_status_condition|pushsecret_status_condition", condition="Ready", status="False"}) > 0
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0
+          - uid: openbao-sealed
+            title: OpenBao sealed
+            condition: C
+            for: 5m
+            noDataState: Alerting
+            execErrState: Error
+            labels:
+              severity: critical
+            annotations:
+              summary: 'OpenBao is sealed or not reporting: no secret can be read or generated.'
+            data:
+              - refId: A
+                datasourceUid: mimir
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                model:
+                  refId: A
+                  instant: true
+                  expr: max(vault_core_unsealed)
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: lt
+                        params:
+                          - 1
+          - uid: certificate-expiring
+            title: Certificate expiring
+            condition: C
+            for: 1h
+            noDataState: OK
+            execErrState: Error
+            labels:
+              severity: warning
+            annotations:
+              summary: A cert-manager certificate expires within 14 days; renewal is failing.
+            data:
+              - refId: A
+                datasourceUid: mimir
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                model:
+                  refId: A
+                  instant: true
+                  expr: min by (namespace, name) (certmanager_certificate_expiration_timestamp_seconds - time()) < 14 * 86400
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+                  conditions:
+                    - evaluator:
+                        type: gt
+                        params:
+                          - 0

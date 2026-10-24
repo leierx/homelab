@@ -1,0 +1,3 @@
+# Alloy as a clustered StatefulSet: metrics to Mimir, cluster events to Loki.
+namespace: telemetry
+podSecurity: privileged

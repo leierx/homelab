@@ -1,0 +1,4 @@
+# The secrets slot. Everything reads secrets through the ClusterSecretStore
+# `fleet-secrets` (and writes generated ones through `fleet-secrets-push`);
+# which backend sits behind them is decided in manifests/ only.
+podSecurity: restricted

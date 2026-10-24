@@ -1,3 +1,12 @@
-# Alloy as a clustered StatefulSet: metrics to Mimir, cluster events to Loki.
 namespace: telemetry
 podSecurity: privileged
+dependencies:
+  - cilium
+  - loki
+  - mimir
+  - prometheus-operator-crds
+helm:
+  repoURL: https://grafana.github.io/helm-charts
+  chart: alloy
+  # renovate: datasource=helm depName=alloy registryUrl=https://grafana.github.io/helm-charts
+  targetRevision: 1.14.2

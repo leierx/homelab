@@ -1,3 +1,11 @@
-# Loki, single binary on the filesystem. Grafana's namespace policy covers it.
 namespace: monitoring
 podSecurity: restricted
+dependencies:
+  - cilium
+  - zfs-localpv
+  - prometheus-operator-crds
+helm:
+  repoURL: https://grafana-community.github.io/helm-charts
+  chart: loki
+  # renovate: datasource=helm depName=loki registryUrl=https://grafana-community.github.io/helm-charts
+  targetRevision: 19.0.3

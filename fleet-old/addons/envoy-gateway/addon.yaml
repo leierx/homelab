@@ -1,0 +1,4 @@
+# Gateway API controller and the two Gateways every site attaches to:
+# `edge` (public, via the router's port forward) and `wg` (WireGuard peers only).
+namespace: envoy-gateway-system
+podSecurity: restricted

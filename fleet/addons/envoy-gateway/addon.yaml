@@ -1,4 +1,10 @@
-# Gateway API controller and the two Gateways every site attaches to:
-# `edge` (public, via the router's port forward) and `wg` (WireGuard peers only).
 namespace: envoy-gateway-system
 podSecurity: restricted
+dependencies:
+  - cilium
+  - prometheus-operator-crds
+helm:
+  repoURL: oci://docker.io/envoyproxy
+  chart: gateway-helm
+  # renovate: datasource=docker depName=docker.io/envoyproxy/gateway-helm
+  targetRevision: v1.9.2

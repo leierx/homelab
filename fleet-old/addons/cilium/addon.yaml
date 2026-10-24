@@ -1,0 +1,3 @@
+# The CNI. Everything else depends on it.
+namespace: kube-system
+podSecurity: privileged

@@ -1,0 +1,31 @@
+repoURL: https://github.com/leierx/homelab.git
+targetRevision: HEAD
+
+addons:
+  admission: {}
+  alloy-logs: {}
+  alloy-metrics: {}
+  argocd: {}
+  argo-workflows: {}
+  cdi: {}
+  cert-manager: {}
+  cilium: {}
+  cloudnative-pg: {}
+  cluster-api: {}
+  dodde: {}
+  envoy-gateway: {}
+  external-secrets: {}
+  grafana: {}
+  immich: {}
+  keycloak: {}
+  keycloak-operator: {}
+  kube-state-metrics: {}
+  kubevirt: {}
+  loki: {}
+  mimir: {}
+  node-exporter: {}
+  openbao: {}
+  prometheus-operator-crds: {}
+  rbac: {}
+  renovate: {}
+  zfs-localpv: {}

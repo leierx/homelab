@@ -1,0 +1,3 @@
+# Argo Workflows, one instance for the fleet; runs the platform's CronWorkflows (e.g. the Keycloak realm).
+namespace: argo
+podSecurity: restricted

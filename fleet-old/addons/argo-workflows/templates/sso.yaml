@@ -1,0 +1,57 @@
+# the UI's OIDC client secret: generated once, kept in OpenBao, read by the server
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: argo-workflows-sso
+spec:
+  length: 64
+  symbols: 0
+  allowRepeat: true
+  secretKeys: [oidc_client_secret]
+---
+# SSO RBAC: a user in homelab-admins maps to this ServiceAccount (argo-server-sso.md, "SSO RBAC")
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: homelab-admins
+  annotations:
+    workflows.argoproj.io/rbac-rule: "'homelab-admins' in groups"
+    workflows.argoproj.io/rbac-rule-precedence: "10"
+---
+# the server reads the account's token; Kubernetes no longer creates one for a ServiceAccount
+apiVersion: v1
+kind: Secret
+metadata:
+  name: homelab-admins.service-account-token
+  annotations:
+    kubernetes.io/service-account.name: homelab-admins
+type: kubernetes.io/service-account-token
+---
+# full Argo Workflows admin: the chart's aggregate role has no cluster-scoped
+# resources except ClusterWorkflowTemplates, which the UI lists, so bind it
+# cluster-wide; `view` adds pods/log and the rest the UI reads
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argo-workflows-homelab-admins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argo-workflows-admin
+subjects:
+  - kind: ServiceAccount
+    name: homelab-admins
+    namespace: argo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argo-workflows-homelab-admins-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: homelab-admins
+    namespace: argo

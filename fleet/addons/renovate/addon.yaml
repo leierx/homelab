@@ -1,2 +1,11 @@
-# Self-hosted Renovate (CronJob) for this repository, authenticated as a GitHub App.
+namespace: renovate
 podSecurity: restricted
+dependencies:
+  - cilium
+  - external-secrets
+  - zfs-localpv
+helm:
+  repoURL: https://docs.renovatebot.com/helm-charts
+  chart: renovate
+  # renovate: datasource=helm depName=renovate registryUrl=https://docs.renovatebot.com/helm-charts
+  targetRevision: 46.378.0

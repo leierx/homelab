@@ -1,0 +1,57 @@
+# Argo CD defaults for every management cluster.
+# Chart: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
+argo-cd:
+  configs:
+    cm:
+      # SSO only (oidc.config per cluster); break-glass is `argocd --core` with a kubeconfig
+      admin.enabled: 'false'
+
+      # Fleet-wide ignoreDifferences for fields that controllers rewrite at runtime.
+      # Per-addon rules go in its addon.yaml `ignoreDifferences` instead.
+      resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
+        jqPathExpressions:
+          - '.webhooks[]?.clientConfig.caBundle'
+      resource.customizations.ignoreDifferences.admissionregistration.k8s.io_ValidatingWebhookConfiguration: |
+        jqPathExpressions:
+          - '.webhooks[]?.clientConfig.caBundle'
+      resource.customizations.ignoreDifferences.apiextensions.k8s.io_CustomResourceDefinition: |
+        jqPathExpressions:
+          - '.spec.conversion.webhook.clientConfig.caBundle'
+      resource.customizations.ignoreDifferences.apiregistration.k8s.io_APIService: |
+        jqPathExpressions:
+          - '.spec.caBundle'
+    params:
+      # TLS ends at the Envoy Gateways
+      server.insecure: true
+      # pairs with the ServerSideApply sync option used fleet-wide
+      controller.diff.server.side: true
+      controller.sync.timeout.seconds: '4800'
+    rbac:
+      policy.csv: |
+        g, homelab-admins, role:admin
+        g, homelab-operators, role:admin
+        g, homelab-viewers, role:readonly
+
+  dex: {enabled: false}
+  notifications: {enabled: false}
+
+  controller:
+    metrics: {enabled: true, serviceMonitor: {enabled: true}}
+    resources: {requests: {cpu: 250m, memory: 1Gi}, limits: {memory: 4Gi}}
+  repoServer:
+    metrics: {enabled: true, serviceMonitor: {enabled: true}}
+    resources: {requests: {cpu: 50m, memory: 128Mi}, limits: {memory: 1Gi}}
+    copyutil:
+      resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {memory: 64Mi}}
+  server:
+    metrics: {enabled: true, serviceMonitor: {enabled: true}}
+    resources: {requests: {cpu: 20m, memory: 64Mi}, limits: {memory: 256Mi}}
+  # the fleet's clusters are an ApplicationSet
+  applicationSet:
+    metrics: {enabled: true, serviceMonitor: {enabled: true}}
+    resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}
+  redis:
+    automountServiceAccountToken: false
+    resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 256Mi}}
+  redisSecretInit:
+    resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {memory: 64Mi}}

@@ -1,0 +1,2 @@
+# Self-hosted Renovate (CronJob) for this repository, authenticated as a GitHub App.
+podSecurity: restricted

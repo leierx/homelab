@@ -1,0 +1,3 @@
+storage:
+  className: zfs
+  size: 100Gi

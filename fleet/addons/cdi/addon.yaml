@@ -1,1 +1,3 @@
-# Containerized Data Importer from the upstream release manifests (no official Helm chart).
+namespace: cdi
+dependencies:
+  - cilium

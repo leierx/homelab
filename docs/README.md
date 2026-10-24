@@ -1,184 +1,131 @@
 # Operating the homelab
 
-How to run loft01 and its GitOps setup. The GitOps structure itself (clusters,
-addons, apps, targeting, values layering, pausing, removal, troubleshooting) is
-documented in [fleet/README.md](../fleet/README.md); this guide covers what is
-specific to this homelab.
+Operating guide for `loft01` and its GitOps platform. For the `/fleet` GitOps
+controller design, addon format, dependency waves, and multi-source
+composition, see [fleet/README.md](../fleet/README.md).
 
-## How it works
+## Overview
 
-Everything Argo CD runs comes from `fleet/` on `main`. A push is a deploy.
-Argo polls git every 3 minutes; to skip the wait, refresh an Application:
+`loft01` is a single-node NixOS + k3s cluster running on an HPE ProLiant DL360
+Gen9. Git (`main`) is the single source of truth:
+
+- `nixos/` defines the host OS, disk layout (`disko`), k3s, and host-level
+  secrets (`sops-nix`).
+- `fleet/` is the GitOps fleet controller. Each cluster runs its own standalone
+  Argo CD, bootstrapped in 3 manual steps (`cilium`, `argocd`, and
+  `cluster-secret.yaml`), after which Argo CD deploys and updates all enabled
+  addons in dependency wave order.
+
+To trigger an immediate git refresh without waiting for Argo CD's 3-minute poll:
 
 ```sh
-kubectl -n argocd annotate app fleet-root argocd.argoproj.io/refresh=normal --overwrite   # the ApplicationSet, cluster Secret, default project
-kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal --overwrite
+kubectl -n argocd annotate app fleet-loft01 argocd.argoproj.io/refresh=normal --overwrite
+kubectl -n argocd annotate app <addon> argocd.argoproj.io/refresh=normal --overwrite
 ```
 
-There's no CI. Render before you push (see "Troubleshooting" in
-[fleet/README.md](../fleet/README.md#troubleshooting)). Argo CD renders Helm
-charts with Helm 4; the host's `helm` may be 3.x, and the two differ in places
-(for example how a chart's `key: null` defaults render). When in doubt, repeat
-the render with a Helm 4 binary.
+## Full Teardown and Rebuild (`loft01`)
 
-Workload clusters built with Cluster API (CAPK) register with an
-`ExternalSecret` in `fleet/clusters/` that builds the Argo CD cluster Secret,
-next to the CAPI `Cluster`; both carry `argocd.argoproj.io/sync-options:
-Prune=false`. Their pod and service CIDRs must not overlap loft01's
-`10.42.0.0/16` and `10.43.0.0/16`.
-
-## Bootstrap from scratch
-
-Run this on loft01, where `KUBECONFIG` is the k3s admin kubeconfig. The host
-comes from `nixos/`: `nixos-anywhere` or the offline installer ISO, each with
-the sops age key at `/var/lib/sops-nix/key.txt`. To rebuild only the cluster,
-keeping the host:
+To tear down the running k3s cluster and storage on `loft01` while keeping the
+NixOS host:
 
 ```sh
 sudo systemctl stop k3s
 sudo k3s-killall.sh
-# a VM's block PVC stays attached to a loop device, and its devtmpfs bind mount
-# stays under /var/lib/kubelet; rm -rf through that mount would delete /dev nodes
-sudo losetup -a                         # then: sudo losetup -d /dev/loopN for each tank zvol
-mount | grep -E '/var/lib/(kubelet|rancher|cni)'   # then: sudo umount <path> for each; must print nothing
-# PVC data: park it (sudo zfs create -o mountpoint=none tank/<name>; sudo zfs rename tank/pvc-<id> tank/<name>/<label>)
-# or destroy it (sudo zfs destroy -r tank/pvc-<id>), one dataset at a time
-sudo rm -rf --one-file-system /var/lib/rancher/k3s /var/lib/kubelet /etc/rancher/k3s /var/lib/cni \
-  /etc/cni/net.d/05-cilium.conflist /opt/cni/bin/cilium-cni
+
+# Detach any loop devices and unmount remaining kubelet/CNI mounts
+sudo losetup -a
+mount | grep -E '/var/lib/(kubelet|rancher|cni)'
+
+# Destroy PVC datasets on the ZFS pool if wiping storage clean
+# sudo zfs destroy -r tank/pvc-...
+
+sudo rm -rf --one-file-system \
+  /var/lib/rancher/k3s \
+  /var/lib/kubelet \
+  /etc/rancher/k3s \
+  /var/lib/cni \
+  /etc/cni/net.d/05-cilium.conflist \
+  /opt/cni/bin/cilium-cni
+
 sudo reboot
 ```
 
-The reboot clears Cilium's BPF state and interfaces, and sops-nix puts the
-OpenBao seal-key Secret back in k3s's manifests.
+After rebooting, `sops-nix` automatically places `openbao-seal-key` in k3s's
+manifests directory. Run the 3 bootstrap commands from
+[fleet/README.md](../fleet/README.md#3-step-bootstrap):
 
-Then follow "Bootstrap a new management cluster" in
-[fleet/README.md](../fleet/README.md#bootstrap-a-new-management-cluster): label
-`kube-system`, apply Cilium and Argo CD, apply `fleet/bootstrap/root.yaml`.
-The seal-key Secret its step 4 asks for is already there.
+1. Apply Cilium (`helm template ... | kubectl apply`)
+2. Apply Argo CD (`helm template ... | kubectl apply`)
+3. Apply the cluster Secret (`kubectl apply -f fleet/clusters/loft01/cluster-secret.yaml`)
 
-From an empty cluster, everything is Synced and Healthy in about 20
-minutes. Along the way, expect slow CRD health while KubeVirt's and CDI's
-APIs register, cert-manager restarting until the Gateway API CRDs exist, and
-argo-workflows-server crash-looping until the Keycloak realm exists. Then,
-besides restarting the application controller once (as that guide says):
+Once all waves have synced, restart `argocd-application-controller` once if any
+chart skipped `ServiceMonitor` creation before `prometheus-operator-crds` was
+established:
 
-1. **Enter Renovate's GitHub App** into OpenBao, as in step 8 of the fleet
-   bootstrap. It's the only secret entered by hand, and it lives nowhere else.
+```sh
+kubectl -n argocd rollout restart statefulset/argocd-application-controller
+```
 
-2. **Certificates:** Let's Encrypt allows 5 certificates per identical name
-   set per week. If you rebuild several times a week, save the TLS Secrets
-   and ACME account keys first (sops-encrypted, outside git) and re-seed them
-   only if issuance is refused.
-3. **First login:** see Access, below.
+## Secrets (OpenBao & External Secrets)
 
-## Secrets (OpenBao)
+- **OpenBao** runs in `openbao` on a `zfs` PVC and auto-unseals using the
+  static key in `Secret/openbao-seal-key` (provisioned by `sops-nix` from
+  `nixos/secrets.yaml`).
+- On first startup against empty storage, OpenBao initializes the `kv` v2
+  mount, Kubernetes auth, and the `external-secrets`, `external-secrets-push`,
+  and `admin` roles from `fleet/addons/openbao/values.yaml`.
+- **External Secrets Operator** provides `ClusterSecretStore/fleet-secrets`
+  (read) and `ClusterSecretStore/fleet-secrets-push` (write). Secret paths are
+  `kv/<cluster>/<app>`.
+- Random application secrets (OIDC client secrets, Grafana admin password, initial
+  Keycloak credentials) are generated once via ESO `Password` generators and
+  pushed with `PushSecret` (`updatePolicy: IfNotExists`).
+- **Renovate GitHub App credentials** (`app_id`, `installation_id`,
+  `private_key`) are the only human-supplied secret in OpenBao:
 
-- OpenBao runs in `openbao` as one raft node on a `zfs` PVC. It unseals
-  itself with a static key that sops-nix renders from `openbao/seal_key` in
-  `nixos/secrets.yaml`. **Losing that key and the age key loses every
-  secret.**
-- On first start it initializes itself from the `initialize` blocks in
-  `fleet/addons/openbao/values.yaml`: the `kv` mount, Kubernetes auth, and the
-  `external-secrets`, `external-secrets-push` and `admin` roles. That yields
-  no root token and no recovery keys. Later changes go through `just bao`;
-  mirror them in the `initialize` blocks.
-- `just bao <args>` runs the bao CLI as admin, through a 10-minute token for
-  the `openbao-admin` ServiceAccount, so it needs cluster-admin. For example:
-  `just bao kv get kv/loft01/grafana`.
-- Data lives at `kv/<cluster>/<app>`. Apps read it with an `ExternalSecret`
-  against `ClusterSecretStore/fleet-secrets`. Secrets nobody needs to know are
-  generated: a `Password` generator plus a `PushSecret` with
-  `updatePolicy: IfNotExists` into `ClusterSecretStore/fleet-secrets-push`. The
-  first value sticks and survives anything OpenBao survives. Both stores
-  refuse namespaces missing from their `conditions`
-  (`fleet/addons/external-secrets/templates/cluster-secret-stores.yaml`).
-- To rotate a generated value, overwrite it:
-  `head -c 48 /dev/urandom | base64 | tr -d '+/=\n' | just bao kv patch kv/<c>/<app> <prop>=-`.
-  Then force-sync the ExternalSecret
-  (`kubectl annotate externalsecret <name> force-sync=$(date +%s) --overwrite`)
-  and restart pods that read it from env. A Keycloak client secret also needs
-  its `client_secret_wo_version` bumped in `fleet/addons/keycloak/tofu/clients.tf`.
-- sops holds only host secrets, which must exist before the cluster does:
-  WireGuard keys, the SSH host key and the seal key. Every Kubernetes secret
-  lives only in OpenBao.
+  ```sh
+  printf %s "$APP_ID" | just bao kv put kv/loft01/renovate app_id=-
+  printf %s "$INSTALLATION_ID" | just bao kv patch kv/loft01/renovate installation_id=-
+  just bao kv patch kv/loft01/renovate private_key=- < path/to/private-key.pem
+  ```
 
-## Access
+- Use `just bao <args>` to run the `bao` CLI as admin via a short-lived
+  `openbao-admin` token.
 
-- Keycloak (`https://auth.skinke.net`, realm `homelab`) is the only identity
-  provider. The realm is code: `fleet/addons/keycloak/tofu/` ships as a ConfigMap,
-  and the `keycloak-realm` CronWorkflow applies it every 10 minutes, undoing
-  hand-made changes to anything it manages.
-- Tiers come from the `groups` claim:
-  - `homelab-admins`: admin everywhere.
-  - `homelab-operators`: Argo CD admin, Grafana Editor, kubectl
-    view-and-delete-pods.
-  - `homelab-viewers`: read-only.
+## Access & Identity
 
-  A user in no tier is refused at Keycloak. Every login needs a password plus
-  a passkey or TOTP.
-- Reachability:
-  - Public (the `edge` Gateway, NodePort 30080/30443): Keycloak's login paths
-    for `homelab`, Immich, and Grafana behind a Keycloak gate.
-  - WireGuard only (`wg` Gateway, 10.0.0.1): Argo CD, Argo Workflows,
-    Keycloak's admin console and `master` realm, and Grafana directly.
+- **Keycloak** (`https://auth.skinke.net`, realm `homelab`) is the SSO provider.
+  The `keycloak-realm` CronWorkflow reconciles the realm every 10 minutes from
+  `fleet/addons/keycloak/tofu/`.
+- **Groups:** `homelab-admins`, `homelab-operators`, and `homelab-viewers`.
+  Every login requires WebAuthn/passkey or TOTP.
+- **Gateways:**
+  - `edge` (public via NodePort 30080/30443): Keycloak login endpoints, Immich
+    (`photos.skinke.net`), and Grafana (`metrics.skinke.net`) behind Envoy
+    Gateway's OIDC `SecurityPolicy`.
+  - `wg` (WireGuard `10.0.0.1` only): Argo CD (`argocd.skinke.net`), Argo
+    Workflows (`workflows.skinke.net`), Keycloak admin console, and direct
+    Grafana access.
+- **First login after a fresh cluster build:**
+  1. Fetch `leier`'s initial password:
+     `just bao kv get -field=leier_password kv/loft01/keycloak`
+  2. Sign in at `https://auth.skinke.net/realms/homelab/account/`, register a
+     passkey, and set a permanent password.
+  3. Refresh workstation kubeconfig: `just kubeconfig`.
 
-  On wg0, map the hostnames to 10.0.0.1. From loft01 itself the public names
-  don't answer (the router has no NAT hairpin); test a Gateway with
-  `curl --resolve <host>:443:<gateway IP>` instead.
-- kubectl from a workstation: `just kubeconfig`, `ssh -fN loft01` (forwards
-  6443), then a Keycloak login via `kubectl oidc-login`.
-- **First login after a rebuild:**
-  1. leier has a new temporary password:
-     `just bao kv get -field=leier_password kv/loft01/keycloak`, run on
-     loft01 or with its admin kubeconfig.
-  2. Sign in at `https://auth.skinke.net/realms/homelab/account/`, register
-     a passkey, and set a password.
-  3. Run `git pull && just kubeconfig` on workstations, because the CA is new.
-- **Onboarding:** add a `keycloak_user` and its groups in
-  `fleet/addons/keycloak/tofu/users.tf` and push. Then set a temporary password in
-  the admin console over WireGuard. Emails must be unique, because Grafana
-  needs that.
+## Break-Glass
 
-## Break-glass
-
-Start with `ssh loft01`: it uses an SSH key over WireGuard, not SSO, and
-`kubectl` there is admin. `just bao` works without any human login.
-
-- **Keycloak is up but logins fail:** use kcadm inside the pod, as the
-  `master` realm's service client:
-
+- **Host & Kubernetes admin:** `ssh loft01` over WireGuard; `/etc/rancher/k3s/k3s.yaml`
+  has `system:masters` access.
+- **Argo CD CLI without SSO:**
+  ```sh
+  kubectl config set-context --current --namespace=argocd
+  argocd login --core
+  ```
+- **Keycloak admin CLI (`kcadm.sh`):**
   ```sh
   kubectl -n keycloak exec -it keycloak-0 -- bash
   kcadm() { /opt/keycloak/bin/kcadm.sh "$@" --config /tmp/kcadm.config; }
   kcadm config credentials --server http://localhost:8080 --realm master \
     --client "$KC_BOOTSTRAP_ADMIN_CLIENT_ID" --secret "$KC_BOOTSTRAP_ADMIN_CLIENT_SECRET"
   ```
-
-  From there:
-  - lost second factor: `kcadm delete users/<id>/credentials/<cred> -r homelab`;
-  - brute-force lockout: `kcadm delete attack-detection/brute-force/users/<id> -r homelab`;
-  - forgotten password: `kcadm set-password -r homelab --username <u> --new-password <random> --temporary`.
-- **The service client itself is gone:** in the pod, set
-  `KC_HTTP_MANAGEMENT_PORT=9001 KC_CACHE=local` and run
-  `kc.sh bootstrap-admin service --client-id recovery --client-secret:env RECOVERY_SECRET --no-prompt`.
-  Repair `bootstrap-admin`, then delete `recovery`.
-- **A realm run died holding the state lock:** take the Lease
-  `lock-tfstate-default-keycloak`'s `holderIdentity`, then run
-  `tofu force-unlock <id>` in a reconcile pod.
-- **Local admins are off by design.** Argo CD: set
-  `configs.cm.admin.enabled: "true"` in
-  `fleet/clusters/loft01/argocd/values.yaml` (under `argo-cd:`), push, and read
-  `argocd-initial-admin-secret` (or skip the UI: `argocd login --core`).
-  Grafana: set `grafana.ini.auth.disable_login_form: false` in
-  `fleet/clusters/loft01/grafana/values.yaml` (under `grafana:`); the password is
-  `kv/loft01/grafana` `admin_password`. Immich: set `passwordLogin.enabled`
-  in `fleet/clusters/loft01/immich/config.yaml`, restart
-  `deploy/immich-server`, and run `immich-admin reset-admin-password`. Revert
-  each when you're done. A local login to Grafana or Argo CD, any login to
-  Keycloak's `master` realm other than `bootstrap-admin`, and OpenBao's admin
-  role each alert (Grafana, folder `homelab`, group `security`). Immich has no
-  login signal; the kube-audit alerts catch the `kubectl exec` it needs.
-- **Keycloak's database is lost:** an empty realm comes back on the next
-  realm run, but users start from their first password and second factor
-  again. A realm that still exists after its OpenTofu state Secret was lost
-  needs `tofu import`.

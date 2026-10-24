@@ -1,3 +1,9 @@
-# Argo CD manages itself. Installed once by hand with these exact chart
-# coordinates and values (see fleet/README.md, "Bootstrap"), then adopted here.
+namespace: argocd
 podSecurity: restricted
+dependencies:
+  - cilium
+helm:
+  repoURL: https://argoproj.github.io/argo-helm
+  chart: argo-cd
+  # renovate: datasource=helm depName=argo-cd registryUrl=https://argoproj.github.io/argo-helm
+  targetRevision: 10.10.5

@@ -1,3 +1,7 @@
-# The CNI. Everything else depends on it.
 namespace: kube-system
 podSecurity: privileged
+helm:
+  repoURL: https://helm.cilium.io
+  chart: cilium
+  # renovate: datasource=helm depName=cilium registryUrl=https://helm.cilium.io
+  targetRevision: 1.20.3

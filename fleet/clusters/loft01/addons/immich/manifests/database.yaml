@@ -1,0 +1,62 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: immich-db
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+spec:
+  instances: 1
+  # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.6-standard-trixie
+  postgresql:
+    shared_preload_libraries: [vchord]
+    extensions:
+      - name: vchord
+        image:
+          # renovate: datasource=docker depName=ghcr.io/tensorchord/vchord-scratch
+          reference: ghcr.io/tensorchord/vchord-scratch:pg18-v1.1.1
+        dynamic_library_path: [/usr/lib/postgresql/18/lib]
+        extension_control_path: [/usr/share/postgresql/18]
+  bootstrap:
+    initdb:
+      database: immich
+      owner: immich
+  storage:
+    storageClass: zfs
+    size: 20Gi
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits: { memory: 2Gi }
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: immich
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+spec:
+  cluster:
+    name: immich-db
+  name: immich
+  owner: immich
+  extensions:
+    - name: vector
+    - name: vchord
+      # renovate: datasource=docker depName=ghcr.io/tensorchord/vchord-scratch extractVersion=^pg18-v(?<version>\d+\.\d+\.\d+)$
+      version: "1.1.1"
+    - name: cube
+    - name: earthdistance
+    - name: pg_trgm
+    - name: unaccent
+    - name: uuid-ossp
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: immich-db
+spec:
+  selector:
+    matchLabels:
+      cnpg.io/cluster: immich-db
+  podMetricsEndpoints:
+    - port: metrics

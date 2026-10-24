@@ -1,0 +1,2 @@
+namespace: telemetry
+podSecurity: privileged

@@ -1,0 +1,15 @@
+# Chart: https://github.com/grafana/alloy/tree/main/operations/helm/charts/alloy
+alloy:
+  alloy:
+    configMap: {create: false, name: alloy-logs}
+    mounts: {varlog: true}
+    envFrom: [{configMapRef: {name: alloy-logs-env}}]
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities: {drop: [ALL]}
+      seccompProfile: {type: RuntimeDefault}
+    resources: {requests: {cpu: 50m, memory: 128Mi}, limits: {memory: 512Mi}}
+  rbac: {create: false}
+  configReloader:
+    resources: {requests: {memory: 16Mi}, limits: {memory: 64Mi}}
+  crds: {create: false}
