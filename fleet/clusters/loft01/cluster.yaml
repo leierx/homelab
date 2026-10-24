@@ -29,5 +29,4 @@ addons:
   rbac: {}
   renovate: {}
   smartctl-exporter: {}
-  zfs-exporter: {}
   zfs-localpv: {}
