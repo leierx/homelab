@@ -81,6 +81,9 @@ spec:
               value: realm,clientId
             - name: KC_CACHE
               value: local
+            # impersonation bypasses passkey/TOTP; keep the feature off
+            - name: KC_FEATURES_DISABLED
+              value: impersonation
           ports:
             - name: http
               containerPort: 8080
