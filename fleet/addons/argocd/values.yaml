@@ -86,8 +86,6 @@ extraObjects:
       ignoreApplicationDifferences:
         - jsonPointers:
             - /spec/syncPolicy
-      syncPolicy:
-        preserveResourcesOnDeletion: true
       generators:
         - clusters:
             selector:

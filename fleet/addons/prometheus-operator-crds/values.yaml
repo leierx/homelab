@@ -1,2 +1,0 @@
-crds:
-  annotations: {argocd.argoproj.io/sync-options: 'Prune=false'}

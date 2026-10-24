@@ -57,8 +57,8 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 ## Access & Identity
 
 - **Keycloak** (`https://auth.skinke.net`, realm `homelab`) is the SSO provider.
-  The `keycloak-realm` CronWorkflow reconciles the realm every 10 minutes from
-  `tofu/keycloak/`.
+  The `keycloak-realm` CronWorkflow reconciles the realm hourly (and on sync)
+  from `tofu/keycloak/`.
 - **Groups:** `homelab-admins`, `homelab-operators`, and `homelab-viewers`.
   Every login requires WebAuthn/passkey or TOTP.
 - **Gateways:**
