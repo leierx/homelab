@@ -2,6 +2,8 @@ apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
   name: wg
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   provider:
     type: Kubernetes
@@ -40,6 +42,8 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
   name: wg
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   controllerName: gateway.envoyproxy.io/gatewayclass-controller
   parametersRef:
@@ -52,6 +56,8 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: wg
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   gatewayClassName: wg
   listeners:
