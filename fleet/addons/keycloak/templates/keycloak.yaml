@@ -1,64 +1,147 @@
-apiVersion: k8s.keycloak.org/v2beta1
-kind: Keycloak
+apiVersion: apps/v1
+kind: StatefulSet
 metadata:
   name: keycloak
   annotations:
     # after its database and secrets are Healthy
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  instances: 1
-  # Keycloak never calls the Kubernetes API (JGroups finds peers through the headless Service's DNS)
-  automountServiceAccountToken: false
-  # the master realm's service client OpenTofu logs in with, created only when the master realm is
-  # first created. No standing admin user: break-glass is `kc.sh bootstrap-admin` in the Keycloak pod
-  bootstrapAdmin:
-    service:
-      secret: keycloak-bootstrap-admin
-  db:
-    vendor: postgres
-    host: keycloak-db-rw
-    database: keycloak
-    usernameSecret: { name: keycloak-db-app, key: username }
-    passwordSecret: { name: keycloak-db-app, key: password }
-  # TLS ends at the Gateways
-  http:
-    httpEnabled: true
-  hostname:
-    hostname: {{ required "hostname is per cluster" .Values.hostname }}
-  proxy:
-    headers: xforwarded
-  ingress:
-    enabled: false
-  # the operator's own policy opens 8080 and 9000 to every pod; templates/network-policy.yaml replaces it
-  networkPolicy:
-    enabled: false
-  additionalOptions:
-    # the Envoy proxies, on the pod network
-    - name: proxy-trusted-addresses
-      value: {{ required "proxyTrustedAddresses is per cluster" .Values.proxyTrustedAddresses }}
-    # the database's max_connections is 60; Keycloak's default pool of 100 never fits
-    - name: db-pool-max-size
-      value: "20"
-    # the operator then creates a ServiceMonitor for the management port's /metrics
-    - name: metrics-enabled
-      value: "true"
-    - name: event-metrics-user-enabled
-      value: "true"
-    # client_id lets the master-realm login alert skip bootstrap-admin, the realm reconcile's client
-    - name: event-metrics-user-tags
-      value: realm,clientId
-  resources:
-    requests: { cpu: 200m, memory: 1Gi }
-    limits: { memory: 2Gi }
-  unsupported:
-    podTemplate:
-      spec:
-        securityContext:
-          runAsNonRoot: true
-          seccompProfile:
-            type: RuntimeDefault
-        containers:
-          - securityContext:
-              allowPrivilegeEscalation: false
-              capabilities:
-                drop: ["ALL"]
+  replicas: 1
+  serviceName: keycloak-service
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: keycloak
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.8.1
+          args:
+            - start
+          env:
+            - name: KC_HOSTNAME
+              value: {{ required "hostname is per cluster" .Values.hostname }}
+            # TLS ends at the Gateways
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_HTTP_PORT
+              value: "8080"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            # the Envoy proxies, on the pod network
+            - name: KC_PROXY_TRUSTED_ADDRESSES
+              value: {{ required "proxyTrustedAddresses is per cluster" .Values.proxyTrustedAddresses }}
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL_HOST
+              value: keycloak-db-rw
+            - name: KC_DB_URL_DATABASE
+              value: keycloak
+            - name: KC_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-db-app
+                  key: username
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-db-app
+                  key: password
+            # the database's max_connections is 60; Keycloak's default pool of 100 never fits
+            - name: KC_DB_POOL_MAX_SIZE
+              value: "20"
+            # the master realm's service client OpenTofu logs in with, created only when the master realm is
+            # first created. No standing admin user: break-glass is `kc.sh bootstrap-admin` in the Keycloak pod
+            - name: KC_BOOTSTRAP_ADMIN_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-bootstrap-admin
+                  key: client-id
+            - name: KC_BOOTSTRAP_ADMIN_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-bootstrap-admin
+                  key: client-secret
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_METRICS_ENABLED
+              value: "true"
+            - name: KC_EVENT_METRICS_USER_ENABLED
+              value: "true"
+            # client_id lets the master-realm login alert skip bootstrap-admin, the realm reconcile's client
+            - name: KC_EVENT_METRICS_USER_TAGS
+              value: realm,clientId
+            - name: KC_CACHE
+              value: local
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: management
+              containerPort: 9000
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /health/started
+              port: 9000
+            periodSeconds: 1
+            failureThreshold: 600
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 9000
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 9000
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 200m, memory: 1Gi }
+            limits: { memory: 2Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-service
+  labels:
+    app.kubernetes.io/name: keycloak
+spec:
+  selector:
+    app.kubernetes.io/name: keycloak
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+    - name: management
+      port: 9000
+      targetPort: management
+      protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: keycloak
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  endpoints:
+    - port: management
+      path: /metrics
+      interval: 30s

@@ -2,7 +2,6 @@ namespace: keycloak
 podSecurity: restricted
 dependencies:
   - cilium
-  - keycloak-operator
   - cloudnative-pg
   - external-secrets
   - argo-workflows

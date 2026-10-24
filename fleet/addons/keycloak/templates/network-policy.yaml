@@ -1,4 +1,4 @@
-# Default-deny for the namespace, then what Keycloak, its operator and Postgres need.
+# Default-deny for the namespace, then what Keycloak and Postgres need.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
@@ -9,7 +9,7 @@ spec:
     ingress: true
     egress: true
   ingress:
-    # the reconcile pod and Keycloak's own traffic: Postgres, JGroups
+    # the reconcile pod and Keycloak's own traffic to Postgres
     - fromEndpoints:
         - {}
     - fromEndpoints:
@@ -29,7 +29,7 @@ spec:
   egress:
     - toEndpoints:
         - {}
-    # the Keycloak operator and the Postgres instance manager
+    # the Postgres instance manager
     - toEntities: [kube-apiserver]
 ---
 # The reconcile pod: Keycloak, DNS, the API server for its state, and the OpenTofu registry.

@@ -19,7 +19,6 @@ addons:
   grafana: {}
   immich: {}
   keycloak: {}
-  keycloak-operator: {}
   kube-state-metrics: {}
   kubevirt: {}
   loki: {}
