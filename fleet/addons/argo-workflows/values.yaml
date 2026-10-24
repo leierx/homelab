@@ -9,7 +9,7 @@ controller:
   workflowDefaults:
     spec:
       ttlStrategy: {secondsAfterCompletion: 259200}
-      podGC: {strategy: OnWorkflowSuccess, deleteDelayDuration: 1h}
+      podGC: {strategy: OnWorkflowSuccess, deleteDelayDuration: 6h}
   metricsConfig: {enabled: true}
   serviceMonitor: {enabled: true}
   resources: {requests: {cpu: 100m, memory: 256Mi}, limits: {memory: 1Gi}}

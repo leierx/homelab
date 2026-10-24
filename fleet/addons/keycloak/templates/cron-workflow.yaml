@@ -62,7 +62,7 @@ spec:
     - "0 * * * *"
   concurrencyPolicy: Forbid
   suspend: false
-  successfulJobsHistoryLimit: 1
+  successfulJobsHistoryLimit: 5
   failedJobsHistoryLimit: 3
   workflowSpec:
 {{ include "keycloak.reconcileWorkflowSpec" . | indent 4 }}
