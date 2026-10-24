@@ -17,6 +17,12 @@ spec:
       containers:
         - name: zfs-exporter
           image: ghcr.io/pdf/zfs_exporter:v2.5.1
+          # the defaults plus refquota, usedbysnapshots, usedbyrefreservation
+          # and compressratio; the ZFS dashboard uses them to show real
+          # snapshot/reservation space and the exporter's compression ratio
+          args:
+            - --properties.dataset-filesystem=available,compressratio,logicalused,quota,refquota,referenced,used,usedbydataset,usedbyrefreservation,usedbysnapshots,written
+            - --properties.dataset-volume=available,compressratio,logicalused,referenced,used,usedbydataset,usedbyrefreservation,usedbysnapshots,volsize,written
           ports:
             - name: metrics
               containerPort: 9134
