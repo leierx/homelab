@@ -19,19 +19,17 @@ fleet/
 ├── templates/
 │   ├── _helpers.tpl                        # Two-layer dependency graph -> sync-wave resolver
 │   └── applications.yaml                   # Emits Multi-Source Argo CD Applications
-├── addons/<addon>/                         # Shared addons (helm, kustomize, manifests)
+├── addons/<addon>/                         # Shared addons (helm, manifests)
 │   ├── addon.yaml                          # Metadata: namespace, dependencies, helm, sources
 │   ├── values.yaml                         # Default Helm values for the addon
-│   ├── manifests/                          # Raw manifests installed with the addon
-│   └── kustomize/                          # Kustomize overlay installed with the addon
+│   └── manifests/                          # Raw YAML or Kustomize directory installed with the addon
 └── clusters/<cluster>/                     # Isolated per-cluster configuration
     ├── cluster-secret.yaml                 # Bootstrap Step 3: Argo CD cluster Secret
     ├── cluster.yaml                        # Enabled addons map + repoURL/targetRevision
     └── addons/<addon>/                     # Cluster addon overrides or cluster-only addons
         ├── addon.yaml                      # Extra cluster-level dependencies or extra sources
         ├── values.yaml                     # Cluster Helm values layered over addons/<addon>/values.yaml
-        ├── manifests/                      # Cluster-specific manifests (PVCs, routes, DBs, secrets)
-        └── kustomize/                      # Cluster-specific Kustomize manifests
+        └── manifests/                      # Cluster-specific manifests (raw YAML or Kustomize)
 ```
 
 ### How it works
@@ -60,10 +58,9 @@ fleet/
      layering `addons/<addon>/values.yaml` and
      `clusters/<cluster>/addons/<addon>/values.yaml` via a `$values` repository
      reference
-   - `addons/<addon>/manifests/` and `addons/<addon>/kustomize/` (if present)
-   - `clusters/<cluster>/addons/<addon>/manifests/` and
-     `clusters/<cluster>/addons/<addon>/kustomize/` (if present)
-   - Any additional `helm`, `kustomize`, or `manifests` entries listed under
+   - `addons/<addon>/manifests/` (raw YAML or `kustomization.yaml`, if present)
+   - `clusters/<cluster>/addons/<addon>/manifests/` (if present)
+   - Any additional `helm` or `path` entries listed under
      `sources: []` in either `addon.yaml`.
 
 ## 3-Step Bootstrap
@@ -122,7 +119,7 @@ enabled addons in dependency wave order:
 - **Wave 1:** `cilium`
 - **Wave 2:** `admission`, `cdi`, `cert-manager`, `cloudnative-pg`, `envoy-gateway`, `keycloak-operator`, `kube-state-metrics`, `kubevirt`, `node-exporter`, `rbac`, `zfs-localpv`
 - **Wave 3:** `cluster-api`, `dodde`, `loki`, `mimir`, `openbao`
-- **Wave 4:** `alloy-logs`, `alloy-metrics`, `external-secrets`
+- **Wave 4:** `alloy-logs`, `alloy-metrics`, `capi-argo-bridge`, `external-secrets`
 - **Wave 5:** `argo-workflows`, `renovate`
 - **Wave 6:** `keycloak`
 - **Wave 7:** `argocd`, `grafana`, `immich`
@@ -144,7 +141,8 @@ helm:
   chart: immich
   targetRevision: 0.13.4
   releaseName: immich      # defaults to the addon name
-sources:                   # optional extra helm/kustomize/manifests sources
+sources:                   # optional extra helm or repo path sources
+  - path: tofu/keycloak
   - helm:
       repoURL: https://example.com/charts
       chart: extra-chart
@@ -160,8 +158,8 @@ When a cluster extends a shared addon in
   with the base addon.
 - `values.yaml` is passed after `fleet/addons/<name>/values.yaml` to the
   primary Helm chart.
-- `manifests/` and `kustomize/` are automatically appended as Application
-  sources and deployed alongside the addon.
+- `manifests/` is automatically appended as an Application source and deployed
+  alongside the addon.
 
 ## Rendering Locally
 

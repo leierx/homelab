@@ -38,6 +38,20 @@
         modules = [ ./nixos/installer.nix ];
       };
 
+      packages.x86_64-linux =
+        let
+          pkgs = nixpkgs.legacyPackages.x86_64-linux;
+          capi-argo-bridge = pkgs.callPackage ./applications/capi-argo-bridge { };
+        in
+        {
+          inherit capi-argo-bridge;
+          capi-argo-bridge-image = capi-argo-bridge.image;
+        };
+
+      checks.x86_64-linux = {
+        inherit (self.packages.x86_64-linux) capi-argo-bridge capi-argo-bridge-image;
+      };
+
       formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-tree;
       formatter.aarch64-darwin = nixpkgs.legacyPackages.aarch64-darwin.nixfmt-tree;
     };

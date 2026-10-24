@@ -7,3 +7,5 @@ dependencies:
   - external-secrets
   - argo-workflows
   - prometheus-operator-crds
+sources:
+  - path: tofu/keycloak

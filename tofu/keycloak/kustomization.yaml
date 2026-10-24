@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  - name: keycloak-realm-tofu
+    files:
+      - .terraform.lock.hcl
+      - clients.tf
+      - flows.tf
+      - groups.tf
+      - providers.tf
+      - realm.tf
+      - users.tf
+      - variables.tf
+      - versions.tf

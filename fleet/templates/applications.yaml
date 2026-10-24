@@ -47,20 +47,14 @@
   {{- $sources = append $sources $helmSource -}}
 {{- end }}
 
-{{/* 2. Base addon manifests/ or kustomize/ (auto-detected if present) */}}
+{{/* 2. Base addon manifests/ (raw YAML or kustomization.yaml, auto-detected if present) */}}
 {{- if $files.Glob (printf "addons/%s/manifests/**" $name) }}
   {{- $sources = append $sources (dict "repoURL" $repoURL "targetRevision" $targetRevision "path" (printf "fleet/addons/%s/manifests" $name)) -}}
 {{- end }}
-{{- if or (ne ($files.Get (printf "addons/%s/kustomize/kustomization.yaml" $name)) "") (ne ($files.Get (printf "addons/%s/kustomize/Kustomization" $name)) "") }}
-  {{- $sources = append $sources (dict "repoURL" $repoURL "targetRevision" $targetRevision "path" (printf "fleet/addons/%s/kustomize" $name)) -}}
-{{- end }}
 
-{{/* 3. Cluster addon manifests/ or kustomize/ (auto-detected if present) */}}
+{{/* 3. Cluster addon manifests/ (raw YAML or kustomization.yaml, auto-detected if present) */}}
 {{- if $files.Glob (printf "clusters/%s/addons/%s/manifests/**" $cluster $name) }}
   {{- $sources = append $sources (dict "repoURL" $repoURL "targetRevision" $targetRevision "path" (printf "fleet/clusters/%s/addons/%s/manifests" $cluster $name)) -}}
-{{- end }}
-{{- if or (ne ($files.Get (printf "clusters/%s/addons/%s/kustomize/kustomization.yaml" $cluster $name)) "") (ne ($files.Get (printf "clusters/%s/addons/%s/kustomize/Kustomization" $cluster $name)) "") }}
-  {{- $sources = append $sources (dict "repoURL" $repoURL "targetRevision" $targetRevision "path" (printf "fleet/clusters/%s/addons/%s/kustomize" $cluster $name)) -}}
 {{- end }}
 
 {{/* 4. Any extra sources (extra Helm charts, CRDs, paths) declared in sources: [] */}}
@@ -79,10 +73,10 @@
     {{- end }}
     {{- $_ := set $extraHelm "helm" $extraHelmSpec -}}
     {{- $sources = append $sources $extraHelm -}}
-  {{- else if $extra.kustomize }}
-    {{- $sources = append $sources (dict "repoURL" (default $repoURL $extra.kustomize.repoURL) "targetRevision" (default $targetRevision $extra.kustomize.targetRevision) "path" $extra.kustomize.path) -}}
   {{- else if $extra.manifests }}
     {{- $sources = append $sources (dict "repoURL" (default $repoURL $extra.manifests.repoURL) "targetRevision" (default $targetRevision $extra.manifests.targetRevision) "path" $extra.manifests.path) -}}
+  {{- else if $extra.path }}
+    {{- $sources = append $sources (dict "repoURL" (default $repoURL $extra.repoURL) "targetRevision" (default $targetRevision $extra.targetRevision) "path" $extra.path) -}}
   {{- end }}
 {{- end }}
 

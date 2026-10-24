@@ -6,6 +6,9 @@ Instructions for coding agents working in this repository.
 
 - `fleet/` — GitOps fleet controller rendered by Argo CD with Helm (no helper
   scripts, no CI). Read `fleet/README.md` before modifying anything in `fleet/`.
+- `tofu/` — OpenTofu roots (e.g. `tofu/keycloak/`).
+- `applications/` — First-party controllers/apps built with Nix and exposed via
+  `flake.nix` (e.g. `applications/capi-argo-bridge/`).
 - `nixos/` — Declarative NixOS configuration for `loft01` (disko, k3s,
   sops-nix, WireGuard).
 - `docs/README.md` — Operational runbook for `loft01` (bootstrap, teardown,
@@ -27,20 +30,20 @@ Instructions for coding agents working in this repository.
    - `addon.yaml` declares `namespace`, `podSecurity`, `dependencies: []`,
      `helm: {repoURL, chart, targetRevision, releaseName}`, or `sources: []`.
    - `values.yaml` holds base values passed directly to the chart.
-   - `manifests/` (raw YAML) and `kustomize/` (`kustomization.yaml`) are
-     automatically attached as sources on the addon's `Application`.
-   - Addons with their own templates (`keycloak`, `mimir`) include a local
-     `Chart.yaml` and `templates/`.
+   - `manifests/` (raw YAML or `kustomization.yaml`) is automatically attached
+     as a source on the addon's `Application`.
+   - Addons with their own templates (`capi-argo-bridge`, `keycloak`, `mimir`)
+     include a local `Chart.yaml` and `templates/`.
 3. **Clusters (`fleet/clusters/<cluster>/`):**
    - `cluster-secret.yaml` is the Argo CD cluster Secret (`argocd.argoproj.io/secret-type: cluster`).
    - `cluster.yaml` sets `repoURL`, `targetRevision`, and the map of enabled
      `addons:`.
    - `addons/<name>/` extends or overrides a shared addon for that cluster:
      - `addon.yaml` adds cluster-level `dependencies: []` or extra `sources: []`
-       (extra Helm charts, Kustomize directories, or manifest paths).
+       (extra Helm charts or repo paths).
      - `values.yaml` overlays `fleet/addons/<name>/values.yaml`.
-     - `manifests/` and `kustomize/` add cluster-specific resources (routes,
-       Certificates, PVCs, StorageClasses, CNPG Databases, ExternalSecrets).
+     - `manifests/` adds cluster-specific resources (routes, Certificates,
+       PVCs, StorageClasses, CNPG Databases, ExternalSecrets).
    - A folder in `fleet/clusters/<cluster>/addons/<name>/` with no matching
      folder in `fleet/addons/` is a cluster-only addon (e.g. `dodde` on
      `loft01`).

@@ -40,7 +40,7 @@ spec:
                   shell: /bin/bash
                   lock_passwd: true
                   ssh_authorized_keys:
-                    - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICKkHlDWS9S4YWSPSah1Pea5Jpt6+zasaPed0cR2FFhh
+                    - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFavdMIfxAdJCFjfEP3cPKBIsN5mnHVLkwOQaon8Oy31
               disable_root: true
               ssh_pwauth: false
               growpart:

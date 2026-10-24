@@ -11,7 +11,7 @@
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: ['config:recommended', 'helpers:pinGitHubActionDigests'],
-  includePaths: ['fleet/**', '.github/**', 'nixos/**'],
+  includePaths: ['fleet/**', 'tofu/**', '.github/**', 'nixos/**'],
   labels: ['dependencies'],
   pruneBranchAfterAutomerge: true,
   customManagers: [
@@ -59,7 +59,7 @@
     },
     {
       description: 'OpenTofu roots resolve providers from the OpenTofu registry, not Terraform',
-      matchFileNames: ['fleet/**'],
+      matchFileNames: ['tofu/**', 'fleet/**'],
       matchDatasources: ['terraform-provider', 'terraform-module'],
       registryUrls: ['https://registry.opentofu.org'],
     },

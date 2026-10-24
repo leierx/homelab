@@ -1,0 +1,5 @@
+namespace: argocd
+podSecurity: restricted
+dependencies:
+  - cilium
+  - cluster-api

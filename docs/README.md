@@ -90,7 +90,7 @@ manifests directory. Run the 3 bootstrap commands from
 
 - **Keycloak** (`https://auth.skinke.net`, realm `homelab`) is the SSO provider.
   The `keycloak-realm` CronWorkflow reconciles the realm every 10 minutes from
-  `fleet/addons/keycloak/tofu/`.
+  `tofu/keycloak/`.
 - **Groups:** `homelab-admins`, `homelab-operators`, and `homelab-viewers`.
   Every login requires WebAuthn/passkey or TOTP.
 - **Gateways:**

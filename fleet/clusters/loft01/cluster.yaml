@@ -7,6 +7,7 @@ addons:
   alloy-metrics: {}
   argocd: {}
   argo-workflows: {}
+  capi-argo-bridge: {}
   cdi: {}
   cert-manager: {}
   cilium: {}
