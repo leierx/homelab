@@ -28,6 +28,34 @@ configs:
         end
       end
       return hs
+
+    resource.customizations.health.kubevirt.io_KubeVirt: |
+      hs = {status = "Progressing", message = "Waiting for KubeVirt to deploy"}
+      if obj.status ~= nil and obj.status.phase == "Deployed" then
+        hs.status = "Healthy"
+        hs.message = "Deployed"
+      end
+      return hs
+
+    resource.customizations.health.cdi.kubevirt.io_CDI: |
+      hs = {status = "Progressing", message = "Waiting for CDI to deploy"}
+      if obj.status ~= nil and obj.status.phase == "Deployed" then
+        hs.status = "Healthy"
+        hs.message = "Deployed"
+      end
+      return hs
+
+    resource.customizations.health.postgresql.cnpg.io_Database: |
+      hs = {status = "Progressing", message = "Waiting for CloudNativePG"}
+      if obj.status ~= nil and obj.status.observedGeneration == obj.metadata.generation then
+        if obj.status.applied == true then
+          hs.status = "Healthy"
+        elseif obj.status.applied == false then
+          hs.status = "Degraded"
+        end
+        hs.message = obj.status.message or ""
+      end
+      return hs
   params:
     server.insecure: true
     controller.diff.server.side: true
