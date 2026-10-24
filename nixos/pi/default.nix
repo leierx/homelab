@@ -39,7 +39,7 @@ let
     packages = [
       "npm:@tintinweb/pi-subagents@0.22.0"
       "npm:@juicesharp/rpiv-ask-user-question@2.13.8"
-      "npm:@juicesharp/rpiv-todo@2.13.8"
+      "npm:@juicesharp/rpiv-todo@2.15.0"
     ];
   };
 
