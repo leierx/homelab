@@ -6,7 +6,7 @@ spec:
   secretName: grafana-tls
   issuerRef:
     kind: ClusterIssuer
-    name: letsencrypt-prod
+    name: letsencrypt-staging
   dnsNames:
     - metrics.skinke.net
 ---
