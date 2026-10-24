@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, ... }:
 {
   hardware.cpu.intel.updateMicrocode = true;
   hardware.enableRedistributableFirmware = true;
@@ -36,7 +36,6 @@
     # short self-test daily at 05, long Wednesdays at 03, clear of the Friday upgrade window
     defaults.monitored = "-a -s (S/../.././05|L/../../3/03)";
   };
-  environment.systemPackages = [ pkgs.smartmontools ];
   services.irqbalance.enable = true;
 
   zramSwap = {
