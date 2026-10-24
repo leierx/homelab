@@ -63,6 +63,11 @@
       registryUrls: ['https://registry.opentofu.org'],
     },
     {
+      description: 'Group pi packages into a single PR to avoid adjacent-line merge conflicts',
+      matchFileNames: ['nixos/**'],
+      groupName: 'pi packages',
+    },
+    {
       description: 'Major bumps wait for explicit approval on the Dependency Dashboard',
       matchUpdateTypes: ['major'],
       dependencyDashboardApproval: true,
