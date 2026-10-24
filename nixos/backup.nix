@@ -5,13 +5,9 @@
   ...
 }:
 let
-  # enable only once secrets.yaml has borg/ssh_key and borg/passphrase: sops-nix fails activation on missing secrets
-  offsite = {
-    enable = false;
-    repo = "USER@HOST.rsync.net:homelab";
-    # rsync.net's borg 1.x binary; check with `ssh USER@HOST.rsync.net borg1 --version`
-    remotePath = "borg1";
-  };
+  # enable only once secrets.yaml has borg/username, borg/ssh_key and borg/passphrase:
+  # sops-nix fails activation on a missing secret
+  enable = false;
 
   stateDir = "/var/lib/homelab-backup";
 
@@ -26,8 +22,11 @@ let
       pkgs.gnugrep
     ];
     text = ''
-      export BORG_REPO=${lib.escapeShellArg offsite.repo}
-      export BORG_REMOTE_PATH=${lib.escapeShellArg offsite.remotePath}
+      # rsync.net addresses a repo as <user>@<user>.rsync.net:<path>, and <user> is a sops secret
+      user=$(cat ${config.sops.secrets."borg/username".path})
+      export BORG_REPO="$user@$user.rsync.net:homelab"
+      # rsync.net's borg 1.x binary; check with `ssh "$user@$user.rsync.net" borg1 --version`
+      export BORG_REMOTE_PATH=borg1
       export BORG_PASSCOMMAND="cat ${config.sops.secrets."borg/passphrase".path}"
       export BORG_RSH="ssh -i ${
         config.sops.secrets."borg/ssh_key".path
@@ -77,12 +76,13 @@ in
     };
   };
 
-  sops.secrets = lib.mkIf offsite.enable {
+  sops.secrets = lib.mkIf enable {
+    "borg/username".mode = "0400";
     "borg/ssh_key".mode = "0400";
     "borg/passphrase".mode = "0400";
   };
 
-  systemd.services.homelab-backup = lib.mkIf offsite.enable {
+  systemd.services.homelab-backup = lib.mkIf enable {
     description = "Off-site borg backup of k3s state and PVC volumes";
     after = [
       "network-online.target"
@@ -100,7 +100,7 @@ in
   };
 
   # also after boot, so a run cut off by the auto-upgrade reboot resumes
-  systemd.timers.homelab-backup = lib.mkIf offsite.enable {
+  systemd.timers.homelab-backup = lib.mkIf enable {
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnCalendar = "01:00";
