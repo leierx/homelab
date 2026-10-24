@@ -297,6 +297,37 @@ alerting:
                       type: gt
                       params:
                         - 0
+        - uid: keycloak-impersonation
+          title: Keycloak impersonation
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: critical
+          annotations:
+            summary: 'Someone impersonated a user in Keycloak. Impersonation bypasses the user''s passkey/TOTP; the feature should be disabled. Investigate the realm events and rotate the bootstrap-admin client secret if this was not intentional.'
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: sum by (realm, event, client_id) (increase(keycloak_user_events_total{event="impersonate"}[10m])) > 0 or sum by (realm, event, client_id) (keycloak_user_events_total{event="impersonate"} unless keycloak_user_events_total{event="impersonate"} offset 10m)
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
         - uid: admission-policy-warning
           title: Pod breaks an admission policy
           condition: C
