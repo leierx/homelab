@@ -2,6 +2,7 @@ namespace: cert-manager
 podSecurity: restricted
 dependencies:
   - cilium
+  - envoy-gateway
   - prometheus-operator-crds
 helm:
   repoURL: https://charts.jetstack.io

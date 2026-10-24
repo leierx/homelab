@@ -1,3 +1,4 @@
+images: {pullPolicy: IfNotPresent}
 crds:
   upgradeJob:
     podSecurityContext: {seccompProfile: {type: RuntimeDefault}}

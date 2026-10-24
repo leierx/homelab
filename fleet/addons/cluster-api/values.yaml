@@ -1,6 +1,6 @@
 enableHelmHook: false
 resources:
-  manager: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}
+  manager: {requests: {cpu: 10m, memory: 64Mi}, limits: {cpu: null, memory: 256Mi}}
 containerSecurityContext:
   manager:
     runAsNonRoot: true
@@ -10,24 +10,28 @@ containerSecurityContext:
 core:
   cluster-api:
     createNamespace: false
+    # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-api
     version: v1.14.3
     deployment:
       containers: [{name: manager, resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 512Mi}}}]
 bootstrap:
   kubeadm:
     createNamespace: false
+    # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-api
     version: v1.14.3
     deployment:
       containers: [{name: manager, resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}}]
 controlPlane:
   kubeadm:
     createNamespace: false
+    # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-api
     version: v1.14.3
     deployment:
       containers: [{name: manager, resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 512Mi}}}]
 infrastructure:
   kubevirt:
     createNamespace: false
+    # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-api-provider-kubevirt
     version: v0.11.2
     deployment:
       containers: [{name: manager, resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}}]

@@ -1,4 +1,8 @@
 serviceMonitor: {enabled: true}
+# Pruning a CRD deletes every ExternalSecret and the Secrets it owns.
+crds: {annotations: {argocd.argoproj.io/sync-options: 'Delete=false,Prune=false'}}
+# Token creation is granted to the two store ServiceAccounts in manifests/token-rbac.yaml.
+rbac: {serviceAccountTokenCreate: false}
 resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}
 webhook:
   resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 128Mi}}

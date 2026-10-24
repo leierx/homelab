@@ -24,6 +24,8 @@ renovate:
     capabilities: {drop: [ALL]}
     seccompProfile: {type: RuntimeDefault}
 existingSecret: renovate-github-app
+# the chart adds fsGroup 1000 for the cache volume; don't re-chown the whole tree every hour
+securityContext: {fsGroupChangePolicy: OnRootMismatch}
 extraVolumes: [{name: github-app-token, configMap: {name: renovate-github-app-token}}]
 extraVolumeMounts: [{name: github-app-token, mountPath: /usr/local/share/github-app-token}]
 resources: {requests: {cpu: 250m, memory: 512Mi}, limits: {memory: 4Gi}}
