@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 {
   nixpkgs.hostPlatform = "x86_64-linux";
   system.stateVersion = "26.05";
@@ -17,6 +17,8 @@
   users.users.leier = {
     isNormalUser = true;
     extraGroups = [ "wheel" ];
+    # what doas prompts for; ssh stays key-only, PasswordAuthentication is off below
+    hashedPasswordFile = config.sops.secrets."leier/password_hash".path;
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICKkHlDWS9S4YWSPSah1Pea5Jpt6+zasaPed0cR2FFhh"
     ];
@@ -58,7 +60,7 @@
     extraRules = [
       {
         groups = [ "wheel" ];
-        noPass = true;
+        # noPass is off on purpose: otherwise any code running as leier is root
         # keepenv would hand root this user's XDG_RUNTIME_DIR
         setEnv = [
           "LANG"
@@ -96,7 +98,9 @@
       ];
       flake-registry = "";
       auto-optimise-store = true;
-      trusted-users = [ "@wheel" ];
+      # trusted-users can set sandbox = relaxed or add substituters, i.e. root
+      # without doas; allowed-users is all a normal build needs
+      allowed-users = [ "@wheel" ];
     };
     gc = {
       automatic = true;
