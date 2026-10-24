@@ -70,6 +70,19 @@
     ];
   };
 
+  # makes the pod AppArmorProfile annotations in fleet/ actually enforce
+  security.apparmor.enable = true;
+  security.auditd.enable = true;
+  # targeted, not a blanket execve rule: a busy k8s node would drown in those
+  security.audit.rules = [
+    # root commands started from a user session
+    "-a always,exit -F arch=b64 -S execve -F euid=0 -F auid>=1000 -F auid!=unset -k root_exec"
+    # the two ways to own this host: the sops age key and the doas policy
+    "-w /var/lib/sops-nix -p rwa -k sops_key"
+    "-w /etc/doas.conf -p wa -k privilege"
+    "-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k modules"
+  ];
+
   programs.nano.enable = false;
   programs.neovim = {
     enable = true;
