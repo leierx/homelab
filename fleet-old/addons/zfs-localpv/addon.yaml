@@ -1,3 +1,0 @@
-# OpenEBS ZFS LocalPV CSI driver. StorageClasses name a host's pool, so they are per cluster.
-namespace: openebs
-podSecurity: privileged

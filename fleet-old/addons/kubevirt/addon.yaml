@@ -1,2 +1,0 @@
-# KubeVirt from the upstream release manifests (no official Helm chart).
-# The upstream namespace stays privileged: virt-handler runs privileged and hostPID.

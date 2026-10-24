@@ -1,3 +1,0 @@
-# Cluster API operator and providers (core, kubeadm, KubeVirt) on the management cluster.
-namespace: capi-operator-system
-podSecurity: restricted

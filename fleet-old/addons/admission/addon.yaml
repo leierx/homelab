@@ -1,3 +1,0 @@
-# Cluster-wide admission policies (ValidatingAdmissionPolicy / MutatingAdmissionPolicy).
-namespace: kube-system
-podSecurity: privileged

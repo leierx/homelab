@@ -6,8 +6,6 @@ Instructions for coding agents working in this repository.
 
 - `fleet/` — GitOps fleet controller rendered by Argo CD with Helm (no helper
   scripts, no CI). Read `fleet/README.md` before modifying anything in `fleet/`.
-- `fleet-old/` — Archived previous fleet layout kept for reference only. Do not
-  modify `fleet-old/` unless explicitly asked.
 - `nixos/` — Declarative NixOS configuration for `loft01` (disko, k3s,
   sops-nix, WireGuard).
 - `docs/README.md` — Operational runbook for `loft01` (bootstrap, teardown,

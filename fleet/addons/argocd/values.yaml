@@ -53,7 +53,7 @@ configs:
           hs.message = "Application is OutOfSync"
         end
         -- argo-workflows-server waits for Keycloak OIDC discovery, while keycloak needs CronWorkflow CRD from argo-workflows
-        if obj.metadata ~= nil and obj.metadata.name == "argo-workflows" and obj.status.sync ~= nil and obj.status.sync.status == "Synced" and hs.status == "Progressing" then
+        if obj.metadata ~= nil and obj.metadata.name == "argo-workflows" and obj.status.sync ~= nil and obj.status.sync.status == "Synced" and (hs.status == "Progressing" or hs.status == "Degraded") then
           if obj.status.operationState == nil or obj.status.operationState.phase == "Succeeded" then
             hs.status = "Healthy"
           end

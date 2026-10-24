@@ -1,3 +1,0 @@
-# Grafana for the fleet: Mimir and Loki datasources, provisioned alert rules, Keycloak SSO.
-namespace: monitoring
-podSecurity: restricted

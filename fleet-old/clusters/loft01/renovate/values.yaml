@@ -1,2 +1,0 @@
-renovate:
-  renovate: {persistence: {cache: {storageClass: zfs, storageSize: 5Gi}}}

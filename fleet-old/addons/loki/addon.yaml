@@ -1,3 +1,0 @@
-# Loki, single binary on the filesystem. Grafana's namespace policy covers it.
-namespace: monitoring
-podSecurity: restricted

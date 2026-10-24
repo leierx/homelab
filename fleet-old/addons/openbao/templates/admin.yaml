@@ -1,5 +1,0 @@
-# whoever can mint a token for this ServiceAccount is OpenBao admin (role `admin`); that is cluster-admin already
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: openbao-admin

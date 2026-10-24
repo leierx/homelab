@@ -1,4 +1,0 @@
-database:
-  storage:
-    storageClass: zfs
-    size: 20Gi

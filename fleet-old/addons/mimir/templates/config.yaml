@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: mimir
-data:
-  mimir.yaml: |
-    {{- .Files.Get "mimir.yaml" | nindent 4 }}

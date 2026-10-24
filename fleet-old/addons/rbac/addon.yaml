@@ -1,3 +1,0 @@
-# Cluster RBAC for the Keycloak tiers, as the API server sees them through OIDC (`oidc:` prefix).
-namespace: kube-system
-podSecurity: privileged

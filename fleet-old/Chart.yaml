@@ -1,5 +1,0 @@
-# One cluster's Applications: the ApplicationSet in argocd/ renders this chart once per
-# clusters/<cluster>/ folder, with that folder's values.yaml.
-apiVersion: v2
-name: fleet
-version: 0.1.0

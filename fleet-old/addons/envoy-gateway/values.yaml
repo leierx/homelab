@@ -1,8 +1,0 @@
-# Chart: https://gateway.envoyproxy.io/docs/install/gateway-helm-api/
-gateway-helm:
-  certgen:
-    job:
-      resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 64Mi}}
-wg:
-  # the host's WireGuard address, per cluster
-  externalIPs: []

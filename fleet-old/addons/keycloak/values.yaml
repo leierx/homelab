@@ -1,7 +1,0 @@
-# public URL, per cluster
-hostname: ""
-# the pod network, where the Envoy proxies are; per cluster
-proxyTrustedAddresses: ""
-database:
-  storage:
-    size: 1Gi

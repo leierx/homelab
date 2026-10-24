@@ -1,4 +1,6 @@
 serviceAccount: {name: renovate}
+job:
+  init: true
 cronjob:
   schedule: 17 * * * *
   timeZone: Europe/Oslo

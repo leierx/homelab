@@ -1,6 +1,0 @@
-# the cluster's name: its folder under clusters/, and its Argo CD cluster Secret's name. Set by the ApplicationSet.
-cluster: ""
-repoURL: https://github.com/leierx/homelab
-revision: HEAD
-# per cluster (clusters/<cluster>/values.yaml): the addons it runs
-addons: []

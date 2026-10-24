@@ -43,7 +43,6 @@ fleet/          GitOps fleet controller, shared addons, and cluster configs (see
   templates/    Helm templates computing dependency sync-waves and Multi-Source Applications
   addons/       Installable addons (helm, kustomize, manifests)
   clusters/     Per-cluster config (cluster-secret.yaml, cluster.yaml, addons/<addon>/ overrides)
-fleet-old/      Archived previous fleet layout
 docs/           Operating guide for loft01 (see docs/README.md)
 AGENTS.md       Instructions for coding agents
 renovate.json5  Renovate configuration

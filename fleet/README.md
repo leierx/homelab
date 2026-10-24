@@ -110,13 +110,14 @@ kubectl apply -f fleet/clusters/loft01/cluster-secret.yaml
 Argo CD picks up the cluster Secret, creates `fleet-loft01`, and rolls out all
 enabled addons in dependency wave order:
 
-- **Wave 0:** `cilium`
-- **Wave 1:** `admission`, `argocd`, `cdi`, `keycloak-operator`, `kube-state-metrics`, `kubevirt`, `node-exporter`, `prometheus-operator-crds`, `rbac`, `zfs-localpv`
-- **Wave 2:** `cert-manager`, `cloudnative-pg`, `dodde`, `envoy-gateway`, `loki`, `mimir`
-- **Wave 3:** `alloy-logs`, `alloy-metrics`, `cluster-api`, `openbao`
-- **Wave 4:** `external-secrets`
-- **Wave 5:** `argo-workflows`, `grafana`, `immich`, `renovate`
+- **Wave 0:** `prometheus-operator-crds`
+- **Wave 1:** `cilium`
+- **Wave 2:** `admission`, `cdi`, `cert-manager`, `cloudnative-pg`, `envoy-gateway`, `keycloak-operator`, `kube-state-metrics`, `kubevirt`, `node-exporter`, `rbac`, `zfs-localpv`
+- **Wave 3:** `cluster-api`, `dodde`, `loki`, `mimir`, `openbao`
+- **Wave 4:** `alloy-logs`, `alloy-metrics`, `external-secrets`
+- **Wave 5:** `argo-workflows`, `renovate`
 - **Wave 6:** `keycloak`
+- **Wave 7:** `argocd`, `grafana`, `immich`
 
 ## Addon Reference (`addon.yaml`)
 
@@ -131,7 +132,7 @@ dependencies:              # addons that must be Healthy before this addon syncs
   - cilium
   - cloudnative-pg
 helm:
-  repoURL: oci://ghcr.io/immich-app/immich-charts
+  repoURL: ghcr.io/immich-app/immich-charts
   chart: immich
   targetRevision: 0.13.4
   releaseName: immich      # defaults to the addon name
