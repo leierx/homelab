@@ -3,9 +3,9 @@ name: capi-argo-bridge
 on:
   push:
     branches: [main]
-    paths: ["packages/capi-argo-bridge/**", "flake.nix", "flake.lock", ".github/workflows/capi-argo-bridge.yml"]
+    paths: ["packages/capi-argo-bridge/**", ".github/workflows/capi-argo-bridge.yml"]
   pull_request:
-    paths: ["packages/capi-argo-bridge/**", "flake.nix", "flake.lock", ".github/workflows/capi-argo-bridge.yml"]
+    paths: ["packages/capi-argo-bridge/**", ".github/workflows/capi-argo-bridge.yml"]
   workflow_dispatch:
 
 permissions:
