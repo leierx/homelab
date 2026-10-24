@@ -1,5 +1,7 @@
 namespace: kube-system
 podSecurity: privileged
+dependencies:
+  - prometheus-operator-crds
 helm:
   repoURL: https://helm.cilium.io
   chart: cilium

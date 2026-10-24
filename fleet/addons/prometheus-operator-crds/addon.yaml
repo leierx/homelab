@@ -1,7 +1,5 @@
 namespace: monitoring
 podSecurity: restricted
-dependencies:
-  - cilium
 helm:
   repoURL: https://prometheus-community.github.io/helm-charts
   chart: prometheus-operator-crds
