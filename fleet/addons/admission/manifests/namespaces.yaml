@@ -1,0 +1,36 @@
+# PSA already refuses privileged pods and hostPath in a restricted namespace.
+# What it does not stop is a commit that relabels an app namespace to privileged,
+# or adds a new one that way. Only the namespaces below may do that.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: namespace-pod-security
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [namespaces]
+  variables:
+    - name: enforce
+      expression: >-
+        has(object.metadata.labels)
+        && 'pod-security.kubernetes.io/enforce' in object.metadata.labels
+        ? object.metadata.labels['pod-security.kubernetes.io/enforce'] : ''
+  validations:
+    - expression: >-
+        variables.enforce != 'privileged'
+        || object.metadata.name in ['kube-system', 'kubevirt', 'openebs', 'telemetry']
+      message: >-
+        enforce=privileged is only allowed on kube-system, kubevirt, openebs and
+        telemetry; add the namespace to this policy if it really needs it
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: namespace-pod-security
+spec:
+  policyName: namespace-pod-security
+  validationActions: [Deny]
