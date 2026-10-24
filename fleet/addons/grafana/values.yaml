@@ -68,6 +68,14 @@ dashboards:
     argocd-application: {gnetId: 19974, revision: 8}
     cert-manager: {gnetId: 20842, revision: 3}
     envoy-gateway: {gnetId: 24460}
+    smartctl-exporter:
+      gnetId: 22604
+      revision: 4
+      datasource: [{name: DS_PROMETHEUS, value: mimir}]
+    zfs-overview:
+      gnetId: 24987
+      revision: 12
+      datasource: [{name: DS_PROMETHEUS, value: mimir}]
 # Alert rules as provisioning files; the chart puts them in its ConfigMap, so a change rolls Grafana.
 alerting:
   security.yaml:
@@ -686,7 +694,7 @@ alerting:
           labels:
             severity: critical
           annotations:
-            summary: 'A ZFS pool is degraded, faulted, read-only or not reporting: mirror redundancy is lost, so replace the failing disk before its pair goes.'
+            summary: 'A ZFS pool is degraded, faulted, offline or not reporting: mirror redundancy is lost, so replace the failing disk before its pair goes.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -696,7 +704,7 @@ alerting:
               model:
                 refId: A
                 instant: true
-                expr: max by (pool) (zfs_pool_health + zfs_pool_readonly)
+                expr: min by (zpool) (node_zfs_zpool_state{state="online"})
             - refId: C
               datasourceUid: __expr__
               model:
@@ -705,40 +713,9 @@ alerting:
                 expression: A
                 conditions:
                   - evaluator:
-                      type: gt
+                      type: lt
                       params:
-                        - 0
-        - uid: zfs-pool-filling-up
-          title: ZFS pool over 80% full
-          condition: C
-          for: 15m
-          noDataState: OK
-          execErrState: Error
-          labels:
-            severity: warning
-          annotations:
-            summary: A ZFS pool is over 80% allocated; past 80% allocation switches to best-fit and fragmentation climbs.
-          data:
-            - refId: A
-              datasourceUid: mimir
-              relativeTimeRange:
-                from: 600
-                to: 0
-              model:
-                refId: A
-                instant: true
-                expr: max by (pool) (zfs_pool_allocated_bytes / zfs_pool_size_bytes) > 0.8
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                refId: C
-                type: threshold
-                expression: A
-                conditions:
-                  - evaluator:
-                      type: gt
-                      params:
-                        - 0
+                        - 1
         - uid: smart-status-failed
           title: Disk failed SMART health check
           condition: C

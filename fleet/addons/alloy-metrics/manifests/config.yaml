@@ -96,8 +96,7 @@ data:
     
       tls_config {
         ca_file              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-        insecure_skip_verify = true
-        server_name          = "kubernetes"
+        insecure_skip_verify = false
       }
     
       clustering {
@@ -388,10 +387,6 @@ data:
       scrape_timeout  = "10s"
       scheme          = "http"
     
-      tls_config {
-        insecure_skip_verify = true
-      }
-    
       clustering {
         enabled = true
       }
@@ -414,8 +409,7 @@ data:
     
       tls_config {
         ca_file              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-        insecure_skip_verify = true
-        server_name          = "kubernetes"
+        insecure_skip_verify = false
       }
     
       clustering {
@@ -445,8 +439,7 @@ data:
     
       tls_config {
         ca_file              = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-        insecure_skip_verify = true
-        server_name          = "kubernetes"
+        insecure_skip_verify = false
       }
     
       clustering {
@@ -561,10 +554,6 @@ data:
       scrape_interval = "60s"
       scrape_timeout  = "10s"
       scheme          = "http"
-    
-      tls_config {
-        insecure_skip_verify = true
-      }
     
       clustering {
         enabled = true

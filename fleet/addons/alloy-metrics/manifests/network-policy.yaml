@@ -1,0 +1,61 @@
+# Default-deny for the telemetry namespace (policy `default`); DNS and
+# alloy-metrics scrape ingress come from the cluster baseline.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: alloy-metrics
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: alloy
+      app.kubernetes.io/instance: alloy-metrics
+  egress:
+    - toEntities:
+        - cluster
+        - host
+        - kube-apiserver
+        - remote-node
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: alloy-logs
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: alloy
+      app.kubernetes.io/instance: alloy-logs
+  egress:
+    - toEntities: [kube-apiserver]
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            app.kubernetes.io/name: loki
+      toPorts:
+        - ports: [{port: "3100", protocol: TCP}]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: kube-state-metrics
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: kube-state-metrics
+  egress:
+    - toEntities: [kube-apiserver]
+---
+# Default-deny for the whole namespace; smartctl-exporter needs no egress at all.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default
+spec:
+  endpointSelector: {}
+  enableDefaultDeny:
+    ingress: true
+    egress: true
+  ingress:
+    - {}
+  egress:
+    - {}

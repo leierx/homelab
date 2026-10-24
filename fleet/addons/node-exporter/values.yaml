@@ -1,7 +1,9 @@
 nameOverride: node-exporter
+service: {listenOnAllInterfaces: false}
 resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 128Mi}}
 # extraArgs replaces the chart's list, so the chart's two filesystem excludes are repeated
 extraArgs:
   - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run/containerd/.+|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
   - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs|erofs)$
+  - --collector.diskstats.device-exclude=^(z?ram|loop|fd|sr|(h|s|v|xv)d[a-z]|nvme\d+n\d+p|zd(\d+p)?)\d+$
   - --collector.netdev.device-exclude=^(lxc.*|veth.*)$

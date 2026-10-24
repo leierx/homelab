@@ -118,7 +118,7 @@ enabled addons in dependency wave order:
 
 - **Wave 0:** `prometheus-operator-crds`
 - **Wave 1:** `cilium`
-- **Wave 2:** `admission`, `cdi`, `cloudnative-pg`, `envoy-gateway`, `kube-state-metrics`, `kubevirt`, `node-exporter`, `rbac`, `smartctl-exporter`, `zfs-exporter`, `zfs-localpv`
+- **Wave 2:** `admission`, `cdi`, `cloudnative-pg`, `envoy-gateway`, `kube-state-metrics`, `kubevirt`, `node-exporter`, `rbac`, `smartctl-exporter`, `zfs-localpv`
 - **Wave 3:** `cert-manager`, `dodde`, `loki`, `mimir`
 - **Wave 4:** `alloy-logs`, `alloy-metrics`, `cluster-api`, `openbao`
 - **Wave 5:** `capi-argo-bridge`, `external-secrets`
