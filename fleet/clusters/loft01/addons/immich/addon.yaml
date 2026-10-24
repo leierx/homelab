@@ -2,3 +2,4 @@ dependencies:
   - cert-manager
   - envoy-gateway
   - zfs-localpv
+  - keycloak

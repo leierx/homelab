@@ -2,3 +2,4 @@ dependencies:
   - cert-manager
   - envoy-gateway
   - external-secrets
+  - keycloak
