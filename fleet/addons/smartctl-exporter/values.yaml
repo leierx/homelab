@@ -1,0 +1,6 @@
+fullnameOverride: smartctl-exporter
+nameOverride: smartctl-exporter
+rbac: {create: false}
+serviceAccount: {create: false}
+serviceMonitor: {enabled: true}
+resources: {requests: {cpu: 5m, memory: 16Mi}, limits: {memory: 64Mi}}

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: zfs-exporter
+  labels:
+    app.kubernetes.io/name: zfs-exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zfs-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zfs-exporter
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: zfs-exporter
+          image: ghcr.io/pdf/zfs_exporter:v2.5.1
+          ports:
+            - name: metrics
+              containerPort: 9134
+          securityContext:
+            privileged: true
+            readOnlyRootFilesystem: true
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: metrics
+          volumeMounts:
+            # HostToContainer: a slave of the host's mounts, so datasets the
+            # host unmounts leave the container too
+            - name: host-root
+              mountPath: /host
+              readOnly: true
+              mountPropagation: HostToContainer
+      volumes:
+        - name: host-root
+          hostPath:
+            path: /
+            type: Directory
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: zfs-exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zfs-exporter
+  podMetricsEndpoints:
+    - port: metrics
