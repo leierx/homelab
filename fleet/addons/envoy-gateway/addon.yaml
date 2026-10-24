@@ -4,7 +4,7 @@ dependencies:
   - cilium
   - prometheus-operator-crds
 helm:
-  repoURL: oci://docker.io/envoyproxy
+  repoURL: docker.io/envoyproxy
   chart: gateway-helm
   # renovate: datasource=docker depName=docker.io/envoyproxy/gateway-helm
   targetRevision: v1.9.2

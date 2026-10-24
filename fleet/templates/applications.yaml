@@ -39,7 +39,6 @@
   {{- end }}
   {{- $helmSpec := dict
       "releaseName" (default $name $helmCfg.releaseName)
-      "valuesObject" (dict "fleet" (dict "cluster" $cluster))
   -}}
   {{- if $valueFiles }}
     {{- $_ := set $helmSpec "valueFiles" $valueFiles -}}
