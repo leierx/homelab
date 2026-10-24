@@ -14,6 +14,10 @@ Instructions for coding agents working in this repository.
 - `docs/README.md` — Operational runbook for `loft01` (bootstrap, teardown,
   OpenBao secrets, SSO, break-glass).
 
+`loft01` is production: it holds real data (Immich photo library, Grafana
+metrics, OpenBao secrets). Do not tear down, wipe, or re-bootstrap it, and
+delete nothing stateful without explicit instruction to do so.
+
 ## How `/fleet` Works
 
 1. **Bootstrap & Cluster Generator:**

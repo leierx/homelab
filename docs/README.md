@@ -7,7 +7,13 @@ composition, see [fleet/README.md](../fleet/README.md).
 ## Overview
 
 `loft01` is a single-node NixOS + k3s cluster running on an HPE ProLiant DL360
-Gen9. Git (`main`) is the single source of truth:
+Gen9. It is now **production**: it holds real data (Immich photo library,
+Grafana metrics, OpenBao secrets) with no backup cluster to fall back on. Treat
+every destructive operation — teardown, `zfs destroy`, deleting PVCs or stateful
+CRs — as data loss until proven otherwise. Stateful resources carry
+`argocd.argoproj.io/sync-options: Delete=false,Prune=false` for this reason.
+
+Git (`main`) is the single source of truth:
 
 - `nixos/` defines the host OS, disk layout (`disko`), k3s, and host-level
   secrets (`sops-nix`).
@@ -24,6 +30,16 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 ```
 
 ## Full Teardown and Rebuild (`loft01`)
+
+Last resort only — this destroys all cluster state and, if the ZFS dataset
+deletion step is run, the photo library and all other data on `tank`. Prefer
+recovering the cluster (or pruning a single broken addon) over a teardown. If
+you do tear down:
+
+- Copy the admin kubeconfig, WireGuard config, and anything else you need off
+  the host first.
+- Leave the ZFS dataset deletion loop out unless you have confirmed the data is
+  backed up or truly disposable.
 
 To tear down the running k3s cluster and storage on `loft01` while keeping the
 NixOS host:
