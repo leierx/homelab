@@ -3,6 +3,7 @@ podSecurity: restricted
 dependencies:
   - cilium
   - cert-manager
+  - kubevirt
 helm:
   repoURL: https://kubernetes-sigs.github.io/cluster-api-operator
   chart: cluster-api-operator
