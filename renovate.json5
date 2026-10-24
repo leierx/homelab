@@ -12,9 +12,19 @@
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: ['config:recommended', 'helpers:pinGitHubActionDigests'],
   includePaths: ['fleet/**', 'tofu/**', '.github/**', 'nixos/**'],
-  labels: ['dependencies'],
+  labels: ['dependencies', 'needs-review'],
   pruneBranchAfterAutomerge: true,
+  platformAutomerge: false,
+  ignoreTests: true,
   customManagers: [
+    {
+      customType: 'regex',
+      description: 'the argocd-diff-preview image in the workflow, by tag and digest',
+      managerFilePatterns: ['/^\\.github/workflows/argocd-diff-preview\\.yml$/'],
+      matchStrings: [
+        '#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s*\\n\\s*ARGOCD_DIFF_PREVIEW_IMAGE:\\s*\\S+:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:\\S+)',
+      ],
+    },
     {
       customType: 'regex',
       description: 'Values annotated with a `# renovate:` comment on the line above',
@@ -67,17 +77,28 @@
       description: 'Automerge all patch and digest updates',
       matchUpdateTypes: ['patch', 'digest'],
       automerge: true,
+      labels: ['dependencies'],
     },
     {
       description: 'Automerge Renovate minor and patch updates',
       matchDepNames: ['renovate', 'ghcr.io/renovatebot/renovate'],
       matchUpdateTypes: ['minor', 'patch'],
       automerge: true,
+      labels: ['dependencies'],
     },
     {
       description: 'Major bumps wait for explicit approval on the Dependency Dashboard',
       matchUpdateTypes: ['major'],
+      automerge: false,
       dependencyDashboardApproval: true,
+      labels: ['dependencies', 'needs-review'],
+    },
+    {
+      description: 'Argo CD upgrades itself; never batch it with anything else',
+      matchDepNames: ['argo-cd'],
+      automerge: false,
+      dependencyDashboardApproval: true,
+      labels: ['dependencies', 'needs-review'],
     },
     {
       description: 'Group and automerge all pi package updates (major, minor, patch)',
@@ -85,11 +106,7 @@
       groupName: 'pi packages',
       automerge: true,
       dependencyDashboardApproval: false,
-    },
-    {
-      description: 'Argo CD upgrades itself; never batch it with anything else',
-      matchDepNames: ['argo-cd'],
-      dependencyDashboardApproval: true,
+      labels: ['dependencies'],
     },
   ],
 }

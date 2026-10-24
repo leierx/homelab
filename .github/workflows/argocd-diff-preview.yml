@@ -1,0 +1,133 @@
+name: argocd-diff-preview
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "fleet/**"
+      - ".github/argocd-diff-preview/**"
+      - ".github/workflows/argocd-diff-preview.yml"
+    types: [opened, reopened, synchronize, labeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: argocd-diff-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    # A fork PR's token cannot comment; Renovate PRs only run when labeled needs-review.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action != 'labeled' || github.event.label.name == 'needs-review') &&
+      (
+        github.event.pull_request.user.login != 'leierx-renovate[bot]' ||
+        contains(github.event.pull_request.labels.*.name, 'needs-review')
+      )
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: pull-request
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: main
+          path: main
+
+      - name: Render fleet applications
+        run: |
+          set -euo pipefail
+          for checkout in main pull-request; do
+            mkdir -p "$checkout/rendered"
+            for d in "$checkout"/fleet/clusters/*/; do
+              [ -d "$d" ] || continue
+              cluster=$(basename "$d")
+              helm template fleet "$checkout/fleet" \
+                -f "$d/cluster.yaml" \
+                --set "cluster.name=$cluster" \
+                --set "cluster.server=https://kubernetes.default.svc" \
+                > "$checkout/rendered/applications-$cluster.yaml"
+            done
+          done
+
+      - name: Render cluster CRDs
+        run: |
+          set -euo pipefail
+          mkdir -p pull-request/preinstall
+          : > pull-request/preinstall/crds.yaml
+          for addon in prometheus-operator-crds cert-manager envoy-gateway; do
+            dir="pull-request/fleet/addons/$addon"
+            [ -f "$dir/addon.yaml" ] || continue
+            chart=$(yq -r '.helm.chart' "$dir/addon.yaml")
+            repo=$(yq -r '.helm.repoURL' "$dir/addon.yaml")
+            version=$(yq -r '.helm.targetRevision' "$dir/addon.yaml")
+            case "$repo" in
+              *://*) src=("$chart" --repo "$repo") ;;
+              *) src=("oci://$repo/$chart") ;;
+            esac
+            vals=()
+            [ -f "$dir/values.yaml" ] && vals=(-f "$dir/values.yaml")
+            helm template "$addon" "${src[@]}" --version "$version" --include-crds "${vals[@]}" \
+              | yq 'select(.kind == "CustomResourceDefinition")' >> pull-request/preinstall/crds.yaml
+          done
+
+      - name: Generate diff
+        env:
+          # renovate: datasource=docker depName=dagandersen/argocd-diff-preview
+          ARGOCD_DIFF_PREVIEW_IMAGE: dagandersen/argocd-diff-preview:v0.2.17@sha256:ea90848df29337b50d5058330210b38e39232360b78d9c60951fc92e454c6941
+        run: |
+          set -euo pipefail
+          mkdir -p output
+          docker run --rm --network=host \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/main:/base-branch" \
+            -v "$PWD/pull-request:/target-branch" \
+            -v "$PWD/output:/output" \
+            -v "$PWD/pull-request/preinstall:/preinstall:ro" \
+            -v "$PWD/pull-request/.github/argocd-diff-preview/values.yaml:/argocd-config/values.yaml:ro" \
+            "$ARGOCD_DIFF_PREVIEW_IMAGE" \
+            --target-branch="refs/pull/${{ github.event.number }}/merge" \
+            --repo="${{ github.repository }}" \
+            --preinstall-folder=/preinstall \
+            --file-regex='^rendered/' \
+            --render-method=repo-server-api \
+            --timeout=900 \
+            --title="Rendered manifest diff"
+
+      - name: Upload diff artifact
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: diff-preview
+          path: output/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Post diff as PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          body=output/diff.md
+          if [ ! -f "$body" ]; then
+            echo "the tool produced no $body" >&2
+            exit 1
+          fi
+          limit=60000
+          if [ "$(wc -c < "$body")" -gt "$limit" ]; then
+            {
+              sed -n '1,/^<details>/p' "$body"
+              echo "The full diff is too large for a comment and is attached to this run as the \`diff-preview\` artifact."
+            } > output/comment.md
+          else
+            cp "$body" output/comment.md
+          fi
+          gh pr comment "${{ github.event.number }}" --repo "${{ github.repository }}" \
+            --body-file output/comment.md --edit-last \
+            || gh pr comment "${{ github.event.number }}" --repo "${{ github.repository }}" \
+              --body-file output/comment.md
