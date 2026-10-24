@@ -648,3 +648,189 @@ alerting:
                       type: gt
                       params:
                         - 0
+        - uid: zfs-pool-unhealthy
+          title: ZFS pool unhealthy
+          condition: C
+          for: 5m
+          noDataState: Alerting
+          execErrState: Error
+          labels:
+            severity: critical
+          annotations:
+            summary: 'A ZFS pool is degraded, faulted, read-only or not reporting: mirror redundancy is lost, so replace the failing disk before its pair goes.'
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: max by (pool) (zfs_pool_health + zfs_pool_readonly)
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        - uid: zfs-pool-filling-up
+          title: ZFS pool over 80% full
+          condition: C
+          for: 15m
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: A ZFS pool is over 80% allocated; past 80% allocation switches to best-fit and fragmentation climbs.
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: max by (pool) (zfs_pool_allocated_bytes / zfs_pool_size_bytes) > 0.8
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        - uid: smart-status-failed
+          title: Disk failed SMART health check
+          condition: C
+          for: 5m
+          noDataState: Alerting
+          execErrState: Error
+          labels:
+            severity: critical
+          annotations:
+            summary: A disk failed its SMART health assessment (or smartctl-exporter stopped reporting); replace the disk.
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: min by (device) (smartctl_device_smart_status)
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: lt
+                      params:
+                        - 1
+        - uid: smart-disk-errors
+          title: Disk has bad sectors or media errors
+          condition: C
+          for: 15m
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: A disk reports reallocated, pending or uncorrectable sectors, SCSI grown defects, NVMe media errors or a failed SMART self-test; scrub the pool and plan a replacement.
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: max by (device) (smartctl_device_attribute{attribute_name=~"Reallocated_Sector_Ct|Current_Pending_Sector|Offline_Uncorrectable|Reported_Uncorrect", attribute_value_type="raw"} > 0 or smartctl_scsi_grown_defect_list > 0 or {__name__=~"smartctl_(read|write|verify)_total_uncorrected_errors"} > 0 or smartctl_device_media_errors > 0 or smartctl_device_self_test_log_error_count > 0)
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        - uid: smart-nvme-warning
+          title: NVMe critical warning or low spare
+          condition: C
+          for: 5m
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: critical
+          annotations:
+            summary: An NVMe controller raised its critical-warning flag or fell below its available-spare threshold.
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: max by (device) (smartctl_device_critical_warning > 0 or (smartctl_device_available_spare < smartctl_device_available_spare_threshold) + 1)
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        - uid: smart-disk-hot
+          title: Disk over 55°C
+          condition: C
+          for: 15m
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: A disk has been over 55°C for 15 minutes; check fans and airflow.
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: max by (device) (smartctl_device_temperature{temperature_type="current"}) > 55
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0

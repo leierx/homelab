@@ -1,0 +1,5 @@
+namespace: telemetry
+podSecurity: privileged
+dependencies:
+  - cilium
+  - prometheus-operator-crds
