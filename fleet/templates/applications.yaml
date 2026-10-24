@@ -93,6 +93,9 @@ metadata:
   labels:
     fleet.io/cluster: {{ $cluster }}
     fleet.io/addon: {{ $name }}
+    {{- if $addon.nonBlocking }}
+    fleet.io/non-blocking: "true"
+    {{- end }}
   annotations:
     argocd.argoproj.io/sync-wave: {{ $wave | quote }}
 spec:

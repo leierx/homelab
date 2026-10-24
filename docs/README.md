@@ -53,8 +53,17 @@ sudo reboot
 ```
 
 After rebooting, `sops-nix` automatically places `openbao-seal-key` in k3s's
-manifests directory. Run the 3 bootstrap commands from
+manifests directory. Since Keycloak OIDC is not running yet on a fresh cluster,
+grab the k3s admin kubeconfig over an SSH tunnel (`127.0.0.1:6443`), then run
+the 3 bootstrap commands from
 [fleet/README.md](../fleet/README.md#3-step-bootstrap):
+
+```sh
+ssh -o ClearAllForwardings=yes loft01 'sudo cat /etc/rancher/k3s/k3s.yaml' > /tmp/loft01-admin.kubeconfig
+chmod 600 /tmp/loft01-admin.kubeconfig
+ssh -fN loft01
+export KUBECONFIG=/tmp/loft01-admin.kubeconfig
+```
 
 1. Apply Cilium (`helm template ... | kubectl apply`)
 2. Apply Argo CD (`helm template ... | kubectl apply`)

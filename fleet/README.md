@@ -79,7 +79,7 @@ helm template cilium cilium --repo https://helm.cilium.io --version 1.20.4 \
   -n kube-system --include-crds \
   -f fleet/addons/cilium/values.yaml \
   -f fleet/clusters/loft01/addons/cilium/values.yaml \
-  | kubectl apply -n kube-system --server-side --field-manager=argocd-controller -f -
+  | kubectl apply -n kube-system --server-side --field-manager=argocd-controller -f - || true
 
 kubectl wait --for=condition=Ready node --all --timeout=10m
 ```
@@ -133,6 +133,7 @@ An addon lives in `fleet/addons/<name>/` (shared) or only in
 namespace: immich          # defaults to the addon name
 podSecurity: restricted    # privileged | baseline | restricted
 serverSideApply: true      # defaults to true
+nonBlocking: false         # if true, fleet does not block later waves on this addon's health
 dependencies:              # addons that must be Healthy before this addon syncs
   - cilium
   - cloudnative-pg

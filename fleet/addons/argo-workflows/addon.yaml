@@ -1,5 +1,6 @@
 namespace: argo
 podSecurity: restricted
+nonBlocking: true
 dependencies:
   - cilium
   - external-secrets

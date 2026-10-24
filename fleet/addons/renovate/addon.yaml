@@ -1,5 +1,6 @@
 namespace: renovate
 podSecurity: restricted
+nonBlocking: true
 dependencies:
   - cilium
   - external-secrets
