@@ -78,7 +78,7 @@ kubectl label ns kube-system \
   pod-security.kubernetes.io/warn=privileged \
   pod-security.kubernetes.io/audit=privileged --overwrite
 
-helm template cilium cilium --repo https://helm.cilium.io --version 1.20.3 \
+helm template cilium cilium --repo https://helm.cilium.io --version 1.20.4 \
   -n kube-system --include-crds \
   -f fleet/addons/cilium/values.yaml \
   -f fleet/clusters/loft01/addons/cilium/values.yaml \
@@ -94,6 +94,14 @@ kubectl create namespace argocd
 
 helm template argocd argo-cd --repo https://argoproj.github.io/argo-helm --version 10.10.5 \
   -n argocd --include-crds \
+  -f fleet/addons/argocd/values.yaml \
+  -f fleet/clusters/loft01/addons/argocd/values.yaml \
+  | kubectl apply -n argocd --server-side --field-manager=argocd-controller -f - || true
+
+kubectl wait --for=condition=Established crd/appprojects.argoproj.io crd/applicationsets.argoproj.io --timeout=60s
+
+helm template argocd argo-cd --repo https://argoproj.github.io/argo-helm --version 10.10.5 \
+  -n argocd \
   -f fleet/addons/argocd/values.yaml \
   -f fleet/clusters/loft01/addons/argocd/values.yaml \
   | kubectl apply -n argocd --server-side --field-manager=argocd-controller -f -
@@ -168,7 +176,7 @@ helm template fleet fleet \
 ## Pausing an Application
 
 ```sh
-kubectl -n argocd patch app <addon> --type merge \
+kubectl -n argocd patch app <cluster>-<addon> --type merge \
   -p '{"spec":{"syncPolicy":{"automated":{"enabled":false}}}}'
 ```
 

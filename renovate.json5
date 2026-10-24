@@ -13,6 +13,7 @@
   extends: ['config:recommended', 'helpers:pinGitHubActionDigests'],
   includePaths: ['fleet/**', '.github/**', 'nixos/**'],
   labels: ['dependencies'],
+  pruneBranchAfterAutomerge: true,
   customManagers: [
     {
       customType: 'regex',
@@ -63,14 +64,27 @@
       registryUrls: ['https://registry.opentofu.org'],
     },
     {
-      description: 'Group pi packages into a single PR to avoid adjacent-line merge conflicts',
-      matchFileNames: ['nixos/**'],
-      groupName: 'pi packages',
+      description: 'Automerge all patch and digest updates',
+      matchUpdateTypes: ['patch', 'digest'],
+      automerge: true,
+    },
+    {
+      description: 'Automerge Renovate minor and patch updates',
+      matchDepNames: ['renovate', 'ghcr.io/renovatebot/renovate'],
+      matchUpdateTypes: ['minor', 'patch'],
+      automerge: true,
     },
     {
       description: 'Major bumps wait for explicit approval on the Dependency Dashboard',
       matchUpdateTypes: ['major'],
       dependencyDashboardApproval: true,
+    },
+    {
+      description: 'Group and automerge all pi package updates (major, minor, patch)',
+      matchFileNames: ['nixos/**'],
+      groupName: 'pi packages',
+      automerge: true,
+      dependencyDashboardApproval: false,
     },
     {
       description: 'Argo CD upgrades itself; never batch it with anything else',

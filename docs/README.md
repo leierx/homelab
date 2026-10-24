@@ -20,7 +20,7 @@ To trigger an immediate git refresh without waiting for Argo CD's 3-minute poll:
 
 ```sh
 kubectl -n argocd annotate app fleet-loft01 argocd.argoproj.io/refresh=normal --overwrite
-kubectl -n argocd annotate app <addon> argocd.argoproj.io/refresh=normal --overwrite
+kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal --overwrite
 ```
 
 ## Full Teardown and Rebuild (`loft01`)
@@ -30,14 +30,16 @@ NixOS host:
 
 ```sh
 sudo systemctl stop k3s
+sudo losetup -D
 sudo k3s-killall.sh
 
-# Detach any loop devices and unmount remaining kubelet/CNI mounts
-sudo losetup -a
-mount | grep -E '/var/lib/(kubelet|rancher|cni)'
-
-# Destroy PVC datasets on the ZFS pool if wiping storage clean
-# sudo zfs destroy -r tank/pvc-...
+# Destroy PVC datasets and snapshots on the ZFS pool if wiping storage clean
+for ds in $(zfs list -H -o name -r -d 1 tank | grep -v "^tank$"); do
+  sudo zfs destroy -r "$ds"
+done
+for snap in $(zfs list -H -t snapshot -o name tank); do
+  sudo zfs destroy "$snap"
+done
 
 sudo rm -rf --one-file-system \
   /var/lib/rancher/k3s \
@@ -57,14 +59,6 @@ manifests directory. Run the 3 bootstrap commands from
 1. Apply Cilium (`helm template ... | kubectl apply`)
 2. Apply Argo CD (`helm template ... | kubectl apply`)
 3. Apply the cluster Secret (`kubectl apply -f fleet/clusters/loft01/cluster-secret.yaml`)
-
-Once all waves have synced, restart `argocd-application-controller` once if any
-chart skipped `ServiceMonitor` creation before `prometheus-operator-crds` was
-established:
-
-```sh
-kubectl -n argocd rollout restart statefulset/argocd-application-controller
-```
 
 ## Secrets (OpenBao & External Secrets)
 

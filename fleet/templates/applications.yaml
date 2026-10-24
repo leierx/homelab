@@ -94,7 +94,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: {{ $name }}
+  name: {{ $cluster }}-{{ $name }}
   namespace: argocd
   labels:
     fleet.io/cluster: {{ $cluster }}
