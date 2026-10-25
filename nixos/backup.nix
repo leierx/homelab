@@ -24,8 +24,10 @@ let
       # <user>@<user>.rsync.net, from sops so no account name lands in the store
       target=$(cat ${config.sops.secrets."borg/host".path})
       export BORG_REPO="$target:homelab"
-      # rsync.net's borg 1.x binary; check with `ssh "$target" borg1 --version`
-      export BORG_REMOTE_PATH=borg1
+      # rsync.net ships several: borg1/borg12 are 1.2.9, borg14 is 1.4.5, borg2 is
+      # 2.x and cannot touch a 1.x repo. The client here is borg 1.4, so ask for
+      # borg14; check with `ssh "$target" borg14 --version`
+      export BORG_REMOTE_PATH=borg14
       export BORG_PASSCOMMAND="cat ${config.sops.secrets."borg/passphrase".path}"
       export BORG_RSH="ssh -i ${
         config.sops.secrets."borg/ssh_key".path
