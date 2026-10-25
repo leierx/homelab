@@ -57,6 +57,11 @@ alerting:
       - orgId: 1
         receiver: Alerta
         group_by: [grafana_folder, alertname]
+  delete.yaml:
+    apiVersion: 1
+    deleteContactPoints:
+      - orgId: 1
+        uid: gotify
   security.yaml:
     apiVersion: 1
     groups:
