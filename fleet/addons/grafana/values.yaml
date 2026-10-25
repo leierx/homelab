@@ -2,6 +2,7 @@ testFramework: {enabled: false}
 admin: {existingSecret: grafana}
 envValueFrom:
   GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: {secretKeyRef: {name: grafana, key: oidc-client-secret}}
+  GOTIFY_TOKEN: {secretKeyRef: {name: grafana, key: gotify-token}}
 grafana.ini:
   server:
     root_url: https://%(domain)s/
@@ -82,6 +83,21 @@ dashboards:
       datasource: [{name: DS_PROMETHEUS, value: mimir}]
 # Alert rules as provisioning files; the chart puts them in its ConfigMap, so a change rolls Grafana.
 alerting:
+  notifications.yaml:
+    apiVersion: 1
+    contactPoints:
+      - orgId: 1
+        name: Gotify
+        receivers:
+          - uid: gotify
+            type: webhook
+            settings:
+              url: http://gotify.gotify.svc:8080/message
+              authorization_credentials: $GOTIFY_TOKEN
+    policies:
+      - orgId: 1
+        receiver: Gotify
+        group_by: [grafana_folder, alertname]
   security.yaml:
     apiVersion: 1
     groups:

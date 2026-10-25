@@ -25,6 +25,11 @@ variable "immich_client_secret" {
   sensitive = true
 }
 
+variable "gotify_client_secret" {
+  type      = string
+  sensitive = true
+}
+
 variable "edge_client_secret" {
   type      = string
   sensitive = true
