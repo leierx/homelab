@@ -14,42 +14,6 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: ListenerSet
 metadata:
-  name: alerta-edge
-spec:
-  parentRef:
-    name: edge
-    namespace: envoy-gateway-system
-  listeners:
-    - name: https
-      protocol: HTTPS
-      port: 443
-      hostname: alerta.skinke.net
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - group: ""
-            kind: Secret
-            name: alerta-tls
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: alerta-edge
-spec:
-  parentRefs:
-    - group: gateway.networking.k8s.io
-      kind: ListenerSet
-      name: alerta-edge
-  hostnames:
-    - alerta.skinke.net
-  rules:
-    - backendRefs:
-        - name: alerta
-          port: 8080
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: ListenerSet
-metadata:
   name: alerta-wg
 spec:
   parentRef:
@@ -82,26 +46,3 @@ spec:
     - backendRefs:
         - name: alerta
           port: 8080
----
-# public requests log in to Keycloak (client edge) before Alerta sees them; wg peers skip this
-apiVersion: gateway.envoyproxy.io/v1alpha1
-kind: SecurityPolicy
-metadata:
-  name: edge-oidc
-spec:
-  targetRefs:
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
-      name: alerta-edge
-  oidc:
-    provider:
-      issuer: https://auth.skinke.net/realms/homelab
-      # given, not discovered: Envoy Gateway fetches discovery once and never retries, and Keycloak may come up later
-      authorizationEndpoint: https://auth.skinke.net/realms/homelab/protocol/openid-connect/auth
-      tokenEndpoint: https://auth.skinke.net/realms/homelab/protocol/openid-connect/token
-      endSessionEndpoint: https://auth.skinke.net/realms/homelab/protocol/openid-connect/logout
-    clientID: edge
-    clientSecret:
-      name: edge-oidc
-    redirectURL: https://alerta.skinke.net/oauth2/callback
-    logoutPath: /oauth2/logout

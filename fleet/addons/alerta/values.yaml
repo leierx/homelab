@@ -2,8 +2,7 @@ image:
   repository: docker.io/alerta/alerta-web
   tag: 9.1.0
 oidc:
-  keycloakUrl: ""
-  keycloakRealm: ""
+  issuer: ""
 database:
   storage:
     size: 1Gi

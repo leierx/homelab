@@ -153,10 +153,7 @@ resource "keycloak_openid_client" "edge" {
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
 
-  valid_redirect_uris = [
-    "https://alerta.skinke.net/oauth2/callback",
-    "https://metrics.skinke.net/oauth2/callback",
-  ]
+  valid_redirect_uris = ["https://metrics.skinke.net/oauth2/callback"]
 }
 
 # kubectl through kubelogin (`just kubeconfig`); the API server trusts this issuer

@@ -8,10 +8,10 @@ data:
     USE_PROXYFIX = True
 
     AUTH_REQUIRED = True
-    AUTH_PROVIDER = 'keycloak'
+    AUTH_PROVIDER = 'openid'
     SIGNUP_ENABLED = False
-    KEYCLOAK_URL = {{ required "oidc.keycloakUrl is per cluster" .Values.oidc.keycloakUrl | quote }}
-    KEYCLOAK_REALM = {{ required "oidc.keycloakRealm is per cluster" .Values.oidc.keycloakRealm | quote }}
+    OIDC_ISSUER_URL = {{ required "oidc.issuer is per cluster" .Values.oidc.issuer | quote }}
+    OIDC_AUTH_URL = {{ printf "%s/protocol/openid-connect/auth" (required "oidc.issuer is per cluster" .Values.oidc.issuer) | quote }}
     OAUTH2_CLIENT_ID = 'alerta'
 
     # Role mapping from Keycloak groups claim; no local admin accounts

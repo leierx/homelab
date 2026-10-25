@@ -1,6 +1,5 @@
 oidc:
-  keycloakUrl: https://auth.skinke.net
-  keycloakRealm: homelab
+  issuer: https://auth.skinke.net/realms/homelab
 database:
   storage:
     storageClass: zfs
