@@ -5,9 +5,8 @@
   ...
 }:
 let
-  # enable only once secrets.yaml has borg/host, borg/ssh_key and borg/passphrase:
   # sops-nix fails the build on a missing secret
-  enable = false;
+  enable = true;
 
   stateDir = "/var/lib/homelab-backup";
 
@@ -99,7 +98,6 @@ in
     };
   };
 
-  # also after boot, so a run cut off by the auto-upgrade reboot resumes
   systemd.timers.homelab-backup = lib.mkIf enable {
     wantedBy = [ "timers.target" ];
     timerConfig = {
