@@ -5,8 +5,8 @@
   ...
 }:
 let
-  # enable only once secrets.yaml has borg/username, borg/ssh_key and borg/passphrase:
-  # sops-nix fails activation on a missing secret
+  # enable only once secrets.yaml has borg/host, borg/ssh_key and borg/passphrase:
+  # sops-nix fails the build on a missing secret
   enable = false;
 
   stateDir = "/var/lib/homelab-backup";
@@ -22,10 +22,10 @@ let
       pkgs.gnugrep
     ];
     text = ''
-      # rsync.net addresses a repo as <user>@<user>.rsync.net:<path>, and <user> is a sops secret
-      user=$(cat ${config.sops.secrets."borg/username".path})
-      export BORG_REPO="$user@$user.rsync.net:homelab"
-      # rsync.net's borg 1.x binary; check with `ssh "$user@$user.rsync.net" borg1 --version`
+      # <user>@<user>.rsync.net, from sops so no account name lands in the store
+      target=$(cat ${config.sops.secrets."borg/host".path})
+      export BORG_REPO="$target:homelab"
+      # rsync.net's borg 1.x binary; check with `ssh "$target" borg1 --version`
       export BORG_REMOTE_PATH=borg1
       export BORG_PASSCOMMAND="cat ${config.sops.secrets."borg/passphrase".path}"
       export BORG_RSH="ssh -i ${
@@ -77,7 +77,7 @@ in
   };
 
   sops.secrets = lib.mkIf enable {
-    "borg/username".mode = "0400";
+    "borg/host".mode = "0400";
     "borg/ssh_key".mode = "0400";
     "borg/passphrase".mode = "0400";
   };
