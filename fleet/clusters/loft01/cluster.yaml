@@ -30,6 +30,5 @@ addons:
   prometheus-operator-crds: {}
   rbac: {}
   renovate: {}
-  romm: {}
   smartctl-exporter: {}
   zfs-localpv: {}

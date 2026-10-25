@@ -40,11 +40,6 @@ variable "argo_workflows_client_secret" {
   sensitive = true
 }
 
-variable "romm_client_secret" {
-  type      = string
-  sensitive = true
-}
-
 variable "miniflux_client_secret" {
   type      = string
   sensitive = true
