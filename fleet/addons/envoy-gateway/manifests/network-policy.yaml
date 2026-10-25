@@ -45,6 +45,16 @@ spec:
             k8s:io.kubernetes.pod.namespace: monitoring
       toPorts:
         - ports: [{ port: "3000", protocol: TCP }]
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: miniflux
+      toPorts:
+        - ports: [{ port: "8080", protocol: TCP }]
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: romm
+      toPorts:
+        - ports: [{ port: "8080", protocol: TCP }]
     # ACME HTTP-01 solvers (cert-manager), in whichever namespace the Certificate is
     - toEndpoints:
         - matchExpressions:
