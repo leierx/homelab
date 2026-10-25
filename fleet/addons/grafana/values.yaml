@@ -72,6 +72,10 @@ dashboards:
       gnetId: 22604
       revision: 4
       datasource: [{name: DS_PROMETHEUS, value: mimir}]
+    systemd:
+      gnetId: 25304
+      revision: 2
+      datasource: [{name: DS_PROMETHEUS, value: mimir}]
     zfs-overview:
       gnetId: 24987
       revision: 12
@@ -829,6 +833,99 @@ alerting:
                 refId: A
                 instant: true
                 expr: max by (device) (smartctl_device_temperature{temperature_type="current"}) > 55
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        - uid: systemd-unit-failed
+          title: Systemd unit failed
+          condition: C
+          for: 5m
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: A host systemd unit has been in the failed state for 5 minutes.
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: max by (instance, name) (node_systemd_unit_state{state="failed"}) > 0
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        - uid: backup-overdue
+          title: Off-site backup overdue
+          condition: C
+          for: 15m
+          noDataState: Alerting
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: homelab-backup.timer has not triggered in 26 hours (or node-exporter stopped reporting).
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: max by (instance) (time() - node_systemd_timer_last_trigger_seconds{name="homelab-backup.timer"})
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 93600
+        - uid: systemd-timer-overdue
+          title: Systemd timer overdue
+          condition: C
+          for: 1h
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: A host systemd timer has not triggered within its expected schedule (2h for hourly, 26h for daily, 8d for weekly, 33d for monthly).
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: max by (instance, name) ((time() - node_systemd_timer_last_trigger_seconds{name=~"sanoid\\.timer|logrotate\\.timer"} > 2 * 3600) or (time() - node_systemd_timer_last_trigger_seconds{name="systemd-tmpfiles-clean.timer"} > 26 * 3600) or (time() - node_systemd_timer_last_trigger_seconds{name="zfs-scrub.timer"} > 33 * 86400) or (time() - node_systemd_timer_last_trigger_seconds{name!~"homelab-backup\\.timer|sanoid\\.timer|logrotate\\.timer|systemd-tmpfiles-clean\\.timer|zfs-scrub\\.timer"} > 8 * 86400))
             - refId: C
               datasourceUid: __expr__
               model:
