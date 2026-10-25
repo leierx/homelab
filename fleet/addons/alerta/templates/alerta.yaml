@@ -71,7 +71,7 @@ spec:
           args:
             - |
               set -eu
-              cp -a /app/. /app-work/
+              cp -r /app/* /app-work/
               cp /config/alertad.conf /app-work/alertad.conf
               cat > /app-work/alerta.conf <<EOF
               [DEFAULT]
