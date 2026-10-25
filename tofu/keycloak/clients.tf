@@ -119,6 +119,29 @@ resource "keycloak_generic_protocol_mapper" "immich_role" {
   }
 }
 
+# the web app and the phone app (custom scheme); the server keeps the secret for both
+resource "keycloak_openid_client" "gotify" {
+  realm_id  = keycloak_realm.homelab.id
+  client_id = "gotify"
+  name      = "gotify"
+  enabled   = true
+  base_url  = "https://notify.skinke.net"
+
+  access_type                  = "CONFIDENTIAL"
+  client_secret_wo             = var.gotify_client_secret
+  client_secret_wo_version     = "1"
+  standard_flow_enabled        = true
+  direct_access_grants_enabled = false
+  implicit_flow_enabled        = false
+  service_accounts_enabled     = false
+  pkce_code_challenge_method   = "S256"
+
+  valid_redirect_uris = [
+    "https://notify.skinke.net/auth/oidc/callback",
+    "gotify://oidc/callback",
+  ]
+}
+
 # Envoy Gateway's login in front of the public sites (SecurityPolicy edge-oidc); not an app
 resource "keycloak_openid_client" "edge" {
   realm_id  = keycloak_realm.homelab.id
@@ -200,6 +223,12 @@ resource "keycloak_openid_client_default_scopes" "grafana" {
 resource "keycloak_openid_client_default_scopes" "immich" {
   realm_id       = keycloak_realm.homelab.id
   client_id      = keycloak_openid_client.immich.id
+  default_scopes = local.default_client_scopes
+}
+
+resource "keycloak_openid_client_default_scopes" "gotify" {
+  realm_id       = keycloak_realm.homelab.id
+  client_id      = keycloak_openid_client.gotify.id
   default_scopes = local.default_client_scopes
 }
 

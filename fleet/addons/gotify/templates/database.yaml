@@ -1,0 +1,33 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: gotify-db
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+spec:
+  instances: 1
+  # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.6-system-trixie
+  bootstrap:
+    initdb:
+      database: gotify
+      owner: gotify
+  storage: {{ toJson .Values.database.storage }}
+  postgresql:
+    parameters:
+      # Gotify asks for at most 10 connections; the server keeps headroom for the operator and pg_dump
+      max_connections: "60"
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 1Gi }
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: gotify-db
+spec:
+  selector:
+    matchLabels:
+      cnpg.io/cluster: gotify-db
+  podMetricsEndpoints:
+    - port: metrics

@@ -3,6 +3,7 @@ podSecurity: restricted
 dependencies:
   - cilium
   - external-secrets
+  - gotify
   - loki
   - mimir
   - zfs-localpv

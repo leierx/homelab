@@ -16,6 +16,7 @@ addons:
   dodde: {}
   envoy-gateway: {}
   external-secrets: {}
+  gotify: {}
   grafana: {}
   immich: {}
   keycloak: {}

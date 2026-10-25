@@ -37,4 +37,4 @@ spec:
         - key: kubernetes.io/metadata.name
           operator: In
           # namespaces whose pods get hostUsers: false
-          values: [argo, argocd, cert-manager, cnpg-system, envoy-gateway-system, external-secrets, immich, keycloak, monitoring, openbao, renovate]
+          values: [argo, argocd, cert-manager, cnpg-system, envoy-gateway-system, external-secrets, gotify, immich, keycloak, monitoring, openbao, renovate]

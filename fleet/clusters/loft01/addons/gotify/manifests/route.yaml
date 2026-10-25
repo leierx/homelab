@@ -1,0 +1,91 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: gotify
+spec:
+  secretName: gotify-tls
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  dnsNames:
+    - notify.skinke.net
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: gotify-edge
+spec:
+  parentRef:
+    name: edge
+    namespace: envoy-gateway-system
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: notify.skinke.net
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: gotify-tls
+---
+# public without the edge login: the phone app can't get through it, so Gotify's own SSO login guards it
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: gotify-edge
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: gotify-edge
+  hostnames:
+    - notify.skinke.net
+  rules:
+    - backendRefs:
+        - name: gotify
+          port: 8080
+      # /stream is a long-lived WebSocket connection
+      timeouts:
+        request: 0s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: gotify-wg
+spec:
+  parentRef:
+    name: wg
+    namespace: envoy-gateway-system
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: notify.skinke.net
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: gotify-tls
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: gotify-wg
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: gotify-wg
+  hostnames:
+    - notify.skinke.net
+  rules:
+    - backendRefs:
+        - name: gotify
+          port: 8080
+      # /stream is a long-lived WebSocket connection
+      timeouts:
+        request: 0s
