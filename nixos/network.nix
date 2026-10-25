@@ -79,7 +79,7 @@
       };
       wireguardPeers = [
         {
-          PublicKey = "jqJmKNQ3wuiRAg8IaVGGW1apLypAMmbBfk5uz1ivtnA=";
+          PublicKey = "z8HUf5mIulTBA91HqbPNkLQvCSppyfVJ94LbpbAZV2o=";
           PresharedKeyFile = config.sops.secrets."wireguard/psk".path;
           AllowedIPs = [ "10.0.0.2/32" ];
           PersistentKeepalive = 25;
