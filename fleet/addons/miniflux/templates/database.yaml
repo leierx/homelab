@@ -4,6 +4,7 @@ metadata:
   name: miniflux-db
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   instances: 1
   # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
@@ -20,20 +21,6 @@ spec:
   resources:
     requests: { cpu: 50m, memory: 256Mi }
     limits: { memory: 1Gi }
----
-apiVersion: postgresql.cnpg.io/v1
-kind: Database
-metadata:
-  name: miniflux
-  annotations:
-    argocd.argoproj.io/sync-options: Delete=false,Prune=false
-spec:
-  cluster:
-    name: miniflux-db
-  name: miniflux
-  owner: miniflux
-  extensions:
-    - name: hstore
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
