@@ -1,0 +1,8 @@
+namespace: miniflux
+podSecurity: restricted
+dependencies:
+  - cilium
+  - cloudnative-pg
+  - external-secrets
+  - zfs-localpv
+  - prometheus-operator-crds

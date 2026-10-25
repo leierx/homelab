@@ -1,0 +1,33 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: romm-db
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+spec:
+  instances: 1
+  # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.6-system-trixie
+  bootstrap:
+    initdb:
+      database: romm
+      owner: romm
+  storage: {{ toJson .Values.database.storage }}
+  postgresql:
+    parameters:
+      # Gunicorn + RQ workers; the server keeps headroom for the operator and pg_dump
+      max_connections: "60"
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 1Gi }
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: romm-db
+spec:
+  selector:
+    matchLabels:
+      cnpg.io/cluster: romm-db
+  podMetricsEndpoints:
+    - port: metrics

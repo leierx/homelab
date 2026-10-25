@@ -46,43 +46,7 @@ spec:
         - name: grafana
           port: 80
 ---
-apiVersion: gateway.networking.k8s.io/v1
-kind: ListenerSet
-metadata:
-  name: grafana-wg
-spec:
-  parentRef:
-    name: wg
-    namespace: envoy-gateway-system
-  listeners:
-    - name: https
-      protocol: HTTPS
-      port: 443
-      hostname: metrics.skinke.net
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - group: ""
-            kind: Secret
-            name: grafana-tls
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: grafana-wg
-spec:
-  parentRefs:
-    - group: gateway.networking.k8s.io
-      kind: ListenerSet
-      name: grafana-wg
-  hostnames:
-    - metrics.skinke.net
-  rules:
-    - backendRefs:
-        - name: grafana
-          port: 80
----
-# public requests log in to Keycloak (client edge) before Grafana sees them; wg peers skip this
+# public requests log in to Keycloak (client edge) before Grafana sees them
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
@@ -104,3 +68,4 @@ spec:
       name: edge-oidc
     redirectURL: https://metrics.skinke.net/oauth2/callback
     logoutPath: /oauth2/logout
+

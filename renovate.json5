@@ -7,11 +7,10 @@
 //                                                 OpenTofu providers
 //   anywhere in fleet/                            a value on the line after `# renovate: datasource=... depName=...`
 //   .github/workflows/                            GitHub Actions, pinned to digests
-//   nixos/**.nix                                  pi packages, "npm:<package>@<version>"
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: ['config:recommended', 'helpers:pinGitHubActionDigests'],
-  includePaths: ['fleet/**', 'tofu/**', '.github/**', 'nixos/**'],
+  includePaths: ['fleet/**', 'tofu/**', '.github/**'],
   labels: ['dependencies', 'needs-review'],
   pruneBranchAfterAutomerge: true,
   platformAutomerge: false,
@@ -32,13 +31,6 @@
       matchStrings: [
         '#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+registryUrl=(?<registryUrl>\\S+))?(\\s+versioning=(?<versioning>\\S+))?(\\s+extractVersion=(?<extractVersion>\\S+))?\\s*\\n[^\\n]*[:=]\\s*"?(?<currentValue>[^\\s":]+)"?\\s*(\\n|$)',
       ],
-    },
-    {
-      customType: 'regex',
-      description: 'pi packages from npm in the host configuration',
-      managerFilePatterns: ['/^nixos/.+\\.nix$/'],
-      matchStrings: ['"npm:(?<depName>(@[^/"\\s]+/)?[^@"\\s]+)@(?<currentValue>[^"\\s]+)"'],
-      datasourceTemplate: 'npm',
     },
     {
       customType: 'regex',
@@ -92,14 +84,6 @@
       automerge: false,
       dependencyDashboardApproval: true,
       labels: ['dependencies', 'needs-review'],
-    },
-    {
-      description: 'Group and automerge all pi package updates (major, minor, patch)',
-      matchFileNames: ['nixos/**'],
-      groupName: 'pi packages',
-      automerge: true,
-      dependencyDashboardApproval: false,
-      labels: ['dependencies'],
     },
   ],
 }

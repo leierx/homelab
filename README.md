@@ -1,13 +1,12 @@
 # homelab
 
-One HPE ProLiant DL360 Gen9 running NixOS and a single-node k3s cluster,
+One server running NixOS and a single-node k3s cluster,
 `loft01`. Git is the only source of truth: the host auto-upgrades from `main`,
 and Argo CD deploys everything in `fleet/` without helper scripts or CI.
 
 ## Hardware
 
-- HPE ProLiant DL360 Gen9, 2 × Intel Xeon E5-2690 v3 (48 threads), 503 GiB
-  RAM.
+- 2 × Intel Xeon E5-2690 v3 (48 threads), 503 GiB RAM.
 - 1 TB NVMe for the OS (ESP + ext4 root), eight 900 GB SAS disks in four
   2-way mirrors (one ZFS pool, `tank`).
 - iLO watchdog, SMART tests, ZFS scrubs and trim; see `nixos/hardware.nix`
@@ -38,7 +37,7 @@ and Argo CD deploys everything in `fleet/` without helper scripts or CI.
 ## Repository layout
 
 ```text
-nixos/          NixOS host configuration (disks, k3s, sops-nix, pi)
+nixos/          NixOS host configuration (disks, k3s, sops-nix)
 fleet/          GitOps fleet controller, shared addons, and cluster configs (see fleet/README.md)
   templates/    Helm templates computing dependency sync-waves and Multi-Source Applications
   addons/       Installable addons (helm, kustomize, manifests)

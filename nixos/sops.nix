@@ -20,7 +20,9 @@
       "openbao/seal_key" = { };
       # yescrypt hash for leier, so doas has something to prompt for;
       # neededForUsers: users are updated before sops-nix installs secrets
-      "leier/password_hash" = { neededForUsers = true; };
+      "leier/password_hash" = {
+        neededForUsers = true;
+      };
     };
     # OpenBao's static auto-unseal key, handed to the cluster through k3s's auto-deploy manifests
     templates."openbao-seal-key.yaml" = {

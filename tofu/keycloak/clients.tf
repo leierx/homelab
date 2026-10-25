@@ -198,6 +198,45 @@ resource "keycloak_openid_client" "argo_workflows" {
   valid_redirect_uris = ["https://workflows.skinke.net/oauth2/callback"]
 }
 
+resource "keycloak_openid_client" "romm" {
+  realm_id  = keycloak_realm.homelab.id
+  client_id = "romm"
+  name      = "romm"
+  enabled   = true
+  base_url  = "https://romm.skinke.net"
+
+  access_type                  = "CONFIDENTIAL"
+  client_secret_wo             = var.romm_client_secret
+  client_secret_wo_version     = "1"
+  standard_flow_enabled        = true
+  direct_access_grants_enabled = false
+  implicit_flow_enabled        = false
+  service_accounts_enabled     = false
+
+  valid_redirect_uris = ["https://romm.skinke.net/api/oauth/openid"]
+  web_origins         = ["https://romm.skinke.net"]
+}
+
+resource "keycloak_openid_client" "miniflux" {
+  realm_id  = keycloak_realm.homelab.id
+  client_id = "miniflux"
+  name      = "miniflux"
+  enabled   = true
+  base_url  = "https://rss.skinke.net"
+
+  access_type                  = "CONFIDENTIAL"
+  client_secret_wo             = var.miniflux_client_secret
+  client_secret_wo_version     = "1"
+  standard_flow_enabled        = true
+  direct_access_grants_enabled = false
+  implicit_flow_enabled        = false
+  service_accounts_enabled     = false
+
+  valid_redirect_uris = ["https://rss.skinke.net/oauth2/oidc/callback"]
+  web_origins         = ["https://rss.skinke.net"]
+}
+
+
 resource "keycloak_openid_client_default_scopes" "argocd" {
   realm_id       = keycloak_realm.homelab.id
   client_id      = keycloak_openid_client.argocd.id
@@ -245,3 +284,16 @@ resource "keycloak_openid_client_default_scopes" "argo_workflows" {
   client_id      = keycloak_openid_client.argo_workflows.id
   default_scopes = local.default_client_scopes
 }
+
+resource "keycloak_openid_client_default_scopes" "romm" {
+  realm_id       = keycloak_realm.homelab.id
+  client_id      = keycloak_openid_client.romm.id
+  default_scopes = local.default_client_scopes
+}
+
+resource "keycloak_openid_client_default_scopes" "miniflux" {
+  realm_id       = keycloak_realm.homelab.id
+  client_id      = keycloak_openid_client.miniflux.id
+  default_scopes = local.default_client_scopes
+}
+

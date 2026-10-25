@@ -6,7 +6,7 @@ composition, see [fleet/README.md](../fleet/README.md).
 
 ## Overview
 
-`loft01` is a single-node NixOS + k3s cluster on an HPE ProLiant DL360 Gen9 and
+`loft01` is a single-node NixOS + k3s cluster and
 the **production** cluster: it holds real data (Immich photo library, Grafana
 metrics, OpenBao secrets) with no backup. Treat deleting PVCs or stateful CRs as
 data loss; they carry `argocd.argoproj.io/sync-options: Delete=false,Prune=false`
@@ -63,11 +63,11 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   Every login requires WebAuthn/passkey or TOTP.
 - **Gateways:**
   - `edge` (public via NodePort 30080/30443): Keycloak login endpoints, Immich
-    (`photos.skinke.net`), and Grafana (`metrics.skinke.net`) behind Envoy
-    Gateway's OIDC `SecurityPolicy`.
+    (`photos.skinke.net`), RomM (`romm.skinke.net`), Miniflux (`rss.skinke.net`),
+    and Grafana (`metrics.skinke.net`) behind Envoy Gateway's OIDC `SecurityPolicy`.
   - `wg` (WireGuard `10.0.0.1` only): Alerta (`alerta.skinke.net`), Argo CD
-    (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), Keycloak
-    admin console, and direct Grafana access.
+    (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), and Keycloak
+    admin console.
 - **First login after a fresh cluster build:**
   1. Fetch `leier`'s initial password:
      `just bao kv get -field=leier_password kv/loft01/keycloak`

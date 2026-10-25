@@ -24,10 +24,12 @@ addons:
   kubevirt: {}
   loki: {}
   mimir: {}
+  miniflux: {}
   node-exporter: {}
   openbao: {}
   prometheus-operator-crds: {}
   rbac: {}
   renovate: {}
+  romm: {}
   smartctl-exporter: {}
   zfs-localpv: {}

@@ -1,0 +1,9 @@
+image:
+  repository: ghcr.io/miniflux/miniflux
+  tag: 2.3.4
+url: ""
+oidc:
+  issuer: ""
+database:
+  storage:
+    size: 1Gi

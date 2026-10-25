@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: miniflux
+  annotations:
+    # after its database and secrets are Healthy
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 1
+  serviceName: miniflux
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: miniflux
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: miniflux
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: miniflux
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: miniflux-db-app
+                  key: uri
+            - name: RUN_MIGRATIONS
+              value: "1"
+            - name: BASE_URL
+              value: {{ required "url is per cluster" .Values.url | quote }}
+            - name: HTTPS
+              value: "1"
+            - name: DISABLE_LOCAL_AUTH
+              value: "true"
+            - name: OAUTH2_PROVIDER
+              value: oidc
+            - name: OAUTH2_OIDC_PROVIDER_NAME
+              value: Keycloak
+            - name: OAUTH2_CLIENT_ID
+              value: miniflux
+            - name: OAUTH2_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: miniflux
+                  key: oidc-client-secret
+            - name: OAUTH2_OIDC_DISCOVERY_ENDPOINT
+              value: {{ required "oidc.issuer is per cluster" .Values.oidc.issuer | quote }}
+            - name: OAUTH2_REDIRECT_URL
+              value: {{ printf "%s/oauth2/oidc/callback" (required "url is per cluster" .Values.url) | quote }}
+            - name: OAUTH2_USER_CREATION
+              value: "1"
+            - name: OAUTH2_GROUP_CLAIM
+              value: groups
+            - name: OAUTH2_ADMIN_GROUP
+              value: homelab-admins
+            - name: METRICS_COLLECTOR
+              value: "1"
+            - name: METRICS_ALLOWED_NETWORKS
+              value: 10.42.0.0/16
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: miniflux
+  labels:
+    app.kubernetes.io/name: miniflux
+spec:
+  selector:
+    app.kubernetes.io/name: miniflux
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: miniflux
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: miniflux
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 60s
