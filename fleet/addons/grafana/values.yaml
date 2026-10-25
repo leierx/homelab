@@ -83,6 +83,7 @@ dashboards:
       datasource: [{name: DS_PROMETHEUS, value: mimir}]
 # Alert rules as provisioning files; the chart puts them in its ConfigMap, so a change rolls Grafana.
 alerting:
+  # the default delivery (Gotify) and what is deliberately not delivered
   notifications.yaml:
     apiVersion: 1
     contactPoints:
@@ -94,10 +95,26 @@ alerting:
             settings:
               url: http://gotify.gotify.svc:8080/message
               authorization_credentials: $GOTIFY_TOKEN
+      # grafana://noop is Grafana's own sentinel: the receiver is built, then every send is
+      # skipped. The alert still fires and stays visible in the alert list.
+      - orgId: 1
+        name: No notification
+        receivers:
+          - uid: noop
+            type: webhook
+            settings:
+              url: grafana://noop
     policies:
       - orgId: 1
         receiver: Gotify
         group_by: [grafana_folder, alertname]
+        routes:
+          # cert-manager's HTTP-01 solver pod always carries upstream's 100m CPU limit, which
+          # the container-resources policy warns about; it is never actionable, so keep the
+          # alert but deliver nothing. Everything else still goes to Gotify.
+          - receiver: No notification
+            matchers:
+              - 'user_username="system:serviceaccount:cert-manager:cert-manager"'
   security.yaml:
     apiVersion: 1
     groups:
@@ -365,7 +382,10 @@ alerting:
           labels:
             severity: info
           annotations:
-            summary: A pod was admitted despite a Warn/Audit policy (addon admission), e.g. a CPU limit or a missing memory limit.
+            summary: >-
+              A pod was admitted despite a Warn/Audit policy (addon admission), e.g. a CPU
+              limit or a missing memory limit. cert-manager's HTTP-01 solver pod is logged
+              here but not notified.
           data:
             - refId: A
               datasourceUid: loki
@@ -375,7 +395,8 @@ alerting:
               model:
                 refId: A
                 queryType: instant
-                expr: sum by (objectRef_namespace) (count_over_time({job="kube-audit"} |= "validation.policy.admission.k8s.io/validation_failure" | json [5m]))
+                # user_username routes cert-manager's solver pod to the no-notification route
+                expr: sum by (objectRef_namespace, user_username) (count_over_time({job="kube-audit"} |= "validation.policy.admission.k8s.io/validation_failure" | json [5m]))
             - refId: C
               datasourceUid: __expr__
               model:
