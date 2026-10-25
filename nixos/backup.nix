@@ -5,13 +5,9 @@
   ...
 }:
 let
-  # enable only once secrets.yaml has borg/ssh_key and borg/passphrase: sops-nix fails activation on missing secrets
-  offsite = {
-    enable = false;
-    repo = "USER@HOST.rsync.net:homelab";
-    # rsync.net's borg 1.x binary; check with `ssh USER@HOST.rsync.net borg1 --version`
-    remotePath = "borg1";
-  };
+  # enable only once secrets.yaml has restic/host, restic/ssh_key and restic/password:
+  # sops-nix fails the build on a missing secret
+  enable = true;
 
   stateDir = "/var/lib/homelab-backup";
 
@@ -19,25 +15,28 @@ let
     name = "homelab-backup";
     runtimeInputs = [
       config.boot.zfs.package
-      pkgs.borgbackup
+      pkgs.restic
       pkgs.sqlite
       pkgs.openssh
       pkgs.coreutils
       pkgs.gnugrep
     ];
     text = ''
-      export BORG_REPO=${lib.escapeShellArg offsite.repo}
-      export BORG_REMOTE_PATH=${lib.escapeShellArg offsite.remotePath}
-      export BORG_PASSCOMMAND="cat ${config.sops.secrets."borg/passphrase".path}"
-      export BORG_RSH="ssh -i ${
-        config.sops.secrets."borg/ssh_key".path
-      } -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${stateDir}/known_hosts"
-      export BORG_BASE_DIR=${stateDir}
-      create=(borg create --checkpoint-interval 600 --compression "zstd,3")
+      # <user>@<user>.rsync.net, from sops so no account name lands in the store
+      target=$(cat ${config.sops.secrets."restic/host".path})
+      key=${config.sops.secrets."restic/ssh_key".path}
+      export RESTIC_REPOSITORY="sftp:$target:homelab-restic"
+      export RESTIC_PASSWORD_COMMAND="cat ${config.sops.secrets."restic/password".path}"
+      export RESTIC_CACHE_DIR=${stateDir}/cache
+
+      # rsync.net only speaks sftp, and restic has to be told which key to use
+      r() {
+        restic -o "sftp.command=ssh -i $key -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${stateDir}/known_hosts $target -s sftp" "$@"
+      }
 
       # this unit is the repo's only writer, so any lock left behind is stale
-      borg break-lock || true
-      borg info >/dev/null 2>&1 || borg init --encryption=repokey-blake2
+      r unlock || true
+      r snapshots >/dev/null 2>&1 || r init
 
       # k3s state: restoring a PVC needs its k8s objects too
       stage=${stateDir}/k3s
@@ -46,21 +45,17 @@ let
       cp -a /var/lib/rancher/k3s/server/{token,cred,tls} "$stage"/
       # state.db holds its hash; without it a reinstalled node is rejected
       cp -a /etc/rancher/node/password "$stage"/node-password
-      "''${create[@]}" "::k3s-{now:%Y-%m-%dT%H:%M}" "$stage"
-      borg prune --glob-archives 'k3s-*' --keep-daily 14 --keep-weekly 8 --keep-monthly 6
+      r backup --host loft01 --tag k3s "$stage"
 
-      # one archive per PVC (zvol or dataset) per daily snapshot; an interrupted one is redone, dedup skips what's uploaded
+      # one snapshot per PVC (zvol or dataset) from its latest daily snapshot; the
+      # stream is chunked and deduplicated like any other file, and stdin-filename
+      # keeps the parent snapshot so unchanged chunks are skipped
       for vol in $(zfs list -H -t volume,filesystem -o name -r -d 1 tank | grep -v '^tank$'); do
         snap=$(zfs list -H -t snapshot -o name -s creation -d 1 "$vol" | grep '@autosnap_.*_daily$' | tail -n 1) || continue
-        prefix=''${vol//\//_}
-        stamp=''${snap##*@autosnap_}
-        archive="$prefix-''${stamp//:/-}"
-        borg info "::$archive" >/dev/null 2>&1 && continue
-        "''${create[@]}" --content-from-command "::$archive" -- zfs send -L "$snap"
-        borg prune --glob-archives "$prefix-*" --keep-daily 7 --keep-weekly 4 --keep-monthly 6
+        zfs send -L "$snap" | r backup --host loft01 --tag "volume:$vol" --stdin --stdin-filename "$vol"
       done
 
-      borg compact
+      r forget --host loft01 --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
     '';
   };
 in
@@ -77,13 +72,14 @@ in
     };
   };
 
-  sops.secrets = lib.mkIf offsite.enable {
-    "borg/ssh_key".mode = "0400";
-    "borg/passphrase".mode = "0400";
+  sops.secrets = lib.mkIf enable {
+    "restic/host".mode = "0400";
+    "restic/ssh_key".mode = "0400";
+    "restic/password".mode = "0400";
   };
 
-  systemd.services.homelab-backup = lib.mkIf offsite.enable {
-    description = "Off-site borg backup of k3s state and PVC volumes";
+  systemd.services.homelab-backup = lib.mkIf enable {
+    description = "Off-site restic backup of k3s state and PVC volumes";
     after = [
       "network-online.target"
       "zfs.target"
@@ -100,7 +96,7 @@ in
   };
 
   # also after boot, so a run cut off by the auto-upgrade reboot resumes
-  systemd.timers.homelab-backup = lib.mkIf offsite.enable {
+  systemd.timers.homelab-backup = lib.mkIf enable {
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnCalendar = "01:00";

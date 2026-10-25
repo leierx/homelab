@@ -89,9 +89,7 @@ metadata:
   name: keycloak-tofu
 rules:
   # the kubernetes backend: Secret tfstate-default-keycloak, Lease lock-tfstate-default-keycloak
-  - apiGroups: [""]
-    resources: [secrets]
-    verbs: [list]
+  # no list: it would return the data of every Secret in the namespace
   - apiGroups: [""]
     resources: [secrets]
     resourceNames: [tfstate-default-keycloak]

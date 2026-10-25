@@ -2,6 +2,8 @@
 let
   yaml = pkgs.formats.yaml { };
 
+  k3s = pkgs.k3s_1_36;
+
   # kubectl logs in through Keycloak (realm homelab, client kubernetes); groups map to RBAC in fleet/addons/rbac
   authentication = yaml.generate "k3s-authentication.yaml" {
     apiVersion = "apiserver.config.k8s.io/v1";
@@ -161,7 +163,7 @@ in
 {
   services.k3s = {
     enable = true;
-    package = pkgs.k3s_1_36;
+    package = k3s;
     extraFlags = [
       "--flannel-backend=none"
       "--disable-network-policy"
@@ -176,6 +178,9 @@ in
       "--kubelet-arg=kube-reserved=cpu=2,memory=16Gi"
       # RuntimeDefault for every container that doesn't ask for another profile
       "--kubelet-arg=seccomp-default=true"
+      # k3s defaults both to the safe value; spelled out so a default change is a diff
+      "--kubelet-arg=anonymous-auth=false"
+      "--kubelet-arg=read-only-port=0"
       # virt-launcher and CDI's importer run as uid 107 and must open raw block volumes
       "--nonroot-devices"
       "--kube-apiserver-arg=authentication-config=${authentication}"
@@ -215,12 +220,21 @@ in
   # above the kubelet's 280 s total, so logind never cuts its shutdown short
   services.logind.settings.Login.InhibitDelayMaxSec = "360s";
 
-  # admin kubeconfig is readable by wheel, so kubectl works as leier without doas
-  environment.variables.KUBECONFIG = "/etc/rancher/k3s/k3s.yaml";
-
-  # kubectl comes with the k3s package, so it always matches the server
+  # the admin kubeconfig is a year-long system:masters client cert readable by
+  # wheel; it used to sit in the environment of every process, so now only these
+  # wrappers add it
   environment.systemPackages = with pkgs; [
-    kubernetes-helm
-    cilium-cli
+    (writeShellScriptBin "kubectl" ''
+      export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+      exec ${k3s}/bin/kubectl "$@"
+    '')
+    (writeShellScriptBin "helm" ''
+      export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+      exec ${kubernetes-helm}/bin/helm "$@"
+    '')
+    (writeShellScriptBin "cilium" ''
+      export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+      exec ${cilium-cli}/bin/cilium "$@"
+    '')
   ];
 }

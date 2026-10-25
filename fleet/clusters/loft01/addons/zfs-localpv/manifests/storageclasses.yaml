@@ -10,6 +10,8 @@ parameters:
   poolname: tank
   fstype: ext4
 allowVolumeExpansion: true
+# a deleted claim must not take the data with it: the zvol stays until removed by hand
+reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer
 ---
 # zfs-thin: ZFS filesystems with 1M records, for bulk files; never databases.
@@ -27,4 +29,6 @@ parameters:
   quotatype: refquota
   thinprovision: "yes"
 allowVolumeExpansion: true
+# a deleted claim must not take the data with it: the dataset stays until removed by hand
+reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer

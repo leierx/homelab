@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 {
   nixpkgs.hostPlatform = "x86_64-linux";
   system.stateVersion = "26.05";
@@ -17,6 +17,8 @@
   users.users.leier = {
     isNormalUser = true;
     extraGroups = [ "wheel" ];
+    # what doas prompts for; ssh stays key-only, PasswordAuthentication is off below
+    hashedPasswordFile = config.sops.secrets."leier/password_hash".path;
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICKkHlDWS9S4YWSPSah1Pea5Jpt6+zasaPed0cR2FFhh"
     ];
@@ -58,7 +60,7 @@
     extraRules = [
       {
         groups = [ "wheel" ];
-        noPass = true;
+        # noPass is off on purpose: otherwise any code running as leier is root
         # keepenv would hand root this user's XDG_RUNTIME_DIR
         setEnv = [
           "LANG"
@@ -67,6 +69,19 @@
       }
     ];
   };
+
+  # makes the pod AppArmorProfile annotations in fleet/ actually enforce
+  security.apparmor.enable = true;
+  security.auditd.enable = true;
+  # targeted, not a blanket execve rule: a busy k8s node would drown in those
+  security.audit.rules = [
+    # root commands started from a user session
+    "-a always,exit -F arch=b64 -S execve -F euid=0 -F auid>=1000 -F auid!=unset -k root_exec"
+    # the two ways to own this host: the sops age key and the doas policy
+    "-w /var/lib/sops-nix -p rwa -k sops_key"
+    "-w /etc/doas.conf -p wa -k privilege"
+    "-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k modules"
+  ];
 
   programs.nano.enable = false;
   programs.neovim = {
@@ -96,7 +111,9 @@
       ];
       flake-registry = "";
       auto-optimise-store = true;
-      trusted-users = [ "@wheel" ];
+      # trusted-users can set sandbox = relaxed or add substituters, i.e. root
+      # without doas; allowed-users is all a normal build needs
+      allowed-users = [ "@wheel" ];
     };
     gc = {
       automatic = true;

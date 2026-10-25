@@ -6,7 +6,9 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["create", "update", "delete", "get", "list", "watch"]
+    # no list/watch: this namespace holds the cluster Secrets (cluster-admin
+    # bearer tokens) and repo credentials, and the bridge only ever gets by name
+    verbs: ["create", "update", "delete", "get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
