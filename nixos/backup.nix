@@ -33,7 +33,7 @@ let
         config.sops.secrets."borg/ssh_key".path
       } -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${stateDir}/known_hosts"
       export BORG_BASE_DIR=${stateDir}
-      create=(borg create --checkpoint-interval 600 --compression "zstd,3")
+      create=(borg create --stats --checkpoint-interval 600 --compression "zstd,3")
 
       # this unit is the repo's only writer, so any lock left behind is stale
       borg break-lock || true
