@@ -2,7 +2,7 @@ testFramework: {enabled: false}
 admin: {existingSecret: grafana}
 envValueFrom:
   GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: {secretKeyRef: {name: grafana, key: oidc-client-secret}}
-  GOTIFY_TOKEN: {secretKeyRef: {name: grafana, key: gotify-token}}
+  ALERTA_API_KEY: {secretKeyRef: {name: grafana, key: alerta-api-key}}
 grafana.ini:
   server:
     root_url: https://%(domain)s/
@@ -27,17 +27,7 @@ initChownData: {enabled: false}
 securityContext:
   fsGroupChangePolicy: OnRootMismatch
 resources: {requests: {cpu: 50m, memory: 256Mi}, limits: {memory: 1Gi}}
-downloadDashboards:
-  resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {memory: 64Mi}}
 serviceMonitor: {enabled: true}
-sidecar:
-  resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}
-  dashboards:
-    enabled: true
-    searchNamespace: ALL
-    folderAnnotation: grafana_folder
-    skipReload: true
-    provider: {foldersFromFilesStructure: true}
 datasources:
   datasources.yaml:
     apiVersion: 1
@@ -49,54 +39,23 @@ datasources:
         isDefault: true
         jsonData: {prometheusType: Mimir, httpMethod: POST, timeInterval: 60s}
       - {name: Loki, uid: loki, type: loki, url: 'http://loki:3100'}
-dashboardProviders:
-  dashboardproviders.yaml:
-    apiVersion: 1
-    providers:
-      - {name: kubernetes, folder: Kubernetes, type: file, options: {path: /var/lib/grafana/dashboards/kubernetes}}
-      - {name: platform, folder: Platform, type: file, options: {path: /var/lib/grafana/dashboards/platform}}
-# grafana.com dashboards, downloaded at startup
-dashboards:
-  kubernetes:
-    k8s-views-global: {gnetId: 15757, revision: 43}
-    k8s-views-namespaces: {gnetId: 15758, revision: 46}
-    k8s-views-nodes: {gnetId: 15759, revision: 40}
-    k8s-views-pods: {gnetId: 15760, revision: 41}
-    k8s-system-api-server: {gnetId: 15761, revision: 21}
-    node-exporter-full: {gnetId: 1860, revision: 45}
-  platform:
-    argocd-operational: {gnetId: 19993, revision: 9}
-    argocd-application: {gnetId: 19974, revision: 8}
-    cert-manager: {gnetId: 20842, revision: 3}
-    envoy-gateway: {gnetId: 24460}
-    smartctl-exporter:
-      gnetId: 22604
-      revision: 4
-      datasource: [{name: DS_PROMETHEUS, value: mimir}]
-    systemd:
-      gnetId: 25304
-      revision: 2
-      datasource: [{name: DS_PROMETHEUS, value: mimir}]
-    zfs-overview:
-      gnetId: 24987
-      revision: 12
-      datasource: [{name: DS_PROMETHEUS, value: mimir}]
 # Alert rules as provisioning files; the chart puts them in its ConfigMap, so a change rolls Grafana.
 alerting:
   notifications.yaml:
     apiVersion: 1
     contactPoints:
       - orgId: 1
-        name: Gotify
+        name: Alerta
         receivers:
-          - uid: gotify
+          - uid: alerta
             type: webhook
             settings:
-              url: http://gotify.gotify.svc:8080/message
-              authorization_credentials: $GOTIFY_TOKEN
+              url: http://alerta.alerta.svc:8080/api/webhooks/prometheus
+              authorization_scheme: Key
+              authorization_credentials: $ALERTA_API_KEY
     policies:
       - orgId: 1
-        receiver: Gotify
+        receiver: Alerta
         group_by: [grafana_folder, alertname]
   security.yaml:
     apiVersion: 1

@@ -361,7 +361,7 @@ data:
     
     // kube-state-metrics.alloy
     // the kube-state-metrics Service's endpoints; the job name and the one label
-    // are what the dashboards and alerts query
+    // are what the alerts query
     discovery.kubernetes "kube_state_metrics" {
       role = "endpoints"
     

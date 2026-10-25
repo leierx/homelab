@@ -25,7 +25,7 @@ variable "immich_client_secret" {
   sensitive = true
 }
 
-variable "gotify_client_secret" {
+variable "alerta_client_secret" {
   type      = string
   sensitive = true
 }

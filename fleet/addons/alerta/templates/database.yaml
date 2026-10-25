@@ -1,7 +1,7 @@
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
-  name: gotify-db
+  name: alerta-db
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
 spec:
@@ -10,12 +10,12 @@ spec:
   imageName: ghcr.io/cloudnative-pg/postgresql:18.6-system-trixie
   bootstrap:
     initdb:
-      database: gotify
-      owner: gotify
+      database: alerta
+      owner: alerta
   storage: {{ toJson .Values.database.storage }}
   postgresql:
     parameters:
-      # Gotify asks for at most 10 connections; the server keeps headroom for the operator and pg_dump
+      # 5 uWSGI workers; the server keeps headroom for the operator and pg_dump
       max_connections: "60"
   resources:
     requests: { cpu: 50m, memory: 256Mi }
@@ -24,10 +24,10 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: gotify-db
+  name: alerta-db
 spec:
   selector:
     matchLabels:
-      cnpg.io/cluster: gotify-db
+      cnpg.io/cluster: alerta-db
   podMetricsEndpoints:
     - port: metrics

@@ -63,11 +63,11 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   Every login requires WebAuthn/passkey or TOTP.
 - **Gateways:**
   - `edge` (public via NodePort 30080/30443): Keycloak login endpoints, Immich
-    (`photos.skinke.net`), and Grafana (`metrics.skinke.net`) behind Envoy
-    Gateway's OIDC `SecurityPolicy`.
+    (`photos.skinke.net`), and Alerta (`alerta.skinke.net`) and Grafana
+    (`metrics.skinke.net`) behind Envoy Gateway's OIDC `SecurityPolicy`.
   - `wg` (WireGuard `10.0.0.1` only): Argo CD (`argocd.skinke.net`), Argo
     Workflows (`workflows.skinke.net`), Keycloak admin console, and direct
-    Grafana access.
+    Alerta and Grafana access.
 - **First login after a fresh cluster build:**
   1. Fetch `leier`'s initial password:
      `just bao kv get -field=leier_password kv/loft01/keycloak`

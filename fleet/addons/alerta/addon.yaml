@@ -1,4 +1,4 @@
-namespace: gotify
+namespace: alerta
 podSecurity: restricted
 dependencies:
   - cilium

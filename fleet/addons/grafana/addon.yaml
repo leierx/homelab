@@ -1,9 +1,9 @@
 namespace: monitoring
 podSecurity: restricted
 dependencies:
+  - alerta
   - cilium
   - external-secrets
-  - gotify
   - loki
   - mimir
   - zfs-localpv

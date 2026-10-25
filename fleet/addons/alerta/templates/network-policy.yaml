@@ -1,4 +1,4 @@
-# Default-deny for the namespace, then what Gotify and Postgres need.
+# Default-deny for the namespace, then what Alerta and Postgres need.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:

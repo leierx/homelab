@@ -1,8 +1,0 @@
-hostname: https://notify.skinke.net
-oidc:
-  issuer: https://auth.skinke.net/realms/homelab
-trustedProxies: 10.42.0.0/16
-database:
-  storage:
-    storageClass: zfs
-    size: 5Gi

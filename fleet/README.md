@@ -124,7 +124,8 @@ enabled addons in dependency wave order:
 - **Wave 5:** `capi-argo-bridge`, `external-secrets`
 - **Wave 6:** `argo-workflows`, `renovate`
 - **Wave 7:** `keycloak`
-- **Wave 8:** `argocd`, `grafana`, `immich`
+- **Wave 8:** `alerta`, `argocd`, `immich`
+- **Wave 9:** `grafana`
 
 ## Addon Reference (`addon.yaml`)
 

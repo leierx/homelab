@@ -1,0 +1,7 @@
+oidc:
+  keycloakUrl: https://auth.skinke.net
+  keycloakRealm: homelab
+database:
+  storage:
+    storageClass: zfs
+    size: 5Gi

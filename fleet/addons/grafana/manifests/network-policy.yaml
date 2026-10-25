@@ -28,14 +28,12 @@ spec:
     # Grafana pushes alert notifications
     - toEndpoints:
         - matchLabels:
-            k8s:io.kubernetes.pod.namespace: gotify
-            app.kubernetes.io/name: gotify
+            k8s:io.kubernetes.pod.namespace: alerta
+            app.kubernetes.io/name: alerta
       toPorts:
         - ports:
             - {port: "8080", protocol: TCP}
-    # Grafana's sidecars watch ConfigMaps
-    - toEntities: [kube-apiserver]
-    # the Keycloak token endpoint (its hostname resolves publicly) and grafana.com dashboards
+    # the Keycloak token endpoint (its hostname resolves publicly)
     - toEntities: [world]
       toPorts:
         - ports:

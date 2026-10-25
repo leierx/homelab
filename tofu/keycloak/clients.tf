@@ -119,27 +119,23 @@ resource "keycloak_generic_protocol_mapper" "immich_role" {
   }
 }
 
-# the web app and the phone app (custom scheme); the server keeps the secret for both
-resource "keycloak_openid_client" "gotify" {
+resource "keycloak_openid_client" "alerta" {
   realm_id  = keycloak_realm.homelab.id
-  client_id = "gotify"
-  name      = "gotify"
+  client_id = "alerta"
+  name      = "alerta"
   enabled   = true
-  base_url  = "https://notify.skinke.net"
+  base_url  = "https://alerta.skinke.net"
 
   access_type                  = "CONFIDENTIAL"
-  client_secret_wo             = var.gotify_client_secret
+  client_secret_wo             = var.alerta_client_secret
   client_secret_wo_version     = "1"
   standard_flow_enabled        = true
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
-  pkce_code_challenge_method   = "S256"
 
-  valid_redirect_uris = [
-    "https://notify.skinke.net/auth/oidc/callback",
-    "gotify://oidc/callback",
-  ]
+  valid_redirect_uris = ["https://alerta.skinke.net/*"]
+  web_origins         = ["https://alerta.skinke.net"]
 }
 
 # Envoy Gateway's login in front of the public sites (SecurityPolicy edge-oidc); not an app
@@ -157,7 +153,10 @@ resource "keycloak_openid_client" "edge" {
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
 
-  valid_redirect_uris = ["https://metrics.skinke.net/oauth2/callback"]
+  valid_redirect_uris = [
+    "https://alerta.skinke.net/oauth2/callback",
+    "https://metrics.skinke.net/oauth2/callback",
+  ]
 }
 
 # kubectl through kubelogin (`just kubeconfig`); the API server trusts this issuer
@@ -226,9 +225,9 @@ resource "keycloak_openid_client_default_scopes" "immich" {
   default_scopes = local.default_client_scopes
 }
 
-resource "keycloak_openid_client_default_scopes" "gotify" {
+resource "keycloak_openid_client_default_scopes" "alerta" {
   realm_id       = keycloak_realm.homelab.id
-  client_id      = keycloak_openid_client.gotify.id
+  client_id      = keycloak_openid_client.alerta.id
   default_scopes = local.default_client_scopes
 }
 

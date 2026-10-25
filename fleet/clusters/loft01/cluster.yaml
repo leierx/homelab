@@ -3,6 +3,7 @@ targetRevision: HEAD
 
 addons:
   admission: {}
+  alerta: {}
   alloy-logs: {}
   alloy-metrics: {}
   argocd: {}
@@ -16,7 +17,6 @@ addons:
   dodde: {}
   envoy-gateway: {}
   external-secrets: {}
-  gotify: {}
   grafana: {}
   immich: {}
   keycloak: {}
