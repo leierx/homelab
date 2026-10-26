@@ -72,6 +72,11 @@
       labels: ['dependencies'],
     },
     {
+      description: 'Run patch and digest updates twice a week',
+      matchUpdateTypes: ['patch', 'pin', 'digest'],
+      schedule: ['* 0-4 * * 1,4'],
+    },
+    {
       description: 'Major bumps wait for explicit approval on the Dependency Dashboard',
       matchUpdateTypes: ['major'],
       automerge: false,
