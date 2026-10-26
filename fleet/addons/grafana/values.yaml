@@ -110,7 +110,7 @@ alerting:
             severity: warning
             group: security
             service: kubernetes
-            instance: '{{ `{{ $labels.objectRef_resource }}/{{ $labels.objectRef_name }}` }}'
+            instance: '{objectRef_resource}/{objectRef_name}'
           annotations:
             value: '{{ `{{ $labels.user_username }}` }}'
             summary: '{{ `{{ $labels.user_username }} modified {{ $labels.objectRef_resource }}/{{ $labels.objectRef_name }} outside Argo CD.` }}'
@@ -145,7 +145,7 @@ alerting:
             severity: informational
             group: security
             service: kubernetes
-            instance: '{{ `{{ $labels.objectRef_namespace }}/{{ $labels.objectRef_resource }}{{ if $labels.objectRef_subresource }}/{{ $labels.objectRef_subresource }}{{ end }}` }}'
+            instance: '{objectRef_namespace}/{objectRef_resource}'
           annotations:
             value: '{{ `{{ $labels.user_username }}` }}'
             summary: '{{ `{{ $labels.user_username }} accessed {{ $labels.objectRef_resource }}{{ if $labels.objectRef_subresource }}/{{ $labels.objectRef_subresource }}{{ end }} in namespace {{ $labels.objectRef_namespace }}.` }}'
@@ -287,7 +287,7 @@ alerting:
             severity: warning
             group: security
             service: keycloak
-            instance: '{{ `master/{{ $labels.client_id }}` }}'
+            instance: 'master/{client_id}'
           annotations:
             value: '{{ `{{ $labels.event }}` }}'
             summary: '{{ `Break-glass in Keycloak: {{ $labels.event }} on the master realm via client {{ $labels.client_id }}.` }}'
@@ -322,7 +322,7 @@ alerting:
             severity: critical
             group: security
             service: keycloak
-            instance: '{{ `{{ $labels.realm }}/{{ $labels.client_id }}` }}'
+            instance: '{realm}/{client_id}'
           annotations:
             value: '{{ `{{ $labels.event }}` }}'
             summary: '{{ `Someone impersonated a user in Keycloak realm {{ $labels.realm }} (client {{ $labels.client_id }}). Impersonation bypasses the user''s passkey/TOTP; investigate the realm events and rotate the bootstrap-admin client secret if this was not intentional.` }}'
@@ -357,7 +357,7 @@ alerting:
             severity: informational
             group: security
             service: kubernetes
-            instance: '{{ `{{ $labels.objectRef_namespace }}` }}'
+            instance: '{objectRef_namespace}'
           annotations:
             value: '{{ `{{ with $values.A }}{{ printf "%.0f warnings" .Value }}{{ end }}` }}'
             summary: '{{ `A pod in namespace {{ $labels.objectRef_namespace }} was admitted despite a Warn/Audit policy (addon admission), e.g. a CPU limit or a missing memory limit.` }}'
@@ -392,7 +392,7 @@ alerting:
             severity: warning
             group: security
             service: cilium
-            instance: '{{ `{{ $labels.source }} -> {{ $labels.destination }}` }}'
+            instance: '{source} -> {destination}'
           annotations:
             value: '{{ `{{ with $values.A }}{{ printf "%.0f drops" .Value }}{{ end }}` }}'
             summary: '{{ `Cilium denied traffic from {{ $labels.source }} to {{ $labels.destination }}: a missing allow rule, or something probing where it shouldn''t.` }}'
@@ -435,7 +435,7 @@ alerting:
             severity: warning
             group: health
             service: zfs-localpv
-            instance: '{{ `{{ $labels.persistentvolumeclaim }}` }}'
+            instance: '{persistentvolumeclaim}'
           annotations:
             value: '{{ `{{ with $values.A }}{{ printf "%.1f%%" (mul .Value 100.0) }}{{ end }}` }}'
             summary: '{{ `PVC {{ $labels.persistentvolumeclaim }} is over 85% full.` }}'
@@ -470,7 +470,7 @@ alerting:
             severity: warning
             group: health
             service: kubernetes
-            instance: '{{ `{{ $labels.namespace }}/{{ $labels.pod }}` }}'
+            instance: '{namespace}/{pod}'
           annotations:
             value: '{{ `{{ with $values.A }}{{ printf "%.0f restarts" .Value }}{{ end }}` }}'
             summary: '{{ `Pod {{ $labels.namespace }}/{{ $labels.pod }} restarted more than three times in 15 minutes.` }}'
@@ -505,7 +505,7 @@ alerting:
             severity: critical
             group: health
             service: kubernetes
-            instance: '{{ `{{ $labels.node }}` }}'
+            instance: '{node}'
           annotations:
             value: NotReady
             summary: '{{ `Node {{ $labels.node }} has been NotReady for 5 minutes.` }}'
@@ -540,7 +540,7 @@ alerting:
             severity: warning
             group: health
             service: argo-workflows
-            instance: '{{ `{{ $labels.namespace }}` }}'
+            instance: '{namespace}'
           annotations:
             value: Failed
             summary: '{{ `A workflow in namespace {{ $labels.namespace }} entered the Failed phase in the last 15 minutes.` }}'
@@ -575,7 +575,7 @@ alerting:
             severity: warning
             group: health
             service: argocd
-            instance: '{{ `{{ $labels.name }}` }}'
+            instance: '{name}'
           annotations:
             value: '{{ `{{ $labels.health_status }}` }}'
             summary: '{{ `Argo CD application {{ $labels.name }} has been {{ $labels.health_status }} for 15 minutes.` }}'
@@ -610,7 +610,7 @@ alerting:
             severity: warning
             group: health
             service: argocd
-            instance: '{{ `{{ $labels.name }}` }}'
+            instance: '{name}'
           annotations:
             value: paused 7d
             summary: '{{ `Argo CD application {{ $labels.name }} has had auto-sync off for 7 days, so git changes don''t reach it. Resume it, or take the addon out of the cluster''s values.yaml.` }}'
@@ -645,7 +645,7 @@ alerting:
             severity: warning
             group: health
             service: external-secrets
-            instance: '{{ `{{ $labels.exported_namespace }}/{{ $labels.name }}` }}'
+            instance: '{exported_namespace}/{name}'
           annotations:
             value: Ready=False
             summary: '{{ `ExternalSecret or PushSecret {{ $labels.exported_namespace }}/{{ $labels.name }} has not been Ready for 15 minutes.` }}'
@@ -715,7 +715,7 @@ alerting:
             severity: warning
             group: health
             service: cert-manager
-            instance: '{{ `{{ $labels.namespace }}/{{ $labels.name }}` }}'
+            instance: '{namespace}/{name}'
           annotations:
             value: '{{ `{{ with $values.A }}{{ printf "%.1fd left" (div .Value 86400.0) }}{{ end }}` }}'
             summary: '{{ `Certificate {{ $labels.namespace }}/{{ $labels.name }} expires within 14 days; renewal is failing.` }}'
@@ -750,7 +750,7 @@ alerting:
             severity: critical
             group: health
             service: zfs
-            instance: '{{ `{{ if $labels.zpool }}{{ $labels.zpool }}{{ else }}zpool{{ end }}` }}'
+            instance: '{zpool}'
           annotations:
             value: unhealthy
             summary: '{{ `ZFS pool {{ if $labels.zpool }}{{ $labels.zpool }} {{ end }}is degraded, faulted, offline or not reporting: mirror redundancy is lost, so replace the failing disk before its pair goes.` }}'
@@ -785,7 +785,7 @@ alerting:
             severity: critical
             group: health
             service: smartctl
-            instance: '{{ `{{ if $labels.device }}{{ $labels.device }}{{ else }}smartctl{{ end }}` }}'
+            instance: '{device}'
           annotations:
             value: FAILED
             summary: '{{ `Disk {{ if $labels.device }}{{ $labels.device }} {{ end }}failed its SMART health assessment (or smartctl-exporter stopped reporting); replace the disk.` }}'
@@ -820,7 +820,7 @@ alerting:
             severity: warning
             group: health
             service: smartctl
-            instance: '{{ `{{ $labels.device }}` }}'
+            instance: '{device}'
           annotations:
             value: '{{ `{{ with $values.A }}{{ printf "%.0f errors" .Value }}{{ end }}` }}'
             summary: '{{ `Disk {{ $labels.device }} reports reallocated, pending or uncorrectable sectors, SCSI grown defects, NVMe media errors or a failed SMART self-test; scrub the pool and plan a replacement.` }}'
@@ -855,7 +855,7 @@ alerting:
             severity: critical
             group: health
             service: smartctl
-            instance: '{{ `{{ $labels.device }}` }}'
+            instance: '{device}'
           annotations:
             value: critical warning
             summary: '{{ `NVMe controller {{ $labels.device }} raised its critical-warning flag or fell below its available-spare threshold.` }}'
@@ -890,7 +890,7 @@ alerting:
             severity: warning
             group: health
             service: smartctl
-            instance: '{{ `{{ $labels.device }}` }}'
+            instance: '{device}'
           annotations:
             value: '{{ `{{ with $values.A }}{{ printf "%.0f°C" .Value }}{{ end }}` }}'
             summary: '{{ `Disk {{ $labels.device }} has been over 55°C for 15 minutes; check fans and airflow.` }}'
@@ -925,7 +925,7 @@ alerting:
             severity: warning
             group: health
             service: systemd
-            exported_instance: '{{ `{{ $labels.name }}` }}'
+            exported_instance: '{name}'
           annotations:
             value: failed
             summary: '{{ `Host systemd unit {{ $labels.name }} on {{ $labels.instance }} has been in the failed state for 5 minutes.` }}'
@@ -995,7 +995,7 @@ alerting:
             severity: warning
             group: health
             service: systemd
-            exported_instance: '{{ `{{ $labels.name }}` }}'
+            exported_instance: '{name}'
           annotations:
             value: overdue
             summary: '{{ `Host systemd timer {{ $labels.name }} on {{ $labels.instance }} has not triggered within its expected schedule (2h for hourly, 26h for daily, 8d for weekly, 33d for monthly).` }}'
