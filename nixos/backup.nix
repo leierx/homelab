@@ -9,10 +9,10 @@ let
   # sops-nix fails the build on a missing secret
   enable = true;
 
-  stateDir = "/var/lib/serverbackup";
+  stateDir = "/var/lib/offsite-backup";
 
   backup = pkgs.writeShellApplication {
-    name = "serverbackup";
+    name = "offsite-backup";
     runtimeInputs = [
       config.boot.zfs.package
       pkgs.restic
@@ -84,7 +84,7 @@ in
     "restic/password".mode = "0400";
   };
 
-  systemd.services.serverbackup = lib.mkIf enable {
+  systemd.services."offsite-backup" = lib.mkIf enable {
     description = "Off-site restic backup of k3s state and PVC volumes";
     after = [
       "network-online.target"
@@ -95,14 +95,14 @@ in
     serviceConfig = {
       Type = "oneshot";
       ExecStart = lib.getExe backup;
-      StateDirectory = "serverbackup";
+      StateDirectory = "offsite-backup";
       Nice = 10;
       IOSchedulingClass = "idle";
     };
   };
 
   # also after boot, so a run cut off by the auto-upgrade reboot resumes
-  systemd.timers.serverbackup = lib.mkIf enable {
+  systemd.timers."offsite-backup" = lib.mkIf enable {
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnCalendar = "01:00";

@@ -890,7 +890,7 @@ alerting:
           labels:
             severity: warning
           annotations:
-            summary: serverbackup.timer has not triggered in 26 hours (or node-exporter stopped reporting).
+            summary: offsite-backup.timer has not triggered in 26 hours (or node-exporter stopped reporting).
           data:
             - refId: A
               datasourceUid: mimir
@@ -900,7 +900,7 @@ alerting:
               model:
                 refId: A
                 instant: true
-                expr: max by (instance) (time() - node_systemd_timer_last_trigger_seconds{name="serverbackup.timer"})
+                expr: max by (instance) (time() - node_systemd_timer_last_trigger_seconds{name="offsite-backup.timer"})
             - refId: C
               datasourceUid: __expr__
               model:
@@ -931,7 +931,7 @@ alerting:
               model:
                 refId: A
                 instant: true
-                expr: max by (instance, name) ((time() - node_systemd_timer_last_trigger_seconds{name=~"sanoid\\.timer|logrotate\\.timer"} > 2 * 3600) or (time() - node_systemd_timer_last_trigger_seconds{name="systemd-tmpfiles-clean.timer"} > 26 * 3600) or (time() - node_systemd_timer_last_trigger_seconds{name="zfs-scrub.timer"} > 33 * 86400) or (time() - node_systemd_timer_last_trigger_seconds{name!~"serverbackup\\.timer|sanoid\\.timer|logrotate\\.timer|systemd-tmpfiles-clean\\.timer|zfs-scrub\\.timer"} > 8 * 86400))
+                expr: max by (instance, name) ((time() - node_systemd_timer_last_trigger_seconds{name=~"sanoid\\.timer|logrotate\\.timer"} > 2 * 3600) or (time() - node_systemd_timer_last_trigger_seconds{name="systemd-tmpfiles-clean.timer"} > 26 * 3600) or (time() - node_systemd_timer_last_trigger_seconds{name="zfs-scrub.timer"} > 33 * 86400) or (time() - node_systemd_timer_last_trigger_seconds{name!~"offsite-backup\\.timer|sanoid\\.timer|logrotate\\.timer|systemd-tmpfiles-clean\\.timer|zfs-scrub\\.timer"} > 8 * 86400))
             - refId: C
               datasourceUid: __expr__
               model:
