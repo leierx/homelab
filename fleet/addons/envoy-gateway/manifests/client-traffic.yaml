@@ -1,0 +1,39 @@
+# Hardened downstream defaults and browser response headers for every listener on edge and wg
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: default
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: edge
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: wg
+  clientIPDetection:
+    xForwardedFor:
+      numTrustedHops: 0
+  http1:
+    enableTrailers: false
+  tls:
+    minVersion: "1.2"
+    alpnProtocols:
+      - h2
+      - http/1.1
+  headers:
+    enableEnvoyHeaders: false
+    withUnderscoresAction: RejectRequest
+    lateResponseHeaders:
+      addIfAbsent:
+        - name: Strict-Transport-Security
+          value: max-age=63072000; includeSubDomains
+        - name: X-Content-Type-Options
+          value: nosniff
+        - name: X-Frame-Options
+          value: SAMEORIGIN
+        - name: Referrer-Policy
+          value: strict-origin-when-cross-origin
+      remove:
+        - Server
+        - X-Powered-By

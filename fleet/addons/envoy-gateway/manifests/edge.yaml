@@ -87,3 +87,22 @@ spec:
           requestRedirect:
             scheme: https
             statusCode: 301
+---
+# Port 80 only redirects to HTTPS and answers ACME HTTP-01 challenges, so it opts out of the Gateway-wide OIDC policy
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: http-listener
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: edge
+      sectionName: http
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: wg
+      sectionName: http
+  authorization:
+    defaultAction: Allow
+

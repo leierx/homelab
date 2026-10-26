@@ -31,7 +31,6 @@ spec:
             kind: Secret
             name: immich-tls
 ---
-# public without the edge login: the phone app can't get through it, so Immich's own SSO login guards it
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

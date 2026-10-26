@@ -138,7 +138,7 @@ resource "keycloak_openid_client" "alerta" {
   web_origins         = ["https://alerta.skinke.net"]
 }
 
-# Envoy Gateway's login in front of the public sites (SecurityPolicy edge-oidc); not an app
+# Envoy Gateway's login in front of the edge and wg Gateways (SecurityPolicy oidc); not an app
 resource "keycloak_openid_client" "edge" {
   realm_id  = keycloak_realm.homelab.id
   client_id = "edge"
@@ -153,7 +153,14 @@ resource "keycloak_openid_client" "edge" {
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
 
-  valid_redirect_uris = ["https://metrics.skinke.net/oauth2/callback"]
+  valid_redirect_uris = [
+    "https://alerta.skinke.net/_envoy/callback",
+    "https://argocd.skinke.net/_envoy/callback",
+    "https://metrics.skinke.net/_envoy/callback",
+    "https://photos.skinke.net/_envoy/callback",
+    "https://rss.skinke.net/_envoy/callback",
+    "https://workflows.skinke.net/_envoy/callback",
+  ]
 }
 
 # kubectl through kubelogin (`just kubeconfig`); the API server trusts this issuer
