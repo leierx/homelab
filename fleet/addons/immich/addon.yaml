@@ -5,6 +5,10 @@ dependencies:
   - cloudnative-pg
   - external-secrets
   - prometheus-operator-crds
+  - cert-manager
+  - envoy-gateway
+  - zfs-localpv
+  - keycloak
 helm:
   repoURL: ghcr.io/immich-app/immich-charts
   chart: immich

@@ -5,6 +5,8 @@ dependencies:
   - cilium
   - external-secrets
   - prometheus-operator-crds
+  - cert-manager
+  - envoy-gateway
 helm:
   repoURL: https://argoproj.github.io/argo-helm
   chart: argo-workflows

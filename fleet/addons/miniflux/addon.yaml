@@ -6,3 +6,6 @@ dependencies:
   - external-secrets
   - zfs-localpv
   - prometheus-operator-crds
+  - cert-manager
+  - envoy-gateway
+  - keycloak
