@@ -3,37 +3,6 @@ kind: ConfigMap
 metadata:
   name: alerta-config
 data:
-  alertad.conf: |
-    DEBUG = False
-    USE_PROXYFIX = True
-
-    AUTH_REQUIRED = True
-    AUTH_PROVIDER = 'openid'
-    SIGNUP_ENABLED = False
-    OIDC_ISSUER_URL = {{ required "oidc.issuer is per cluster" .Values.oidc.issuer | quote }}
-    OIDC_AUTH_URL = {{ printf "%s/protocol/openid-connect/auth" (required "oidc.issuer is per cluster" .Values.oidc.issuer) | quote }}
-    OAUTH2_CLIENT_ID = 'alerta'
-
-    # Role mapping from Keycloak groups claim; no local admin accounts
-    OIDC_ROLE_CLAIM = 'groups'
-    ALLOWED_OIDC_ROLES = ['homelab-admins', 'homelab-operators', 'homelab-viewers']
-    ADMIN_ROLES = ['homelab-admins']
-    USER_ROLES = ['homelab-operators']
-    GUEST_ROLES = ['homelab-viewers']
-
-    ALLOWED_ENVIRONMENTS = ['Production']
-    DEFAULT_ENVIRONMENT = 'Production'
-    ASI_QUERIES = [
-        {'text': 'Production', 'query': [['environment', 'Production']]},
-        {'text': 'Heartbeats', 'query': {'q': 'event:Heartbeat'}},
-        {'text': 'Misc.', 'query': 'group=Misc'},
-    ]
-
-    # Retain closed, expired and informational alerts for half a year (180 days)
-    DELETE_EXPIRED_AFTER = 15552000
-    DELETE_INFO_AFTER = 15552000
-
-    PLUGINS = ['remote_ip', 'reject', 'heartbeat', 'blackout', 'acked_by']
   config.json: |
     {"endpoint": "/api"}
 ---
@@ -72,35 +41,53 @@ spec:
             - |
               set -eu
               cp -r /app/* /app-work/
-              cp /config/alertad.conf /app-work/alertad.conf
+              cat > /app-work/alertad.conf <<'EOF'
+              DEBUG = False
+              USE_PROXYFIX = True
+
+              AUTH_REQUIRED = True
+              AUTH_PROVIDER = 'openid'
+              SIGNUP_ENABLED = False
+              OIDC_ISSUER_URL = {{ required "oidc.issuer is per cluster" .Values.oidc.issuer | quote }}
+              OIDC_AUTH_URL = {{ printf "%s/protocol/openid-connect/auth" (required "oidc.issuer is per cluster" .Values.oidc.issuer) | quote }}
+              OAUTH2_CLIENT_ID = 'alerta'
+
+              # Role mapping from Keycloak groups claim; no local admin accounts.
+              # USER_ROLES stays empty because oidc.py stamps it onto every new user row;
+              # homelab-operators gets its scopes from the perms table instead.
+              OIDC_ROLE_CLAIM = 'groups'
+              ALLOWED_OIDC_ROLES = ['homelab-admins', 'homelab-operators', 'homelab-viewers']
+              ADMIN_ROLES = ['homelab-admins']
+              USER_ROLES = []
+              GUEST_ROLES = ['homelab-viewers']
+
+              ALLOWED_ENVIRONMENTS = ['Production']
+              DEFAULT_ENVIRONMENT = 'Production'
+              DEFAULT_FILTER = {'status': []}
+              SORT_LIST_BY = ['status', 'severity', 'lastReceiveTime']
+              ASI_QUERIES = [
+                  {'text': 'Production', 'query': [['environment', 'Production']]},
+                  {'text': 'Heartbeats', 'query': {'q': 'event:Heartbeat'}},
+                  {'text': 'Misc.', 'query': 'group=Misc'},
+              ]
+
+              # Retain closed, expired and informational alerts for half a year (180 days)
+              DELETE_EXPIRED_AFTER = 15552000
+              DELETE_INFO_AFTER = 15552000
+
+              PLUGINS = ['remote_ip', 'reject', 'heartbeat', 'blackout', 'acked_by']
+              EOF
+              # docker-entrypoint.sh runs `env | sort`, so keep secrets out of the main container's env
+              python3 -c '
+              import os
+              for k in ("DATABASE_URL", "SECRET_KEY", "OAUTH2_CLIENT_SECRET"):
+                  print(f"{k} = {os.environ[k]!r}")
+              ' >> /app-work/alertad.conf
               cat > /app-work/alerta.conf <<EOF
               [DEFAULT]
               endpoint = http://localhost:8080/api
               key = ${HOUSEKEEPING_API_KEY}
               EOF
-          env:
-            - name: HOUSEKEEPING_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: alerta
-                  key: housekeeping-api-key
-          resources:
-            requests: { cpu: 10m, memory: 32Mi }
-            limits: { memory: 128Mi }
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
-          volumeMounts:
-            - name: app
-              mountPath: /app-work
-            - name: config
-              mountPath: /config
-              readOnly: true
-      containers:
-        - name: alerta
-          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
           env:
             - name: DATABASE_URL
               valueFrom:
@@ -117,6 +104,26 @@ spec:
                 secretKeyRef:
                   name: alerta
                   key: oidc-client-secret
+            - name: HOUSEKEEPING_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: alerta
+                  key: housekeeping-api-key
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: app
+              mountPath: /app-work
+      containers:
+        - name: alerta
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          env:
             # 180 days (4320 hours) retention for housekeeping
             - name: HK_EXPIRED_DELETE_HRS
               value: "4320"
@@ -124,6 +131,10 @@ spec:
               value: "4320"
             - name: HEARTBEAT_SEVERITY
               value: ""
+            - name: UWSGI_MAX_WORKER_LIFETIME
+              value: ""
+            - name: SUPERVISORD_LOG_LEVEL
+              value: info
           ports:
             - name: http
               containerPort: 8080
@@ -177,7 +188,7 @@ spec:
       targetPort: http
       protocol: TCP
 ---
-# seeds the least-privilege API keys for internal housekeeping and Grafana webhooks after Alerta creates the schema
+# seeds least-privilege API keys, operator role permissions, and default dark-mode user preference
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -220,6 +231,31 @@ spec:
                 scopes = EXCLUDED.scopes,
                 text = EXCLUDED.text,
                 expire_time = EXCLUDED.expire_time;
+
+              INSERT INTO perms (id, match, scopes)
+              VALUES ('operators', 'homelab-operators', ARRAY['read', 'write'])
+              ON CONFLICT (id) DO UPDATE SET
+                match = EXCLUDED.match,
+                scopes = EXCLUDED.scopes;
+
+              UPDATE users SET roles = '{}' WHERE roles <> '{}';
+
+              UPDATE users
+              SET attributes = jsonb_set(coalesce(attributes, '{}'::jsonb), '{prefs,isDark}', 'true'::jsonb, true)
+              WHERE attributes #> '{prefs,isDark}' IS NULL;
+
+              CREATE OR REPLACE FUNCTION default_user_prefs() RETURNS trigger LANGUAGE plpgsql AS $$
+              BEGIN
+                NEW.attributes := jsonb_set(coalesce(NEW.attributes, '{}'::jsonb), '{prefs,isDark}', 'true'::jsonb, true);
+                RETURN NEW;
+              END;
+              $$;
+
+              CREATE OR REPLACE TRIGGER users_default_prefs
+                BEFORE INSERT ON users
+                FOR EACH ROW
+                WHEN (NEW.attributes #> '{prefs,isDark}' IS NULL)
+                EXECUTE FUNCTION default_user_prefs();
               SQL
           env:
             - name: URI
