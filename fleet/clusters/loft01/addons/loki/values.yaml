@@ -1,1 +1,0 @@
-singleBinary: {persistence: {storageClass: zfs, size: 50Gi}}

@@ -1,7 +1,0 @@
-namespace: dodde
-podSecurity: restricted
-dependencies:
-  - cilium
-  - cdi
-  - kubevirt
-  - zfs-localpv

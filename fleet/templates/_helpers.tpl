@@ -12,7 +12,9 @@ Build a merged map of all enabled addons and their combined metadata for this cl
 
   {{- $baseContent := $files.Get $baseFile -}}
   {{- $clusterContent := $files.Get $clusterFile -}}
-  {{- if and (not $baseContent) (not $clusterContent) -}}
+  {{- $hasClusterChart := ne ($files.Get (printf "clusters/%s/addons/%s/Chart.yaml" $cluster $addonName)) "" -}}
+  {{- $hasClusterManifests := not (empty ($files.Glob (printf "clusters/%s/addons/%s/manifests/**" $cluster $addonName))) -}}
+  {{- if and (not $baseContent) (not $clusterContent) (not $hasClusterChart) (not $hasClusterManifests) -}}
     {{- fail (printf "Addon '%s' has neither %s nor %s" $addonName $baseFile $clusterFile) -}}
   {{- end -}}
 
