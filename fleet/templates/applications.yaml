@@ -1,7 +1,11 @@
-{{- $cluster := required "cluster.name is required" .Values.cluster.name -}}
-{{- $server := default "https://kubernetes.default.svc" .Values.cluster.server -}}
-{{- $repoURL := .Values.repoURL -}}
-{{- $targetRevision := default "HEAD" .Values.targetRevision -}}
+{{- $cluster := include "fleet.clusterName" . -}}
+{{- $gitSecret := fromYaml (include "fleet.gitClusterSecret" .) -}}
+{{- $gitMeta := default dict $gitSecret.metadata -}}
+{{- $gitStringData := default dict $gitSecret.stringData -}}
+{{- $annotations := mergeOverwrite (deepCopy (default dict $gitMeta.annotations)) (deepCopy (default dict .Values.metadata.annotations)) -}}
+{{- $server := default (default (default "https://kubernetes.default.svc" $gitStringData.server) .Values.stringData.server) .Values.cluster.server -}}
+{{- $repoURL := default (default "https://github.com/leierx/homelab.git" .Values.repoURL) (index $annotations "fleet.io/repo-url") -}}
+{{- $targetRevision := default (default "HEAD" .Values.targetRevision) (index $annotations "fleet.io/target-revision") -}}
 {{- $files := .Files -}}
 {{- $allAddons := fromYaml (include "fleet.mergedAddons" .) -}}
 
@@ -12,7 +16,7 @@
 
 {{/* 1. Primary Helm source (if defined in base or cluster addon.yaml, or local Chart.yaml exists) */}}
 {{- $hasBaseChart := ne ($files.Get (printf "addons/%s/Chart.yaml" $name)) "" -}}
-{{- $hasClusterChart := ne ($files.Get (printf "clusters/%s/addons/%s/Chart.yaml" $cluster $name)) "" -}}
+{{- $hasClusterChart := ne ($files.Get (printf "clusters/%s/%s/Chart.yaml" $cluster $name)) "" -}}
 {{- if or $addon.helm $hasBaseChart $hasClusterChart }}
   {{- $helmCfg := default dict $addon.helm -}}
   {{- $valueFiles := list -}}
@@ -20,8 +24,8 @@
     {{- $valueFiles = append $valueFiles (printf "$values/fleet/addons/%s/values.yaml" $name) -}}
     {{- $needsValuesRef = true -}}
   {{- end }}
-  {{- if ne ($files.Get (printf "clusters/%s/addons/%s/values.yaml" $cluster $name)) "" }}
-    {{- $valueFiles = append $valueFiles (printf "$values/fleet/clusters/%s/addons/%s/values.yaml" $cluster $name) -}}
+  {{- if ne ($files.Get (printf "clusters/%s/%s/values.yaml" $cluster $name)) "" }}
+    {{- $valueFiles = append $valueFiles (printf "$values/fleet/clusters/%s/%s/values.yaml" $cluster $name) -}}
     {{- $needsValuesRef = true -}}
   {{- end }}
   {{- $helmSource := dict
@@ -35,7 +39,7 @@
   {{- else if $hasBaseChart }}
     {{- $_ := set $helmSource "path" (printf "fleet/addons/%s" $name) -}}
   {{- else if $hasClusterChart }}
-    {{- $_ := set $helmSource "path" (printf "fleet/clusters/%s/addons/%s" $cluster $name) -}}
+    {{- $_ := set $helmSource "path" (printf "fleet/clusters/%s/%s" $cluster $name) -}}
   {{- end }}
   {{- $helmSpec := dict
       "releaseName" (default $name $helmCfg.releaseName)
@@ -43,13 +47,8 @@
   {{- if $valueFiles }}
     {{- $_ := set $helmSpec "valueFiles" $valueFiles -}}
   {{- end }}
-  {{- if $addon.values }}
-    {{- $_ := set $helmSpec "valuesObject" $addon.values -}}
-  {{- end }}
   {{- $_ := set $helmSource "helm" $helmSpec -}}
   {{- $sources = append $sources $helmSource -}}
-{{- else if $addon.values }}
-  {{- fail (printf "Addon '%s' sets values in clusters/%s/cluster.yaml but has no Helm chart" $name $cluster) -}}
 {{- end }}
 
 {{/* 2. Base addon manifests/ (raw YAML or kustomization.yaml, auto-detected if present) */}}
@@ -58,8 +57,8 @@
 {{- end }}
 
 {{/* 3. Cluster addon manifests/ (raw YAML or kustomization.yaml, auto-detected if present) */}}
-{{- if $files.Glob (printf "clusters/%s/addons/%s/manifests/**" $cluster $name) }}
-  {{- $sources = append $sources (dict "repoURL" $repoURL "targetRevision" $targetRevision "path" (printf "fleet/clusters/%s/addons/%s/manifests" $cluster $name)) -}}
+{{- if $files.Glob (printf "clusters/%s/%s/manifests/**" $cluster $name) }}
+  {{- $sources = append $sources (dict "repoURL" $repoURL "targetRevision" $targetRevision "path" (printf "fleet/clusters/%s/%s/manifests" $cluster $name)) -}}
 {{- end }}
 
 {{/* 4. Any extra sources (extra Helm charts, CRDs, paths) declared in sources: [] */}}
@@ -73,7 +72,7 @@
     {{- if $extra.helm.path }}{{- $_ := set $extraHelm "path" $extra.helm.path -}}{{- end }}
     {{- $extraHelmSpec := dict "releaseName" (default $name $extra.helm.releaseName) -}}
     {{- if $extra.helm.valuesFile }}
-      {{- $_ := set $extraHelmSpec "valueFiles" (list (printf "$values/fleet/clusters/%s/addons/%s/%s" $cluster $name $extra.helm.valuesFile)) -}}
+      {{- $_ := set $extraHelmSpec "valueFiles" (list (printf "$values/fleet/clusters/%s/%s/%s" $cluster $name $extra.helm.valuesFile)) -}}
       {{- $needsValuesRef = true -}}
     {{- end }}
     {{- $_ := set $extraHelm "helm" $extraHelmSpec -}}

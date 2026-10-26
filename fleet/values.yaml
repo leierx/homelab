@@ -2,5 +2,10 @@ repoURL: https://github.com/leierx/homelab.git
 targetRevision: HEAD
 cluster:
   name: ""
-  server: https://kubernetes.default.svc
-addons: {}
+  server: ""
+metadata:
+  name: ""
+  labels: {}
+  annotations: {}
+stringData:
+  server: ""

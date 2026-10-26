@@ -1,0 +1,3 @@
+kvPrefix: loft01
+server:
+  dataStorage: {storageClass: zfs, size: 2Gi}

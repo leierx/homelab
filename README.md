@@ -41,7 +41,7 @@ nixos/          NixOS host configuration (disks, k3s, sops-nix)
 fleet/          GitOps fleet controller, shared addons, and cluster configs (see fleet/README.md)
   templates/    Helm templates computing dependency sync-waves and Multi-Source Applications
   addons/       Installable addons (helm, kustomize, manifests)
-  clusters/     Per-cluster config (cluster-secret.yaml, cluster.yaml, addons/<addon>/manifests/)
+  clusters/     Per-cluster config (cluster-secret.yaml, <addon>/{values.yaml,manifests/})
 docs/           Operating guide for loft01 (see docs/README.md)
 AGENTS.md       Instructions for coding agents
 renovate.json5  Renovate configuration

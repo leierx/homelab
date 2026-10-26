@@ -3,6 +3,8 @@ kind: VirtualMachine
 metadata:
   name: fedora
   namespace: dodde
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
 spec:
   runStrategy: Always
   template:

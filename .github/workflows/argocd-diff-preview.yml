@@ -47,8 +47,10 @@ jobs:
             for d in "$checkout"/fleet/clusters/*/; do
               [ -d "$d" ] || continue
               cluster=$(basename "$d")
+              vals=(-f "$d/cluster-secret.yaml")
+              [ -f "$d/cluster.yaml" ] && vals=(-f "$d/cluster.yaml")
               helm template fleet "$checkout/fleet" \
-                -f "$d/cluster.yaml" \
+                "${vals[@]}" \
                 --set "cluster.name=$cluster" \
                 --set "cluster.server=https://kubernetes.default.svc" \
                 > "$checkout/rendered/applications-$cluster.yaml"

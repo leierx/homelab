@@ -1,14 +1,63 @@
 {{/*
+Resolve the cluster name from cluster.name or cluster-secret.yaml's metadata.name.
+*/}}
+{{- define "fleet.clusterName" -}}
+{{- default .Values.metadata.name .Values.cluster.name | required "cluster.name or metadata.name is required" -}}
+{{- end -}}
+
+{{/*
+Load clusters/<cluster>/cluster-secret.yaml from the chart if present.
+*/}}
+{{- define "fleet.gitClusterSecret" -}}
+{{- $cluster := include "fleet.clusterName" . -}}
+{{- $raw := .Files.Get (printf "clusters/%s/cluster-secret.yaml" $cluster) -}}
+{{- if $raw -}}
+{{- fromYaml $raw | toYaml -}}
+{{- else -}}
+{}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Build a merged map of all enabled addons and their combined metadata for this cluster.
+Addons are enabled via labels on cluster-secret.yaml (or the live cluster Secret):
+  fleet.io/<addon>.enable: "true"
+  addons.homelab/<addon>: "true"
 */}}
 {{- define "fleet.mergedAddons" -}}
-{{- $cluster := required "cluster.name is required" .Values.cluster.name -}}
+{{- $cluster := include "fleet.clusterName" . -}}
+{{- $gitSecret := fromYaml (include "fleet.gitClusterSecret" .) -}}
+{{- $gitMeta := default dict $gitSecret.metadata -}}
 {{- $files := .Files -}}
-{{- $result := dict -}}
 
-{{- range $addonName, $inlineCfg := .Values.addons -}}
+{{- $labels := dict -}}
+{{- if .Values.metadata.labels -}}
+  {{- $labels = .Values.metadata.labels -}}
+{{- else if $gitMeta.labels -}}
+  {{- $labels = $gitMeta.labels -}}
+{{- else if .Values.cluster.labels -}}
+  {{- if kindIs "string" .Values.cluster.labels -}}
+    {{- $labels = fromJson .Values.cluster.labels -}}
+  {{- else if kindIs "map" .Values.cluster.labels -}}
+    {{- $labels = .Values.cluster.labels -}}
+  {{- end -}}
+{{- end -}}
+
+{{- $enabled := list -}}
+{{- range $k, $v := $labels -}}
+  {{- if eq (toString $v) "true" -}}
+    {{- if and (hasPrefix "fleet.io/" $k) (hasSuffix ".enable" $k) -}}
+      {{- $enabled = append $enabled (trimSuffix ".enable" (trimPrefix "fleet.io/" $k)) -}}
+    {{- else if hasPrefix "addons.homelab/" $k -}}
+      {{- $enabled = append $enabled (trimPrefix "addons.homelab/" $k) -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{- $result := dict -}}
+{{- range $addonName := ($enabled | uniq | sortAlpha) -}}
   {{- $baseFile := printf "addons/%s/addon.yaml" $addonName -}}
-  {{- $clusterFile := printf "clusters/%s/addons/%s/addon.yaml" $cluster $addonName -}}
+  {{- $clusterFile := printf "clusters/%s/%s/addon.yaml" $cluster $addonName -}}
 
   {{- $baseContent := $files.Get $baseFile -}}
   {{- $clusterContent := $files.Get $clusterFile -}}
@@ -18,7 +67,6 @@ Build a merged map of all enabled addons and their combined metadata for this cl
 
   {{- $base := ternary (fromYaml $baseContent | default dict) (dict) (ne $baseContent "") -}}
   {{- $ovr := ternary (fromYaml $clusterContent | default dict) (dict) (ne $clusterContent "") -}}
-  {{- $values := ternary $inlineCfg (dict) (kindIs "map" $inlineCfg) -}}
 
   {{- $deps := uniq (concat (default list $base.dependencies) (default list $ovr.dependencies)) -}}
   {{- $extraSources := concat (default list $base.sources) (default list $ovr.sources) -}}
@@ -28,9 +76,13 @@ Build a merged map of all enabled addons and their combined metadata for this cl
   {{- $_ := set $merged "dependencies" $deps -}}
   {{- $_ := set $merged "extraSources" $extraSources -}}
   {{- $_ := set $merged "ignoreDifferences" $ignoreDiffs -}}
-  {{- $_ := set $merged "values" $values -}}
   {{- $_ := set $result $addonName $merged -}}
 {{- end -}}
+
+{{- if empty $result -}}
+  {{- fail (printf "No addons enabled for cluster '%s'; check fleet.io/<addon>.enable labels in clusters/%s/cluster-secret.yaml" $cluster $cluster) -}}
+{{- end -}}
+
 {{- $result | toYaml -}}
 {{- end -}}
 
@@ -46,7 +98,7 @@ wave(addon) = 0 if no dependencies, else 1 + max(wave(dep))
   {{- fail (printf "Circular dependency detected involving addon '%s'" $addonName) -}}
 {{- end -}}
 {{- if not (hasKey $all $addonName) -}}
-  {{- fail (printf "Addon dependency '%s' is not enabled in clusters/%s/cluster.yaml" $addonName .cluster) -}}
+  {{- fail (printf "Addon dependency '%s' is not enabled in clusters/%s/cluster-secret.yaml" $addonName .cluster) -}}
 {{- end -}}
 {{- $cfg := index $all $addonName -}}
 {{- $maxWave := 0 -}}

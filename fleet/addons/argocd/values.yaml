@@ -104,12 +104,11 @@ extraObjects:
             targetRevision: '{{ `{{ index .metadata.annotations "fleet.io/target-revision" | default "HEAD" }}` }}'
             path: fleet
             helm:
-              valueFiles:
-                - 'clusters/{{ `{{ .name }}` }}/cluster.yaml'
               valuesObject:
                 cluster:
                   name: '{{ `{{ .name }}` }}'
                   server: '{{ `{{ .server }}` }}'
+                  labels: '{{ `{{ .metadata.labels | toJson }}` }}'
           syncPolicy:
             automated:
               prune: true

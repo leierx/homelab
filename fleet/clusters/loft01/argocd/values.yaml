@@ -1,0 +1,11 @@
+configs:
+  cm:
+    url: https://argocd.skinke.net
+    oidc.config: |
+      name: Keycloak
+      issuer: https://auth.skinke.net/realms/homelab
+      clientID: argocd
+      clientSecret: $argocd-oidc:clientSecret
+      cliClientID: argocd-cli
+      requestedScopes: [openid, profile, email]
+      refreshTokenThreshold: 2m
