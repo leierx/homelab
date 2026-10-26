@@ -73,7 +73,11 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: security
+            service: kubernetes
+            instance: system:admin
           annotations:
+            value: '{{ with $values.A }}{{ printf "%.0f reqs" .Value }}{{ end }}'
             summary: 'The host''s system:masters certificate was used: break-glass, or someone who shouldn''t have it.'
           data:
             - refId: A
@@ -104,8 +108,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: security
+            service: kubernetes
+            instance: '{{ $labels.objectRef_resource }}/{{ $labels.objectRef_name }}'
           annotations:
-            summary: A role or binding was created, changed or deleted by something other than a ServiceAccount.
+            value: '{{ $labels.user_username }}'
+            summary: '{{ $labels.user_username }} modified {{ $labels.objectRef_resource }}/{{ $labels.objectRef_name }} outside Argo CD.'
           data:
             - refId: A
               datasourceUid: loki
@@ -134,9 +142,13 @@ alerting:
           noDataState: OK
           execErrState: Error
           labels:
-            severity: info
+            severity: informational
+            group: security
+            service: kubernetes
+            instance: '{{ $labels.objectRef_namespace }}/{{ $labels.objectRef_resource }}{{ if $labels.objectRef_subresource }}/{{ $labels.objectRef_subresource }}{{ end }}'
           annotations:
-            summary: Someone logged in through Keycloak read a Secret or used exec, attach or port-forward.
+            value: '{{ $labels.user_username }}'
+            summary: '{{ $labels.user_username }} accessed {{ $labels.objectRef_resource }}{{ if $labels.objectRef_subresource }}/{{ $labels.objectRef_subresource }}{{ end }} in namespace {{ $labels.objectRef_namespace }}.'
           data:
             - refId: A
               datasourceUid: loki
@@ -165,9 +177,13 @@ alerting:
           noDataState: OK
           execErrState: Error
           labels:
-            severity: info
+            severity: informational
+            group: security
+            service: openbao
+            instance: openbao
           annotations:
-            summary: Something logged in to OpenBao with the admin role (the bao CLI through kubectl exec, or a minted openbao-admin token).
+            value: role=admin
+            summary: 'Something logged in to OpenBao with the admin role (the bao CLI through kubectl exec, or a minted openbao-admin token).'
           data:
             - refId: A
               datasourceUid: loki
@@ -199,8 +215,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: security
+            service: grafana
+            instance: grafana
           annotations:
-            summary: Someone logged in to Grafana with a password instead of Keycloak; the only password account is the break-glass admin.
+            value: admin
+            summary: 'Someone logged in to Grafana with a password instead of Keycloak; the only password account is the break-glass admin.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -230,8 +250,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: security
+            service: argocd
+            instance: argocd
           annotations:
-            summary: Someone logged in to Argo CD with a local account's password (the break-glass admin); SSO logins don't go through SessionService.Create.
+            value: admin
+            summary: 'Someone logged in to Argo CD with a local account''s password (the break-glass admin); SSO logins don''t go through SessionService.Create.'
           data:
             - refId: A
               datasourceUid: loki
@@ -261,8 +285,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: security
+            service: keycloak
+            instance: 'master/{{ $labels.client_id }}'
           annotations:
-            summary: 'Break-glass in Keycloak: a user logged in to the master realm (it has none), or a master client other than bootstrap-admin, which the realm reconcile uses, got a token.'
+            value: '{{ $labels.event }}'
+            summary: 'Break-glass in Keycloak: {{ $labels.event }} on the master realm via client {{ $labels.client_id }}.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -292,8 +320,12 @@ alerting:
           execErrState: Error
           labels:
             severity: critical
+            group: security
+            service: keycloak
+            instance: '{{ $labels.realm }}/{{ $labels.client_id }}'
           annotations:
-            summary: 'Someone impersonated a user in Keycloak. Impersonation bypasses the user''s passkey/TOTP; the feature should be disabled. Investigate the realm events and rotate the bootstrap-admin client secret if this was not intentional.'
+            value: '{{ $labels.event }}'
+            summary: 'Someone impersonated a user in Keycloak realm {{ $labels.realm }} (client {{ $labels.client_id }}). Impersonation bypasses the user''s passkey/TOTP; investigate the realm events and rotate the bootstrap-admin client secret if this was not intentional.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -322,9 +354,13 @@ alerting:
           noDataState: OK
           execErrState: Error
           labels:
-            severity: info
+            severity: informational
+            group: security
+            service: kubernetes
+            instance: '{{ $labels.objectRef_namespace }}'
           annotations:
-            summary: A pod was admitted despite a Warn/Audit policy (addon admission), e.g. a CPU limit or a missing memory limit.
+            value: '{{ with $values.A }}{{ printf "%.0f warnings" .Value }}{{ end }}'
+            summary: 'A pod in namespace {{ $labels.objectRef_namespace }} was admitted despite a Warn/Audit policy (addon admission), e.g. a CPU limit or a missing memory limit.'
           data:
             - refId: A
               datasourceUid: loki
@@ -354,8 +390,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: security
+            service: cilium
+            instance: '{{ $labels.source }} -> {{ $labels.destination }}'
           annotations:
-            summary: 'Cilium denied traffic: a missing allow rule, or something probing where it shouldn''t.'
+            value: '{{ with $values.A }}{{ printf "%.0f drops" .Value }}{{ end }}'
+            summary: 'Cilium denied traffic from {{ $labels.source }} to {{ $labels.destination }}: a missing allow rule, or something probing where it shouldn''t.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -393,8 +433,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: health
+            service: zfs-localpv
+            instance: '{{ $labels.persistentvolumeclaim }}'
           annotations:
-            summary: A PVC is over 85% full.
+            value: '{{ with $values.A }}{{ printf "%.1f%%" (mul .Value 100.0) }}{{ end }}'
+            summary: 'PVC {{ $labels.persistentvolumeclaim }} is over 85% full.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -424,8 +468,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: health
+            service: kubernetes
+            instance: '{{ $labels.namespace }}/{{ $labels.pod }}'
           annotations:
-            summary: A container restarted more than three times in 15 minutes.
+            value: '{{ with $values.A }}{{ printf "%.0f restarts" .Value }}{{ end }}'
+            summary: 'Pod {{ $labels.namespace }}/{{ $labels.pod }} restarted more than three times in 15 minutes.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -455,8 +503,12 @@ alerting:
           execErrState: Error
           labels:
             severity: critical
+            group: health
+            service: kubernetes
+            instance: '{{ $labels.node }}'
           annotations:
-            summary: A node has been NotReady for 5 minutes.
+            value: NotReady
+            summary: 'Node {{ $labels.node }} has been NotReady for 5 minutes.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -486,8 +538,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: health
+            service: argo-workflows
+            instance: '{{ $labels.namespace }}'
           annotations:
-            summary: A workflow entered the Failed phase in the last 15 minutes. Every standing workflow here is started by a CronWorkflow (the controller's counter has no cron label).
+            value: Failed
+            summary: 'A workflow in namespace {{ $labels.namespace }} entered the Failed phase in the last 15 minutes.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -517,8 +573,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: health
+            service: argocd
+            instance: '{{ $labels.name }}'
           annotations:
-            summary: An Argo CD application has been Degraded, Missing or Unknown for 15 minutes. A paused application (no auto-sync) that was never synced is Missing by design and doesn't count.
+            value: '{{ $labels.health_status }}'
+            summary: 'Argo CD application {{ $labels.name }} has been {{ $labels.health_status }} for 15 minutes.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -548,8 +608,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: health
+            service: argocd
+            instance: '{{ $labels.name }}'
           annotations:
-            summary: An Argo CD application has had auto-sync off for 7 days, so git changes don't reach it. Resume it, or take the addon out of the cluster's values.yaml.
+            value: paused 7d
+            summary: 'Argo CD application {{ $labels.name }} has had auto-sync off for 7 days, so git changes don''t reach it. Resume it, or take the addon out of the cluster''s values.yaml.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -579,8 +643,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: health
+            service: external-secrets
+            instance: '{{ $labels.exported_namespace }}/{{ $labels.name }}'
           annotations:
-            summary: An ExternalSecret or PushSecret has not been Ready for 15 minutes.
+            value: Ready=False
+            summary: 'ExternalSecret or PushSecret {{ $labels.exported_namespace }}/{{ $labels.name }} has not been Ready for 15 minutes.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -610,7 +678,11 @@ alerting:
           execErrState: Error
           labels:
             severity: critical
+            group: health
+            service: openbao
+            instance: openbao
           annotations:
+            value: sealed
             summary: 'OpenBao is sealed or not reporting: no secret can be read or generated.'
           data:
             - refId: A
@@ -641,8 +713,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: health
+            service: cert-manager
+            instance: '{{ $labels.namespace }}/{{ $labels.name }}'
           annotations:
-            summary: A cert-manager certificate expires within 14 days; renewal is failing.
+            value: '{{ with $values.A }}{{ printf "%.1fd left" (div .Value 86400.0) }}{{ end }}'
+            summary: 'Certificate {{ $labels.namespace }}/{{ $labels.name }} expires within 14 days; renewal is failing.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -672,8 +748,12 @@ alerting:
           execErrState: Error
           labels:
             severity: critical
+            group: health
+            service: zfs
+            instance: '{{ if $labels.zpool }}{{ $labels.zpool }}{{ else }}zpool{{ end }}'
           annotations:
-            summary: 'A ZFS pool is degraded, faulted, offline or not reporting: mirror redundancy is lost, so replace the failing disk before its pair goes.'
+            value: unhealthy
+            summary: 'ZFS pool {{ if $labels.zpool }}{{ $labels.zpool }} {{ end }}is degraded, faulted, offline or not reporting: mirror redundancy is lost, so replace the failing disk before its pair goes.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -703,8 +783,12 @@ alerting:
           execErrState: Error
           labels:
             severity: critical
+            group: health
+            service: smartctl
+            instance: '{{ if $labels.device }}{{ $labels.device }}{{ else }}smartctl{{ end }}'
           annotations:
-            summary: A disk failed its SMART health assessment (or smartctl-exporter stopped reporting); replace the disk.
+            value: FAILED
+            summary: 'Disk {{ if $labels.device }}{{ $labels.device }} {{ end }}failed its SMART health assessment (or smartctl-exporter stopped reporting); replace the disk.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -734,8 +818,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: health
+            service: smartctl
+            instance: '{{ $labels.device }}'
           annotations:
-            summary: A disk reports reallocated, pending or uncorrectable sectors, SCSI grown defects, NVMe media errors or a failed SMART self-test; scrub the pool and plan a replacement.
+            value: '{{ with $values.A }}{{ printf "%.0f errors" .Value }}{{ end }}'
+            summary: 'Disk {{ $labels.device }} reports reallocated, pending or uncorrectable sectors, SCSI grown defects, NVMe media errors or a failed SMART self-test; scrub the pool and plan a replacement.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -765,8 +853,12 @@ alerting:
           execErrState: Error
           labels:
             severity: critical
+            group: health
+            service: smartctl
+            instance: '{{ $labels.device }}'
           annotations:
-            summary: An NVMe controller raised its critical-warning flag or fell below its available-spare threshold.
+            value: critical warning
+            summary: 'NVMe controller {{ $labels.device }} raised its critical-warning flag or fell below its available-spare threshold.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -796,8 +888,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: health
+            service: smartctl
+            instance: '{{ $labels.device }}'
           annotations:
-            summary: A disk has been over 55°C for 15 minutes; check fans and airflow.
+            value: '{{ with $values.A }}{{ printf "%.0f°C" .Value }}{{ end }}'
+            summary: 'Disk {{ $labels.device }} has been over 55°C for 15 minutes; check fans and airflow.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -827,8 +923,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: health
+            service: systemd
+            exported_instance: '{{ $labels.name }}'
           annotations:
-            summary: A host systemd unit has been in the failed state for 5 minutes.
+            value: failed
+            summary: 'Host systemd unit {{ $labels.name }} on {{ $labels.instance }} has been in the failed state for 5 minutes.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -858,8 +958,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: health
+            service: backup
+            exported_instance: homelab-backup.timer
           annotations:
-            summary: homelab-backup.timer has not triggered in 26 hours (or node-exporter stopped reporting).
+            value: '{{ with $values.A }}{{ printf "%.1fh ago" (div .Value 3600.0) }}{{ else }}no data{{ end }}'
+            summary: 'homelab-backup.timer has not triggered in 26 hours (or node-exporter stopped reporting).'
           data:
             - refId: A
               datasourceUid: mimir
@@ -889,8 +993,12 @@ alerting:
           execErrState: Error
           labels:
             severity: warning
+            group: health
+            service: systemd
+            exported_instance: '{{ $labels.name }}'
           annotations:
-            summary: A host systemd timer has not triggered within its expected schedule (2h for hourly, 26h for daily, 8d for weekly, 33d for monthly).
+            value: overdue
+            summary: 'Host systemd timer {{ $labels.name }} on {{ $labels.instance }} has not triggered within its expected schedule (2h for hourly, 26h for daily, 8d for weekly, 33d for monthly).'
           data:
             - refId: A
               datasourceUid: mimir

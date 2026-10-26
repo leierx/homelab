@@ -58,12 +58,16 @@ spec:
 
               ALLOWED_ENVIRONMENTS = ['Production']
               DEFAULT_ENVIRONMENT = 'Production'
+              COLUMNS = [
+                  'severity', 'status', 'lastReceiveTime', 'duplicateCount',
+                  'group', 'service', 'resource', 'event', 'value', 'text'
+              ]
               DEFAULT_FILTER = {'status': []}
               SORT_LIST_BY = ['status', 'severity', 'lastReceiveTime']
               ASI_QUERIES = [
-                  {'text': 'Production', 'query': [['environment', 'Production']]},
-                  {'text': 'Heartbeats', 'query': {'q': 'event:Heartbeat'}},
-                  {'text': 'Misc.', 'query': 'group=Misc'},
+                  {'text': 'All', 'query': [['environment', 'Production']]},
+                  {'text': 'Security', 'query': [['group', 'security']]},
+                  {'text': 'Health', 'query': [['group', 'health']]},
               ]
 
               # Retain closed, expired and informational alerts for half a year (180 days)
@@ -139,7 +143,7 @@ spec:
             - name: UWSGI_MAX_WORKER_LIFETIME
               value: ""
             - name: SUPERVISORD_LOG_LEVEL
-              value: info
+              value: warn
           ports:
             - name: http
               containerPort: 8080
