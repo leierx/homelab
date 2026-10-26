@@ -48,6 +48,8 @@
   {{- end }}
   {{- $_ := set $helmSource "helm" $helmSpec -}}
   {{- $sources = append $sources $helmSource -}}
+{{- else if $addon.values }}
+  {{- fail (printf "Addon '%s' sets values in clusters/%s/cluster.yaml but has no Helm chart" $name $cluster) -}}
 {{- end }}
 
 {{/* 2. Base addon manifests/ (raw YAML or kustomization.yaml, auto-detected if present) */}}
