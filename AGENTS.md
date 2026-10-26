@@ -41,16 +41,19 @@ without explicit instruction.
 3. **Clusters (`fleet/clusters/<cluster>/`):**
    - `cluster-secret.yaml` is the Argo CD cluster Secret (`argocd.argoproj.io/secret-type: cluster`).
    - `cluster.yaml` sets `repoURL`, `targetRevision`, and the map of enabled
-     `addons:`.
-   - `addons/<name>/` extends or overrides a shared addon for that cluster:
-     - `addon.yaml` adds cluster-level `dependencies: []` or extra `sources: []`
-       (extra Helm charts or repo paths).
-     - `values.yaml` overlays `fleet/addons/<name>/values.yaml`.
+     `addons:`. Each entry may inline any `addon.yaml` field (e.g.
+     `dependencies`, `namespace`, `podSecurity`) plus `values`, which is passed
+     to the primary Helm source as `valuesObject` after the shared and
+     cluster-level `values.yaml` files.
+   - `addons/<name>/` holds cluster-only additions for that addon:
      - `manifests/` adds cluster-specific resources (routes, Certificates,
        PVCs, StorageClasses, CNPG Databases, ExternalSecrets).
-   - A folder in `fleet/clusters/<cluster>/addons/<name>/` with no matching
-     folder in `fleet/addons/` is a cluster-only addon (e.g. `dodde` on
-     `loft01`).
+     - `addon.yaml` (extra cluster-level `dependencies: []` or `sources: []`)
+       and `values.yaml` are still supported but only needed for overrides too
+       large to read inline in `cluster.yaml`.
+   - A cluster-only addon (e.g. `dodde` on `loft01`) needs no
+     `fleet/addons/<name>/`; its metadata can live inline in `cluster.yaml`
+     and its resources in `fleet/clusters/<cluster>/addons/<name>/manifests/`.
 
 ## Verification
 
@@ -69,11 +72,11 @@ also verify them directly:
 ```sh
 helm template keycloak fleet/addons/keycloak -n keycloak \
   -f fleet/addons/keycloak/values.yaml \
-  -f fleet/clusters/loft01/addons/keycloak/values.yaml > /dev/null
+  -f <(yq '.addons.keycloak.values' fleet/clusters/loft01/cluster.yaml) > /dev/null
 
 helm template mimir fleet/addons/mimir -n monitoring \
   -f fleet/addons/mimir/values.yaml \
-  -f fleet/clusters/loft01/addons/mimir/values.yaml > /dev/null
+  -f <(yq '.addons.mimir.values' fleet/clusters/loft01/cluster.yaml) > /dev/null
 ```
 
 If editing `nixos/`, verify the NixOS configuration builds:

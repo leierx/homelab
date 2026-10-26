@@ -43,6 +43,9 @@
   {{- if $valueFiles }}
     {{- $_ := set $helmSpec "valueFiles" $valueFiles -}}
   {{- end }}
+  {{- if $addon.values }}
+    {{- $_ := set $helmSpec "valuesObject" $addon.values -}}
+  {{- end }}
   {{- $_ := set $helmSource "helm" $helmSpec -}}
   {{- $sources = append $sources $helmSource -}}
 {{- end }}
