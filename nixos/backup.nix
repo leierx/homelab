@@ -9,10 +9,10 @@ let
   # sops-nix fails the build on a missing secret
   enable = true;
 
-  stateDir = "/var/lib/homelab-backup";
+  stateDir = "/var/lib/serverbackup";
 
   backup = pkgs.writeShellApplication {
-    name = "homelab-backup";
+    name = "serverbackup";
     runtimeInputs = [
       config.boot.zfs.package
       pkgs.restic
@@ -20,6 +20,7 @@ let
       pkgs.openssh
       pkgs.coreutils
       pkgs.gnugrep
+      pkgs.jq
     ];
     text = ''
       # <user>@<user>.rsync.net, from sops so no account name lands in the store
@@ -38,6 +39,8 @@ let
       r unlock || true
       r snapshots >/dev/null 2>&1 || r init
 
+      before=$(r stats --mode raw-data --json | jq -r .total_size)
+
       # k3s state: restoring a PVC needs its k8s objects too
       stage=${stateDir}/k3s
       rm -rf "$stage" && mkdir -p "$stage"
@@ -55,7 +58,10 @@ let
         zfs send -L "$snap" | r backup --host loft01 --tag "volume:$vol" --stdin --stdin-filename "$vol"
       done
 
+      after=$(r stats --mode raw-data --json | jq -r .total_size)
       r forget --host loft01 --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
+      total=$(r stats --mode raw-data --json | jq -r .total_size)
+      echo "this backup: $(numfmt --to=iec-i --suffix=B "$((after - before))") added, total in cloud: $(numfmt --to=iec-i --suffix=B "$total")"
     '';
   };
 in
@@ -78,7 +84,7 @@ in
     "restic/password".mode = "0400";
   };
 
-  systemd.services.homelab-backup = lib.mkIf enable {
+  systemd.services.serverbackup = lib.mkIf enable {
     description = "Off-site restic backup of k3s state and PVC volumes";
     after = [
       "network-online.target"
@@ -89,14 +95,14 @@ in
     serviceConfig = {
       Type = "oneshot";
       ExecStart = lib.getExe backup;
-      StateDirectory = "homelab-backup";
+      StateDirectory = "serverbackup";
       Nice = 10;
       IOSchedulingClass = "idle";
     };
   };
 
   # also after boot, so a run cut off by the auto-upgrade reboot resumes
-  systemd.timers.homelab-backup = lib.mkIf enable {
+  systemd.timers.serverbackup = lib.mkIf enable {
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnCalendar = "01:00";
