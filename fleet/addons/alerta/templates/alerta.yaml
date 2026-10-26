@@ -1,3 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alerta-config
+data:
+  alertad.conf: |
+    DEBUG = False
+    USE_PROXYFIX = True
+
+    AUTH_PROVIDER = 'openid'
+    SIGNUP_ENABLED = False
+    OIDC_ISSUER_URL = {{ required "oidc.issuer is per cluster" .Values.oidc.issuer | quote }}
+    OIDC_AUTH_URL = {{ printf "%s/protocol/openid-connect/auth" (required "oidc.issuer is per cluster" .Values.oidc.issuer) | quote }}
+    OAUTH2_CLIENT_ID = 'alerta'
+
+    OIDC_ROLE_CLAIM = 'groups'
+    ALLOWED_OIDC_ROLES = ['homelab-admins', 'homelab-operators', 'homelab-viewers']
+    ADMIN_ROLES = ['homelab-admins']
+    USER_ROLES = ['homelab-operators']
+    GUEST_ROLES = ['homelab-viewers']
+
+    ALLOWED_ENVIRONMENTS = ['Production']
+    DEFAULT_ENVIRONMENT = 'Production'
+    DEFAULT_FILTER = {'status': None}
+    SORT_LIST_BY = ['status', 'severity', 'lastReceiveTime']
+
+    PLUGINS = ['remote_ip', 'reject', 'heartbeat', 'blackout', 'acked_by']
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -21,81 +49,14 @@ spec:
         runAsNonRoot: true
         runAsUser: 1001
         runAsGroup: 0
-        fsGroup: 0
-        fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
-      initContainers:
-        - name: init-config
+      containers:
+        - name: alerta
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
-          command: [sh, -c]
-          args:
-            - |
-              set -eu
-              cp -r /app/* /app-work/
-              cp -r /web/* /web-work/
-              cp /web-work/config.json.j2 /web-work/config.json
-              sed -i 's/isDark:!1/isDark:!0/g' /web-work/js/app.*.js
-
-              cat > /app-work/alertad.conf <<'EOF'
-              DEBUG = False
-              USE_PROXYFIX = True
-
-              AUTH_REQUIRED = True
-              AUTH_PROVIDER = 'openid'
-              SIGNUP_ENABLED = False
-              OIDC_ISSUER_URL = {{ required "oidc.issuer is per cluster" .Values.oidc.issuer | quote }}
-              OIDC_AUTH_URL = {{ printf "%s/protocol/openid-connect/auth" (required "oidc.issuer is per cluster" .Values.oidc.issuer) | quote }}
-              OAUTH2_CLIENT_ID = 'alerta'
-
-              # Service principals used only by `alertad key` below; OIDC logins match Keycloak groups
-              ADMIN_USERS = ['system', 'grafana']
-              OIDC_ROLE_CLAIM = 'groups'
-              ALLOWED_OIDC_ROLES = ['homelab-admins', 'homelab-operators', 'homelab-viewers']
-              ADMIN_ROLES = ['homelab-admins']
-              USER_ROLES = ['homelab-operators']
-              GUEST_ROLES = ['homelab-viewers']
-
-              ALLOWED_ENVIRONMENTS = ['Production']
-              DEFAULT_ENVIRONMENT = 'Production'
-              COLUMNS = [
-                  'severity', 'status', 'lastReceiveTime', 'duplicateCount',
-                  'group', 'service', 'resource', 'event', 'value', 'text'
-              ]
-              DEFAULT_FILTER = {'status': []}
-              SORT_LIST_BY = ['status', 'severity', 'lastReceiveTime']
-              ASI_QUERIES = [
-                  {'text': 'All', 'query': [['environment', 'Production']]},
-                  {'text': 'Security', 'query': [['group', 'security']]},
-                  {'text': 'Health', 'query': [['group', 'health']]},
-              ]
-
-              # Retain closed, expired and informational alerts for half a year (180 days)
-              DELETE_EXPIRED_AFTER = 15552000
-              DELETE_INFO_AFTER = 15552000
-
-              PLUGINS = ['remote_ip', 'reject', 'heartbeat', 'blackout', 'acked_by']
-              EOF
-              # docker-entrypoint.sh runs `env | sort`, so keep secrets out of the main container's env
-              python3 -c '
-              import os
-              for k in ("DATABASE_URL", "SECRET_KEY", "OAUTH2_CLIENT_SECRET"):
-                  print(f"{k} = {os.environ[k]!r}")
-              ' >> /app-work/alertad.conf
-
-              ALERTA_SVR_CONF_FILE=/app-work/alertad.conf /venv/bin/alertad key \
-                --username grafana --key "$GRAFANA_API_KEY" \
-                --scope write:webhooks --text "Grafana alerts" > /dev/null
-              hk_key=$(ALERTA_SVR_CONF_FILE=/app-work/alertad.conf /venv/bin/alertad key \
-                --username system \
-                --scope read:alerts --scope write:alerts --scope admin:management \
-                --text "Housekeeping")
-              cat > /app-work/alerta.conf <<EOF
-              [DEFAULT]
-              endpoint = http://localhost:8080/api
-              key = ${hk_key}
-              EOF
           env:
+            - name: ALERTA_SVR_CONF_FILE
+              value: /etc/alerta/alertad.conf
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -111,28 +72,15 @@ spec:
                 secretKeyRef:
                   name: alerta
                   key: oidc-client-secret
-            - name: GRAFANA_API_KEY
+            - name: AUTH_REQUIRED
+              value: "true"
+            - name: ADMIN_USERS
+              value: admin
+            - name: ADMIN_KEY
               valueFrom:
                 secretKeyRef:
                   name: alerta
                   key: grafana-api-key
-          resources:
-            requests: { cpu: 10m, memory: 64Mi }
-            limits: { memory: 256Mi }
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
-          volumeMounts:
-            - name: app
-              mountPath: /app-work
-            - name: web
-              mountPath: /web-work
-      containers:
-        - name: alerta
-          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
-          env:
             # 180 days (4320 hours) retention for housekeeping
             - name: HK_EXPIRED_DELETE_HRS
               value: "4320"
@@ -140,10 +88,6 @@ spec:
               value: "4320"
             - name: HEARTBEAT_SEVERITY
               value: ""
-            - name: UWSGI_MAX_WORKER_LIFETIME
-              value: ""
-            - name: SUPERVISORD_LOG_LEVEL
-              value: warn
           ports:
             - name: http
               containerPort: 8080
@@ -161,24 +105,16 @@ spec:
             limits: { memory: 512Mi }
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
           volumeMounts:
-            - name: app
-              mountPath: /app
-            - name: web
-              mountPath: /web
+            - name: config
+              mountPath: /etc/alerta
               readOnly: true
-            - name: tmp
-              mountPath: /tmp
       volumes:
-        - name: app
-          emptyDir: {}
-        - name: web
-          emptyDir: {}
-        - name: tmp
-          emptyDir: {}
+        - name: config
+          configMap:
+            name: alerta-config
 ---
 apiVersion: v1
 kind: Service
