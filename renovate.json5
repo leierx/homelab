@@ -72,8 +72,8 @@
       labels: ['dependencies'],
     },
     {
-      description: 'Run patch and digest updates twice a week',
-      matchUpdateTypes: ['patch', 'pin', 'digest'],
+      description: 'Run minor, patch and digest updates twice a week',
+      matchUpdateTypes: ['minor', 'patch', 'pin', 'digest'],
       schedule: ['* 0-4 * * 1,4'],
     },
     {
