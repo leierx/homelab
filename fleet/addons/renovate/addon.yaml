@@ -9,4 +9,4 @@ helm:
   repoURL: https://docs.renovatebot.com/helm-charts
   chart: renovate
   # renovate: datasource=helm depName=renovate registryUrl=https://docs.renovatebot.com/helm-charts
-  targetRevision: 46.381.10
+  targetRevision: 46.381.11
