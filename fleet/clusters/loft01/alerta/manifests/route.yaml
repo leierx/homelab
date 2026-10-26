@@ -46,3 +46,16 @@ spec:
     - backendRefs:
         - name: alerta
           port: 8080
+---
+# Alerta's own OIDC login guards it so user roles and dark-theme preferences are loaded per user
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: alerta-wg
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: alerta-wg
+  authorization:
+    defaultAction: Allow

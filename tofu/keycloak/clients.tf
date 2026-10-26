@@ -119,6 +119,25 @@ resource "keycloak_generic_protocol_mapper" "immich_role" {
   }
 }
 
+resource "keycloak_openid_client" "alerta" {
+  realm_id  = keycloak_realm.homelab.id
+  client_id = "alerta"
+  name      = "alerta"
+  enabled   = true
+  base_url  = "https://alerta.skinke.net"
+
+  access_type                  = "CONFIDENTIAL"
+  client_secret_wo             = var.alerta_client_secret
+  client_secret_wo_version     = "1"
+  standard_flow_enabled        = true
+  direct_access_grants_enabled = false
+  implicit_flow_enabled        = false
+  service_accounts_enabled     = false
+
+  valid_redirect_uris = ["https://alerta.skinke.net/*"]
+  web_origins         = ["https://alerta.skinke.net"]
+}
+
 # Envoy Gateway's login in front of the edge and wg Gateways (SecurityPolicy oidc); not an app
 resource "keycloak_openid_client" "edge" {
   realm_id  = keycloak_realm.homelab.id
@@ -135,7 +154,6 @@ resource "keycloak_openid_client" "edge" {
   service_accounts_enabled     = false
 
   valid_redirect_uris = [
-    "https://alerta.skinke.net/_envoy/callback",
     "https://argocd.skinke.net/_envoy/callback",
     "https://metrics.skinke.net/_envoy/callback",
     "https://rss.skinke.net/_envoy/callback",
@@ -226,6 +244,12 @@ resource "keycloak_openid_client_default_scopes" "grafana" {
 resource "keycloak_openid_client_default_scopes" "immich" {
   realm_id       = keycloak_realm.homelab.id
   client_id      = keycloak_openid_client.immich.id
+  default_scopes = local.default_client_scopes
+}
+
+resource "keycloak_openid_client_default_scopes" "alerta" {
+  realm_id       = keycloak_realm.homelab.id
+  client_id      = keycloak_openid_client.alerta.id
   default_scopes = local.default_client_scopes
 }
 

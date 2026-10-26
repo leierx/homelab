@@ -123,9 +123,10 @@ enabled addons in dependency wave order:
 - **Wave 3:** `cert-manager`, `dodde`, `loki`, `mimir`
 - **Wave 4:** `alloy-logs`, `alloy-metrics`, `cluster-api`, `openbao`
 - **Wave 5:** `capi-argo-bridge`, `external-secrets`
-- **Wave 6:** `alerta`, `argo-workflows`, `renovate`
+- **Wave 6:** `argo-workflows`, `renovate`
 - **Wave 7:** `keycloak`
-- **Wave 8:** `argocd`, `grafana`, `immich`, `miniflux`
+- **Wave 8:** `alerta`, `argocd`, `immich`, `miniflux`
+- **Wave 9:** `grafana`
 
 ## Addon Reference (`addon.yaml`)
 
