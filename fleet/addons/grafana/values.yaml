@@ -77,7 +77,7 @@ alerting:
             service: kubernetes
             instance: system:admin
           annotations:
-            value: '{{ with $values.A }}{{ printf "%.0f reqs" .Value }}{{ end }}'
+            value: '{{ `{{ with $values.A }}{{ printf "%.0f reqs" .Value }}{{ end }}` }}'
             summary: 'The host''s system:masters certificate was used: break-glass, or someone who shouldn''t have it.'
           data:
             - refId: A
@@ -110,10 +110,10 @@ alerting:
             severity: warning
             group: security
             service: kubernetes
-            instance: '{{ $labels.objectRef_resource }}/{{ $labels.objectRef_name }}'
+            instance: '{{ `{{ $labels.objectRef_resource }}/{{ $labels.objectRef_name }}` }}'
           annotations:
-            value: '{{ $labels.user_username }}'
-            summary: '{{ $labels.user_username }} modified {{ $labels.objectRef_resource }}/{{ $labels.objectRef_name }} outside Argo CD.'
+            value: '{{ `{{ $labels.user_username }}` }}'
+            summary: '{{ `{{ $labels.user_username }} modified {{ $labels.objectRef_resource }}/{{ $labels.objectRef_name }} outside Argo CD.` }}'
           data:
             - refId: A
               datasourceUid: loki
@@ -145,10 +145,10 @@ alerting:
             severity: informational
             group: security
             service: kubernetes
-            instance: '{{ $labels.objectRef_namespace }}/{{ $labels.objectRef_resource }}{{ if $labels.objectRef_subresource }}/{{ $labels.objectRef_subresource }}{{ end }}'
+            instance: '{{ `{{ $labels.objectRef_namespace }}/{{ $labels.objectRef_resource }}{{ if $labels.objectRef_subresource }}/{{ $labels.objectRef_subresource }}{{ end }}` }}'
           annotations:
-            value: '{{ $labels.user_username }}'
-            summary: '{{ $labels.user_username }} accessed {{ $labels.objectRef_resource }}{{ if $labels.objectRef_subresource }}/{{ $labels.objectRef_subresource }}{{ end }} in namespace {{ $labels.objectRef_namespace }}.'
+            value: '{{ `{{ $labels.user_username }}` }}'
+            summary: '{{ `{{ $labels.user_username }} accessed {{ $labels.objectRef_resource }}{{ if $labels.objectRef_subresource }}/{{ $labels.objectRef_subresource }}{{ end }} in namespace {{ $labels.objectRef_namespace }}.` }}'
           data:
             - refId: A
               datasourceUid: loki
@@ -287,10 +287,10 @@ alerting:
             severity: warning
             group: security
             service: keycloak
-            instance: 'master/{{ $labels.client_id }}'
+            instance: '{{ `master/{{ $labels.client_id }}` }}'
           annotations:
-            value: '{{ $labels.event }}'
-            summary: 'Break-glass in Keycloak: {{ $labels.event }} on the master realm via client {{ $labels.client_id }}.'
+            value: '{{ `{{ $labels.event }}` }}'
+            summary: '{{ `Break-glass in Keycloak: {{ $labels.event }} on the master realm via client {{ $labels.client_id }}.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -322,10 +322,10 @@ alerting:
             severity: critical
             group: security
             service: keycloak
-            instance: '{{ $labels.realm }}/{{ $labels.client_id }}'
+            instance: '{{ `{{ $labels.realm }}/{{ $labels.client_id }}` }}'
           annotations:
-            value: '{{ $labels.event }}'
-            summary: 'Someone impersonated a user in Keycloak realm {{ $labels.realm }} (client {{ $labels.client_id }}). Impersonation bypasses the user''s passkey/TOTP; investigate the realm events and rotate the bootstrap-admin client secret if this was not intentional.'
+            value: '{{ `{{ $labels.event }}` }}'
+            summary: '{{ `Someone impersonated a user in Keycloak realm {{ $labels.realm }} (client {{ $labels.client_id }}). Impersonation bypasses the user''s passkey/TOTP; investigate the realm events and rotate the bootstrap-admin client secret if this was not intentional.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -357,10 +357,10 @@ alerting:
             severity: informational
             group: security
             service: kubernetes
-            instance: '{{ $labels.objectRef_namespace }}'
+            instance: '{{ `{{ $labels.objectRef_namespace }}` }}'
           annotations:
-            value: '{{ with $values.A }}{{ printf "%.0f warnings" .Value }}{{ end }}'
-            summary: 'A pod in namespace {{ $labels.objectRef_namespace }} was admitted despite a Warn/Audit policy (addon admission), e.g. a CPU limit or a missing memory limit.'
+            value: '{{ `{{ with $values.A }}{{ printf "%.0f warnings" .Value }}{{ end }}` }}'
+            summary: '{{ `A pod in namespace {{ $labels.objectRef_namespace }} was admitted despite a Warn/Audit policy (addon admission), e.g. a CPU limit or a missing memory limit.` }}'
           data:
             - refId: A
               datasourceUid: loki
@@ -392,10 +392,10 @@ alerting:
             severity: warning
             group: security
             service: cilium
-            instance: '{{ $labels.source }} -> {{ $labels.destination }}'
+            instance: '{{ `{{ $labels.source }} -> {{ $labels.destination }}` }}'
           annotations:
-            value: '{{ with $values.A }}{{ printf "%.0f drops" .Value }}{{ end }}'
-            summary: 'Cilium denied traffic from {{ $labels.source }} to {{ $labels.destination }}: a missing allow rule, or something probing where it shouldn''t.'
+            value: '{{ `{{ with $values.A }}{{ printf "%.0f drops" .Value }}{{ end }}` }}'
+            summary: '{{ `Cilium denied traffic from {{ $labels.source }} to {{ $labels.destination }}: a missing allow rule, or something probing where it shouldn''t.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -435,10 +435,10 @@ alerting:
             severity: warning
             group: health
             service: zfs-localpv
-            instance: '{{ $labels.persistentvolumeclaim }}'
+            instance: '{{ `{{ $labels.persistentvolumeclaim }}` }}'
           annotations:
-            value: '{{ with $values.A }}{{ printf "%.1f%%" (mul .Value 100.0) }}{{ end }}'
-            summary: 'PVC {{ $labels.persistentvolumeclaim }} is over 85% full.'
+            value: '{{ `{{ with $values.A }}{{ printf "%.1f%%" (mul .Value 100.0) }}{{ end }}` }}'
+            summary: '{{ `PVC {{ $labels.persistentvolumeclaim }} is over 85% full.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -470,10 +470,10 @@ alerting:
             severity: warning
             group: health
             service: kubernetes
-            instance: '{{ $labels.namespace }}/{{ $labels.pod }}'
+            instance: '{{ `{{ $labels.namespace }}/{{ $labels.pod }}` }}'
           annotations:
-            value: '{{ with $values.A }}{{ printf "%.0f restarts" .Value }}{{ end }}'
-            summary: 'Pod {{ $labels.namespace }}/{{ $labels.pod }} restarted more than three times in 15 minutes.'
+            value: '{{ `{{ with $values.A }}{{ printf "%.0f restarts" .Value }}{{ end }}` }}'
+            summary: '{{ `Pod {{ $labels.namespace }}/{{ $labels.pod }} restarted more than three times in 15 minutes.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -505,10 +505,10 @@ alerting:
             severity: critical
             group: health
             service: kubernetes
-            instance: '{{ $labels.node }}'
+            instance: '{{ `{{ $labels.node }}` }}'
           annotations:
             value: NotReady
-            summary: 'Node {{ $labels.node }} has been NotReady for 5 minutes.'
+            summary: '{{ `Node {{ $labels.node }} has been NotReady for 5 minutes.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -540,10 +540,10 @@ alerting:
             severity: warning
             group: health
             service: argo-workflows
-            instance: '{{ $labels.namespace }}'
+            instance: '{{ `{{ $labels.namespace }}` }}'
           annotations:
             value: Failed
-            summary: 'A workflow in namespace {{ $labels.namespace }} entered the Failed phase in the last 15 minutes.'
+            summary: '{{ `A workflow in namespace {{ $labels.namespace }} entered the Failed phase in the last 15 minutes.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -575,10 +575,10 @@ alerting:
             severity: warning
             group: health
             service: argocd
-            instance: '{{ $labels.name }}'
+            instance: '{{ `{{ $labels.name }}` }}'
           annotations:
-            value: '{{ $labels.health_status }}'
-            summary: 'Argo CD application {{ $labels.name }} has been {{ $labels.health_status }} for 15 minutes.'
+            value: '{{ `{{ $labels.health_status }}` }}'
+            summary: '{{ `Argo CD application {{ $labels.name }} has been {{ $labels.health_status }} for 15 minutes.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -610,10 +610,10 @@ alerting:
             severity: warning
             group: health
             service: argocd
-            instance: '{{ $labels.name }}'
+            instance: '{{ `{{ $labels.name }}` }}'
           annotations:
             value: paused 7d
-            summary: 'Argo CD application {{ $labels.name }} has had auto-sync off for 7 days, so git changes don''t reach it. Resume it, or take the addon out of the cluster''s values.yaml.'
+            summary: '{{ `Argo CD application {{ $labels.name }} has had auto-sync off for 7 days, so git changes don''t reach it. Resume it, or take the addon out of the cluster''s values.yaml.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -645,10 +645,10 @@ alerting:
             severity: warning
             group: health
             service: external-secrets
-            instance: '{{ $labels.exported_namespace }}/{{ $labels.name }}'
+            instance: '{{ `{{ $labels.exported_namespace }}/{{ $labels.name }}` }}'
           annotations:
             value: Ready=False
-            summary: 'ExternalSecret or PushSecret {{ $labels.exported_namespace }}/{{ $labels.name }} has not been Ready for 15 minutes.'
+            summary: '{{ `ExternalSecret or PushSecret {{ $labels.exported_namespace }}/{{ $labels.name }} has not been Ready for 15 minutes.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -715,10 +715,10 @@ alerting:
             severity: warning
             group: health
             service: cert-manager
-            instance: '{{ $labels.namespace }}/{{ $labels.name }}'
+            instance: '{{ `{{ $labels.namespace }}/{{ $labels.name }}` }}'
           annotations:
-            value: '{{ with $values.A }}{{ printf "%.1fd left" (div .Value 86400.0) }}{{ end }}'
-            summary: 'Certificate {{ $labels.namespace }}/{{ $labels.name }} expires within 14 days; renewal is failing.'
+            value: '{{ `{{ with $values.A }}{{ printf "%.1fd left" (div .Value 86400.0) }}{{ end }}` }}'
+            summary: '{{ `Certificate {{ $labels.namespace }}/{{ $labels.name }} expires within 14 days; renewal is failing.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -750,10 +750,10 @@ alerting:
             severity: critical
             group: health
             service: zfs
-            instance: '{{ if $labels.zpool }}{{ $labels.zpool }}{{ else }}zpool{{ end }}'
+            instance: '{{ `{{ if $labels.zpool }}{{ $labels.zpool }}{{ else }}zpool{{ end }}` }}'
           annotations:
             value: unhealthy
-            summary: 'ZFS pool {{ if $labels.zpool }}{{ $labels.zpool }} {{ end }}is degraded, faulted, offline or not reporting: mirror redundancy is lost, so replace the failing disk before its pair goes.'
+            summary: '{{ `ZFS pool {{ if $labels.zpool }}{{ $labels.zpool }} {{ end }}is degraded, faulted, offline or not reporting: mirror redundancy is lost, so replace the failing disk before its pair goes.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -785,10 +785,10 @@ alerting:
             severity: critical
             group: health
             service: smartctl
-            instance: '{{ if $labels.device }}{{ $labels.device }}{{ else }}smartctl{{ end }}'
+            instance: '{{ `{{ if $labels.device }}{{ $labels.device }}{{ else }}smartctl{{ end }}` }}'
           annotations:
             value: FAILED
-            summary: 'Disk {{ if $labels.device }}{{ $labels.device }} {{ end }}failed its SMART health assessment (or smartctl-exporter stopped reporting); replace the disk.'
+            summary: '{{ `Disk {{ if $labels.device }}{{ $labels.device }} {{ end }}failed its SMART health assessment (or smartctl-exporter stopped reporting); replace the disk.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -820,10 +820,10 @@ alerting:
             severity: warning
             group: health
             service: smartctl
-            instance: '{{ $labels.device }}'
+            instance: '{{ `{{ $labels.device }}` }}'
           annotations:
-            value: '{{ with $values.A }}{{ printf "%.0f errors" .Value }}{{ end }}'
-            summary: 'Disk {{ $labels.device }} reports reallocated, pending or uncorrectable sectors, SCSI grown defects, NVMe media errors or a failed SMART self-test; scrub the pool and plan a replacement.'
+            value: '{{ `{{ with $values.A }}{{ printf "%.0f errors" .Value }}{{ end }}` }}'
+            summary: '{{ `Disk {{ $labels.device }} reports reallocated, pending or uncorrectable sectors, SCSI grown defects, NVMe media errors or a failed SMART self-test; scrub the pool and plan a replacement.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -855,10 +855,10 @@ alerting:
             severity: critical
             group: health
             service: smartctl
-            instance: '{{ $labels.device }}'
+            instance: '{{ `{{ $labels.device }}` }}'
           annotations:
             value: critical warning
-            summary: 'NVMe controller {{ $labels.device }} raised its critical-warning flag or fell below its available-spare threshold.'
+            summary: '{{ `NVMe controller {{ $labels.device }} raised its critical-warning flag or fell below its available-spare threshold.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -890,10 +890,10 @@ alerting:
             severity: warning
             group: health
             service: smartctl
-            instance: '{{ $labels.device }}'
+            instance: '{{ `{{ $labels.device }}` }}'
           annotations:
-            value: '{{ with $values.A }}{{ printf "%.0f°C" .Value }}{{ end }}'
-            summary: 'Disk {{ $labels.device }} has been over 55°C for 15 minutes; check fans and airflow.'
+            value: '{{ `{{ with $values.A }}{{ printf "%.0f°C" .Value }}{{ end }}` }}'
+            summary: '{{ `Disk {{ $labels.device }} has been over 55°C for 15 minutes; check fans and airflow.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -925,10 +925,10 @@ alerting:
             severity: warning
             group: health
             service: systemd
-            exported_instance: '{{ $labels.name }}'
+            exported_instance: '{{ `{{ $labels.name }}` }}'
           annotations:
             value: failed
-            summary: 'Host systemd unit {{ $labels.name }} on {{ $labels.instance }} has been in the failed state for 5 minutes.'
+            summary: '{{ `Host systemd unit {{ $labels.name }} on {{ $labels.instance }} has been in the failed state for 5 minutes.` }}'
           data:
             - refId: A
               datasourceUid: mimir
@@ -962,7 +962,7 @@ alerting:
             service: backup
             exported_instance: homelab-backup.timer
           annotations:
-            value: '{{ with $values.A }}{{ printf "%.1fh ago" (div .Value 3600.0) }}{{ else }}no data{{ end }}'
+            value: '{{ `{{ with $values.A }}{{ printf "%.1fh ago" (div .Value 3600.0) }}{{ else }}no data{{ end }}` }}'
             summary: 'homelab-backup.timer has not triggered in 26 hours (or node-exporter stopped reporting).'
           data:
             - refId: A
@@ -995,10 +995,10 @@ alerting:
             severity: warning
             group: health
             service: systemd
-            exported_instance: '{{ $labels.name }}'
+            exported_instance: '{{ `{{ $labels.name }}` }}'
           annotations:
             value: overdue
-            summary: 'Host systemd timer {{ $labels.name }} on {{ $labels.instance }} has not triggered within its expected schedule (2h for hourly, 26h for daily, 8d for weekly, 33d for monthly).'
+            summary: '{{ `Host systemd timer {{ $labels.name }} on {{ $labels.instance }} has not triggered within its expected schedule (2h for hourly, 26h for daily, 8d for weekly, 33d for monthly).` }}'
           data:
             - refId: A
               datasourceUid: mimir
