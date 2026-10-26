@@ -12,4 +12,4 @@ helm:
   repoURL: https://grafana-community.github.io/helm-charts
   chart: grafana
   # renovate: datasource=helm depName=grafana registryUrl=https://grafana-community.github.io/helm-charts
-  targetRevision: 14.0.1
+  targetRevision: 14.1.0
