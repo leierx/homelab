@@ -244,12 +244,12 @@ spec:
               SET attributes = jsonb_set(coalesce(attributes, '{}'::jsonb), '{prefs,isDark}', 'true'::jsonb, true)
               WHERE attributes #> '{prefs,isDark}' IS NULL;
 
-              CREATE OR REPLACE FUNCTION default_user_prefs() RETURNS trigger LANGUAGE plpgsql AS $$
+              CREATE OR REPLACE FUNCTION default_user_prefs() RETURNS trigger LANGUAGE plpgsql AS $body$
               BEGIN
                 NEW.attributes := jsonb_set(coalesce(NEW.attributes, '{}'::jsonb), '{prefs,isDark}', 'true'::jsonb, true);
                 RETURN NEW;
               END;
-              $$;
+              $body$;
 
               CREATE OR REPLACE TRIGGER users_default_prefs
                 BEFORE INSERT ON users
