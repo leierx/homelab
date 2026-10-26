@@ -36,8 +36,8 @@ without explicit instruction.
    - `values.yaml` holds base values passed directly to the chart.
    - `manifests/` (raw YAML or `kustomization.yaml`) is automatically attached
      as a source on the addon's `Application`.
-   - Addons with their own templates (`capi-argo-bridge`, `keycloak`, `mimir`)
-     include a local `Chart.yaml` and `templates/`.
+   - Addons with their own templates (`alerta`, `capi-argo-bridge`, `keycloak`,
+     `mimir`, `miniflux`) include a local `Chart.yaml` and `templates/`.
 3. **Clusters (`fleet/clusters/<cluster>/`):**
    - `cluster-secret.yaml` is the Argo CD cluster Secret (`argocd.argoproj.io/secret-type: cluster`).
    - `cluster.yaml` sets `repoURL`, `targetRevision`, and the map of enabled
@@ -66,8 +66,8 @@ helm template fleet fleet \
   --set cluster.server=https://kubernetes.default.svc > /dev/null
 ```
 
-If editing local chart addons (`fleet/addons/keycloak` or `fleet/addons/mimir`),
-also verify them directly:
+If editing local chart addons (e.g. `fleet/addons/keycloak` or
+`fleet/addons/mimir`), also verify them directly:
 
 ```sh
 helm template keycloak fleet/addons/keycloak -n keycloak \
@@ -90,12 +90,13 @@ nix build .#nixosConfigurations.loft01.config.system.build.toplevel
 - **No helper scripts or CI:** Everything in `fleet/` must render purely via
   Argo CD's Helm and Kustomize/directory sources. Never use Kustomize's Helm
   chart inflation generator.
-- **No `envs/` or capability flags:** Clusters list the addons they use in
-  `clusters/<cluster>/cluster.yaml` and place cluster-specific overrides in
-  `clusters/<cluster>/addons/<addon>/`.
+- **No `envs/` or capability flags:** Clusters list the addons they use (and
+  their inline `values` / `dependencies` overrides) in
+  `clusters/<cluster>/cluster.yaml` and place cluster-specific manifests in
+  `clusters/<cluster>/addons/<addon>/manifests/`.
 - **Dependencies:** Declare cross-addon ordering with `dependencies: []` in
-  `addon.yaml` (base or cluster level). `_helpers.tpl` computes the topological
-  `argocd.argoproj.io/sync-wave` automatically.
+  `addon.yaml` or inline in `clusters/<cluster>/cluster.yaml`. `_helpers.tpl`
+  computes the topological `argocd.argoproj.io/sync-wave` automatically.
 - **Stateful resources:** Keep `argocd.argoproj.io/sync-options: Delete=false,Prune=false`
   on PVCs, CNPG `Cluster`/`Database` CRs, and persistent namespaces.
 - **Secrets:** Never commit plaintext or encrypted Kubernetes Secrets to git.
