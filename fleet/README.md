@@ -59,8 +59,8 @@ fleet/
      `clusters/<cluster>/cluster.yaml` via `valuesObject`
    - `addons/<addon>/manifests/` (raw YAML or `kustomization.yaml`, if present)
    - `clusters/<cluster>/addons/<addon>/manifests/` (if present)
-   - Any additional `helm` or `path` entries listed under
-     `sources: []` in either `addon.yaml`.
+   - Any additional `helm` or `path` entries listed under `sources: []` in
+     `addon.yaml` or inline in `clusters/<cluster>/cluster.yaml`.
 
 ## 3-Step Bootstrap
 
@@ -89,7 +89,7 @@ kubectl wait --for=condition=Ready node --all --timeout=10m
 ```sh
 kubectl create namespace argocd
 
-helm template argocd argo-cd --repo https://argoproj.github.io/argo-helm --version 10.10.5 \
+helm template argocd argo-cd --repo https://argoproj.github.io/argo-helm --version 10.11.1 \
   -n argocd --include-crds \
   -f fleet/addons/argocd/values.yaml \
   -f <(yq '.addons.argocd.values' fleet/clusters/loft01/cluster.yaml) \
@@ -97,7 +97,7 @@ helm template argocd argo-cd --repo https://argoproj.github.io/argo-helm --versi
 
 kubectl wait --for=condition=Established crd/appprojects.argoproj.io crd/applicationsets.argoproj.io --timeout=60s
 
-helm template argocd argo-cd --repo https://argoproj.github.io/argo-helm --version 10.10.5 \
+helm template argocd argo-cd --repo https://argoproj.github.io/argo-helm --version 10.11.1 \
   -n argocd \
   -f fleet/addons/argocd/values.yaml \
   -f <(yq '.addons.argocd.values' fleet/clusters/loft01/cluster.yaml) \
@@ -128,8 +128,10 @@ enabled addons in dependency wave order:
 
 ## Addon Reference (`addon.yaml`)
 
-An addon lives in `fleet/addons/<name>/` (shared) or only in
-`fleet/clusters/<cluster>/addons/<name>/` (cluster-specific, such as `dodde`).
+A shared addon lives in `fleet/addons/<name>/`; a cluster-only addon (such as
+`dodde`) defines its metadata in `fleet/clusters/<cluster>/cluster.yaml` (or
+`fleet/clusters/<cluster>/addons/<name>/addon.yaml`) and its resources in
+`fleet/clusters/<cluster>/addons/<name>/`.
 
 ```yaml
 namespace: immich          # defaults to the addon name

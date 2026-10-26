@@ -30,9 +30,9 @@ and Argo CD deploys everything in `fleet/` without helper scripts or CI.
   1M-recordsize ZFS datasets (`zfs-thin`) on the `tank` pool.
 - **Virtualization & Clusters.** KubeVirt, CDI, and Cluster API run on `loft01`,
   along with the cluster-specific `dodde` Fedora VM addon.
-- **Observability.** `alloy-metrics`, `alloy-logs`, `kube-state-metrics`, and
-  `node-exporter` ship metrics and logs to `mimir` and `loki`, visualized and
-  alerted through `grafana`.
+- **Observability.** `alloy-metrics`, `alloy-logs`, `kube-state-metrics`,
+  `node-exporter`, and `smartctl-exporter` ship metrics and logs to `mimir` and
+  `loki`, visualized in `grafana` and alerted through `alerta`.
 
 ## Repository layout
 
@@ -41,7 +41,7 @@ nixos/          NixOS host configuration (disks, k3s, sops-nix)
 fleet/          GitOps fleet controller, shared addons, and cluster configs (see fleet/README.md)
   templates/    Helm templates computing dependency sync-waves and Multi-Source Applications
   addons/       Installable addons (helm, kustomize, manifests)
-  clusters/     Per-cluster config (cluster-secret.yaml, cluster.yaml, addons/<addon>/ overrides)
+  clusters/     Per-cluster config (cluster-secret.yaml, cluster.yaml, addons/<addon>/manifests/)
 docs/           Operating guide for loft01 (see docs/README.md)
 AGENTS.md       Instructions for coding agents
 renovate.json5  Renovate configuration
