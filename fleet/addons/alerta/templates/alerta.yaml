@@ -1,11 +1,3 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: alerta-config
-data:
-  config.json: |
-    {"endpoint": "/api"}
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -41,6 +33,10 @@ spec:
             - |
               set -eu
               cp -r /app/* /app-work/
+              cp -r /web/* /web-work/
+              cp /web-work/config.json.j2 /web-work/config.json
+              sed -i 's/isDark:!1/isDark:!0/g' /web-work/js/app.*.js
+
               cat > /app-work/alertad.conf <<'EOF'
               DEBUG = False
               USE_PROXYFIX = True
@@ -52,13 +48,12 @@ spec:
               OIDC_AUTH_URL = {{ printf "%s/protocol/openid-connect/auth" (required "oidc.issuer is per cluster" .Values.oidc.issuer) | quote }}
               OAUTH2_CLIENT_ID = 'alerta'
 
-              # Role mapping from Keycloak groups claim; no local admin accounts.
-              # USER_ROLES stays empty because oidc.py stamps it onto every new user row;
-              # homelab-operators gets its scopes from the perms table instead.
+              # Service principals used only by `alertad key` below; OIDC logins match Keycloak groups
+              ADMIN_USERS = ['system', 'grafana']
               OIDC_ROLE_CLAIM = 'groups'
               ALLOWED_OIDC_ROLES = ['homelab-admins', 'homelab-operators', 'homelab-viewers']
               ADMIN_ROLES = ['homelab-admins']
-              USER_ROLES = []
+              USER_ROLES = ['homelab-operators']
               GUEST_ROLES = ['homelab-viewers']
 
               ALLOWED_ENVIRONMENTS = ['Production']
@@ -83,10 +78,18 @@ spec:
               for k in ("DATABASE_URL", "SECRET_KEY", "OAUTH2_CLIENT_SECRET"):
                   print(f"{k} = {os.environ[k]!r}")
               ' >> /app-work/alertad.conf
+
+              ALERTA_SVR_CONF_FILE=/app-work/alertad.conf /venv/bin/alertad key \
+                --username grafana --key "$GRAFANA_API_KEY" \
+                --scope write:webhooks --text "Grafana alerts" > /dev/null
+              hk_key=$(ALERTA_SVR_CONF_FILE=/app-work/alertad.conf /venv/bin/alertad key \
+                --username system \
+                --scope read:alerts --scope write:alerts --scope admin:management \
+                --text "Housekeeping")
               cat > /app-work/alerta.conf <<EOF
               [DEFAULT]
               endpoint = http://localhost:8080/api
-              key = ${HOUSEKEEPING_API_KEY}
+              key = ${hk_key}
               EOF
           env:
             - name: DATABASE_URL
@@ -104,14 +107,14 @@ spec:
                 secretKeyRef:
                   name: alerta
                   key: oidc-client-secret
-            - name: HOUSEKEEPING_API_KEY
+            - name: GRAFANA_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: alerta
-                  key: housekeeping-api-key
+                  key: grafana-api-key
           resources:
-            requests: { cpu: 10m, memory: 32Mi }
-            limits: { memory: 128Mi }
+            requests: { cpu: 10m, memory: 64Mi }
+            limits: { memory: 256Mi }
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -120,6 +123,8 @@ spec:
           volumeMounts:
             - name: app
               mountPath: /app-work
+            - name: web
+              mountPath: /web-work
       containers:
         - name: alerta
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -158,20 +163,18 @@ spec:
           volumeMounts:
             - name: app
               mountPath: /app
+            - name: web
+              mountPath: /web
+              readOnly: true
             - name: tmp
               mountPath: /tmp
-            - name: config
-              mountPath: /web/config.json
-              subPath: config.json
-              readOnly: true
       volumes:
         - name: app
           emptyDir: {}
+        - name: web
+          emptyDir: {}
         - name: tmp
           emptyDir: {}
-        - name: config
-          configMap:
-            name: alerta-config
 ---
 apiVersion: v1
 kind: Service
@@ -187,103 +190,3 @@ spec:
       port: 8080
       targetPort: http
       protocol: TCP
----
-# seeds least-privilege API keys, operator role permissions, and default dark-mode user preference
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: alerta-seed
-  annotations:
-    argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
-spec:
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: alerta-seed
-    spec:
-      automountServiceAccountToken: false
-      restartPolicy: OnFailure
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 26
-        runAsGroup: 26
-        seccompProfile:
-          type: RuntimeDefault
-      containers:
-        - name: seed
-          # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
-          image: ghcr.io/cloudnative-pg/postgresql:18.6-system-trixie
-          command: [sh, -c]
-          args:
-            - |
-              set -eu
-              psql "$URI" -v ON_ERROR_STOP=1 \
-                -v hk_key="$HOUSEKEEPING_API_KEY" \
-                -v grafana_key="$GRAFANA_API_KEY" <<'SQL'
-              INSERT INTO keys (id, key, "user", scopes, text, expire_time, count, customer)
-              VALUES
-                ('housekeeping', :'hk_key', 'system', ARRAY['read:alerts', 'write:alerts', 'admin:management'], 'Housekeeping', '2099-01-01 00:00:00', 0, NULL),
-                ('grafana', :'grafana_key', 'grafana', ARRAY['write:webhooks'], 'Grafana alerts', '2099-01-01 00:00:00', 0, NULL)
-              ON CONFLICT (id) DO UPDATE SET
-                key = EXCLUDED.key,
-                "user" = EXCLUDED."user",
-                scopes = EXCLUDED.scopes,
-                text = EXCLUDED.text,
-                expire_time = EXCLUDED.expire_time;
-
-              INSERT INTO perms (id, match, scopes)
-              VALUES ('operators', 'homelab-operators', ARRAY['read', 'write'])
-              ON CONFLICT (id) DO UPDATE SET
-                match = EXCLUDED.match,
-                scopes = EXCLUDED.scopes;
-
-              UPDATE users SET roles = '{}' WHERE roles <> '{}';
-
-              UPDATE users
-              SET attributes = jsonb_set(coalesce(attributes, '{}'::jsonb), '{prefs,isDark}', 'true'::jsonb, true)
-              WHERE attributes #> '{prefs,isDark}' IS NULL;
-
-              CREATE OR REPLACE FUNCTION default_user_prefs() RETURNS trigger LANGUAGE plpgsql AS $body$
-              BEGIN
-                NEW.attributes := jsonb_set(coalesce(NEW.attributes, '{}'::jsonb), '{prefs,isDark}', 'true'::jsonb, true);
-                RETURN NEW;
-              END;
-              $body$;
-
-              CREATE OR REPLACE TRIGGER users_default_prefs
-                BEFORE INSERT ON users
-                FOR EACH ROW
-                WHEN (NEW.attributes #> '{prefs,isDark}' IS NULL)
-                EXECUTE FUNCTION default_user_prefs();
-              SQL
-          env:
-            - name: URI
-              valueFrom:
-                secretKeyRef:
-                  name: alerta-db-app
-                  key: uri
-            - name: HOUSEKEEPING_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: alerta
-                  key: housekeeping-api-key
-            - name: GRAFANA_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: alerta
-                  key: grafana-api-key
-          resources:
-            requests: { cpu: 10m, memory: 32Mi }
-            limits: { memory: 128Mi }
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
-      volumes:
-        - name: tmp
-          emptyDir: {}
