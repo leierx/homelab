@@ -1,0 +1,28 @@
+# Every HTTPS route on edge and wg logs in to Keycloak (client edge) at Envoy before reaching the backend
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: oidc
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: edge
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: wg
+  oidc:
+    provider:
+      issuer: https://auth.skinke.net/realms/homelab
+      # given, not discovered: Envoy Gateway fetches discovery once and never retries, and Keycloak may come up later
+      authorizationEndpoint: https://auth.skinke.net/realms/homelab/protocol/openid-connect/auth
+      tokenEndpoint: https://auth.skinke.net/realms/homelab/protocol/openid-connect/token
+      endSessionEndpoint: https://auth.skinke.net/realms/homelab/protocol/openid-connect/logout
+    clientID: edge
+    clientSecret:
+      name: edge-oidc
+      namespace: keycloak
+    redirectURL: "%REQ(x-forwarded-proto)%://%REQ(:authority)%/_envoy/callback"
+    logoutPath: /_envoy/logout
+    cookieConfig:
+      sameSite: Lax

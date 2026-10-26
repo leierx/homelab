@@ -64,10 +64,16 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 - **Gateways:**
   - `edge` (public via NodePort 30080/30443): Keycloak login endpoints, Immich
     (`photos.skinke.net`), Miniflux (`rss.skinke.net`), and Grafana
-    (`metrics.skinke.net`) behind Envoy Gateway's OIDC `SecurityPolicy`.
+    (`metrics.skinke.net`).
   - `wg` (WireGuard `10.0.0.1` only): Alerta (`alerta.skinke.net`), Argo CD
     (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), and Keycloak
     admin console.
+  - Both `edge` and `wg` attach `SecurityPolicy/oidc` and
+    `ClientTrafficPolicy/default` at the `Gateway` level, so every HTTPS route
+    (other than Keycloak itself) is gated by Envoy's OIDC login (`/_envoy/callback`)
+    and receives standard security headers automatically. New web apps only need
+    their `Certificate`, `ListenerSet`, `HTTPRoute`, and `https://<host>/_envoy/callback`
+    in `keycloak_openid_client.edge.valid_redirect_uris` (`tofu/keycloak/clients.tf`).
 - **First login after a fresh cluster build:**
   1. Fetch `leier`'s initial password:
      `just bao kv get -field=leier_password kv/loft01/keycloak`

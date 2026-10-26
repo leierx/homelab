@@ -88,3 +88,20 @@ spec:
     - backendRefs:
         - name: keycloak-service
           port: 8080
+---
+# Keycloak is the OIDC provider itself, so its listeners opt out of the Gateway-wide OIDC policy
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: keycloak
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: keycloak-edge
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: keycloak-wg
+  authorization:
+    defaultAction: Allow
+

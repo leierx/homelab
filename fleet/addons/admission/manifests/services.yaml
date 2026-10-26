@@ -28,3 +28,36 @@ spec:
     namespaceSelector:
       matchExpressions:
         - { key: kubernetes.io/metadata.name, operator: NotIn, values: [envoy-gateway-system] }
+---
+# a SecurityPolicy on a route or ListenerSet replaces the Gateway-wide OIDC login unless it merges or keeps OIDC
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: security-policies-keep-oidc
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [gateway.envoyproxy.io]
+        apiVersions: [v1alpha1]
+        operations: [CREATE, UPDATE]
+        resources: [securitypolicies]
+  validations:
+    - expression: "has(object.spec.oidc) || has(object.spec.mergeType)"
+      message: >-
+        a SecurityPolicy on a route or ListenerSet replaces the Gateway's OIDC
+        login; keep spec.oidc, set spec.mergeType, or exempt the namespace in
+        this policy
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: security-policies-keep-oidc
+spec:
+  policyName: security-policies-keep-oidc
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+        - { key: kubernetes.io/metadata.name, operator: NotIn, values: [envoy-gateway-system, keycloak] }
+
