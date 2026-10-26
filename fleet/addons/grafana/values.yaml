@@ -127,8 +127,8 @@ alerting:
                       type: gt
                       params:
                         - 0
-        - uid: secrets-or-exec-by-person
-          title: Secrets read or pods entered by a person
+        - uid: secret-read-by-person
+          title: Secret read by a person
           condition: C
           for: 0s
           noDataState: OK
@@ -136,7 +136,7 @@ alerting:
           labels:
             severity: informational
           annotations:
-            summary: Someone logged in through Keycloak read a Secret or used exec, attach or port-forward.
+            summary: Someone logged in through Keycloak read a Secret.
           data:
             - refId: A
               datasourceUid: loki
@@ -146,7 +146,38 @@ alerting:
               model:
                 refId: A
                 queryType: instant
-                expr: sum by (user_username, objectRef_namespace, objectRef_resource, objectRef_subresource) (count_over_time({job="kube-audit"} | json | user_username=~"oidc:.*" | objectRef_resource="secrets" or objectRef_subresource=~"exec|attach|portforward" [5m]))
+                expr: sum by (user_username, objectRef_namespace, objectRef_name) (count_over_time({job="kube-audit"} | json | user_username=~"oidc:.*" | objectRef_resource="secrets" [5m]))
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        - uid: pod-entered-by-person
+          title: Pod entered by a person
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: informational
+          annotations:
+            summary: Someone logged in through Keycloak used exec, attach or port-forward on a pod.
+          data:
+            - refId: A
+              datasourceUid: loki
+              relativeTimeRange:
+                from: 300
+                to: 0
+              model:
+                refId: A
+                queryType: instant
+                expr: sum by (user_username, objectRef_namespace, objectRef_name, objectRef_subresource) (count_over_time({job="kube-audit"} | json | user_username=~"oidc:.*" | objectRef_subresource=~"exec|attach|portforward" [5m]))
             - refId: C
               datasourceUid: __expr__
               model:
