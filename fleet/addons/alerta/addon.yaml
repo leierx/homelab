@@ -8,4 +8,3 @@ dependencies:
   - prometheus-operator-crds
   - cert-manager
   - envoy-gateway
-  - keycloak

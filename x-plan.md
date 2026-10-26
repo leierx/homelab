@@ -4,15 +4,15 @@
 
 Currently, two structural patterns give internet access to pods that do not need it:
 
-1. **The OIDC Hairpin:** `auth.skinke.net` resolves to the public WAN IP, so every OIDC client (`alerta`, `grafana`, `immich-server`, `envoy-gateway`, `argo-workflows-server`, `argocd-server`) has `toEntities: [world]` on TCP `443` just to talk to Keycloak in the same cluster.
+1. **The OIDC Hairpin:** `auth.skinke.net` resolves to the public WAN IP, so every OIDC client (`grafana`, `immich-server`, `envoy-gateway`, `argo-workflows-server`, `argocd-server`) has `toEntities: [world]` on TCP `443` just to talk to Keycloak in the same cluster.
 2. **Coarse `endpointSelector: {}` Policies & Unpoliced Namespaces:** Namespace-wide policies grant `world` (and `kube-apiserver`) to every pod in the namespace (including Postgres, Redis, Loki, and Mimir), and namespaces without a `CiliumNetworkPolicy` default to allow-all because `baseline-policy.yaml` has `enableDefaultDeny: false`.
 
 ### 1.1 Keep `*.skinke.net` Traffic In-Cluster (Fix the OIDC Hairpin)
 
 - **CoreDNS Split-Horizon:** Configure CoreDNS (`coredns-custom` ConfigMap in `kube-system`) to rewrite `auth.skinke.net` (and other `*.skinke.net` edge hostnames) to the in-cluster `edge` Envoy proxy Service in `envoy-gateway-system`. TLS SNI and the Let's Encrypt certificate on `edge` continue to validate without changing app OIDC issuer URLs.
 - **Update `fleet/addons/envoy-gateway/manifests/network-policy.yaml`:**
-  - Allow ingress to `envoy` on port `10443` from in-cluster OIDC clients (`alerta`, `argocd-server`, `argo-workflows-server`, `envoy`, `grafana`, `immich-server`, `miniflux`).
-  - Remove `toEntities: [world]` on port `443` from `envoy-gateway-system`, `alerta`, `monitoring` (`grafana`), `immich-server`, and `argo-workflows`.
+  - Allow ingress to `envoy` on port `10443` from in-cluster OIDC clients (`argocd-server`, `argo-workflows-server`, `envoy`, `grafana`, `immich-server`, `miniflux`).
+  - Remove `toEntities: [world]` on port `443` from `envoy-gateway-system`, `monitoring` (`grafana`), `immich-server`, and `argo-workflows`.
 
 ### 1.2 Split Coarse Namespace Policies into Per-Workload Policies
 
@@ -21,7 +21,7 @@ Replace `endpointSelector: {}` allow-rules with an empty namespace default-deny 
 | Namespace / Addon | Current Egress Exposure | Locked-Down Target State |
 | :--- | :--- | :--- |
 | **`monitoring`** (`grafana`, `loki`, `mimir`) | All 3 pods have `world:443` and full intra-namespace access. | **Zero internet egress for all 3.** `loki` and `mimir` get zero egress (only ingress from `alloy-*` and `grafana`). `grafana` only egresses to `mimir:8080`, `loki:3100`, `alerta:8080`, and `envoy:10443` (OIDC). |
-| **`alerta`** (`alerta`, `alerta-db`) | Both `alerta` and Postgres (`alerta-db`) have `world:443` and `kube-apiserver`. | **Zero internet egress.** `alerta-db` only egresses to `kube-apiserver` (CNPG instance manager). `alerta` only egresses to `alerta-db:5432` and `envoy:10443` (OIDC). |
+| **`alerta`** (`alerta`, `alerta-db`) | Both `alerta` and Postgres (`alerta-db`) have `kube-apiserver`. | **Zero internet egress.** `alerta-db` only egresses to `kube-apiserver` (CNPG instance manager). `alerta` only egresses to `alerta-db:5432`. |
 | **`miniflux`** (`miniflux`, `miniflux-db`) | Postgres (`miniflux-db`) has `world:80,443`; `miniflux` has `kube-apiserver` and unrestricted `world:80,443`. | **`miniflux-db` gets zero internet egress** (only `kube-apiserver`). `miniflux` drops `kube-apiserver`, reaches `envoy:10443` for OIDC, and uses `toCIDRSet: 0.0.0.0/0` **excluding RFC1918/CGNAT/link-local** (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, `100.64.0.0/10`) on `80/443` so malicious RSS feeds cannot SSRF the LAN/router/iLO. |
 | **`argocd`** (`server`, `repo-server`, `application-controller`, `applicationset-controller`, `redis`, `capi-argo-bridge`) | Every pod has `world:443` and `kube-apiserver`. | **Only `argocd-repo-server` gets `world:443`** (and loses `kube-apiserver`). `argocd-redis` gets **zero egress**. `application-controller`, `applicationset-controller`, `capi-argo-bridge`, and `argocd-server` lose `world:443`. |
 | **`argo`** (`workflow-controller`, `argo-workflows-server`) | Both pods have `world:443`. | **Zero internet egress for both.** `workflow-controller` only egresses to `kube-apiserver`; `argo-workflows-server` only egresses to `kube-apiserver` and `envoy:10443`. |
@@ -65,17 +65,12 @@ After 1.1–1.3, only **6 workloads** in the cluster will have internet access, 
     - `proxies-wg` can reach `keycloak:8080`, `argocd-server:8080`, `argo-workflows-server:2746`, and `alerta:8080`.
   - Match target pod labels (e.g. `app.kubernetes.io/name: server`) in addition to namespace labels.
 
-### 2.2 Add Envoy `SecurityPolicy` (`edge-oidc`) in Front of Miniflux
-
-- **Gap:** `grafana` on `edge` is protected by Envoy Gateway's `SecurityPolicy/edge-oidc` (`fleet/clusters/loft01/addons/grafana/manifests/route.yaml`), so unauthenticated internet clients cannot hit Grafana's HTTP stack before authenticating at Keycloak. `miniflux` (`rss.skinke.net`) is on `edge` without a `SecurityPolicy`.
-- **Fix:** Attach an `edge-oidc` `SecurityPolicy` to `HTTPRoute/miniflux-edge` (unless external RSS API clients without OIDC cookies hit it directly—if not, gating at Envoy blocks unauthenticated requests at the edge).
-
-### 2.3 Restrict `alloy-metrics` Blanket Ingress in `baseline-policy.yaml`
+### 2.2 Restrict `alloy-metrics` Blanket Ingress in `baseline-policy.yaml`
 
 - **Gap:** `fleet/addons/cilium/manifests/baseline-policy.yaml` allows `telemetry/alloy-metrics` to connect to **every port on every pod in the cluster** (including Postgres `5432`, OpenBao `8200`, Valkey/Redis `6379`).
 - **Fix:** Remove the port-less `fromEndpoints: [alloy-metrics]` rule from `baseline-policy.yaml` and declare explicit metrics scrape ports in each addon's `CiliumNetworkPolicy` (or restrict `alloy-metrics` egress/ingress to the specific metrics port set).
 
-### 2.4 Encrypt In-Cluster Traffic (mTLS / TLS)
+### 2.3 Encrypt In-Cluster Traffic (mTLS / TLS)
 
 - **CloudNativePG (`alerta-db`, `immich-db`, `keycloak-db`, `miniflux-db`):** Enforce `sslmode=verify-full` on database connections using the CA secret CNPG generates per cluster.
 - **Hubble (`fleet/addons/cilium/values.yaml`):** Enable `hubble.tls.enabled: true`.

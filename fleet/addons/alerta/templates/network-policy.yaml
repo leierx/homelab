@@ -38,8 +38,3 @@ spec:
         - {}
     # the Postgres instance manager
     - toEntities: [kube-apiserver]
-    # Keycloak at the issuer hostname, which resolves to the public address
-    - toEntities: [world]
-      toPorts:
-        - ports:
-            - {port: "443", protocol: TCP}

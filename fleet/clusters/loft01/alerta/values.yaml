@@ -1,5 +1,3 @@
-oidc:
-  issuer: https://auth.skinke.net/realms/homelab
 database:
   storage:
     storageClass: zfs
