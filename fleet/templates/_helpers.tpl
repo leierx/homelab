@@ -12,24 +12,23 @@ Build a merged map of all enabled addons and their combined metadata for this cl
 
   {{- $baseContent := $files.Get $baseFile -}}
   {{- $clusterContent := $files.Get $clusterFile -}}
-  {{- $hasClusterChart := ne ($files.Get (printf "clusters/%s/addons/%s/Chart.yaml" $cluster $addonName)) "" -}}
-  {{- $hasClusterManifests := not (empty ($files.Glob (printf "clusters/%s/addons/%s/manifests/**" $cluster $addonName))) -}}
-  {{- if and (not $baseContent) (not $clusterContent) (not $hasClusterChart) (not $hasClusterManifests) -}}
-    {{- fail (printf "Addon '%s' has no %s, %s, or clusters/%s/addons/%s/{Chart.yaml,manifests/}" $addonName $baseFile $clusterFile $cluster $addonName) -}}
+  {{- if and (not $baseContent) (not $clusterContent) -}}
+    {{- fail (printf "Addon '%s' has neither %s nor %s" $addonName $baseFile $clusterFile) -}}
   {{- end -}}
 
   {{- $base := ternary (fromYaml $baseContent | default dict) (dict) (ne $baseContent "") -}}
   {{- $ovr := ternary (fromYaml $clusterContent | default dict) (dict) (ne $clusterContent "") -}}
-  {{- $inline := ternary $inlineCfg (dict) (kindIs "map" $inlineCfg) -}}
+  {{- $values := ternary $inlineCfg (dict) (kindIs "map" $inlineCfg) -}}
 
-  {{- $deps := uniq (concat (default list $base.dependencies) (default list $ovr.dependencies) (default list $inline.dependencies)) -}}
-  {{- $extraSources := concat (default list $base.sources) (default list $ovr.sources) (default list $inline.sources) -}}
-  {{- $ignoreDiffs := concat (default list $base.ignoreDifferences) (default list $ovr.ignoreDifferences) (default list $inline.ignoreDifferences) -}}
+  {{- $deps := uniq (concat (default list $base.dependencies) (default list $ovr.dependencies)) -}}
+  {{- $extraSources := concat (default list $base.sources) (default list $ovr.sources) -}}
+  {{- $ignoreDiffs := concat (default list $base.ignoreDifferences) (default list $ovr.ignoreDifferences) -}}
 
-  {{- $merged := mergeOverwrite (deepCopy $base) (deepCopy $ovr) (deepCopy $inline) -}}
+  {{- $merged := mergeOverwrite (deepCopy $base) (deepCopy $ovr) -}}
   {{- $_ := set $merged "dependencies" $deps -}}
   {{- $_ := set $merged "extraSources" $extraSources -}}
   {{- $_ := set $merged "ignoreDifferences" $ignoreDiffs -}}
+  {{- $_ := set $merged "values" $values -}}
   {{- $_ := set $result $addonName $merged -}}
 {{- end -}}
 {{- $result | toYaml -}}

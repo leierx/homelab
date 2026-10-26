@@ -3,6 +3,10 @@ podSecurity: restricted
 dependencies:
   - cilium
   - prometheus-operator-crds
+  - cert-manager
+  - envoy-gateway
+  - external-secrets
+  - keycloak
 helm:
   repoURL: https://argoproj.github.io/argo-helm
   chart: argo-cd

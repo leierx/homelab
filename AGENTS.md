@@ -41,19 +41,18 @@ without explicit instruction.
 3. **Clusters (`fleet/clusters/<cluster>/`):**
    - `cluster-secret.yaml` is the Argo CD cluster Secret (`argocd.argoproj.io/secret-type: cluster`).
    - `cluster.yaml` sets `repoURL`, `targetRevision`, and the map of enabled
-     `addons:`. Each entry may inline any `addon.yaml` field (e.g.
-     `dependencies`, `namespace`, `podSecurity`) plus `values`, which is passed
-     to the primary Helm source as `valuesObject` after the shared and
-     cluster-level `values.yaml` files.
+     `addons:`. Each entry is `{}` or an inline Helm values map passed to the
+     primary Helm source as `valuesObject` after the shared and cluster-level
+     `values.yaml` files.
    - `addons/<name>/` holds cluster-only additions for that addon:
      - `manifests/` adds cluster-specific resources (routes, Certificates,
        PVCs, StorageClasses, CNPG Databases, ExternalSecrets).
-     - `addon.yaml` (extra cluster-level `dependencies: []` or `sources: []`)
-       and `values.yaml` are still supported but only needed for overrides too
-       large to read inline in `cluster.yaml`.
-   - A cluster-only addon (e.g. `dodde` on `loft01`) needs no
-     `fleet/addons/<name>/`; its metadata can live inline in `cluster.yaml`
-     and its resources in `fleet/clusters/<cluster>/addons/<name>/manifests/`.
+     - `addon.yaml` (cluster-only addon metadata, extra cluster-level
+       `dependencies: []`, or extra `sources: []`) and `values.yaml` (for
+       overrides too large to inline in `cluster.yaml`).
+   - A folder in `fleet/clusters/<cluster>/addons/<name>/` with no matching
+     folder in `fleet/addons/` is a cluster-only addon (e.g. `dodde` on
+     `loft01`).
 
 ## Verification
 
@@ -72,11 +71,11 @@ If editing local chart addons (e.g. `fleet/addons/keycloak` or
 ```sh
 helm template keycloak fleet/addons/keycloak -n keycloak \
   -f fleet/addons/keycloak/values.yaml \
-  -f <(yq '.addons.keycloak.values' fleet/clusters/loft01/cluster.yaml) > /dev/null
+  -f <(yq '.addons.keycloak' fleet/clusters/loft01/cluster.yaml) > /dev/null
 
 helm template mimir fleet/addons/mimir -n monitoring \
   -f fleet/addons/mimir/values.yaml \
-  -f <(yq '.addons.mimir.values' fleet/clusters/loft01/cluster.yaml) > /dev/null
+  -f <(yq '.addons.mimir' fleet/clusters/loft01/cluster.yaml) > /dev/null
 ```
 
 If editing `nixos/`, verify the NixOS configuration builds:
@@ -91,12 +90,11 @@ nix build .#nixosConfigurations.loft01.config.system.build.toplevel
   Argo CD's Helm and Kustomize/directory sources. Never use Kustomize's Helm
   chart inflation generator.
 - **No `envs/` or capability flags:** Clusters list the addons they use (and
-  their inline `values` / `dependencies` overrides) in
-  `clusters/<cluster>/cluster.yaml` and place cluster-specific manifests in
-  `clusters/<cluster>/addons/<addon>/manifests/`.
+  their inline Helm value overrides) in `clusters/<cluster>/cluster.yaml` and
+  place cluster-specific manifests in `clusters/<cluster>/addons/<addon>/manifests/`.
 - **Dependencies:** Declare cross-addon ordering with `dependencies: []` in
-  `addon.yaml` or inline in `clusters/<cluster>/cluster.yaml`. `_helpers.tpl`
-  computes the topological `argocd.argoproj.io/sync-wave` automatically.
+  `addon.yaml` (base or cluster level). `_helpers.tpl` computes the topological
+  `argocd.argoproj.io/sync-wave` automatically.
 - **Stateful resources:** Keep `argocd.argoproj.io/sync-options: Delete=false,Prune=false`
   on PVCs, CNPG `Cluster`/`Database` CRs, and persistent namespaces.
 - **Secrets:** Never commit plaintext or encrypted Kubernetes Secrets to git.

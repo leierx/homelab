@@ -25,8 +25,9 @@ fleet/
 │   └── manifests/                          # Raw YAML or Kustomize directory installed with the addon
 └── clusters/<cluster>/                     # Isolated per-cluster configuration
     ├── cluster-secret.yaml                 # Bootstrap Step 3: Argo CD cluster Secret
-    ├── cluster.yaml                        # Enabled addons (inline overrides) + repoURL/targetRevision
+    ├── cluster.yaml                        # Enabled addons (inline Helm values) + repoURL/targetRevision
     └── addons/<addon>/                     # Cluster-only addons and cluster-specific manifests
+        ├── addon.yaml                      # Cluster-only addon metadata or extra cluster dependencies/sources
         └── manifests/                      # Cluster-specific manifests (raw YAML or Kustomize)
 ```
 
@@ -40,8 +41,8 @@ fleet/
    creates `Application/fleet-<cluster>` pointing at `fleet/` with
    `clusters/<cluster>/cluster.yaml`.
 3. **Two-layer dependency graph.** `_helpers.tpl` merges `dependencies: []`
-   from `addons/<addon>/addon.yaml`, `clusters/<cluster>/addons/<addon>/addon.yaml`,
-   and inline `addons.<addon>` in `clusters/<cluster>/cluster.yaml`, computes each addon's
+   from `addons/<addon>/addon.yaml` and
+   `clusters/<cluster>/addons/<addon>/addon.yaml`, computes each addon's
    topological depth (`0` if no dependencies, `1 + max(dep wave)` otherwise),
    and annotates the generated `Application` with
    `argocd.argoproj.io/sync-wave: "<depth>"`. Missing or circular dependencies
@@ -55,12 +56,12 @@ fleet/
    - The primary Helm chart (`helm` in `addon.yaml` or a local `Chart.yaml`),
      layering `addons/<addon>/values.yaml`, then
      `clusters/<cluster>/addons/<addon>/values.yaml` (if present) via a `$values`
-     repository reference, then inline `addons.<addon>.values` from
+     repository reference, then inline `addons.<addon>` from
      `clusters/<cluster>/cluster.yaml` via `valuesObject`
    - `addons/<addon>/manifests/` (raw YAML or `kustomization.yaml`, if present)
    - `clusters/<cluster>/addons/<addon>/manifests/` (if present)
    - Any additional `helm` or `path` entries listed under `sources: []` in
-     `addon.yaml` or inline in `clusters/<cluster>/cluster.yaml`.
+     either `addon.yaml`.
 
 ## 3-Step Bootstrap
 
@@ -78,7 +79,7 @@ kubectl label ns kube-system \
 helm template cilium cilium --repo https://helm.cilium.io --version 1.20.4 \
   -n kube-system --include-crds \
   -f fleet/addons/cilium/values.yaml \
-  -f <(yq '.addons.cilium.values' fleet/clusters/loft01/cluster.yaml) \
+  -f <(yq '.addons.cilium' fleet/clusters/loft01/cluster.yaml) \
   | kubectl apply -n kube-system --server-side --field-manager=argocd-controller -f - || true
 
 kubectl wait --for=condition=Ready node --all --timeout=10m
@@ -92,7 +93,7 @@ kubectl create namespace argocd
 helm template argocd argo-cd --repo https://argoproj.github.io/argo-helm --version 10.11.1 \
   -n argocd --include-crds \
   -f fleet/addons/argocd/values.yaml \
-  -f <(yq '.addons.argocd.values' fleet/clusters/loft01/cluster.yaml) \
+  -f <(yq '.addons.argocd' fleet/clusters/loft01/cluster.yaml) \
   | kubectl apply -n argocd --server-side --field-manager=argocd-controller -f - || true
 
 kubectl wait --for=condition=Established crd/appprojects.argoproj.io crd/applicationsets.argoproj.io --timeout=60s
@@ -100,7 +101,7 @@ kubectl wait --for=condition=Established crd/appprojects.argoproj.io crd/applica
 helm template argocd argo-cd --repo https://argoproj.github.io/argo-helm --version 10.11.1 \
   -n argocd \
   -f fleet/addons/argocd/values.yaml \
-  -f <(yq '.addons.argocd.values' fleet/clusters/loft01/cluster.yaml) \
+  -f <(yq '.addons.argocd' fleet/clusters/loft01/cluster.yaml) \
   | kubectl apply -n argocd --server-side --field-manager=argocd-controller -f -
 
 kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
@@ -128,10 +129,8 @@ enabled addons in dependency wave order:
 
 ## Addon Reference (`addon.yaml`)
 
-A shared addon lives in `fleet/addons/<name>/`; a cluster-only addon (such as
-`dodde`) defines its metadata in `fleet/clusters/<cluster>/cluster.yaml` (or
-`fleet/clusters/<cluster>/addons/<name>/addon.yaml`) and its resources in
-`fleet/clusters/<cluster>/addons/<name>/`.
+An addon lives in `fleet/addons/<name>/` (shared) or only in
+`fleet/clusters/<cluster>/addons/<name>/` (cluster-specific, such as `dodde`).
 
 ```yaml
 namespace: immich          # defaults to the addon name
@@ -156,33 +155,30 @@ sources:                   # optional extra helm or repo path sources
       valuesFile: extra-values.yaml
 ```
 
-A cluster extends a shared addon by listing it under `addons:` in
-`fleet/clusters/<cluster>/cluster.yaml`. Every field from `addon.yaml` can be
-set inline, so small overrides need no per-addon directory:
+A cluster enables an addon by listing it under `addons:` in
+`fleet/clusters/<cluster>/cluster.yaml`. Any keys under `addons.<name>` are
+passed to the primary Helm chart as `valuesObject` (use `{}` when no overrides
+are needed):
 
 ```yaml
 addons:
   loki:
-    values:
-      singleBinary: {persistence: {storageClass: zfs, size: 50Gi}}
+    singleBinary: {persistence: {storageClass: zfs, size: 50Gi}}
+
   keycloak:
-    dependencies: [cert-manager, envoy-gateway, zfs-localpv]
-    values:
-      hostname: https://auth.skinke.net
+    hostname: https://auth.skinke.net
+
+  admission: {}
 ```
 
-- Inline `dependencies: []`, `sources: []`, and `ignoreDifferences: []` are
-  merged with the base addon (never replaced).
-- Inline `values` is applied to the primary Helm chart as `valuesObject`, after
-  `fleet/addons/<name>/values.yaml` and any
-  `fleet/clusters/<cluster>/addons/<name>/values.yaml`.
-- `fleet/clusters/<cluster>/addons/<name>/addon.yaml` and `values.yaml` are
-  still supported and merge the same way, but the inline form is preferred for
-  anything short enough to read in `cluster.yaml`.
+- Inline values under `addons.<name>` in `cluster.yaml` are applied to the
+  primary Helm chart as `valuesObject`, after `fleet/addons/<name>/values.yaml`
+  and any `fleet/clusters/<cluster>/addons/<name>/values.yaml`.
+- `fleet/clusters/<cluster>/addons/<name>/addon.yaml` merges `dependencies: []`,
+  `sources: []`, and `ignoreDifferences: []` with the base addon (or defines a
+  cluster-only addon).
 - `fleet/clusters/<cluster>/addons/<name>/manifests/` is automatically appended
-  as an Application source and deployed alongside the addon. A directory with
-  only `manifests/` (or `Chart.yaml`) is enough for a cluster-only addon; its
-  metadata can live entirely in `cluster.yaml`.
+  as an Application source and deployed alongside the addon.
 
 ## Rendering Locally
 
@@ -196,7 +192,7 @@ helm template fleet fleet \
 # Render a local chart addon with its cluster values pulled from cluster.yaml
 helm template mimir fleet/addons/mimir -n monitoring \
   -f fleet/addons/mimir/values.yaml \
-  -f <(yq '.addons.mimir.values' fleet/clusters/loft01/cluster.yaml)
+  -f <(yq '.addons.mimir' fleet/clusters/loft01/cluster.yaml)
 ```
 
 ## Pausing an Application

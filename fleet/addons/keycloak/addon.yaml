@@ -6,5 +6,8 @@ dependencies:
   - external-secrets
   - argo-workflows
   - prometheus-operator-crds
+  - cert-manager
+  - envoy-gateway
+  - zfs-localpv
 sources:
   - path: tofu/keycloak
