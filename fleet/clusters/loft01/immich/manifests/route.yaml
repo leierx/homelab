@@ -49,4 +49,17 @@ spec:
       # no 15 s cap (Envoy's default) on downloading or streaming a large original
       timeouts:
         request: 0s
+---
+# the phone app can't get through Envoy's OIDC login, so Immich's own SSO login guards it
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: immich-edge
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: immich-edge
+  authorization:
+    defaultAction: Allow
 

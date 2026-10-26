@@ -157,7 +157,6 @@ resource "keycloak_openid_client" "edge" {
     "https://alerta.skinke.net/_envoy/callback",
     "https://argocd.skinke.net/_envoy/callback",
     "https://metrics.skinke.net/_envoy/callback",
-    "https://photos.skinke.net/_envoy/callback",
     "https://rss.skinke.net/_envoy/callback",
     "https://workflows.skinke.net/_envoy/callback",
   ]
