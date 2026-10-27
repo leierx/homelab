@@ -30,6 +30,17 @@ spec:
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
+  name: certgen
+spec:
+  endpointSelector:
+    matchLabels:
+      app: certgen
+  egress:
+    - toEntities: [kube-apiserver]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
   name: proxies-edge
 spec:
   endpointSelector:

@@ -75,6 +75,17 @@ spec:
   egress:
     - toEntities: [kube-apiserver]
 ---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: startupapicheck
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: startupapicheck
+  egress:
+    - toEntities: [kube-apiserver]
+---
 # HTTP-01 solver pods run in each Certificate's namespace; Envoy forwards the challenge to them
 apiVersion: cilium.io/v2
 kind: CiliumClusterwideNetworkPolicy

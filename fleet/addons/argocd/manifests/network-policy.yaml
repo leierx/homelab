@@ -185,3 +185,14 @@ spec:
       app: capi-argo-bridge
   egress:
     - toEntities: [kube-apiserver]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: redis-secret-init
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-redis-secret-init
+  egress:
+    - toEntities: [kube-apiserver]
