@@ -1,35 +1,187 @@
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: default
+  name: server
 spec:
-  endpointSelector: {}
-  enableDefaultDeny:
-    ingress: true
-    egress: true
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-server
   ingress:
-    - fromEndpoints:
-        - {}
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: envoy-gateway-system
             app.kubernetes.io/name: envoy
+            gateway.envoyproxy.io/owning-gateway-name: wg
+      toPorts:
+        - ports:
+            - {port: "8080", protocol: TCP}
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "8083", protocol: TCP}
+  egress:
+    - toEntities: [kube-apiserver]
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: argocd-repo-server
+      toPorts:
+        - ports:
+            - {port: "8081", protocol: TCP}
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: argocd-redis
+      toPorts:
+        - ports:
+            - {port: "6379", protocol: TCP}
+    # Keycloak at the issuer hostname, which resolves to the public address
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 169.254.0.0/16
+            - 100.64.0.0/10
+      toPorts:
+        - ports:
+            - {port: "443", protocol: TCP}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: application-controller
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-application-controller
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "8082", protocol: TCP}
+  egress:
+    - toEntities: [kube-apiserver]
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: argocd-repo-server
+      toPorts:
+        - ports:
+            - {port: "8081", protocol: TCP}
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: argocd-redis
+      toPorts:
+        - ports:
+            - {port: "6379", protocol: TCP}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: applicationset-controller
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-applicationset-controller
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
       toPorts:
         - ports:
             - {port: "8080", protocol: TCP}
   egress:
-    - toEndpoints:
-        - {}
     - toEntities: [kube-apiserver]
     - toEndpoints:
         - matchLabels:
-            k8s:io.kubernetes.pod.namespace: kube-system
-            k8s-app: kube-dns
+            app.kubernetes.io/name: argocd-repo-server
       toPorts:
         - ports:
-            - {port: "53", protocol: UDP}
-            - {port: "53", protocol: TCP}
-    - toEntities: [world]
+            - {port: "8081", protocol: TCP}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: repo-server
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-repo-server
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: argocd-server
+        - matchLabels:
+            app.kubernetes.io/name: argocd-application-controller
+        - matchLabels:
+            app.kubernetes.io/name: argocd-applicationset-controller
+      toPorts:
+        - ports:
+            - {port: "8081", protocol: TCP}
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "8084", protocol: TCP}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: argocd-redis
+      toPorts:
+        - ports:
+            - {port: "6379", protocol: TCP}
+    # Git repositories, Helm chart repositories, and Kustomize remote resources
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 169.254.0.0/16
+            - 100.64.0.0/10
       toPorts:
         - ports:
             - {port: "443", protocol: TCP}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: redis
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-redis
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: argocd-server
+        - matchLabels:
+            app.kubernetes.io/name: argocd-repo-server
+        - matchLabels:
+            app.kubernetes.io/name: argocd-application-controller
+      toPorts:
+        - ports:
+            - {port: "6379", protocol: TCP}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: capi-argo-bridge
+spec:
+  endpointSelector:
+    matchLabels:
+      app: capi-argo-bridge
+  egress:
+    - toEntities: [kube-apiserver]

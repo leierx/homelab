@@ -1,55 +1,60 @@
-# the sites' traffic: the port forward and WireGuard peers arrive as world, the host's own requests as host
+# Base Envoy Gateway policies: controller and edge proxy baseline.
+# Cluster-specific routes, OIDC, and internal Gateways live in clusters/<cluster>/envoy-gateway/manifests/.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: proxies
+  name: controller
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: gateway-helm
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: envoy
+      toPorts:
+        - ports: [{ port: "18000", protocol: TCP }]
+    - fromEntities: [kube-apiserver]
+      toPorts:
+        - ports: [{ port: "9443", protocol: TCP }]
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports: [{ port: "19001", protocol: TCP }]
+  egress:
+    - toEntities: [kube-apiserver]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: proxies-edge
 spec:
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: envoy
+      gateway.envoyproxy.io/owning-gateway-name: edge
   ingress:
     - fromEntities: [world, host]
       toPorts:
         - ports:
             - { port: "10080", protocol: TCP }
             - { port: "10443", protocol: TCP }
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports: [{ port: "19001", protocol: TCP }]
   egress:
-    # the backends behind the Gateways
     - toEndpoints:
         - matchLabels:
-            k8s:io.kubernetes.pod.namespace: argo
+            app.kubernetes.io/name: gateway-helm
       toPorts:
-        - ports: [{ port: "2746", protocol: TCP }]
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: argocd
-      toPorts:
-        - ports: [{ port: "8080", protocol: TCP }]
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: alerta
-      toPorts:
-        - ports: [{ port: "8080", protocol: TCP }]
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: immich
-      toPorts:
-        - ports: [{ port: "2283", protocol: TCP }]
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: keycloak
-      toPorts:
-        - ports: [{ port: "8080", protocol: TCP }]
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: monitoring
-      toPorts:
-        - ports: [{ port: "3000", protocol: TCP }]
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: miniflux
-      toPorts:
-        - ports: [{ port: "8080", protocol: TCP }]
+        - ports: [{ port: "18000", protocol: TCP }]
     # ACME HTTP-01 solvers (cert-manager), in whichever namespace the Certificate is
     - toEndpoints:
         - matchExpressions:
@@ -57,27 +62,3 @@ spec:
             - { key: acme.cert-manager.io/http01-solver, operator: In, values: ["true"] }
       toPorts:
         - ports: [{ port: "8089", protocol: TCP }]
----
-# Default-deny for the namespace, then what the controller and proxies need.
-apiVersion: cilium.io/v2
-kind: CiliumNetworkPolicy
-metadata:
-  name: default
-spec:
-  endpointSelector: {}
-  enableDefaultDeny:
-    ingress: true
-    egress: true
-  ingress:
-    # the controller serves xDS to the proxies
-    - fromEndpoints:
-        - {}
-  egress:
-    - toEndpoints:
-        - {}
-    - toEntities: [kube-apiserver]
-    # the controller fetches OIDC discovery, the proxies exchange codes at the Keycloak issuer (public address)
-    - toEntities: [world]
-      toPorts:
-        - ports:
-            - {port: "443", protocol: TCP}

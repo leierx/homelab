@@ -38,6 +38,9 @@ configs:
       g, homelab-operators, role:admin
       g, homelab-viewers, role:readonly
 
+global:
+  networkPolicy: {create: false}
+
 dex: {enabled: false}
 notifications: {enabled: false}
 

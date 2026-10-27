@@ -1,0 +1,132 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: virt-operator
+  namespace: kubevirt
+spec:
+  endpointSelector:
+    matchLabels:
+      kubevirt.io: virt-operator
+  ingress:
+    - fromEntities: [kube-apiserver]
+      toPorts:
+        - ports:
+            - {port: "8444", protocol: TCP}
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
+  egress:
+    - toEntities: [kube-apiserver]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: virt-api
+  namespace: kubevirt
+spec:
+  endpointSelector:
+    matchLabels:
+      kubevirt.io: virt-api
+  ingress:
+    - fromEntities: [kube-apiserver]
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
+  egress:
+    - toEntities: [kube-apiserver]
+    - toEndpoints:
+        - matchLabels:
+            kubevirt.io: virt-handler
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: virt-controller
+  namespace: kubevirt
+spec:
+  endpointSelector:
+    matchLabels:
+      kubevirt.io: virt-controller
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
+  egress:
+    - toEntities: [kube-apiserver]
+    - toEndpoints:
+        - matchLabels:
+            kubevirt.io: virt-handler
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: virt-handler
+  namespace: kubevirt
+spec:
+  endpointSelector:
+    matchLabels:
+      kubevirt.io: virt-handler
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            kubevirt.io: virt-api
+        - matchLabels:
+            kubevirt.io: virt-controller
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
+  egress:
+    - toEntities: [kube-apiserver]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: virt-exportproxy
+  namespace: kubevirt
+spec:
+  endpointSelector:
+    matchLabels:
+      kubevirt.io: virt-exportproxy
+  ingress:
+    - fromEntities: [kube-apiserver]
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
+  egress:
+    - toEntities: [kube-apiserver]

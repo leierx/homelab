@@ -1,0 +1,63 @@
+# Cluster-wide host firewall baseline: default-deny on node ingress and egress.
+# Cluster-specific host ingress (e.g. WireGuard and SSH) lives in clusters/<cluster>/cilium/manifests/.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: host-baseline
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  nodeSelector: {}
+  enableDefaultDeny:
+    ingress: true
+    egress: true
+  ingress:
+    - fromEntities: [host]
+    - fromEntities: [health, remote-node]
+      toPorts:
+        - ports:
+            - {port: "4240", protocol: TCP}
+    - fromEntities: [health, remote-node]
+      icmps:
+        - fields:
+            - {family: IPv4, type: EchoRequest}
+            - {family: IPv4, type: EchoReply}
+    # pods allowed toEntities: [kube-apiserver] reach the API server on the host after service DNAT
+    - fromEntities: [cluster]
+      toPorts:
+        - ports:
+            - {port: "6443", protocol: TCP}
+    # alloy-metrics scrapes the API server, kubelet/cAdvisor, node-exporter, and Cilium/Hubble metrics
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "6443", protocol: TCP}
+            - {port: "9100", protocol: TCP}
+            - {port: "9962", protocol: TCP}
+            - {port: "9963", protocol: TCP}
+            - {port: "9964", protocol: TCP}
+            - {port: "9965", protocol: TCP}
+            - {port: "10250", protocol: TCP}
+  egress:
+    # kubelet probes, cilium-health, and host-to-pod access (kubectl exec/logs, ssh to VMs)
+    - toEntities: [host, cluster, health, remote-node]
+    - toEntities: [world]
+      icmps:
+        - fields:
+            - {family: IPv4, type: EchoRequest}
+            - {family: IPv4, type: EchoReply}
+    # host services: systemd-resolved (DNS/DoT), systemd-timesyncd (NTP), containerd/nixos-upgrade (HTTP/S), offsite-backup (SSH)
+    - toEntities: [world]
+      toPorts:
+        - ports:
+            - {port: "22", protocol: TCP}
+            - {port: "53", protocol: UDP}
+            - {port: "53", protocol: TCP}
+            - {port: "80", protocol: TCP}
+            - {port: "123", protocol: UDP}
+            - {port: "443", protocol: TCP}
+            - {port: "853", protocol: TCP}

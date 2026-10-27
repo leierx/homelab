@@ -11,32 +11,8 @@
       "149.112.112.112#dns.quad9.net"
     ];
 
-    nat = {
-      enable = true;
-      externalInterface = "eno1";
-      internalInterfaces = [ "wg0" ];
-    };
-
-    nftables.enable = true;
-    firewall = {
-      allowPing = false;
-      # strict drops pod->host packets: they arrive on lxc* but the pod CIDR routes via cilium_host
-      checkReversePath = "loose";
-      trustedInterfaces = [
-        "cilium_host"
-        "cilium_net"
-        "cilium_vxlan"
-        "lxc*"
-      ];
-      interfaces.eno1 = {
-        allowedTCPPorts = [
-          30080
-          30443
-        ];
-        allowedUDPPorts = [ 52820 ];
-      };
-      interfaces.wg0.allowedTCPPorts = [ 22 ];
-    };
+    # Cilium hostFirewall (fleet/addons/cilium) enforces host ingress and egress in eBPF
+    firewall.enable = false;
   };
 
   # all=0 already wins while forwarding is on; default=0 keeps it so if forwarding goes
@@ -44,6 +20,9 @@
     "net.ipv4.conf.default.accept_redirects" = 0;
     "net.ipv4.conf.all.secure_redirects" = 0;
     "net.ipv4.conf.default.secure_redirects" = 0;
+    # Cilium sets all.rp_filter=0 for lxc*; strict on eno1 and wg0 stops LAN spoofing of 10.0.0.0/24 or 10.42.0.0/16
+    "net.ipv4.conf.eno1.rp_filter" = 1;
+    "net.ipv4.conf.wg0.rp_filter" = 1;
   };
 
   services.resolved = {

@@ -1,15 +1,21 @@
-# Renovate runs third-party code (package managers, Helm): HTTPS to the internet, nothing in the cluster.
+# Renovate runs third-party code (package managers, Helm): HTTPS to the public internet only, nothing private or in-cluster.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: default
+  name: renovate
 spec:
-  endpointSelector: {}
-  enableDefaultDeny:
-    ingress: true
-    egress: true
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: renovate
   egress:
-    - toEntities: [world]
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 169.254.0.0/16
+            - 100.64.0.0/10
       toPorts:
         - ports:
             - {port: "443", protocol: TCP}

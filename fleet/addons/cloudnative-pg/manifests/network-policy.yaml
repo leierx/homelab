@@ -1,16 +1,25 @@
-# Default-deny for the namespace, then what the operator needs.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: default
+  name: operator
 spec:
-  endpointSelector: {}
-  enableDefaultDeny:
-    ingress: true
-    egress: true
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: cloudnative-pg
   ingress:
     # admission webhook calls
     - fromEntities: [kube-apiserver]
+      toPorts:
+        - ports:
+            - {port: "9443", protocol: TCP}
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "8080", protocol: TCP}
   egress:
     - toEntities: [kube-apiserver]
     # every Postgres instance's status endpoint, wherever its Cluster lives

@@ -1,26 +1,52 @@
-# Default-deny for the namespace, then what Argo Workflows needs.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: default
+  name: server
 spec:
-  endpointSelector: {}
-  enableDefaultDeny:
-    ingress: true
-    egress: true
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: argo-workflows-server
   ingress:
     # the wg Gateway's proxy
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: envoy-gateway-system
             app.kubernetes.io/name: envoy
+            gateway.envoyproxy.io/owning-gateway-name: wg
       toPorts:
         - ports:
             - {port: "2746", protocol: TCP}
   egress:
     - toEntities: [kube-apiserver]
-    # Keycloak's token and userinfo endpoints (public address), and GitHub for the git input artifacts workflows fetch
-    - toEntities: [world]
+    # Keycloak at the issuer hostname, which resolves to the public address
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 169.254.0.0/16
+            - 100.64.0.0/10
       toPorts:
         - ports:
             - {port: "443", protocol: TCP}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: workflow-controller
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: argo-workflows-workflow-controller
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "9090", protocol: TCP}
+  egress:
+    - toEntities: [kube-apiserver]

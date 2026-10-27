@@ -1,26 +1,24 @@
-# Default-deny for the namespace. Only External Secrets talks to OpenBao;
-# people use the bao CLI through kubectl exec.
+# Only External Secrets and metrics scraping talk to OpenBao; people use the bao CLI through kubectl exec.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: default
+  name: openbao
 spec:
-  endpointSelector: {}
-  enableDefaultDeny:
-    ingress: true
-    egress: true
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: openbao
   ingress:
-    - fromEndpoints:
-        - {}
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: external-secrets
             app.kubernetes.io/name: external-secrets
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
       toPorts:
         - ports:
             - {port: "8200", protocol: TCP}
   egress:
-    - toEndpoints:
-        - {}
     # Kubernetes auth (TokenReview) and service registration
     - toEntities: [kube-apiserver]

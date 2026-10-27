@@ -1,8 +1,10 @@
 kubeProxyReplacement: true
+policyEnforcementMode: always
 rollOutCiliumPods: true
 secretsNamespaceAnnotations:
   argocd.argoproj.io/sync-options: Delete=false,Prune=false
 bpf: {masquerade: true}
+hostFirewall: {enabled: true}
 hubble:
   listenAddress: ''
   tls: {enabled: false}

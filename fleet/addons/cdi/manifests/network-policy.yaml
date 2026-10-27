@@ -1,0 +1,83 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: cdi-operator
+  namespace: cdi
+spec:
+  endpointSelector:
+    matchLabels:
+      cdi.kubevirt.io: cdi-operator
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
+  egress:
+    - toEntities: [kube-apiserver]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: cdi-apiserver
+  namespace: cdi
+spec:
+  endpointSelector:
+    matchLabels:
+      cdi.kubevirt.io: cdi-apiserver
+  ingress:
+    - fromEntities: [kube-apiserver]
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
+  egress:
+    - toEntities: [kube-apiserver]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: cdi-deployment
+  namespace: cdi
+spec:
+  endpointSelector:
+    matchLabels:
+      cdi.kubevirt.io: cdi-deployment
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
+  egress:
+    - toEntities: [kube-apiserver]
+    - toEndpoints:
+        - matchLabels:
+            cdi.kubevirt.io: cdi-uploadproxy
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: cdi-uploadproxy
+  namespace: cdi
+spec:
+  endpointSelector:
+    matchLabels:
+      cdi.kubevirt.io: cdi-uploadproxy
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            cdi.kubevirt.io: cdi-deployment
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
+  egress:
+    - toEntities: [kube-apiserver]

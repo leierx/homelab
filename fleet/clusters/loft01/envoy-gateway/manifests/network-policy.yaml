@@ -1,0 +1,115 @@
+# loft01 Gateway proxy policies: edge backends, wg Gateway proxy, and Keycloak OIDC token exchange.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: proxies-edge-routes
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: envoy
+      gateway.envoyproxy.io/owning-gateway-name: edge
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: immich
+            app.kubernetes.io/name: server
+      toPorts:
+        - ports: [{ port: "2283", protocol: TCP }]
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: keycloak
+            app.kubernetes.io/name: keycloak
+      toPorts:
+        - ports: [{ port: "8080", protocol: TCP }]
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            app.kubernetes.io/name: grafana
+      toPorts:
+        - ports: [{ port: "3000", protocol: TCP }]
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: miniflux
+            app.kubernetes.io/name: miniflux
+      toPorts:
+        - ports: [{ port: "8080", protocol: TCP }]
+    # OIDC code exchange against the Keycloak issuer (public address)
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 169.254.0.0/16
+            - 100.64.0.0/10
+      toPorts:
+        - ports: [{ port: "443", protocol: TCP }]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: proxies-wg
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: envoy
+      gateway.envoyproxy.io/owning-gateway-name: wg
+  ingress:
+    - fromCIDR: [10.0.0.0/24]
+      toPorts:
+        - ports:
+            - { port: "10080", protocol: TCP }
+            - { port: "10443", protocol: TCP }
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - { port: "10080", protocol: TCP }
+            - { port: "10443", protocol: TCP }
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports: [{ port: "19001", protocol: TCP }]
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: gateway-helm
+      toPorts:
+        - ports: [{ port: "18000", protocol: TCP }]
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: argo
+            app.kubernetes.io/name: argo-workflows-server
+      toPorts:
+        - ports: [{ port: "2746", protocol: TCP }]
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: argocd
+            app.kubernetes.io/name: argocd-server
+      toPorts:
+        - ports: [{ port: "8080", protocol: TCP }]
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: alerta
+            app.kubernetes.io/name: alerta
+      toPorts:
+        - ports: [{ port: "8080", protocol: TCP }]
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: keycloak
+            app.kubernetes.io/name: keycloak
+      toPorts:
+        - ports: [{ port: "8080", protocol: TCP }]
+    # OIDC code exchange against the Keycloak issuer (public address)
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 169.254.0.0/16
+            - 100.64.0.0/10
+      toPorts:
+        - ports: [{ port: "443", protocol: TCP }]

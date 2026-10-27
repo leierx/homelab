@@ -1,5 +1,4 @@
-# Default-deny for the telemetry namespace (policy `default`); DNS and
-# alloy-metrics scrape ingress come from the cluster baseline.
+# Default-deny comes from the cluster baseline; each telemetry workload opens only its required flows.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
@@ -9,12 +8,48 @@ spec:
     matchLabels:
       app.kubernetes.io/name: alloy
       app.kubernetes.io/instance: alloy-metrics
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports: [{port: "12345", protocol: TCP}]
   egress:
+    - toEntities: [kube-apiserver]
     - toEntities:
-        - cluster
         - host
-        - kube-apiserver
         - remote-node
+      toPorts:
+        - ports:
+            - {port: "6443", protocol: TCP}
+            - {port: "9100", protocol: TCP}
+            - {port: "9962", protocol: TCP}
+            - {port: "9963", protocol: TCP}
+            - {port: "9964", protocol: TCP}
+            - {port: "9965", protocol: TCP}
+            - {port: "10250", protocol: TCP}
+    - toEntities: [cluster]
+      toPorts:
+        - ports:
+            - {port: "3000", protocol: TCP}
+            - {port: "3100", protocol: TCP}
+            - {port: "8080", protocol: TCP}
+            - {port: "8081", protocol: TCP}
+            - {port: "8082", protocol: TCP}
+            - {port: "8083", protocol: TCP}
+            - {port: "8084", protocol: TCP}
+            - {port: "8200", protocol: TCP}
+            - {port: "8443", protocol: TCP}
+            - {port: "9000", protocol: TCP}
+            - {port: "9090", protocol: TCP}
+            - {port: "9134", protocol: TCP}
+            - {port: "9153", protocol: TCP}
+            - {port: "9187", protocol: TCP}
+            - {port: "9402", protocol: TCP}
+            - {port: "9633", protocol: TCP}
+            - {port: "12345", protocol: TCP}
+            - {port: "19001", protocol: TCP}
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
@@ -25,6 +60,13 @@ spec:
     matchLabels:
       app.kubernetes.io/name: alloy
       app.kubernetes.io/instance: alloy-logs
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports: [{port: "12345", protocol: TCP}]
   egress:
     - toEntities: [kube-apiserver]
     - toEndpoints:
@@ -42,20 +84,46 @@ spec:
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: kube-state-metrics
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "8080", protocol: TCP}
+            - {port: "8081", protocol: TCP}
   egress:
     - toEntities: [kube-apiserver]
 ---
-# Default-deny for the whole namespace; smartctl-exporter needs no egress at all.
-# The lists stay empty on purpose: a rule ("- {}") would allow everything, an
-# empty list allows nothing and the CRD requires at least one of the two.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: default
+  name: smartctl-exporter
 spec:
-  endpointSelector: {}
-  enableDefaultDeny:
-    ingress: true
-    egress: true
-  ingress: []
-  egress: []
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: smartctl-exporter
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports: [{port: "9633", protocol: TCP}]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: zfs-exporter
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: zfs-exporter
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports: [{port: "9134", protocol: TCP}]

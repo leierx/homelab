@@ -1,3 +1,5 @@
+# Cluster-wide pod baseline: every pod defaults to deny on both ingress and
+# egress and is only granted cluster DNS; each addon opens what its workloads need.
 apiVersion: cilium.io/v2
 kind: CiliumClusterwideNetworkPolicy
 metadata:
@@ -7,19 +9,50 @@ metadata:
 spec:
   endpointSelector: {}
   enableDefaultDeny:
-    ingress: false
-    egress: false
+    ingress: true
+    egress: true
   ingress:
-    - fromEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: telemetry
-            app.kubernetes.io/name: alloy
-            app.kubernetes.io/instance: alloy-metrics
+    - {}
   egress:
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: kube-system
             k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - {port: "53", protocol: UDP}
+            - {port: "53", protocol: TCP}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: coredns
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: kube-dns
+  ingress:
+    - fromEntities: [cluster]
+      toPorts:
+        - ports:
+            - {port: "53", protocol: UDP}
+            - {port: "53", protocol: TCP}
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "9153", protocol: TCP}
+  egress:
+    - toEntities: [kube-apiserver]
+    - toCIDR:
+        - 9.9.9.9/32
+        - 149.112.112.112/32
       toPorts:
         - ports:
             - {port: "53", protocol: UDP}

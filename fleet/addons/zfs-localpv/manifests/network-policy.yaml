@@ -1,0 +1,10 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: controller
+spec:
+  endpointSelector:
+    matchLabels:
+      name: openebs-zfs-controller
+  egress:
+    - toEntities: [kube-apiserver]

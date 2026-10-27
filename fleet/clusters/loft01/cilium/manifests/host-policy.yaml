@@ -1,0 +1,28 @@
+# loft01 host ingress/egress: WireGuard outer tunnel on eno1 (52820/UDP) and SSH/API server on wg0 (10.0.0.0/24).
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: host-loft01
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  nodeSelector: {}
+  ingress:
+    - fromEntities: [world]
+      toPorts:
+        - ports:
+            - {port: "52820", protocol: UDP}
+    - fromCIDR:
+        - 10.0.0.0/24
+      toPorts:
+        - ports:
+            - {port: "22", protocol: TCP}
+            - {port: "6443", protocol: TCP}
+  egress:
+    - toCIDR:
+        - 10.0.0.0/24
+    # WireGuard outer UDP packets to peers behind dynamic NAT ports
+    - toEntities: [world]
+      toPorts:
+        - ports:
+            - {port: "1", endPort: 65535, protocol: UDP}
