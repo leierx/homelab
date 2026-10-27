@@ -207,10 +207,7 @@ in
     ];
   };
 
-  systemd.tmpfiles.rules = [
-    "d /var/log/kubernetes 0700 root root -"
-    "z /etc/rancher/k3s/k3s.yaml 0600 root root -"
-  ];
+  systemd.tmpfiles.rules = [ "d /var/log/kubernetes 0700 root root -" ];
 
   # zfs-localpv's zvols have to exist before kubelet starts pods
   systemd.services.k3s = {
