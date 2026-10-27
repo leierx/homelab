@@ -33,7 +33,8 @@ func main() {
 
 	ctrl.SetLogger(zap.New())
 
-	// watch only these two namespaces, so RBAC can be namespaced too: no cluster-wide Secret access
+	// watch only --cluster-namespace: the argocd namespace holds cluster-admin
+	// tokens and repo credentials, so RBAC there has no list or watch
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                server.Options{BindAddress: "0"},
@@ -41,11 +42,12 @@ func main() {
 		LeaderElection:         false,
 		Cache: cache.Options{
 			DefaultNamespaces: map[string]cache.Config{
-				argoCDNamespace:  {},
 				clusterNamespace: {},
 			},
-			ByObject: map[client.Object]cache.ByObject{
-				newCluster(): {Namespaces: map[string]cache.Config{clusterNamespace: {}}},
+		},
+		Client: client.Options{
+			Cache: &client.CacheOptions{
+				DisableFor: []client.Object{&corev1.Secret{}},
 			},
 		},
 	})

@@ -31,12 +31,11 @@ controllers are built, even when that costs dependencies.
 | `clientcmd` to parse the kubeconfig | client-go's own parser, already in the graph. |
 | `controllerutil.CreateOrUpdate` | Standard create/update helper. It skips the write when nothing changed, so Argo CD doesn't reload the cluster on every reconcile. |
 | Label + source annotation instead of an ownerReference | ownerReferences can't cross namespaces (Cluster in its own, Secret in `argocd`). |
-| Argo Secrets map back to their Cluster | A managed Secret whose Cluster is gone gets reconciled and deleted on start-up, so a Cluster deleted while this was down is still cleaned up. No finalizer needed. |
 | zap logger from controller-runtime | kubebuilder's default. |
 | `/healthz` and `/readyz` on `:8081` | kubebuilder's default probes. |
 | Controller added only once the `Cluster` CRD is served | CAPI's CRDs come from another Argo app with no ordering. Polling the RESTMapper keeps the probes up while waiting, instead of crash-looping until controller-runtime's cache sync times out. |
 | Metrics off (`BindAddress: "0"`) | Nothing scrapes them. The Prometheus libraries still come in with controller-runtime's client. |
-| Watches only `--cluster-namespace` and `--argocd-namespace` | The cache (and so RBAC) is limited to those two namespaces: no cluster-wide right to read Secrets, which would include every credential in the cluster. All workload clusters live in one namespace. |
+| Watches only `--cluster-namespace`; uncached `Secret` reads | The cache only lists/watches `--cluster-namespace`, and `Secret` reads bypass the cache so `argocd` Secrets are only ever accessed by name (`get`, `create`, `update`, `delete`) with no `list`/`watch` permission in `argocd`. |
 | No leader election | One replica on a single node. Every write is idempotent, so the brief overlap during a rollout is harmless. |
 | Fake client in tests, not envtest | Avoids downloading etcd and kube-apiserver in CI. envtest would be closer to upstream. |
 | Image built with Nix (`dockerTools.buildLayeredImage`) | Reproducible static Go binary container image built directly from `flake.nix` with no Dockerfile. |
