@@ -396,7 +396,7 @@ alerting:
               model:
                 refId: A
                 instant: true
-                expr: sum by (source, destination) (increase(hubble_drop_total{reason="POLICY_DENIED"}[5m])) > 0
+                expr: sum by (source, destination) (increase(hubble_drop_total{reason="POLICY_DENIED", source!="reserved:world"}[5m])) > 0
             - refId: C
               datasourceUid: __expr__
               model:

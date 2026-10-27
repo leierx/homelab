@@ -60,4 +60,44 @@ spec:
     namespaceSelector:
       matchExpressions:
         - { key: kubernetes.io/metadata.name, operator: NotIn, values: [alerta, envoy-gateway-system, immich, keycloak] }
+---
+# Gateway/edge and Gateway/wg allow routes and listeners from All namespaces so each addon can bring its own;
+# restrict which namespaces may actually create HTTPRoute or ListenerSet objects.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: gateway-routes-and-listeners
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [gateway.networking.k8s.io]
+        apiVersions: [v1, v1alpha2, v1beta1]
+        operations: [CREATE, UPDATE]
+        resources: [httproutes, listenersets]
+  validations:
+    - expression: >-
+        object.metadata.namespace in [
+          'alerta',
+          'argo',
+          'argocd',
+          'cert-manager',
+          'envoy-gateway-system',
+          'immich',
+          'keycloak',
+          'miniflux',
+          'monitoring'
+        ]
+      message: >-
+        only approved web-facing namespaces may attach HTTPRoute or ListenerSet
+        resources to the Gateways; add the namespace to
+        gateway-routes-and-listeners if it really needs a route
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: gateway-routes-and-listeners
+spec:
+  policyName: gateway-routes-and-listeners
+  validationActions: [Deny]
 

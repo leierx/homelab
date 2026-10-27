@@ -1,0 +1,10 @@
+# Keep auth.skinke.net traffic in-cluster: OIDC clients resolve to the edge
+# Envoy Service instead of hairpining via the public WAN IP.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  oidc.override: |
+    rewrite name exact auth.skinke.net edge.envoy-gateway-system.svc.cluster.local answer auto

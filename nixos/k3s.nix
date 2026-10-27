@@ -171,8 +171,6 @@ in
       "--disable=traefik,servicelb,local-storage,metrics-server"
       "--disable-cloud-controller"
       "--cluster-cidr=10.42.0.0/16"
-      "--write-kubeconfig-mode=0640"
-      "--write-kubeconfig-group=wheel"
       "--secrets-encryption"
       "--kubelet-arg=system-reserved=cpu=2,memory=16Gi"
       "--kubelet-arg=kube-reserved=cpu=2,memory=16Gi"
@@ -209,7 +207,10 @@ in
     ];
   };
 
-  systemd.tmpfiles.rules = [ "d /var/log/kubernetes 0700 root root -" ];
+  systemd.tmpfiles.rules = [
+    "d /var/log/kubernetes 0700 root root -"
+    "z /etc/rancher/k3s/k3s.yaml 0600 root root -"
+  ];
 
   # zfs-localpv's zvols have to exist before kubelet starts pods
   systemd.services.k3s = {
@@ -220,21 +221,23 @@ in
   # above the kubelet's 280 s total, so logind never cuts its shutdown short
   services.logind.settings.Login.InhibitDelayMaxSec = "360s";
 
-  # the admin kubeconfig is a year-long system:masters client cert readable by
-  # wheel; it used to sit in the environment of every process, so now only these
-  # wrappers add it
+  # the admin kubeconfig is a year-long system:masters client cert owned 0600 by
+  # root; break-glass goes through doas so unprivileged processes cannot read it
   environment.systemPackages = with pkgs; [
     (writeShellScriptBin "kubectl" ''
       export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-      exec ${k3s}/bin/kubectl "$@"
+      [ "$(id -u)" -eq 0 ] && exec ${k3s}/bin/kubectl "$@"
+      exec /run/wrappers/bin/doas ${k3s}/bin/kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml "$@"
     '')
     (writeShellScriptBin "helm" ''
       export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-      exec ${kubernetes-helm}/bin/helm "$@"
+      [ "$(id -u)" -eq 0 ] && exec ${kubernetes-helm}/bin/helm "$@"
+      exec /run/wrappers/bin/doas ${kubernetes-helm}/bin/helm --kubeconfig=/etc/rancher/k3s/k3s.yaml "$@"
     '')
     (writeShellScriptBin "cilium" ''
       export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-      exec ${cilium-cli}/bin/cilium "$@"
+      [ "$(id -u)" -eq 0 ] && exec ${cilium-cli}/bin/cilium "$@"
+      exec /run/wrappers/bin/doas ${cilium-cli}/bin/cilium --kubeconfig=/etc/rancher/k3s/k3s.yaml "$@"
     '')
   ];
 }

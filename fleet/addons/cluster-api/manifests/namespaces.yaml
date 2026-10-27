@@ -1,11 +1,15 @@
 # The provider namespaces are not this addon's destination, so they are manifests here.
-# The chart's createNamespace values are off; these carry the protection annotation instead.
+# The chart's createNamespace values are off; these carry the protection annotation and PSA labels instead.
 apiVersion: v1
 kind: Namespace
 metadata:
   name: capi-system
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
 ---
 apiVersion: v1
 kind: Namespace
@@ -13,6 +17,10 @@ metadata:
   name: kubeadm-bootstrap-system
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
 ---
 apiVersion: v1
 kind: Namespace
@@ -20,6 +28,10 @@ metadata:
   name: kubeadm-control-plane-system
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
 ---
 apiVersion: v1
 kind: Namespace
@@ -27,3 +39,7 @@ metadata:
   name: kubevirt-infrastructure-system
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
