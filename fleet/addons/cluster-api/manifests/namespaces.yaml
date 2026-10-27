@@ -33,13 +33,10 @@ metadata:
     pod-security.kubernetes.io/warn: restricted
     pod-security.kubernetes.io/audit: restricted
 ---
+# capk-controller-manager upstream omits container securityContext, so it stays on the cluster default (baseline)
 apiVersion: v1
 kind: Namespace
 metadata:
   name: kubevirt-infrastructure-system
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
-  labels:
-    pod-security.kubernetes.io/enforce: restricted
-    pod-security.kubernetes.io/warn: restricted
-    pod-security.kubernetes.io/audit: restricted

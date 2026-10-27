@@ -35,25 +35,3 @@ infrastructure:
     version: v0.11.2
     deployment:
       containers: [{name: manager, resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}}]
-    manifestPatches:
-      - |
-        apiVersion: apps/v1
-        kind: Deployment
-        metadata:
-          name: capk-controller-manager
-          namespace: kubevirt-infrastructure-system
-        spec:
-          template:
-            spec:
-              securityContext:
-                runAsNonRoot: true
-                runAsUser: 65532
-                runAsGroup: 65532
-                seccompProfile:
-                  type: RuntimeDefault
-              containers:
-                - name: manager
-                  securityContext:
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                      drop: [ALL]
