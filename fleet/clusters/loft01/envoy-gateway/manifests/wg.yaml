@@ -22,7 +22,6 @@ spec:
                       resources:
                         limits: { memory: 64Mi }
       envoyService:
-        name: wg
         type: ClusterIP
         patch:
           type: StrategicMerge
