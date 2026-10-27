@@ -38,6 +38,19 @@ patches:
       - op: add
         path: /spec/uninstallStrategy
         value: BlockUninstallIfWorkloadsExist
+  # TODO(kubevirt v1.10.0): remove once kubevirt/kubevirt#18698 lands in a release;
+  # in v1.9.1 virt-operator unmounts /etc/virt-handler/clientcertificates while
+  # virt-handler still polls --client-cert-file/--client-key-file every minute
+  - target:
+      kind: KubeVirt
+    patch: |
+      - op: add
+        path: /spec/customizeComponents
+        value:
+          flags:
+            handler:
+              client-cert-file: /etc/virt-handler/migrationservercertificates/tls.crt
+              client-key-file: /etc/virt-handler/migrationservercertificates/tls.key
   # the CR waits for the operator to be Healthy
   - target:
       kind: KubeVirt

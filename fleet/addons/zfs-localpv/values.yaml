@@ -4,6 +4,9 @@ zfs: {bin: /run/current-system/sw/bin/zfs}
 zfsController:
   # sanoid on the host manages ZFS snapshots; nothing uses Kubernetes VolumeSnapshots
   snapshotController: {enabled: false}
+  # override the chart's --v=5 so every 60 s GetCapacity gRPC response (err=null) isn't logged
+  provisioner: {extraArgs: [--v=2]}
+  resizer: {extraArgs: [--v=2]}
   resources: {requests: {cpu: 5m, memory: 16Mi}, limits: {memory: 128Mi}}
 zfsNode:
   # "All" puts the deprecated beta.kubernetes.io/* node labels into the CSI topology

@@ -8,3 +8,6 @@ metadata:
 data:
   oidc.override: |
     rewrite name exact auth.skinke.net edge.envoy-gateway-system.svc.cluster.local answer auto
+  # k3s's Corefile also imports /etc/coredns/custom/*.server; an empty key
+  # silences CoreDNS's 30 s reload warning about an unmatched import glob
+  empty.server: ""
