@@ -10,13 +10,14 @@
       "9.9.9.9#dns.quad9.net"
       "149.112.112.112#dns.quad9.net"
     ];
-    # wg Gateway routes for local processes (kube-apiserver OIDC) and WireGuard peers querying 10.0.0.1:53
-    hosts."10.0.0.1" = [
-      "alerta.skinke.net"
-      "argocd.skinke.net"
-      "auth.skinke.net"
-      "workflows.skinke.net"
-    ];
+    # wg Gateway routes for local processes (kube-apiserver OIDC) and WireGuard peers querying 10.0.0.1:53.
+    # One line per name: names sharing a line are aliases of the first one, which resolved returns as a CNAME.
+    extraHosts = ''
+      10.0.0.1 alerta.skinke.net
+      10.0.0.1 argocd.skinke.net
+      10.0.0.1 auth.skinke.net
+      10.0.0.1 workflows.skinke.net
+    '';
 
     # Cilium hostFirewall (fleet/addons/cilium) enforces host ingress and egress in eBPF
     firewall.enable = false;
