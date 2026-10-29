@@ -28,8 +28,8 @@ spec:
   policyName: image-versions
   validationActions: [Deny]
 ---
-# Every image comes from a registry Harbor proxies, so nodes pull it through Harbor (nixos/k3s.nix mirrors them
-# without a fallback). An image without a registry host is docker.io. Keep the list in step with tofu/harbor/proxy.tf.
+# Every image comes from a registry Harbor proxies, so nodes pull it through Harbor (nixos/k3s.nix mirrors exactly
+# these). An image without a registry host is docker.io. Keep the list in step with tofu/harbor/proxy.tf.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:

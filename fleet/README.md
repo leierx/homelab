@@ -112,10 +112,9 @@ kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
 
 On a fresh cluster Harbor doesn't exist yet, so first delete the
 `fleet.io/oci-mirror` label from `fleet/clusters/loft01/cluster-secret.yaml`
-and push (see [Helm charts through Harbor](#helm-charts-through-harbor)), and
-install NixOS without `--disable-default-registry-endpoint` (`nixos/k3s.nix`)
-so nodes can pull from the upstreams; put both back once `loft01-harbor` is
-Healthy.
+and push (see [Helm charts through Harbor](#helm-charts-through-harbor)); put it
+back once `loft01-harbor` is Healthy. Nodes pull from the upstreams until then
+on their own.
 
 ```sh
 kubectl apply -f fleet/clusters/loft01/cluster-secret.yaml

@@ -160,9 +160,8 @@ let
     ];
   };
 
-  # pull every image through Harbor's proxy cache projects (tofu/harbor/proxy.tf) on the wg Gateway; with
-  # --disable-default-registry-endpoint below there is no fallback to the upstream, and fleet/addons/admission
-  # refuses pods from any other registry
+  # pull every image through Harbor's proxy cache projects (tofu/harbor/proxy.tf) on the wg Gateway, falling back to
+  # the upstream only while Harbor can't answer (a fresh install, an outage); fleet/addons/admission refuses other registries
   registries = yaml.generate "k3s-registries.yaml" {
     mirrors = {
       "docker.io".endpoint = [ "https://registry.skinke.net/v2/docker.io" ];
@@ -197,8 +196,6 @@ in
       # virt-launcher and CDI's importer run as uid 107 and must open raw block volumes
       "--nonroot-devices"
       "--private-registry=${registries}"
-      # a fresh install has no Harbor to pull Harbor (or anything else) from: drop this until loft01-harbor is Healthy
-      "--disable-default-registry-endpoint"
       "--kube-apiserver-arg=authentication-config=${authentication}"
       "--kube-apiserver-arg=admission-control-config-file=${admission}"
       "--kube-apiserver-arg=audit-policy-file=${auditPolicy}"
