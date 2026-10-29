@@ -1114,7 +1114,7 @@ alerting:
         # From Harbor's SCANNING_COMPLETED webhooks ({job="harbor-webhook"}): Harbor scans an image when it caches
         # it and rescans everything daily. Compared per repository, so a repository cached less than a day ago has
         # nothing to compare with.
-        - uid: harbor-critical-vulnerabilities-increased
+        - uid: harbor-critical-cves-increased
           title: Critical vulnerabilities in a cached image increased
           condition: C
           for: 0s
