@@ -98,3 +98,14 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   kcadm config credentials --server http://localhost:8080 --realm master \
     --client "$KC_BOOTSTRAP_ADMIN_CLIENT_ID" --secret "$KC_BOOTSTRAP_ADMIN_CLIENT_SECRET"
   ```
+- **Zot down or unreachable:** nodes fall back to the upstream registries on
+  their own, but Argo CD can't render any Application whose chart comes through
+  Zot (nothing is pruned; syncs stop). Delete the `fleet.io/oci-mirror` label
+  from `fleet/clusters/loft01/cluster-secret.yaml` and push to render every
+  chart from its upstream; put it back once Zot is healthy. Zot's own chart
+  always comes from the upstream.
+- **Image signing key:** CI signs `ghcr.io/leierx/*` images with the cosign key
+  in the GitHub secrets `COSIGN_PRIVATE_KEY`/`COSIGN_PASSWORD`; Zot trusts its
+  public half (`fleet/addons/zot/manifests/cosign-keys.yaml`). To rotate, run
+  `cosign generate-key-pair`, replace both secrets and `leierx-homelab.pub`, and
+  rebuild the images (until then they show as untrusted).
