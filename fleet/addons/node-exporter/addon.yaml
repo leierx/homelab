@@ -3,7 +3,7 @@ podSecurity: privileged
 dependencies:
   - cilium
 helm:
-  repoURL: https://prometheus-community.github.io/helm-charts
+  repoURL: ghcr.io/prometheus-community/charts
   chart: prometheus-node-exporter
-  # renovate: datasource=helm depName=prometheus-node-exporter registryUrl=https://prometheus-community.github.io/helm-charts
+  # renovate: datasource=docker depName=ghcr.io/prometheus-community/charts/prometheus-node-exporter
   targetRevision: 4.60.1

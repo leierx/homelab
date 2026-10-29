@@ -4,7 +4,7 @@ dependencies:
   - cilium
   - prometheus-operator-crds
 helm:
-  repoURL: https://prometheus-community.github.io/helm-charts
+  repoURL: ghcr.io/prometheus-community/charts
   chart: prometheus-smartctl-exporter
-  # renovate: datasource=helm depName=prometheus-smartctl-exporter registryUrl=https://prometheus-community.github.io/helm-charts
+  # renovate: datasource=docker depName=ghcr.io/prometheus-community/charts/prometheus-smartctl-exporter
   targetRevision: 0.17.1

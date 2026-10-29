@@ -12,7 +12,7 @@ dependencies:
   - envoy-gateway
   - keycloak
 helm:
-  repoURL: https://grafana-community.github.io/helm-charts
+  repoURL: ghcr.io/grafana-community/helm-charts
   chart: grafana
-  # renovate: datasource=helm depName=grafana registryUrl=https://grafana-community.github.io/helm-charts
+  # renovate: datasource=docker depName=ghcr.io/grafana-community/helm-charts/grafana
   targetRevision: 14.2.0

@@ -47,10 +47,12 @@ jobs:
             for d in "$checkout"/fleet/clusters/*/; do
               [ -d "$d" ] || continue
               cluster=$(basename "$d")
-              vals=(-f "$d/cluster-secret.yaml")
-              [ -f "$d/cluster.yaml" ] && vals=(-f "$d/cluster.yaml")
+              src="$d/cluster-secret.yaml"
+              [ -f "$d/cluster.yaml" ] && src="$d/cluster.yaml"
+              # the throwaway preview cluster can't reach the WireGuard-only registry mirror; render upstream chart sources
+              yq 'del(.metadata.labels."fleet.io/oci-mirror")' "$src" > "$RUNNER_TEMP/cluster-$cluster.yaml"
               helm template fleet "$checkout/fleet" \
-                "${vals[@]}" \
+                -f "$RUNNER_TEMP/cluster-$cluster.yaml" \
                 --set "cluster.name=$cluster" \
                 --set "cluster.server=https://kubernetes.default.svc" \
                 > "$checkout/rendered/applications-$cluster.yaml"

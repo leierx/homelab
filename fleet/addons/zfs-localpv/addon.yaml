@@ -3,7 +3,7 @@ podSecurity: privileged
 dependencies:
   - cilium
 helm:
-  repoURL: https://openebs.github.io/zfs-localpv
+  repoURL: ghcr.io/openebs/charts
   chart: zfs-localpv
-  # renovate: datasource=helm depName=zfs-localpv registryUrl=https://openebs.github.io/zfs-localpv
+  # renovate: datasource=docker depName=ghcr.io/openebs/charts/zfs-localpv
   targetRevision: 2.11.2

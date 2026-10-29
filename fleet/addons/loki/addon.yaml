@@ -5,7 +5,7 @@ dependencies:
   - zfs-localpv
   - prometheus-operator-crds
 helm:
-  repoURL: https://grafana-community.github.io/helm-charts
+  repoURL: ghcr.io/grafana-community/helm-charts
   chart: loki
-  # renovate: datasource=helm depName=loki registryUrl=https://grafana-community.github.io/helm-charts
+  # renovate: datasource=docker depName=ghcr.io/grafana-community/helm-charts/loki
   targetRevision: 19.4.0

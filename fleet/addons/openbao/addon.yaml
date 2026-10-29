@@ -6,7 +6,7 @@ dependencies:
   - zfs-localpv
   - prometheus-operator-crds
 helm:
-  repoURL: https://openbao.github.io/openbao-helm
+  repoURL: ghcr.io/openbao/charts
   chart: openbao
-  # renovate: datasource=helm depName=openbao registryUrl=https://openbao.github.io/openbao-helm
+  # renovate: datasource=docker depName=ghcr.io/openbao/charts/openbao
   targetRevision: 0.30.6

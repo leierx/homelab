@@ -3,7 +3,7 @@ podSecurity: privileged
 dependencies:
   - cilium
 helm:
-  repoURL: https://prometheus-community.github.io/helm-charts
+  repoURL: ghcr.io/prometheus-community/charts
   chart: kube-state-metrics
-  # renovate: datasource=helm depName=kube-state-metrics registryUrl=https://prometheus-community.github.io/helm-charts
+  # renovate: datasource=docker depName=ghcr.io/prometheus-community/charts/kube-state-metrics
   targetRevision: 8.7.1

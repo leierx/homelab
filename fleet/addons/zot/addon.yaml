@@ -9,7 +9,9 @@ dependencies:
   - envoy-gateway
   - keycloak
 helm:
-  repoURL: https://zotregistry.dev/helm-charts
+  repoURL: ghcr.io/project-zot/helm-charts
   chart: zot
-  # renovate: datasource=helm depName=zot registryUrl=https://zotregistry.dev/helm-charts
+  # renovate: datasource=docker depName=ghcr.io/project-zot/helm-charts/zot
   targetRevision: 0.1.128
+  # Zot never serves its own chart: a broken Zot could otherwise not be fixed through Argo CD
+  mirror: false

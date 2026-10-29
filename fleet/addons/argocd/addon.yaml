@@ -8,7 +8,7 @@ dependencies:
   - external-secrets
   - keycloak
 helm:
-  repoURL: https://argoproj.github.io/argo-helm
+  repoURL: ghcr.io/argoproj/argo-helm
   chart: argo-cd
-  # renovate: datasource=helm depName=argo-cd registryUrl=https://argoproj.github.io/argo-helm
+  # renovate: datasource=docker depName=ghcr.io/argoproj/argo-helm/argo-cd
   targetRevision: 10.11.1

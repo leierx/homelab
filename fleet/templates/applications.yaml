@@ -8,6 +8,7 @@
 {{- $targetRevision := default (default "HEAD" .Values.targetRevision) (index $annotations "fleet.io/target-revision") -}}
 {{- $files := .Files -}}
 {{- $allAddons := fromYaml (include "fleet.mergedAddons" .) -}}
+{{- $ociMirror := index (fromYaml (include "fleet.clusterLabels" .)) "fleet.io/oci-mirror" | default "" -}}
 
 {{- range $name, $addon := $allAddons }}
 {{- $wave := include "fleet.calcWave" (dict "addon" $name "all" $allAddons "depth" 0 "cluster" $cluster) }}
@@ -29,7 +30,7 @@
     {{- $needsValuesRef = true -}}
   {{- end }}
   {{- $helmSource := dict
-      "repoURL" (default $repoURL $helmCfg.repoURL)
+      "repoURL" (include "fleet.helmRepoURL" (dict "repoURL" (default $repoURL $helmCfg.repoURL) "helm" $helmCfg "mirror" $ociMirror))
       "targetRevision" (default $targetRevision $helmCfg.targetRevision)
   -}}
   {{- if $helmCfg.chart }}
@@ -65,7 +66,7 @@
 {{- range $extra := $addon.extraSources }}
   {{- if $extra.helm }}
     {{- $extraHelm := dict
-        "repoURL" (default $repoURL $extra.helm.repoURL)
+        "repoURL" (include "fleet.helmRepoURL" (dict "repoURL" (default $repoURL $extra.helm.repoURL) "helm" $extra.helm "mirror" $ociMirror))
         "targetRevision" (default $targetRevision $extra.helm.targetRevision)
     -}}
     {{- if $extra.helm.chart }}{{- $_ := set $extraHelm "chart" $extra.helm.chart -}}{{- end }}

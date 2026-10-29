@@ -19,17 +19,12 @@ Load clusters/<cluster>/cluster-secret.yaml from the chart if present.
 {{- end -}}
 
 {{/*
-Build a merged map of all enabled addons and their combined metadata for this cluster.
-Addons are enabled via labels on cluster-secret.yaml (or the live cluster Secret):
-  fleet.io/<addon>.enable: "true"
-  addons.homelab/<addon>: "true"
+Resolve the cluster labels: values metadata.labels, then cluster-secret.yaml in git, then the
+live cluster Secret labels fleet-root passes as cluster.labels (CAPI clusters).
 */}}
-{{- define "fleet.mergedAddons" -}}
-{{- $cluster := include "fleet.clusterName" . -}}
+{{- define "fleet.clusterLabels" -}}
 {{- $gitSecret := fromYaml (include "fleet.gitClusterSecret" .) -}}
 {{- $gitMeta := default dict $gitSecret.metadata -}}
-{{- $files := .Files -}}
-
 {{- $labels := dict -}}
 {{- if .Values.metadata.labels -}}
   {{- $labels = .Values.metadata.labels -}}
@@ -42,6 +37,19 @@ Addons are enabled via labels on cluster-secret.yaml (or the live cluster Secret
     {{- $labels = .Values.cluster.labels -}}
   {{- end -}}
 {{- end -}}
+{{- $labels | toYaml -}}
+{{- end -}}
+
+{{/*
+Build a merged map of all enabled addons and their combined metadata for this cluster.
+Addons are enabled via labels on cluster-secret.yaml (or the live cluster Secret):
+  fleet.io/<addon>.enable: "true"
+  addons.homelab/<addon>: "true"
+*/}}
+{{- define "fleet.mergedAddons" -}}
+{{- $cluster := include "fleet.clusterName" . -}}
+{{- $files := .Files -}}
+{{- $labels := fromYaml (include "fleet.clusterLabels" .) -}}
 
 {{- $enabled := list -}}
 {{- range $k, $v := $labels -}}
@@ -110,4 +118,18 @@ wave(addon) = 0 if no dependencies, else 1 + max(wave(dep))
   {{- end -}}
 {{- end -}}
 {{- printf "%d" $maxWave -}}
+{{- end -}}
+
+{{/*
+Pull an OCI Helm chart through the registry mirror named by the cluster's fleet.io/oci-mirror label:
+<mirror>/<upstream registry>/<path>. Repositories with a scheme (https:// chart repos, git) and
+charts with mirror: false are left alone.
+*/}}
+{{- define "fleet.helmRepoURL" -}}
+{{- $optOut := and (hasKey .helm "mirror") (not .helm.mirror) -}}
+{{- if and .mirror (not (contains "://" .repoURL)) (not $optOut) -}}
+{{- printf "%s/%s" .mirror .repoURL -}}
+{{- else -}}
+{{- .repoURL -}}
+{{- end -}}
 {{- end -}}

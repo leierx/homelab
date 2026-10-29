@@ -3,7 +3,7 @@ podSecurity: privileged
 dependencies:
   - prometheus-operator-crds
 helm:
-  repoURL: https://helm.cilium.io
+  repoURL: quay.io/cilium/charts
   chart: cilium
-  # renovate: datasource=helm depName=cilium registryUrl=https://helm.cilium.io
+  # renovate: datasource=docker depName=quay.io/cilium/charts/cilium
   targetRevision: 1.20.4

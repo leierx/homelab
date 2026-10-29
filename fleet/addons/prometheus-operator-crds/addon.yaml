@@ -1,7 +1,7 @@
 namespace: monitoring
 podSecurity: restricted
 helm:
-  repoURL: https://prometheus-community.github.io/helm-charts
+  repoURL: ghcr.io/prometheus-community/charts
   chart: prometheus-operator-crds
-  # renovate: datasource=helm depName=prometheus-operator-crds registryUrl=https://prometheus-community.github.io/helm-charts
+  # renovate: datasource=docker depName=ghcr.io/prometheus-community/charts/prometheus-operator-crds
   targetRevision: 32.0.2
