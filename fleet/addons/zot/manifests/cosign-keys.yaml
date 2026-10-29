@@ -1,0 +1,20 @@
+# Cosign public keys Zot's trust extension verifies signatures with, mounted read-only as its
+# _cosign directory (Zot rereads it every 2 h). Zot only checks key-based signatures with
+# SHA-256: keyless (Fulcio) signatures and cert-manager's RSA/SHA-512 ones show as untrusted.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zot-cosign-keys
+data:
+  # https://github.com/argoproj/argo-workflows/blob/main/cosign.pub (quay.io/argoproj/workflow-controller, argoexec, argocli)
+  argo-workflows.pub: |
+    -----BEGIN PUBLIC KEY-----
+    MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEERzfEiEeueBCbfyvB0G2X9HeNjnt
+    iXQ6s9dYGuMi+RgcW4mX+cXT2OoiAHCP21aX2W1KscKGNwpNpGi43hhp1A==
+    -----END PUBLIC KEY-----
+  # this repository's GitHub Actions sign the images they push to ghcr.io/leierx (secret COSIGN_PRIVATE_KEY)
+  leierx-homelab.pub: |
+    -----BEGIN PUBLIC KEY-----
+    MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAENUGbKCxNV6VFS7Ou4esV768gy/wu
+    z4LNg0vAb3QjvNnabQ+63gArBniwgUFLNdADy983nhFqw+1BzjIeb/pahQ==
+    -----END PUBLIC KEY-----

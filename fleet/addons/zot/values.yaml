@@ -21,3 +21,8 @@ resources: {requests: {cpu: 100m, memory: 512Mi}, limits: {memory: 4Gi}}
 metrics:
   enabled: true
   serviceMonitor: {enabled: true, interval: 60s, basicAuth: null}
+# the trust extension's key directory comes from git (manifests/cosign-keys.yaml), so the upload API can't change it
+extraVolumes:
+  - {name: cosign-keys, configMap: {name: zot-cosign-keys}}
+extraVolumeMounts:
+  - {name: cosign-keys, mountPath: /var/lib/registry/_cosign, readOnly: true}
