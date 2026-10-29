@@ -237,8 +237,9 @@ resource "keycloak_openid_client" "zot" {
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
 
-  valid_redirect_uris = ["https://registry.skinke.net/zot/auth/callback/oidc"]
-  web_origins         = ["https://registry.skinke.net"]
+  valid_redirect_uris             = ["https://registry.skinke.net/zot/auth/callback/oidc"]
+  valid_post_logout_redirect_uris = ["https://registry.skinke.net/login"]
+  web_origins                     = ["https://registry.skinke.net"]
 }
 
 

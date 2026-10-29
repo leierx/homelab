@@ -43,6 +43,20 @@ spec:
   hostnames:
     - registry.skinke.net
   rules:
+    - matches:
+        - path:
+            type: Exact
+            value: /
+        - path:
+            type: Exact
+            value: /login
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /zot/auth/login?provider=oidc&callback_ui=/home
+            statusCode: 302
     - backendRefs:
         - name: zot
           port: 5000
