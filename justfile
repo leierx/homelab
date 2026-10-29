@@ -7,8 +7,11 @@ kubeconfig:
     merged=$(mktemp ~/.kube/config.XXXXXX)
     ca=$(mktemp)
     trap 'rm -f "$new" "$merged" "$ca"' EXIT
-    ssh -o ClearAllForwardings=yes loft01 kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml config view --raw \
-      -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d > "$ca"
+    # loft01's kubectl wrapper goes through doas, which needs a tty for its password prompt
+    remote=$(ssh -o ClearAllForwardings=yes loft01 mktemp)
+    ssh -t -o ClearAllForwardings=yes loft01 "kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml config view --raw \
+      -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' > $remote"
+    ssh -o ClearAllForwardings=yes loft01 "cat $remote; rm -f $remote" | base64 -d > "$ca"
     export KUBECONFIG="$new"
     kubectl config set-cluster loft01 --server=https://127.0.0.1:6443 --certificate-authority="$ca" --embed-certs > /dev/null
     kubectl config set-credentials loft01 --exec-api-version=client.authentication.k8s.io/v1 \
