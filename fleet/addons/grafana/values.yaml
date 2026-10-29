@@ -946,3 +946,65 @@ alerting:
                       type: gt
                       params:
                         - 0
+        - uid: zot-gc-failed
+          title: Zot garbage collection failed
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: A Zot garbage collection or image retention run failed in the last 15 minutes.
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 900
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: sum(increase(zot_gc_runs_total{error="true"}[15m])) > 0 or sum(zot_gc_runs_total{error="true"} unless zot_gc_runs_total{error="true"} offset 15m)
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        - uid: zot-http-errors
+          title: Zot registry HTTP 5xx errors
+          condition: C
+          for: 5m
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: Zot returned HTTP 5xx responses (e.g. failed upstream proxy sync or storage error) for 5 minutes.
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: sum by (method, code) (increase(zot_http_requests_total{code=~"5.."}[10m])) > 0 or sum by (method, code) (zot_http_requests_total{code=~"5.."} unless zot_http_requests_total{code=~"5.."} offset 10m)
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0

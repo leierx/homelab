@@ -59,7 +59,7 @@ spec:
   matchResources:
     namespaceSelector:
       matchExpressions:
-        - { key: kubernetes.io/metadata.name, operator: NotIn, values: [alerta, envoy-gateway-system, immich, keycloak] }
+        - { key: kubernetes.io/metadata.name, operator: NotIn, values: [alerta, envoy-gateway-system, immich, keycloak, zot] }
 ---
 # Gateway/edge and Gateway/wg allow routes and listeners from All namespaces so each addon can bring its own;
 # restrict which namespaces may actually create HTTPRoute or ListenerSet objects.
@@ -86,7 +86,8 @@ spec:
           'immich',
           'keycloak',
           'miniflux',
-          'monitoring'
+          'monitoring',
+          'zot'
         ]
       message: >-
         only approved web-facing namespaces may attach HTTPRoute or ListenerSet

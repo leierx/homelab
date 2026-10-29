@@ -222,6 +222,25 @@ resource "keycloak_openid_client" "miniflux" {
   web_origins         = ["https://rss.skinke.net"]
 }
 
+resource "keycloak_openid_client" "zot" {
+  realm_id  = keycloak_realm.homelab.id
+  client_id = "zot"
+  name      = "zot"
+  enabled   = true
+  base_url  = "https://registry.skinke.net"
+
+  access_type                  = "CONFIDENTIAL"
+  client_secret_wo             = var.zot_client_secret
+  client_secret_wo_version     = "1"
+  standard_flow_enabled        = true
+  direct_access_grants_enabled = false
+  implicit_flow_enabled        = false
+  service_accounts_enabled     = false
+
+  valid_redirect_uris = ["https://registry.skinke.net/zot/auth/callback/oidc"]
+  web_origins         = ["https://registry.skinke.net"]
+}
+
 
 resource "keycloak_openid_client_default_scopes" "argocd" {
   realm_id       = keycloak_realm.homelab.id
@@ -274,6 +293,12 @@ resource "keycloak_openid_client_default_scopes" "argo_workflows" {
 resource "keycloak_openid_client_default_scopes" "miniflux" {
   realm_id       = keycloak_realm.homelab.id
   client_id      = keycloak_openid_client.miniflux.id
+  default_scopes = local.default_client_scopes
+}
+
+resource "keycloak_openid_client_default_scopes" "zot" {
+  realm_id       = keycloak_realm.homelab.id
+  client_id      = keycloak_openid_client.zot.id
   default_scopes = local.default_client_scopes
 }
 

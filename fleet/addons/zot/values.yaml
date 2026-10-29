@@ -1,0 +1,23 @@
+service: {type: ClusterIP}
+serviceAccount:
+  annotations: {automountServiceAccountToken: "false"}
+serviceHeadless: {enabled: true}
+persistence: true
+pvc: {create: false, name: registry}
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile: {type: RuntimeDefault}
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities: {drop: [ALL]}
+startupProbe: {failureThreshold: 30}
+externalSecrets:
+  - {secretName: zot-config, mountPath: /etc/zot}
+resources: {requests: {cpu: 100m, memory: 512Mi}, limits: {memory: 4Gi}}
+metrics:
+  enabled: true
+  serviceMonitor: {enabled: true, interval: 60s, basicAuth: null}

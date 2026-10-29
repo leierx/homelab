@@ -66,11 +66,12 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
     (`photos.skinke.net`), Miniflux (`rss.skinke.net`), and Grafana
     (`metrics.skinke.net`).
   - `wg` (WireGuard `10.0.0.1` only): Alerta (`alerta.skinke.net`), Argo CD
-    (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), and Keycloak
+    (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), Zot
+    (`registry.skinke.net`), and Keycloak
     admin console.
   - Both `edge` and `wg` attach `SecurityPolicy/oidc` and
     `ClientTrafficPolicy/default` at the `Gateway` level, so every HTTPS route
-    (other than Keycloak and Immich) is gated by Envoy's OIDC login (`/_envoy/callback`)
+    (other than Keycloak, Immich, Alerta, and Zot) is gated by Envoy's OIDC login (`/_envoy/callback`)
     and receives standard security headers automatically. New web apps only need
     their `Certificate`, `ListenerSet`, `HTTPRoute`, and `https://<host>/_envoy/callback`
     in `keycloak_openid_client.edge.valid_redirect_uris` (`tofu/keycloak/clients.tf`).

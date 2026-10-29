@@ -1,0 +1,15 @@
+namespace: zot
+podSecurity: restricted
+dependencies:
+  - cilium
+  - zfs-localpv
+  - external-secrets
+  - prometheus-operator-crds
+  - cert-manager
+  - envoy-gateway
+  - keycloak
+helm:
+  repoURL: http://zotregistry.dev/helm-charts
+  chart: zot
+  # renovate: datasource=helm depName=zot registryUrl=http://zotregistry.dev/helm-charts
+  targetRevision: 0.1.128
