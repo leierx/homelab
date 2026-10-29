@@ -1,4 +1,4 @@
-# the built-in admin, which the wg Gateway refuses (fleet/clusters/<cluster>/harbor/manifests/route.yaml)
+# Harbor's built-in admin (it has no option to turn it off); the password is in OpenBao
 provider "harbor" {
   url      = "http://harbor-core"
   username = "admin"

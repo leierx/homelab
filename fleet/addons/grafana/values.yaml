@@ -1079,38 +1079,6 @@ alerting:
                       type: gt
                       params:
                         - 0
-        # the wg Gateway answers these itself (fleet/clusters/loft01/harbor/manifests/route.yaml HTTPRoute/harbor-admin)
-        - uid: harbor-admin-refused
-          title: Harbor admin login attempt
-          condition: C
-          for: 0s
-          noDataState: OK
-          execErrState: Error
-          labels:
-            severity: warning
-          annotations:
-            summary: 'Something tried Harbor''s built-in admin (the local login form, or Basic auth as admin) through registry.skinke.net; the gateway refused it. Only the in-cluster reconcile uses that account; people log in with Keycloak.'
-          data:
-            - refId: A
-              datasourceUid: loki
-              relativeTimeRange:
-                from: 300
-                to: 0
-              model:
-                refId: A
-                queryType: instant
-                expr: 'sum by (x_forwarded_for) (count_over_time({namespace="envoy-gateway-system", container="envoy"} |= "harbor-admin" | json | route_name=~"httproute/harbor/harbor-admin/.*" [5m]))'
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                refId: C
-                type: threshold
-                expression: A
-                conditions:
-                  - evaluator:
-                      type: gt
-                      params:
-                        - 0
         # From Harbor's SCANNING_COMPLETED webhooks ({job="harbor-webhook"}): Harbor scans an image when it caches
         # it and rescans everything daily. Compared per repository, so a repository cached less than a day ago has
         # nothing to compare with.
