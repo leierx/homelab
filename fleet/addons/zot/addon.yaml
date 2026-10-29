@@ -9,7 +9,7 @@ dependencies:
   - envoy-gateway
   - keycloak
 helm:
-  repoURL: http://zotregistry.dev/helm-charts
+  repoURL: https://zotregistry.dev/helm-charts
   chart: zot
-  # renovate: datasource=helm depName=zot registryUrl=http://zotregistry.dev/helm-charts
+  # renovate: datasource=helm depName=zot registryUrl=https://zotregistry.dev/helm-charts
   targetRevision: 0.1.128
