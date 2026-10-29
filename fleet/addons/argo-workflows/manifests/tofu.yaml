@@ -1,0 +1,65 @@
+# shared OpenTofu runner; each caller supplies its own ServiceAccount, RBAC, NetworkPolicy and inputs
+apiVersion: argoproj.io/v1alpha1
+kind: ClusterWorkflowTemplate
+metadata:
+  name: tofu
+spec:
+  entrypoint: reconcile
+  arguments:
+    parameters:
+      - name: configMap
+      - name: secret
+      - name: waitUrl
+        value: ""
+  volumes:
+    - name: tofu
+      configMap:
+        name: "{{workflow.parameters.configMap}}"
+    - name: work
+      emptyDir: {}
+  templates:
+    - name: reconcile
+      inputs:
+        parameters:
+          - name: secret
+          - name: waitUrl
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 8737
+        seccompProfile:
+          type: RuntimeDefault
+      container:
+        image: ghcr.io/opentofu/opentofu:1.13.2
+        workingDir: /work
+        volumeMounts:
+          - { name: tofu, mountPath: /tofu, readOnly: true }
+          - { name: work, mountPath: /work }
+        command: [sh, -c]
+        args:
+          - |
+            set -eu
+            if [ -n "{{inputs.parameters.waitUrl}}" ]; then
+              tries=50
+              until wget -q -O /dev/null "{{inputs.parameters.waitUrl}}"; do
+                tries=$((tries - 1))
+                [ "$tries" -gt 0 ] || { echo "{{inputs.parameters.waitUrl}} did not answer"; exit 1; }
+                sleep 10
+              done
+            fi
+            # tofu init writes .terraform/ next to the root, so it runs on a copy
+            cp /tofu/*.tf /tofu/.terraform.lock.hcl .
+            tofu init -input=false
+            tofu plan -out=plan
+            tofu apply plan
+        env:
+          - { name: HOME, value: /tmp }
+        envFrom:
+          - secretRef:
+              name: "{{inputs.parameters.secret}}"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests: { cpu: 50m, memory: 256Mi }
+          limits: { memory: 1Gi }

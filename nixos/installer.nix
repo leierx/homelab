@@ -21,8 +21,8 @@ in
     toplevel
     destroyFormatMount
   ];
-  # the age key is deliberately not on this iso: it lives on a separate medium
-  # labelled NIXOS-AGE-KEY, so a lost stick costs the stick and nothing else
+  # secrets.yaml is deliberately not on this iso: it lives on a separate medium
+  # labelled NIXOS-SECRETS, so a lost stick costs the stick and nothing else
 
   nix.channel.enable = false;
   nix.settings.substituters = lib.mkForce [ ];
@@ -61,9 +61,9 @@ in
     script = ''
       set -euo pipefail
 
-      # before wiping anything: a missing key medium used to be a lost install
-      key_medium=$(blkid -L NIXOS-AGE-KEY) || {
-        echo "no filesystem labelled NIXOS-AGE-KEY: plug it in and reboot" >&2
+      # before wiping anything: a missing secrets medium used to be a lost install
+      secrets_medium=$(blkid -L NIXOS-SECRETS) || {
+        echo "no filesystem labelled NIXOS-SECRETS: plug it in and reboot" >&2
         exit 1
       }
 
@@ -75,11 +75,10 @@ in
       echo
       # the countdown above is the confirmation
       ${lib.getExe destroyFormatMount} --yes-wipe-all-disks
-      mkdir -p /run/age-key
-      mount -o ro "$key_medium" /run/age-key
-      install -d -m 0700 /mnt/var/lib/sops-nix
-      install -m 0600 /run/age-key/age-key.txt /mnt/var/lib/sops-nix/key.txt
-      umount /run/age-key
+      mkdir -p /run/secrets-medium
+      mount -o ro "$secrets_medium" /run/secrets-medium
+      install -D -m 0400 /run/secrets-medium/secrets.yaml /mnt/var/lib/secrets.yaml
+      umount /run/secrets-medium
       ${lib.getExe pkgs.nixos-install} --root /mnt --no-root-passwd --no-channel-copy --system ${toplevel}
       umount -R /mnt
       zpool export -a
