@@ -16,6 +16,8 @@ spec:
             k8s:io.kubernetes.pod.namespace: telemetry
             app.kubernetes.io/name: alloy
             app.kubernetes.io/instance: alloy-metrics
+        - matchLabels:
+            app.kubernetes.io/name: image-audit-exporter
       toPorts:
         - ports: [{ port: "5000", protocol: TCP }]
   egress:

@@ -1,0 +1,120 @@
+# packages/image-audit-exporter: Zot's CVE scan and signature verdict for every running image, as metrics
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: image-audit-exporter
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: image-audit-exporter
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: image-audit-exporter
+subjects:
+  - kind: ServiceAccount
+    name: image-audit-exporter
+    namespace: zot
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: image-audit-exporter
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-audit-exporter
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: image-audit-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: image-audit-exporter
+    spec:
+      serviceAccountName: image-audit-exporter
+      containers:
+        - name: image-audit-exporter
+          image: ghcr.io/leierx/image-audit-exporter:0.1.2
+          args:
+            - --zot-url=http://zot.zot.svc.cluster.local:5000
+            # Zot's sync destinations (fleet/clusters/<cluster>/zot/manifests/secrets.yaml)
+            - --registries=docker.io,ghcr.io,quay.io,registry.k8s.io,ecr-public.aws.com
+            - --interval=1h
+          ports:
+            - name: metrics
+              containerPort: 8080
+          livenessProbe:
+            httpGet: {path: /healthz, port: metrics}
+          readinessProbe:
+            httpGet: {path: /healthz, port: metrics}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 128Mi}
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+            seccompProfile: {type: RuntimeDefault}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: image-audit-exporter
+  labels:
+    app.kubernetes.io/name: image-audit-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: image-audit-exporter
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: image-audit-exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: image-audit-exporter
+  endpoints:
+    - port: metrics
+      interval: 60s
+      # the metrics' namespace label is the namespace running the image, not the exporter's
+      honorLabels: true
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: image-audit-exporter
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: image-audit-exporter
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports: [{port: "8080", protocol: TCP}]
+  egress:
+    - toEntities: [kube-apiserver]
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: zot
+      toPorts:
+        - ports: [{port: "5000", protocol: TCP}]
