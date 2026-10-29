@@ -38,14 +38,21 @@
         let
           pkgs = nixpkgs.legacyPackages.x86_64-linux;
           capi-argo-bridge = pkgs.callPackage ./packages/capi-argo-bridge { };
+          image-audit-exporter = pkgs.callPackage ./packages/image-audit-exporter { };
         in
         {
-          inherit capi-argo-bridge;
+          inherit capi-argo-bridge image-audit-exporter;
           capi-argo-bridge-image = capi-argo-bridge.image;
+          image-audit-exporter-image = image-audit-exporter.image;
         };
 
       checks.x86_64-linux = {
-        inherit (self.packages.x86_64-linux) capi-argo-bridge capi-argo-bridge-image;
+        inherit (self.packages.x86_64-linux)
+          capi-argo-bridge
+          capi-argo-bridge-image
+          image-audit-exporter
+          image-audit-exporter-image
+          ;
       };
 
       formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-tree;
