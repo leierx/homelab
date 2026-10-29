@@ -10,6 +10,8 @@ containerSecurityContext:
 core:
   cluster-api:
     createNamespace: false
+    # ClusterClass (fleet/clusters/loft01/capi-argo-bridge/manifests/clusterclass-kubevirt.yaml)
+    manager: {featureGates: {ClusterTopology: true}}
     # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-api
     version: v1.14.3
     deployment:
@@ -17,6 +19,7 @@ core:
 bootstrap:
   kubeadm:
     createNamespace: false
+    manager: {featureGates: {ClusterTopology: true}}
     # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-api
     version: v1.14.3
     deployment:
@@ -24,6 +27,7 @@ bootstrap:
 controlPlane:
   kubeadm:
     createNamespace: false
+    manager: {featureGates: {ClusterTopology: true}}
     # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-api
     version: v1.14.3
     deployment:
