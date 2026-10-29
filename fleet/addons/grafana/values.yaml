@@ -946,6 +946,78 @@ alerting:
                       type: gt
                       params:
                         - 0
+  # Zot (fleet/addons/zot) and what goes through it: node image pulls, Argo CD's Helm charts, and
+  # packages/image-audit-exporter's view of every running image.
+  registry.yaml:
+    apiVersion: 1
+    groups:
+    - orgId: 1
+      name: registry
+      folder: homelab
+      interval: 1m
+      rules:
+        - uid: zot-down
+          title: Zot down
+          condition: C
+          for: 5m
+          noDataState: Alerting
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Zot is down or not scraped: nodes pull from the upstream registries directly, and Argo CD can''t render any Application whose chart comes through Zot (docs/README.md, Break-Glass).'
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: max(up{namespace="zot", job="zot"})
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: lt
+                      params:
+                        - 1
+        - uid: zot-errors
+          title: Zot logged an error
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Zot logged an error, e.g. a config reload it rejected (the old config stays in force), an upstream sync or a CVE database download that failed.'
+          data:
+            - refId: A
+              datasourceUid: loki
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                queryType: instant
+                expr: 'sum by (message) (count_over_time({namespace="zot", container="zot"} | json | level="error" | message!="failed to retrieve manifest and config" | error!="http: Server closed" [10m]))'
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
         - uid: zot-gc-failed
           title: Zot garbage collection failed
           condition: C
@@ -997,6 +1069,130 @@ alerting:
                 refId: A
                 instant: true
                 expr: sum by (method, code) (increase(zot_http_requests_total{code=~"5.."}[10m])) > 0 or sum by (method, code) (zot_http_requests_total{code=~"5.."} unless zot_http_requests_total{code=~"5.."} offset 10m)
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        - uid: argocd-app-render-failing
+          title: Argo CD can't render an application
+          condition: C
+          for: 15m
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Argo CD has failed to generate an application''s manifests for 15 minutes, so git changes don''t reach it: a chart Zot or the upstream doesn''t serve, or a broken values file or manifest. The application''s conditions say which.'
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: max by (name) (argocd_app_info{sync_status="Unknown"})
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        - uid: image-audit-stale
+          title: Image audit not running
+          condition: C
+          for: 1h
+          noDataState: Alerting
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: 'image-audit-exporter (namespace zot) has not finished a run in 2 hours, so the vulnerability and signature alerts below are stale.'
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: time() - max(image_audit_last_run_timestamp_seconds)
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 7200
+        - uid: image-not-cached
+          title: Running image missing from Zot
+          condition: C
+          for: 2h
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Zot doesn''t hold an image the cluster runs, so pulling it again (a new node, an evicted image) needs the upstream. image-audit-exporter''s log says why (an unknown tag, a registry outage, a platform the index lacks).'
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: max by (namespace, image) (image_audit_cached == 0) + 1
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        - uid: image-unmirrored
+          title: Running image from an unmirrored registry
+          condition: C
+          for: 1h
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: informational
+          annotations:
+            summary: 'A running image comes from a registry Zot doesn''t proxy: add it to Zot''s sync registries and to the node mirrors in nixos/k3s.nix.'
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: max by (namespace, image) (image_audit_mirrored == 0) + 1
             - refId: C
               datasourceUid: __expr__
               model:
