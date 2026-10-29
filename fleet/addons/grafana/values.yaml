@@ -1204,3 +1204,69 @@ alerting:
                       type: gt
                       params:
                         - 0
+        # Compared per repository, so upgrading to a tag with as many criticals doesn't fire, and a repository
+        # deployed less than a day ago has nothing to compare with. $$ keeps Grafana from expanding $1 as an env var.
+        - uid: image-critical-vulnerabilities-increased
+          title: Critical vulnerabilities in a running image increased
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Zot''s Trivy scan finds more critical CVEs in an image running in this namespace than a day ago: a newly published CVE, or an update that brought one in. Zot''s UI (registry.skinke.net) lists them; update the image or its base. The alert clears a day later.'
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: 'max by (namespace, repository) (label_replace(image_audit_vulnerabilities{severity="critical"}, "repository", "$$1", "image", "([^:@]+).*")) > max by (namespace, repository) (label_replace(image_audit_vulnerabilities{severity="critical"} offset 1d, "repository", "$$1", "image", "([^:@]+).*"))'
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        # images whose publisher signs them with a key in fleet/addons/zot/manifests/cosign-keys.yaml; Zot rechecks
+        # signatures every 2 hours, hence the 3 h
+        - uid: image-signature-untrusted
+          title: Image that should be signed runs without a trusted signature
+          condition: C
+          for: 3h
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: 'A first-party (ghcr.io/leierx) or Argo Workflows image runs without a signature that verifies with the key Zot trusts for it: a build CI didn''t sign, a rotated key, or an image that isn''t what its publisher built.'
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: 'max by (namespace, image) (image_audit_signature_trusted{image=~"ghcr\\.io/leierx/.+|quay\\.io/argoproj/(workflow-controller|argoexec|argocli)[:@].+"} == 0) + 1'
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
