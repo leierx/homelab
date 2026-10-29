@@ -171,8 +171,8 @@ in
       "--disable=traefik,servicelb,local-storage,metrics-server"
       "--disable-cloud-controller"
       "--cluster-cidr=10.42.0.0/16"
-      # point CoreDNS at the host's systemd-resolved stub instead of /run/systemd/resolve/resolv.conf (plaintext 9.9.9.9)
-      "--resolv-conf=${pkgs.writeText "k3s-resolv.conf" "nameserver 192.168.2.50\n"}"
+      # keep /etc/resolv.conf on 127.0.0.53 (forwarded by coredns-custom upstream.server) instead of /run/systemd/resolve/resolv.conf
+      "--resolv-conf=${pkgs.writeText "k3s-resolv.conf" "nameserver 127.0.0.53\n"}"
       "--secrets-encryption"
       "--kubelet-arg=system-reserved=cpu=2,memory=16Gi"
       "--kubelet-arg=kube-reserved=cpu=2,memory=16Gi"

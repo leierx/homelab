@@ -41,10 +41,10 @@
       FallbackDNS = "";
       LLMNR = "false";
       MulticastDNS = "false";
-      # 10.0.0.1 serves WireGuard peers; 192.168.2.50 serves CoreDNS so pod lookups use DoT + DNSSEC
+      # 10.0.0.1 serves WireGuard peers; tcp:192.168.2.50 serves CoreDNS so pod lookups use DoT + DNSSEC
       DNSStubListenerExtra = [
         "10.0.0.1"
-        "192.168.2.50"
+        "tcp:192.168.2.50"
       ];
     };
   };

@@ -1,5 +1,6 @@
-# Keep skinke.net traffic in-cluster: OIDC clients and cert-manager HTTP-01
-# self-checks resolve to the edge Envoy Service on the first search-domain try.
+# Keep skinke.net traffic in-cluster (OIDC clients and cert-manager HTTP-01
+# self-checks resolve to the edge Envoy Service on the first search-domain try)
+# and forward upstream queries over TCP to the host's systemd-resolved stub.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -7,7 +8,12 @@ metadata:
   namespace: kube-system
 data:
   oidc.override: |
+    bind eth0
     rewrite name regex \.skinke\.net(\..*\.cluster\.local)?\.$ edge.envoy-gateway-system.svc.cluster.local. answer auto
-  # k3s's Corefile also imports /etc/coredns/custom/*.server; an empty key
-  # silences CoreDNS's 30 s reload warning about an unmatched import glob
-  empty.server: ""
+  upstream.server: |
+    .:53 {
+      bind 127.0.0.53
+      forward . 192.168.2.50:53 {
+        force_tcp
+      }
+    }
