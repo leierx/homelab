@@ -4,7 +4,6 @@ metadata:
   name: registry
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
-    argocd.argoproj.io/sync-wave: "-1"
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: zfs
