@@ -45,7 +45,7 @@ variable "miniflux_client_secret" {
   sensitive = true
 }
 
-variable "zot_client_secret" {
+variable "harbor_client_secret" {
   type      = string
   sensitive = true
 }

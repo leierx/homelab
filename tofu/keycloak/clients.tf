@@ -222,23 +222,23 @@ resource "keycloak_openid_client" "miniflux" {
   web_origins         = ["https://rss.skinke.net"]
 }
 
-resource "keycloak_openid_client" "zot" {
+resource "keycloak_openid_client" "harbor" {
   realm_id  = keycloak_realm.homelab.id
-  client_id = "zot"
-  name      = "zot"
+  client_id = "harbor"
+  name      = "harbor"
   enabled   = true
   base_url  = "https://registry.skinke.net"
 
   access_type                  = "CONFIDENTIAL"
-  client_secret_wo             = var.zot_client_secret
+  client_secret_wo             = var.harbor_client_secret
   client_secret_wo_version     = "1"
   standard_flow_enabled        = true
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
 
-  valid_redirect_uris             = ["https://registry.skinke.net/zot/auth/callback/oidc"]
-  valid_post_logout_redirect_uris = ["https://registry.skinke.net/login"]
+  valid_redirect_uris             = ["https://registry.skinke.net/c/oidc/callback"]
+  valid_post_logout_redirect_uris = ["https://registry.skinke.net/*"]
   web_origins                     = ["https://registry.skinke.net"]
 }
 
@@ -297,9 +297,9 @@ resource "keycloak_openid_client_default_scopes" "miniflux" {
   default_scopes = local.default_client_scopes
 }
 
-resource "keycloak_openid_client_default_scopes" "zot" {
+resource "keycloak_openid_client_default_scopes" "harbor" {
   realm_id       = keycloak_realm.homelab.id
-  client_id      = keycloak_openid_client.zot.id
+  client_id      = keycloak_openid_client.harbor.id
   default_scopes = local.default_client_scopes
 }
 

@@ -1,4 +1,4 @@
-# Helm charts come through Zot (fleet.io/oci-mirror), which only the wg Gateway serves;
+# Helm charts come through Harbor (fleet.io/oci-mirror), which only the wg Gateway serves;
 # CoreDNS answers registry.skinke.net with the wg Envoy Service
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy

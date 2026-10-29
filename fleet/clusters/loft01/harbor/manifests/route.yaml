@@ -1,0 +1,104 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: harbor
+spec:
+  secretName: harbor-tls
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  dnsNames:
+    - registry.skinke.net
+---
+# the chart's HTTPRoute (expose.type route) attaches here
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: harbor-wg
+spec:
+  parentRef:
+    name: wg
+    namespace: envoy-gateway-system
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: registry.skinke.net
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: harbor-tls
+---
+# containerd and OCI clients cannot complete Envoy's browser OIDC redirect; Harbor's own OIDC login and project permissions guard it
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: harbor-wg
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: harbor-wg
+  authorization:
+    defaultAction: Allow
+---
+# large layer pulls through the proxy cache can exceed the gateway-wide 300 s cap
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: harbor-route
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: harbor-route
+  timeout:
+    http:
+      requestTimeout: 0s
+---
+# Harbor's built-in admin can't be disabled, and the in-cluster reconcile (fleet/addons/harbor/manifests/tofu.yaml)
+# needs it: from outside, refuse the local login form and Basic auth as admin (base64 "admin:" = YWRtaW46).
+# Each rule repeats the chart route's prefixes so it outranks them; people log in through Keycloak.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: harbor-admin
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: harbor-wg
+  hostnames:
+    - registry.skinke.net
+  rules:
+    - matches:
+        - path: {type: PathPrefix, value: /c/login}
+        - path: {type: PathPrefix, value: /api/}
+          headers: [{type: RegularExpression, name: Authorization, value: "(?i)basic\\s+YWRtaW46.*"}]
+        - path: {type: PathPrefix, value: /service/}
+          headers: [{type: RegularExpression, name: Authorization, value: "(?i)basic\\s+YWRtaW46.*"}]
+        - path: {type: PathPrefix, value: /v2/}
+          headers: [{type: RegularExpression, name: Authorization, value: "(?i)basic\\s+YWRtaW46.*"}]
+        - path: {type: PathPrefix, value: /c/}
+          headers: [{type: RegularExpression, name: Authorization, value: "(?i)basic\\s+YWRtaW46.*"}]
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: gateway.envoyproxy.io
+            kind: HTTPRouteFilter
+            name: harbor-admin
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: HTTPRouteFilter
+metadata:
+  name: harbor-admin
+spec:
+  directResponse:
+    statusCode: 403
+    contentType: text/plain
+    body:
+      type: Inline
+      inline: "Harbor's admin account is only usable inside the cluster; log in with Keycloak\n"

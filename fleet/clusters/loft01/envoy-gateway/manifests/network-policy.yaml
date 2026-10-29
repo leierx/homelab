@@ -23,6 +23,10 @@ spec:
         - matchLabels:
             app.kubernetes.io/name: envoy
         - matchLabels:
+            k8s:io.kubernetes.pod.namespace: harbor
+            app: harbor
+            component: core
+        - matchLabels:
             k8s:io.kubernetes.pod.namespace: immich
             app.kubernetes.io/name: server
         - matchLabels:
@@ -31,9 +35,6 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
             app.kubernetes.io/name: grafana
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: zot
-            app.kubernetes.io/name: zot
       toPorts:
         - ports: [{ port: "10443", protocol: TCP }]
     # cert-manager HTTP-01 self-check for auth.skinke.net
@@ -149,8 +150,9 @@ spec:
       toPorts:
         - ports: [{ port: "8080", protocol: TCP }]
     - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: zot
-            app.kubernetes.io/name: zot
+        - matchExpressions:
+            - { key: k8s:io.kubernetes.pod.namespace, operator: In, values: [harbor] }
+            - { key: app, operator: In, values: [harbor] }
+            - { key: component, operator: In, values: [core, portal] }
       toPorts:
-        - ports: [{ port: "5000", protocol: TCP }]
+        - ports: [{ port: "8080", protocol: TCP }]

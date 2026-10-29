@@ -1,0 +1,9 @@
+externalURL: https://registry.skinke.net
+expose:
+  route:
+    parentRefs:
+      - {group: gateway.networking.k8s.io, kind: ListenerSet, name: harbor-wg}
+    hosts: [registry.skinke.net]
+persistence:
+  persistentVolumeClaim:
+    registry: {size: 100Gi}

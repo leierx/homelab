@@ -42,7 +42,6 @@ jobs:
             "docker-archive:${{ steps.build.outputs.image }}" \
             "docker://ghcr.io/${GITHUB_REPOSITORY_OWNER}/capi-argo-bridge:0.1.${GITHUB_RUN_NUMBER}"
 
-      # Zot's trust extension verifies it with fleet/addons/zot/manifests/cosign-keys.yaml
       - if: github.ref == 'refs/heads/main'
         name: Sign container image
         env:

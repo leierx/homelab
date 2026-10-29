@@ -1,0 +1,53 @@
+# TLS ends at the Gateway; the cluster's values point expose.route at its ListenerSet
+expose:
+  type: route
+  tls: {enabled: false}
+persistence:
+  persistentVolumeClaim:
+    registry:
+      annotations: {argocd.argoproj.io/sync-options: "Delete=false,Prune=false"}
+# Argo CD renders without cluster access, so every secret the chart would generate (randAlphaNum, genCA,
+# htpasswd) comes from manifests/secrets.yaml instead, or it would change on every sync
+existingSecretAdminPassword: harbor
+existingSecretSecretKey: harbor
+core:
+  existingSecret: harbor
+  existingXsrfSecret: harbor
+  secretName: harbor-token
+  resources: {requests: {cpu: 50m, memory: 128Mi}, limits: {memory: 1Gi}}
+jobservice:
+  existingSecret: harbor
+  # scan, GC and retention job logs go to Loki with the rest; the UI reads them from the database
+  jobLoggers: [database, stdout]
+  resources: {requests: {cpu: 50m, memory: 128Mi}, limits: {memory: 512Mi}}
+registry:
+  existingSecret: harbor
+  credentials: {existingSecret: harbor-registry-credentials}
+  registry:
+    resources: {requests: {cpu: 50m, memory: 128Mi}, limits: {memory: 1Gi}}
+  controller:
+    resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 256Mi}}
+portal:
+  resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 128Mi}}
+trivy:
+  resources: {requests: {cpu: 200m, memory: 512Mi}, limits: {cpu: null, memory: 2Gi}}
+database:
+  type: external
+  external:
+    # CloudNativePG (manifests/database.yaml)
+    host: harbor-db-rw
+    username: harbor
+    coreDatabase: harbor
+    existingSecret: harbor-db-app
+    sslmode: require
+  # per pod (core, exporter), inside the server's default max_connections of 100
+  maxOpenConns: 40
+  maxIdleConns: 10
+redis:
+  internal:
+    resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 256Mi}}
+exporter:
+  resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 256Mi}}
+metrics:
+  enabled: true
+  serviceMonitor: {enabled: true}

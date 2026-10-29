@@ -160,7 +160,7 @@ let
     ];
   };
 
-  # pull every image through Zot's on-demand proxy cache on the wg Gateway, falling back to upstream when Zot is starting
+  # pull every image through Harbor's proxy cache projects on the wg Gateway, falling back to upstream when Harbor is down
   registries = yaml.generate "k3s-registries.yaml" {
     mirrors = {
       "docker.io".endpoint = [ "https://registry.skinke.net/v2/docker.io" ];

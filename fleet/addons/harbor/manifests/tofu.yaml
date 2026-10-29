@@ -1,0 +1,71 @@
+# configures Harbor from tofu/harbor (the harbor-tofu ConfigMap) on sync
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: harbor-config-
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  workflowTemplateRef:
+    name: tofu
+    clusterScope: true
+  serviceAccountName: harbor-tofu
+  podMetadata:
+    labels:
+      app.kubernetes.io/name: harbor-tofu
+  arguments:
+    parameters:
+      - name: configMap
+        value: harbor-tofu
+      - name: secret
+        value: harbor-tofu
+      - name: waitUrl
+        value: http://harbor-core/api/v2.0/ping
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: harbor-tofu
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: harbor-tofu
+rules:
+  # the kubernetes backend: Secret tfstate-default-harbor, Lease lock-tfstate-default-harbor
+  # list cannot be narrowed with resourceNames, and the backend needs it to find
+  # existing workspaces ("Failed to get existing workspaces: secrets is forbidden")
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [list]
+  - apiGroups: [""]
+    resources: [secrets]
+    resourceNames: [tfstate-default-harbor]
+    verbs: [get, update, patch, delete]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [create]
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    resourceNames: [lock-tfstate-default-harbor]
+    verbs: [get, update, patch, delete]
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [create]
+  # Argo's executor reports each template's result here
+  - apiGroups: [argoproj.io]
+    resources: [workflowtaskresults]
+    verbs: [create, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: harbor-tofu
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: harbor-tofu
+subjects:
+  - kind: ServiceAccount
+    name: harbor-tofu

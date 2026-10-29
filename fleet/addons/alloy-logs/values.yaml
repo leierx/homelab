@@ -2,6 +2,8 @@ alloy:
   configMap: {create: false, name: alloy-logs}
   mounts: {varlog: true}
   envFrom: [{configMapRef: {name: alloy-logs-env}}]
+  # loki.source.api "harbor" (manifests/config.yaml)
+  extraPorts: [{name: harbor-webhook, port: 3500, targetPort: 3500, protocol: TCP}]
   securityContext:
     allowPrivilegeEscalation: false
     capabilities: {drop: [ALL]}

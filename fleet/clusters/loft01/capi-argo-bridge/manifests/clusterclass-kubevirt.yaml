@@ -1,5 +1,5 @@
 # ClusterClass for future workload clusters: kubeadm nodes as KubeVirt VMs on loft01, whose
-# containerd pulls every image through Zot like loft01's own (nixos/k3s.nix), falling back to
+# containerd pulls every image through Harbor like loft01's own (nixos/k3s.nix), falling back to
 # the upstream when registry.skinke.net doesn't answer. The VMs resolve it through cluster DNS
 # (CoreDNS answers with the wg Gateway), and network-policy below lets them reach it.
 #
@@ -241,7 +241,7 @@ spec:
               capabilities = ["pull", "resolve"]
               override_path = true
 ---
-# the VMs' virt-launcher pods pull through Zot on the wg Gateway (the rest of a workload
+# the VMs' virt-launcher pods pull through Harbor on the wg Gateway (the rest of a workload
 # cluster's traffic still needs its own policy before the first cluster is created)
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy

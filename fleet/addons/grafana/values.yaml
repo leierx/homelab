@@ -946,8 +946,7 @@ alerting:
                       type: gt
                       params:
                         - 0
-  # Zot (fleet/addons/zot) and what goes through it: node image pulls, Argo CD's Helm charts, and
-  # packages/image-audit-exporter's view of every running image.
+  # Harbor (fleet/addons/harbor) and what goes through it: node image pulls and Argo CD's Helm charts.
   registry.yaml:
     apiVersion: 1
     groups:
@@ -956,16 +955,16 @@ alerting:
       folder: homelab
       interval: 1m
       rules:
-        - uid: zot-down
-          title: Zot down
+        - uid: harbor-down
+          title: Harbor down
           condition: C
           for: 5m
           noDataState: Alerting
           execErrState: Error
           labels:
-            severity: warning
+            severity: critical
           annotations:
-            summary: 'Zot is down or not scraped: nodes pull from the upstream registries directly, and Argo CD can''t render any Application whose chart comes through Zot (docs/README.md, Break-Glass).'
+            summary: 'A Harbor component is down, or its exporter isn''t scraped: nodes can''t pull images they don''t already have, and Argo CD can''t render any Application whose chart comes through Harbor (docs/README.md, Break-Glass).'
           data:
             - refId: A
               datasourceUid: mimir
@@ -975,7 +974,7 @@ alerting:
               model:
                 refId: A
                 instant: true
-                expr: max(up{namespace="zot", job="zot"})
+                expr: min(harbor_up{namespace="harbor"})
             - refId: C
               datasourceUid: __expr__
               model:
@@ -987,70 +986,8 @@ alerting:
                       type: lt
                       params:
                         - 1
-        - uid: zot-errors
-          title: Zot logged an error
-          condition: C
-          for: 0s
-          noDataState: OK
-          execErrState: Error
-          labels:
-            severity: warning
-          annotations:
-            summary: 'Zot logged an error, e.g. a config reload it rejected (the old config stays in force), an upstream sync or a CVE database download that failed. Upstream signature (referrer) sync failures are left out: upstreams list signatures they then 404.'
-          data:
-            - refId: A
-              datasourceUid: loki
-              relativeTimeRange:
-                from: 600
-                to: 0
-              model:
-                refId: A
-                queryType: instant
-                expr: 'sum by (message) (count_over_time({namespace="zot", container="zot"} | json | level="error" | message!~"failed to retrieve manifest and config|failed to sync (image )?referrers?" | error!="http: Server closed" | error!~`(?s).*sha256-[0-9a-f]{64}\.(sig|att|sbom).*` [10m]))'
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                refId: C
-                type: threshold
-                expression: A
-                conditions:
-                  - evaluator:
-                      type: gt
-                      params:
-                        - 0
-        - uid: zot-gc-failed
-          title: Zot garbage collection failed
-          condition: C
-          for: 0s
-          noDataState: OK
-          execErrState: Error
-          labels:
-            severity: warning
-          annotations:
-            summary: A Zot garbage collection or image retention run failed in the last 15 minutes.
-          data:
-            - refId: A
-              datasourceUid: mimir
-              relativeTimeRange:
-                from: 900
-                to: 0
-              model:
-                refId: A
-                instant: true
-                expr: sum(increase(zot_gc_runs_total{error="true"}[15m])) > 0 or sum(zot_gc_runs_total{error="true"} unless zot_gc_runs_total{error="true"} offset 15m)
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                refId: C
-                type: threshold
-                expression: A
-                conditions:
-                  - evaluator:
-                      type: gt
-                      params:
-                        - 0
-        - uid: zot-http-errors
-          title: Zot registry HTTP 5xx errors
+        - uid: harbor-http-errors
+          title: Harbor HTTP 5xx errors
           condition: C
           for: 5m
           noDataState: OK
@@ -1058,7 +995,7 @@ alerting:
           labels:
             severity: warning
           annotations:
-            summary: Zot returned HTTP 5xx responses (e.g. failed upstream proxy sync or storage error) for 5 minutes.
+            summary: Harbor returned HTTP 5xx responses (e.g. an upstream it proxies failing, or a storage error) for 5 minutes.
           data:
             - refId: A
               datasourceUid: mimir
@@ -1068,7 +1005,7 @@ alerting:
               model:
                 refId: A
                 instant: true
-                expr: sum by (method, code) (increase(zot_http_requests_total{code=~"5.."}[10m])) > 0 or sum by (method, code) (zot_http_requests_total{code=~"5.."} unless zot_http_requests_total{code=~"5.."} offset 10m)
+                expr: sum by (method, code) (increase(harbor_core_http_request_total{code=~"5.."}[10m])) > 0 or sum by (method, code) (harbor_core_http_request_total{code=~"5.."} unless harbor_core_http_request_total{code=~"5.."} offset 10m)
             - refId: C
               datasourceUid: __expr__
               model:
@@ -1089,7 +1026,7 @@ alerting:
           labels:
             severity: warning
           annotations:
-            summary: 'Argo CD has failed to generate an application''s manifests for 15 minutes, so git changes don''t reach it: a chart Zot or the upstream doesn''t serve, or a broken values file or manifest. The application''s conditions say which.'
+            summary: 'Argo CD has failed to generate an application''s manifests for 15 minutes, so git changes don''t reach it: a chart Harbor or the upstream doesn''t serve, or a broken values file or manifest. The application''s conditions say which.'
           data:
             - refId: A
               datasourceUid: mimir
@@ -1100,165 +1037,6 @@ alerting:
                 refId: A
                 instant: true
                 expr: max by (name) (argocd_app_info{sync_status="Unknown"})
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                refId: C
-                type: threshold
-                expression: A
-                conditions:
-                  - evaluator:
-                      type: gt
-                      params:
-                        - 0
-        - uid: image-audit-stale
-          title: Image audit not running
-          condition: C
-          for: 1h
-          noDataState: Alerting
-          execErrState: Error
-          labels:
-            severity: warning
-          annotations:
-            summary: 'image-audit-exporter (namespace zot) has not finished a run in 2 hours, so the vulnerability and signature alerts below are stale.'
-          data:
-            - refId: A
-              datasourceUid: mimir
-              relativeTimeRange:
-                from: 600
-                to: 0
-              model:
-                refId: A
-                instant: true
-                expr: time() - max(image_audit_last_run_timestamp_seconds)
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                refId: C
-                type: threshold
-                expression: A
-                conditions:
-                  - evaluator:
-                      type: gt
-                      params:
-                        - 7200
-        - uid: image-not-cached
-          title: Running image missing from Zot
-          condition: C
-          for: 2h
-          noDataState: OK
-          execErrState: Error
-          labels:
-            severity: warning
-          annotations:
-            summary: 'Zot doesn''t hold an image the cluster runs, so pulling it again (a new node, an evicted image) needs the upstream. image-audit-exporter''s log says why (an unknown tag, a registry outage, a platform the index lacks).'
-          data:
-            - refId: A
-              datasourceUid: mimir
-              relativeTimeRange:
-                from: 600
-                to: 0
-              model:
-                refId: A
-                instant: true
-                expr: max by (namespace, image) (image_audit_cached == 0) + 1
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                refId: C
-                type: threshold
-                expression: A
-                conditions:
-                  - evaluator:
-                      type: gt
-                      params:
-                        - 0
-        - uid: image-unmirrored
-          title: Running image from an unmirrored registry
-          condition: C
-          for: 1h
-          noDataState: OK
-          execErrState: Error
-          labels:
-            severity: informational
-          annotations:
-            summary: 'A running image comes from a registry Zot doesn''t proxy: add it to Zot''s sync registries and to the node mirrors in nixos/k3s.nix.'
-          data:
-            - refId: A
-              datasourceUid: mimir
-              relativeTimeRange:
-                from: 600
-                to: 0
-              model:
-                refId: A
-                instant: true
-                expr: max by (namespace, image) (image_audit_mirrored == 0) + 1
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                refId: C
-                type: threshold
-                expression: A
-                conditions:
-                  - evaluator:
-                      type: gt
-                      params:
-                        - 0
-        # Compared per repository, so upgrading to a tag with as many criticals doesn't fire, and a repository
-        # deployed less than a day ago has nothing to compare with. $$ keeps Grafana from expanding $1 as an env var.
-        - uid: image-critical-vulnerabilities-increased
-          title: Critical vulnerabilities in a running image increased
-          condition: C
-          for: 0s
-          noDataState: OK
-          execErrState: Error
-          labels:
-            severity: warning
-          annotations:
-            summary: 'Zot''s Trivy scan finds more critical CVEs in an image running in this namespace than a day ago: a newly published CVE, or an update that brought one in. Zot''s UI (registry.skinke.net) lists them; update the image or its base. The alert clears a day later.'
-          data:
-            - refId: A
-              datasourceUid: mimir
-              relativeTimeRange:
-                from: 600
-                to: 0
-              model:
-                refId: A
-                instant: true
-                expr: 'max by (namespace, repository) (label_replace(image_audit_vulnerabilities{severity="critical"}, "repository", "$$1", "image", "([^:@]+).*")) > max by (namespace, repository) (label_replace(image_audit_vulnerabilities{severity="critical"} offset 1d, "repository", "$$1", "image", "([^:@]+).*"))'
-            - refId: C
-              datasourceUid: __expr__
-              model:
-                refId: C
-                type: threshold
-                expression: A
-                conditions:
-                  - evaluator:
-                      type: gt
-                      params:
-                        - 0
-        # images whose publisher signs them with a key in fleet/addons/zot/manifests/cosign-keys.yaml; Zot rechecks
-        # signatures every 2 hours, hence the 3 h
-        - uid: image-signature-untrusted
-          title: Image that should be signed runs without a trusted signature
-          condition: C
-          for: 3h
-          noDataState: OK
-          execErrState: Error
-          labels:
-            severity: warning
-          annotations:
-            summary: 'A first-party (ghcr.io/leierx) or Argo Workflows image runs without a signature that verifies with the key Zot trusts for it: a build CI didn''t sign, a rotated key, or an image that isn''t what its publisher built.'
-          data:
-            - refId: A
-              datasourceUid: mimir
-              relativeTimeRange:
-                from: 600
-                to: 0
-              model:
-                refId: A
-                instant: true
-                expr: 'max by (namespace, image) (image_audit_signature_trusted{image=~"ghcr\\.io/leierx/.+|quay\\.io/argoproj/(workflow-controller|argoexec|argocli)[:@].+"} == 0) + 1'
             - refId: C
               datasourceUid: __expr__
               model:
