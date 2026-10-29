@@ -30,11 +30,11 @@ func TestParseImage(t *testing.T) {
 		ok                   bool
 	}{
 		{"tag", "docker.io/library/redis:8.6.4-alpine", "docker.io/library/redis@" + indexDigest,
-			image{"docker.io/library/redis:8.6.4-alpine", "docker.io/library/redis", indexDigest}, true},
+			image{"docker.io/library/redis:8.6.4-alpine", "docker.io/library/redis", "8.6.4-alpine", indexDigest}, true},
 		{"tag and digest", "quay.io/cilium/cilium:v1.20.4@" + indexDigest, "quay.io/cilium/cilium@" + indexDigest,
-			image{"quay.io/cilium/cilium:v1.20.4@" + indexDigest, "quay.io/cilium/cilium", indexDigest}, true},
+			image{"quay.io/cilium/cilium:v1.20.4@" + indexDigest, "quay.io/cilium/cilium", "v1.20.4", indexDigest}, true},
 		{"image is a local ID", "sha256:abc", "ghcr.io/leierx/x@" + plainDigest,
-			image{"ghcr.io/leierx/x@" + plainDigest, "ghcr.io/leierx/x", plainDigest}, true},
+			image{"ghcr.io/leierx/x@" + plainDigest, "ghcr.io/leierx/x", "", plainDigest}, true},
 		{"container being created", "docker.io/library/redis:8", "", image{}, false},
 		{"image ID without repository", "docker.io/library/redis:8", "sha256:abc", image{}, false},
 	}
@@ -66,7 +66,7 @@ func TestImagesGroupsNamespaces(t *testing.T) {
 		}},
 	}
 	got := images(pods)
-	redis := image{"docker.io/library/redis:8", "docker.io/library/redis", indexDigest}
+	redis := image{"docker.io/library/redis:8", "docker.io/library/redis", "8", indexDigest}
 	if len(got) != 2 || !slices.Equal(got[redis], []string{"a", "b"}) {
 		t.Errorf("images() = %v", got)
 	}
@@ -99,7 +99,11 @@ func (f *fakeZot) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		switch ref {
-		case indexDigest:
+		case "moved":
+			w.Header().Set("Docker-Content-Digest", plainDigest)
+			_, _ = io.WriteString(w, `{"mediaType":"application/vnd.oci.image.manifest.v1+json","layers":[]}`)
+		case "8", indexDigest:
+			w.Header().Set("Docker-Content-Digest", indexDigest)
 			_, _ = io.WriteString(w, `{"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[
 				{"digest":"`+arm64Digest+`","platform":{"os":"linux","architecture":"arm64"}},
 				{"digest":"`+amd64Digest+`","platform":{"os":"linux","architecture":"amd64"}}]}`)
@@ -150,15 +154,15 @@ func newTestAuditor(t *testing.T) (*auditor, *fakeZot) {
 
 func TestAuditMultiPlatformImage(t *testing.T) {
 	a, f := newTestAuditor(t)
-	img := image{"docker.io/library/redis:8", "docker.io/library/redis", indexDigest}
+	img := image{"docker.io/library/redis:8", "docker.io/library/redis", "8", indexDigest}
 
 	r := a.audit(context.Background(), img, []string{"argocd"})
 
 	if !r.Mirrored || !r.Cached || !r.Scanned {
 		t.Fatalf("result = %+v", r)
 	}
-	if !slices.Equal(f.fetched, []string{indexDigest, amd64Digest}) {
-		t.Errorf("fetched %v, want the index and then the amd64 image", f.fetched)
+	if !slices.Equal(f.fetched, []string{"8", amd64Digest}) {
+		t.Errorf("fetched %v, want the index by tag and then the amd64 image", f.fetched)
 	}
 	if len(f.referrers) != 2 {
 		t.Errorf("referrers synced for %v, want the index and the amd64 image", f.referrers)
@@ -174,7 +178,7 @@ func TestAuditMultiPlatformImage(t *testing.T) {
 
 func TestAuditImageMissingFromZot(t *testing.T) {
 	a, _ := newTestAuditor(t)
-	r := a.audit(context.Background(), image{"ghcr.io/leierx/gone:1", "ghcr.io/leierx/gone", plainDigest}, []string{"x"})
+	r := a.audit(context.Background(), image{"ghcr.io/leierx/gone:1", "ghcr.io/leierx/gone", "1", plainDigest}, []string{"x"})
 	if !r.Mirrored || r.Cached || r.Scanned {
 		t.Errorf("result = %+v, want mirrored but not cached or scanned", r)
 	}
@@ -182,7 +186,7 @@ func TestAuditImageMissingFromZot(t *testing.T) {
 
 func TestAuditUnmirroredRegistry(t *testing.T) {
 	a, f := newTestAuditor(t)
-	r := a.audit(context.Background(), image{"example.com/app:1", "example.com/app", plainDigest}, []string{"x"})
+	r := a.audit(context.Background(), image{"example.com/app:1", "example.com/app", "1", plainDigest}, []string{"x"})
 	if r.Mirrored || len(f.fetched) != 0 {
 		t.Errorf("result = %+v, fetched %v; want Zot left alone", r, f.fetched)
 	}
@@ -194,11 +198,11 @@ func TestCollector(t *testing.T) {
 		t.Errorf("collected %d metrics before the first run", n)
 	}
 
-	redis := image{"docker.io/library/redis:8", "docker.io/library/redis", indexDigest}
+	redis := image{"docker.io/library/redis:8", "docker.io/library/redis", "8", indexDigest}
 	c.set([]result{
 		{Image: redis, Namespaces: []string{"a", "b"}, Mirrored: true, Cached: true, Scanned: true,
 			Vulnerabilities: vulnerabilities{Critical: 2}, Signatures: []signature{{"cosign", false}, {"cosign", true}}},
-		{Image: image{"example.com/app:1", "example.com/app", plainDigest}, Namespaces: []string{"a"}},
+		{Image: image{"example.com/app:1", "example.com/app", "1", plainDigest}, Namespaces: []string{"a"}},
 	}, time.Unix(1000, 0), 3*time.Second)
 
 	expected := `
@@ -218,5 +222,26 @@ image_audit_mirrored{digest="` + plainDigest + `",image="example.com/app:1",name
 	// 3 run gauges, 1 for the unmirrored image, and per redis namespace: mirrored, cached, scanned, 5 severities, signed, trusted
 	if n := testutil.CollectAndCount(c); n != 3+1+2*10 {
 		t.Errorf("collected %d metrics", n)
+	}
+}
+
+func TestAuditTagMovedUpstream(t *testing.T) {
+	a, f := newTestAuditor(t)
+	r := a.audit(context.Background(), image{"docker.io/library/redis:moved", "docker.io/library/redis", "moved", indexDigest}, []string{"x"})
+	if !r.Cached || !slices.Equal(f.fetched, []string{"moved", indexDigest, amd64Digest}) {
+		t.Errorf("result = %+v, fetched %v; want the running digest fetched once the tag pointed elsewhere", r, f.fetched)
+	}
+}
+
+func TestTag(t *testing.T) {
+	for name, want := range map[string]string{
+		"docker.io/library/redis:8":                    "8",
+		"quay.io/cilium/cilium:v1.20.4@" + indexDigest: "v1.20.4",
+		"ghcr.io/leierx/x@" + indexDigest:              "",
+		"localhost:5000/repo":                          "",
+	} {
+		if got := tag(name); got != want {
+			t.Errorf("tag(%q) = %q, want %q", name, got, want)
+		}
 	}
 }

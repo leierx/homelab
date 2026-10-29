@@ -17,6 +17,7 @@ import (
 type image struct {
 	Name   string
 	Repo   string
+	Tag    string
 	Digest string
 }
 
@@ -52,7 +53,17 @@ func parseImage(statusImage, imageID string) (image, bool) {
 	if name == "" || strings.HasPrefix(name, "sha256:") {
 		name = repo + "@" + digest
 	}
-	return image{Name: name, Repo: repo, Digest: digest}, true
+	return image{Name: name, Repo: repo, Tag: tag(name), Digest: digest}, true
+}
+
+// tag returns the tag in an image name (redis:8 -> 8, quay.io/a/b:v1@sha256:… -> v1), or "".
+func tag(name string) string {
+	name, _, _ = strings.Cut(name, "@")
+	i := strings.LastIndex(name, ":")
+	if i < 0 || strings.Contains(name[i:], "/") {
+		return ""
+	}
+	return name[i+1:]
 }
 
 // images returns every distinct image the pods run, with the namespaces running it, sorted.
@@ -96,7 +107,7 @@ func (a *auditor) audit(ctx context.Context, img image, namespaces []string) res
 	defer cancel()
 	log := slog.With("image", img.Name, "digest", img.Digest)
 
-	platformDigest, err := a.zot.platformManifest(ctx, img.Repo, img.Digest, a.platform)
+	platformDigest, err := a.zot.platformManifest(ctx, img.Repo, img.Tag, img.Digest, a.platform)
 	if err != nil {
 		log.Warn("image not in Zot", "error", err)
 		return r
@@ -118,6 +129,8 @@ func (a *auditor) audit(ctx context.Context, img image, namespaces []string) res
 	if r.Signatures, err = a.zot.signatures(ctx, img.Repo, img.Digest, platformDigest); err != nil {
 		log.Warn("reading signatures failed", "error", err)
 	}
+	log.Info("audited image", "scanned", r.Scanned, "critical", r.Vulnerabilities.Critical,
+		"high", r.Vulnerabilities.High, "signatures", len(r.Signatures))
 	return r
 }
 

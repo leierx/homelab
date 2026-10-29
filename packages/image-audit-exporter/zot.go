@@ -49,40 +49,51 @@ type signature struct {
 }
 
 // fetchManifest GETs a manifest, which makes Zot sync it (with its layers, for an image
-// manifest) from the upstream and counts as a pull for its retention policy.
-func (z *zotClient) fetchManifest(ctx context.Context, repo, reference string) (*manifest, error) {
+// manifest) from the upstream and counts as a pull for its retention policy. It also returns
+// the manifest's digest.
+func (z *zotClient) fetchManifest(ctx context.Context, repo, reference string) (*manifest, string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/v2/%s/manifests/%s", z.baseURL, repo, reference), nil)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	req.Header.Set("Accept", manifestAccept)
 
 	resp, err := z.http.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("manifest %s@%s: %w", repo, reference, errNotFound)
+		return nil, "", fmt.Errorf("manifest %s:%s: %w", repo, reference, errNotFound)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("manifest %s@%s: HTTP %d", repo, reference, resp.StatusCode)
+		return nil, "", fmt.Errorf("manifest %s:%s: HTTP %d", repo, reference, resp.StatusCode)
 	}
 
 	var m manifest
 	if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
-		return nil, fmt.Errorf("manifest %s@%s: %w", repo, reference, err)
+		return nil, "", fmt.Errorf("manifest %s:%s: %w", repo, reference, err)
 	}
-	return &m, nil
+	return &m, resp.Header.Get("Docker-Content-Digest"), nil
 }
 
 // platformManifest returns the digest of the image manifest the node runs: the digest itself
 // for a single-platform image, or the index entry matching want for a multi-platform one.
-func (z *zotClient) platformManifest(ctx context.Context, repo, digest string, want platform) (string, error) {
-	m, err := z.fetchManifest(ctx, repo, digest)
-	if err != nil {
-		return "", err
+// It asks for the tag first, so Zot stores the image tagged: its retention policy deletes
+// untagged manifests. If the tag has moved on upstream, it asks for the digest.
+func (z *zotClient) platformManifest(ctx context.Context, repo, tag, digest string, want platform) (string, error) {
+	var m *manifest
+	if tag != "" {
+		if byTag, got, err := z.fetchManifest(ctx, repo, tag); err == nil && got == digest {
+			m = byTag
+		}
+	}
+	if m == nil {
+		var err error
+		if m, _, err = z.fetchManifest(ctx, repo, digest); err != nil {
+			return "", err
+		}
 	}
 	if len(m.Manifests) == 0 {
 		return digest, nil
@@ -92,13 +103,13 @@ func (z *zotClient) platformManifest(ctx context.Context, repo, digest string, w
 		p := entry.Platform
 		if p.OS == want.OS && p.Architecture == want.Architecture && (want.Variant == "" || p.Variant == want.Variant) {
 			// Zot syncs only the index on its own; asking for the child brings in the image and its layers
-			if _, err := z.fetchManifest(ctx, repo, entry.Digest); err != nil {
+			if _, _, err := z.fetchManifest(ctx, repo, entry.Digest); err != nil {
 				return "", err
 			}
 			return entry.Digest, nil
 		}
 	}
-	return "", fmt.Errorf("%s@%s has no %s/%s image", repo, digest, want.OS, want.Architecture)
+	return "", fmt.Errorf("%s@%s has no %s image", repo, digest, want)
 }
 
 // syncReferrers asks for the referrers of a digest, which makes Zot sync the upstream's
