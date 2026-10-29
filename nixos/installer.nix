@@ -21,8 +21,19 @@ in
     toplevel
     destroyFormatMount
   ];
-  # secrets.yaml is deliberately not on this iso: it lives on a separate medium
-  # labelled NIXOS-SECRETS, so a lost stick costs the stick and nothing else
+  isoImage.contents = [
+    {
+      source =
+        let
+          secretsFile = builtins.getEnv "SECRETS_FILE";
+        in
+        if secretsFile == "" then
+          throw "SECRETS_FILE is empty: set it to the secrets.yaml path and build with --impure"
+        else
+          /. + secretsFile;
+      target = "/secrets.yaml";
+    }
+  ];
 
   nix.channel.enable = false;
   nix.settings.substituters = lib.mkForce [ ];
@@ -60,13 +71,6 @@ in
     };
     script = ''
       set -euo pipefail
-
-      # before wiping anything: a missing secrets medium used to be a lost install
-      secrets_medium=$(blkid -L NIXOS-SECRETS) || {
-        echo "no filesystem labelled NIXOS-SECRETS: plug it in and reboot" >&2
-        exit 1
-      }
-
       echo "Wiping ALL disks and installing loft01. Ctrl-C to abort."
       for i in $(seq 30 -1 1); do
         printf '\rStarting in %2d s ' "$i"
@@ -75,10 +79,7 @@ in
       echo
       # the countdown above is the confirmation
       ${lib.getExe destroyFormatMount} --yes-wipe-all-disks
-      mkdir -p /run/secrets-medium
-      mount -o ro "$secrets_medium" /run/secrets-medium
-      install -D -m 0400 /run/secrets-medium/secrets.yaml /mnt/var/lib/secrets.yaml
-      umount /run/secrets-medium
+      install -D -m 0400 /iso/secrets.yaml /mnt/var/lib/secrets.yaml
       ${lib.getExe pkgs.nixos-install} --root /mnt --no-root-passwd --no-channel-copy --system ${toplevel}
       umount -R /mnt
       zpool export -a
