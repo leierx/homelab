@@ -38,17 +38,5 @@ jobs:
         run: |
           skopeo copy \
             --dest-creds "${GITHUB_ACTOR}:${GITHUB_TOKEN}" \
-            --digestfile "$RUNNER_TEMP/digest" \
             "docker-archive:${{ steps.build.outputs.image }}" \
             "docker://ghcr.io/${GITHUB_REPOSITORY_OWNER}/capi-argo-bridge:0.1.${GITHUB_RUN_NUMBER}"
-
-      - if: github.ref == 'refs/heads/main'
-        name: Sign container image
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
-          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-        run: |
-          nix run --inputs-from . nixpkgs#cosign -- sign --yes --key env://COSIGN_PRIVATE_KEY \
-            --registry-username "${GITHUB_ACTOR}" --registry-password "${GITHUB_TOKEN}" \
-            "ghcr.io/${GITHUB_REPOSITORY_OWNER}/capi-argo-bridge@$(cat "$RUNNER_TEMP/digest")"
