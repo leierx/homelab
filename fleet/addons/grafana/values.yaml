@@ -996,7 +996,7 @@ alerting:
           labels:
             severity: warning
           annotations:
-            summary: 'Zot logged an error, e.g. a config reload it rejected (the old config stays in force), an upstream sync or a CVE database download that failed.'
+            summary: 'Zot logged an error, e.g. a config reload it rejected (the old config stays in force), an upstream sync or a CVE database download that failed. Upstream signature (referrer) sync failures are left out: upstreams list signatures they then 404.'
           data:
             - refId: A
               datasourceUid: loki
@@ -1006,7 +1006,7 @@ alerting:
               model:
                 refId: A
                 queryType: instant
-                expr: 'sum by (message) (count_over_time({namespace="zot", container="zot"} | json | level="error" | message!="failed to retrieve manifest and config" | error!="http: Server closed" [10m]))'
+                expr: 'sum by (message) (count_over_time({namespace="zot", container="zot"} | json | level="error" | message!~"failed to retrieve manifest and config|failed to sync (image )?referrers?" | error!="http: Server closed" | error!~`(?s).*sha256-[0-9a-f]{64}\.(sig|att|sbom).*` [10m]))'
             - refId: C
               datasourceUid: __expr__
               model:
