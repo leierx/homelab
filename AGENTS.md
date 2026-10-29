@@ -95,4 +95,8 @@ nix build .#nixosConfigurations.loft01.config.system.build.toplevel
   Use `ExternalSecret` and `PushSecret` against `fleet-secrets` and
   `fleet-secrets-push` (OpenBao `kv/<cluster>/<app>`). Host-only bootstrap
   secrets live in `nixos/secrets.yaml` (sops age).
+- **Renovate holds:** Remove temporary `allowedVersions` holds in
+  `renovate.json5` (currently `prometheus-smartctl-exporter !=0.18.0` for
+  `prometheus-community/smartctl_exporter#397`) once a newer chart revision has
+  landed.
 - **Commits:** Use Conventional Commits with a DCO sign-off (`git commit -s`).

@@ -1,11 +1,8 @@
-# reconciles realm homelab from tofu/ (the keycloak-realm-tofu ConfigMap) on sync
+# reconciles realm homelab from tofu/ (the keycloak-realm-tofu ConfigMap)
 apiVersion: argoproj.io/v1alpha1
-kind: Workflow
+kind: WorkflowTemplate
 metadata:
-  name: keycloak-realm-init
-  annotations:
-    argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+  name: keycloak-realm
 spec:
   serviceAccountName: keycloak-tofu
   entrypoint: reconcile
@@ -58,6 +55,17 @@ spec:
         resources:
           requests: { cpu: 50m, memory: 256Mi }
           limits: { memory: 1Gi }
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: keycloak-realm-
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  workflowTemplateRef:
+    name: keycloak-realm
 ---
 apiVersion: v1
 kind: ServiceAccount

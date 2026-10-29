@@ -90,5 +90,10 @@
       dependencyDashboardApproval: true,
       labels: ['dependencies', 'needs-review'],
     },
+    {
+      description: 'smartctl-exporter v0.15.0 (chart 0.18.0) fails SCSI scrapes with unregistered descriptors (prometheus-community/smartctl_exporter#397)',
+      matchDepNames: ['prometheus-smartctl-exporter'],
+      allowedVersions: '!=0.18.0',
+    },
   ],
 }

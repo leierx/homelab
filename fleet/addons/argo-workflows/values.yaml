@@ -6,10 +6,7 @@ crds:
 controller:
   workflowNamespaces: [argo, keycloak]
   podSecurityContext: {seccompProfile: {type: RuntimeDefault}}
-  workflowDefaults:
-    spec:
-      ttlStrategy: {secondsAfterCompletion: 259200}
-      podGC: {strategy: OnWorkflowSuccess, deleteDelayDuration: 6h}
+  retentionPolicy: {completed: 5, failed: 3, errored: 3}
   metricsConfig: {enabled: true}
   serviceMonitor: {enabled: true}
   resources: {requests: {cpu: 100m, memory: 256Mi}, limits: {memory: 1Gi}}
