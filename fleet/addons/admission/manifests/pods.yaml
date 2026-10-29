@@ -28,6 +28,42 @@ spec:
   policyName: image-versions
   validationActions: [Deny]
 ---
+# Every image comes from a registry Harbor proxies, so nodes pull it through Harbor (nixos/k3s.nix mirrors them
+# without a fallback). An image without a registry host is docker.io. Keep the list in step with tofu/harbor/proxy.tf.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: image-registries
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE]
+        resources: [pods]
+  variables:
+    - name: hosts
+      expression: >-
+        (object.spec.containers + (has(object.spec.initContainers) ? object.spec.initContainers : []))
+        .map(c, c.image.split('/'))
+        .map(p, size(p) > 1 && (p[0].contains('.') || p[0].contains(':') || p[0] == 'localhost') ? p[0] : 'docker.io')
+  validations:
+    - expression: >-
+        variables.hosts.all(h, h in ['docker.io', 'ecr-public.aws.com', 'ghcr.io', 'quay.io', 'registry.k8s.io', 'registry.skinke.net'])
+      messageExpression: >-
+        'images must come from a registry Harbor proxies (docker.io, ecr-public.aws.com, ghcr.io, quay.io,
+        registry.k8s.io) or from registry.skinke.net; not ' + variables.hosts.filter(h, !(h in ['docker.io',
+        'ecr-public.aws.com', 'ghcr.io', 'quay.io', 'registry.k8s.io', 'registry.skinke.net'])).join(', ')
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: image-registries
+spec:
+  policyName: image-registries
+  validationActions: [Deny]
+---
 # warn and audit only: upstream (KubeVirt, CDI) doesn't always comply; an alert reads the audit log
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
