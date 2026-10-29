@@ -27,6 +27,15 @@ spec:
       toPorts:
         - ports:
             - {port: "6443", protocol: TCP}
+    # CoreDNS forwards upstream queries to the host's validating DoT stub resolver
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - {port: "53", protocol: UDP}
+            - {port: "53", protocol: TCP}
     # alloy-metrics scrapes the API server, kubelet/cAdvisor, node-exporter, and Cilium/Hubble metrics
     - fromEndpoints:
         - matchLabels:
@@ -50,13 +59,11 @@ spec:
         - fields:
             - {family: IPv4, type: EchoRequest}
             - {family: IPv4, type: EchoReply}
-    # host services: systemd-resolved (DNS/DoT), systemd-timesyncd (NTP), containerd/nixos-upgrade (HTTP/S), offsite-backup (SSH)
+    # host services: systemd-resolved (DoT), systemd-timesyncd (NTP), containerd/nixos-upgrade (HTTP/S), offsite-backup (SSH)
     - toEntities: [world]
       toPorts:
         - ports:
             - {port: "22", protocol: TCP}
-            - {port: "53", protocol: UDP}
-            - {port: "53", protocol: TCP}
             - {port: "80", protocol: TCP}
             - {port: "123", protocol: UDP}
             - {port: "443", protocol: TCP}

@@ -1,4 +1,4 @@
-# loft01 host ingress/egress: WireGuard outer tunnel on eno1 (52820/UDP) and SSH/API server on wg0 (10.0.0.0/24).
+# loft01 host ingress/egress: WireGuard outer tunnel on eno1 (52820/UDP) and SSH/DNS/API server on wg0 (10.0.0.0/24).
 apiVersion: cilium.io/v2
 kind: CiliumClusterwideNetworkPolicy
 metadata:
@@ -17,6 +17,8 @@ spec:
       toPorts:
         - ports:
             - {port: "22", protocol: TCP}
+            - {port: "53", protocol: UDP}
+            - {port: "53", protocol: TCP}
             - {port: "6443", protocol: TCP}
   egress:
     - toCIDR:

@@ -10,6 +10,13 @@
       "9.9.9.9#dns.quad9.net"
       "149.112.112.112#dns.quad9.net"
     ];
+    # wg Gateway routes for local processes (kube-apiserver OIDC) and WireGuard peers querying 10.0.0.1:53
+    hosts."10.0.0.1" = [
+      "alerta.skinke.net"
+      "argocd.skinke.net"
+      "auth.skinke.net"
+      "workflows.skinke.net"
+    ];
 
     # Cilium hostFirewall (fleet/addons/cilium) enforces host ingress and egress in eBPF
     firewall.enable = false;
@@ -30,8 +37,15 @@
     settings.Resolve = {
       DNSSEC = "true";
       DNSOverTLS = "true";
+      Domains = "~.";
+      FallbackDNS = "";
       LLMNR = "false";
       MulticastDNS = "false";
+      # 10.0.0.1 serves WireGuard peers; 192.168.2.50 serves CoreDNS so pod lookups use DoT + DNSSEC
+      DNSStubListenerExtra = [
+        "10.0.0.1"
+        "192.168.2.50"
+      ];
     };
   };
 

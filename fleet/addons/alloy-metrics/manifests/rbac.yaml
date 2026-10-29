@@ -7,7 +7,7 @@ rules:
   # server's and kube-dns's endpoint slices, kube-state-metrics and
   # node-exporter; the events source watches every namespace
   - apiGroups: ["", "discovery.k8s.io"]
-    resources: ["endpoints", "endpointslices", "pods", "services", "events"]
+    resources: ["endpointslices", "pods", "services", "events"]
     verbs: ["get", "list", "watch"]
   # the operator components read every ServiceMonitor and PodMonitor
   - apiGroups: ["monitoring.coreos.com"]

@@ -1,6 +1,5 @@
 alloy:
   configMap: {create: false, name: alloy-metrics}
-  clustering: {enabled: true}
   envFrom: [{configMapRef: {name: alloy-metrics-env}}]
   securityContext:
     allowPrivilegeEscalation: false

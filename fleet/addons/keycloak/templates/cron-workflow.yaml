@@ -1,73 +1,4 @@
-{{- define "keycloak.reconcileWorkflowSpec" -}}
-serviceAccountName: keycloak-tofu
-entrypoint: reconcile
-volumes:
-  - name: tofu
-    configMap:
-      name: keycloak-realm-tofu
-  - name: work
-    emptyDir: {}
-templates:
-  - name: reconcile
-    metadata:
-      labels:
-        app.kubernetes.io/name: keycloak-tofu
-    securityContext:
-      runAsNonRoot: true
-      runAsUser: 8737
-      seccompProfile:
-        type: RuntimeDefault
-    container:
-      image: ghcr.io/opentofu/opentofu:1.13.2
-      workingDir: /work
-      volumeMounts:
-        - { name: tofu, mountPath: /tofu, readOnly: true }
-        - { name: work, mountPath: /work }
-      command: [sh, -c]
-      args:
-        - |
-          set -eu
-          # the CronWorkflow fires before Keycloak is Ready on a fresh cluster
-          tries=50
-          until wget -q -O /dev/null http://keycloak-service:8080/realms/master; do
-            tries=$((tries - 1))
-            [ "$tries" -gt 0 ] || { echo "keycloak-service did not answer"; exit 1; }
-            sleep 10
-          done
-          # tofu init writes .terraform/ next to the root, so it runs on a copy
-          cp /tofu/*.tf /tofu/.terraform.lock.hcl .
-          tofu init -input=false
-          tofu plan -out=plan
-          tofu apply plan
-      env:
-        - { name: HOME, value: /tmp }
-      envFrom:
-        - secretRef:
-            name: keycloak-tofu
-      securityContext:
-        allowPrivilegeEscalation: false
-        capabilities:
-          drop: ["ALL"]
-      resources:
-        requests: { cpu: 50m, memory: 256Mi }
-        limits: { memory: 1Gi }
-{{- end -}}
-# reconciles realm homelab from tofu/ (the keycloak-realm-tofu ConfigMap); the CRD comes from addon argo-workflows; hourly; git wins over hand-made changes
-apiVersion: argoproj.io/v1alpha1
-kind: CronWorkflow
-metadata:
-  name: keycloak-realm
-spec:
-  schedules:
-    - "0 * * * *"
-  concurrencyPolicy: Forbid
-  suspend: false
-  successfulJobsHistoryLimit: 5
-  failedJobsHistoryLimit: 3
-  workflowSpec:
-{{ include "keycloak.reconcileWorkflowSpec" . | indent 4 }}
----
-# runs once on sync so a fresh cluster or config change doesn't wait up to 1h for the next CronWorkflow tick
+# reconciles realm homelab from tofu/ (the keycloak-realm-tofu ConfigMap) on sync
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
@@ -76,7 +7,57 @@ metadata:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
 spec:
-{{ include "keycloak.reconcileWorkflowSpec" . | indent 2 }}
+  serviceAccountName: keycloak-tofu
+  entrypoint: reconcile
+  volumes:
+    - name: tofu
+      configMap:
+        name: keycloak-realm-tofu
+    - name: work
+      emptyDir: {}
+  templates:
+    - name: reconcile
+      metadata:
+        labels:
+          app.kubernetes.io/name: keycloak-tofu
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 8737
+        seccompProfile:
+          type: RuntimeDefault
+      container:
+        image: ghcr.io/opentofu/opentofu:1.13.2
+        workingDir: /work
+        volumeMounts:
+          - { name: tofu, mountPath: /tofu, readOnly: true }
+          - { name: work, mountPath: /work }
+        command: [sh, -c]
+        args:
+          - |
+            set -eu
+            tries=50
+            until wget -q -O /dev/null http://keycloak-service:8080/realms/master; do
+              tries=$((tries - 1))
+              [ "$tries" -gt 0 ] || { echo "keycloak-service did not answer"; exit 1; }
+              sleep 10
+            done
+            # tofu init writes .terraform/ next to the root, so it runs on a copy
+            cp /tofu/*.tf /tofu/.terraform.lock.hcl .
+            tofu init -input=false
+            tofu plan -out=plan
+            tofu apply plan
+        env:
+          - { name: HOME, value: /tmp }
+        envFrom:
+          - secretRef:
+              name: keycloak-tofu
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests: { cpu: 50m, memory: 256Mi }
+          limits: { memory: 1Gi }
 ---
 apiVersion: v1
 kind: ServiceAccount

@@ -88,6 +88,10 @@ spec:
               value: "4320"
             - name: HEARTBEAT_SEVERITY
               value: ""
+            - name: UWSGI_MAX_WORKER_LIFETIME
+              value: ""
+            - name: SUPERVISORD_LOG_LEVEL
+              value: info
           ports:
             - name: http
               containerPort: 8080

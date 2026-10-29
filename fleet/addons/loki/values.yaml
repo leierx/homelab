@@ -1,7 +1,11 @@
 defaults: {automountServiceAccountToken: false}
 loki:
   auth_enabled: false
-  commonConfig: {replication_factor: 1}
+  commonConfig:
+    replication_factor: 1
+    compactor_grpc_address: 127.0.0.1:9095
+    ring: {instance_addr: 127.0.0.1, kvstore: {store: inmemory}}
+  memberlistConfig: {join_members: []}
   storage: {type: filesystem}
   schemaConfig:
     configs:

@@ -50,9 +50,7 @@ spec:
             - {port: "9153", protocol: TCP}
   egress:
     - toEntities: [kube-apiserver]
-    - toCIDR:
-        - 9.9.9.9/32
-        - 149.112.112.112/32
+    - toEntities: [host]
       toPorts:
         - ports:
             - {port: "53", protocol: UDP}

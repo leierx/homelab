@@ -11,6 +11,13 @@ spec:
   egressDeny:
     # the baseline CCNP allows cluster DNS to every pod; deny beats allow
     - toEntities: [cluster]
+    # Tailscale probes peer LAN/CGNAT candidates; explicit deny records POLICY_DENY instead of POLICY_DENIED
+    - toCIDR:
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+        - 169.254.0.0/16
+        - 100.64.0.0/10
 ---
 # Default-deny for the namespace, then SSH in and the public internet out.
 apiVersion: cilium.io/v2
