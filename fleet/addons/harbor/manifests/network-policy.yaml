@@ -115,6 +115,9 @@ apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: postgres
+  annotations:
+    # with the database, whose initdb pod needs the API server
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   endpointSelector:
     matchLabels:
