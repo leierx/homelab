@@ -1017,6 +1017,134 @@ alerting:
                       type: gt
                       params:
                         - 0
+        - uid: harbor-errors
+          title: Harbor logged an error
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: 'A Harbor component logged an error, e.g. an upstream it couldn''t fetch from, a failed job or a storage problem. Left out: Trivy not scanning Helm charts, wrong passwords, Redis not yet up while Harbor starts, and a multi-arch index cached before its platform images (Harbor retries).'
+          data:
+            - refId: A
+              datasourceUid: loki
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                queryType: instant
+                expr: 'sum by (container) (count_over_time({namespace="harbor"} |= "[ERROR]" != "does not support" != "failed to authenticate user" != "failed to ping redis" != "doesn''t contain any pushed manifest" [10m]))'
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        - uid: harbor-job-failed
+          title: Harbor job failed
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: A Harbor job (scan, garbage collection, retention, audit log purge, webhook) failed in the last 15 minutes; Harbor's UI (Administration, Job Service Dashboard) and the jobservice log in Loki say why.
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 900
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: sum by (type) (increase(harbor_jobservice_task_total{status="error"}[15m])) > 0 or sum by (type) (harbor_jobservice_task_total{status="error"} unless harbor_jobservice_task_total{status="error"} offset 15m)
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        # the wg Gateway answers these itself (fleet/clusters/loft01/harbor/manifests/route.yaml HTTPRoute/harbor-admin)
+        - uid: harbor-admin-refused
+          title: Harbor admin login attempt
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Something tried Harbor''s built-in admin (the local login form, or Basic auth as admin) through registry.skinke.net; the gateway refused it. Only the in-cluster reconcile uses that account; people log in with Keycloak.'
+          data:
+            - refId: A
+              datasourceUid: loki
+              relativeTimeRange:
+                from: 300
+                to: 0
+              model:
+                refId: A
+                queryType: instant
+                expr: 'sum by (x_forwarded_for) (count_over_time({namespace="envoy-gateway-system", container="envoy"} |= "harbor-admin" | json | route_name=~"httproute/harbor/harbor-admin/.*" [5m]))'
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        # From Harbor's SCANNING_COMPLETED webhooks ({job="harbor-webhook"}): Harbor scans an image when it caches
+        # it and rescans everything daily. Compared per repository, so a repository cached less than a day ago has
+        # nothing to compare with.
+        - uid: harbor-critical-vulnerabilities-increased
+          title: Critical vulnerabilities in a cached image increased
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Harbor''s Trivy scan finds more critical CVEs in this repository than a day ago: a newly published CVE, or an update that brought one in. Harbor (registry.skinke.net) lists them; update the image or its base. The alert clears a day later.'
+          data:
+            - refId: A
+              datasourceUid: loki
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                queryType: instant
+                expr: 'max by (repo) (max_over_time({job="harbor-webhook"} |= "SCANNING_COMPLETED" | json type="type", repo="event_data.repository.repo_full_name", critical="event_data.resources[0].scan_overview[\"application/vnd.security.vulnerability.report; version=1.1\"].summary.summary.Critical" | type="SCANNING_COMPLETED" | label_format critical=`{{ or .critical "0" }}` | unwrap critical [1d])) > max by (repo) (max_over_time({job="harbor-webhook"} |= "SCANNING_COMPLETED" | json type="type", repo="event_data.repository.repo_full_name", critical="event_data.resources[0].scan_overview[\"application/vnd.security.vulnerability.report; version=1.1\"].summary.summary.Critical" | type="SCANNING_COMPLETED" | label_format critical=`{{ or .critical "0" }}` | unwrap critical [1d] offset 1d))'
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
         - uid: argocd-app-render-failing
           title: Argo CD can't render an application
           condition: C
