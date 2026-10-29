@@ -66,12 +66,12 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
     (`photos.skinke.net`), Miniflux (`rss.skinke.net`), and Grafana
     (`metrics.skinke.net`).
   - `wg` (WireGuard `10.0.0.1` only): Alerta (`alerta.skinke.net`), Argo CD
-    (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), Zot
+    (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), Harbor
     (`registry.skinke.net`), and Keycloak
     admin console.
   - Both `edge` and `wg` attach `SecurityPolicy/oidc` and
     `ClientTrafficPolicy/default` at the `Gateway` level, so every HTTPS route
-    (other than Keycloak, Immich, Alerta, and Zot) is gated by Envoy's OIDC login (`/_envoy/callback`)
+    (other than Keycloak, Immich, Alerta, and Harbor) is gated by Envoy's OIDC login (`/_envoy/callback`)
     and receives standard security headers automatically. New web apps only need
     their `Certificate`, `ListenerSet`, `HTTPRoute`, and `https://<host>/_envoy/callback`
     in `keycloak_openid_client.edge.valid_redirect_uris` (`tofu/keycloak/clients.tf`).
@@ -98,14 +98,21 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   kcadm config credentials --server http://localhost:8080 --realm master \
     --client "$KC_BOOTSTRAP_ADMIN_CLIENT_ID" --secret "$KC_BOOTSTRAP_ADMIN_CLIENT_SECRET"
   ```
-- **Zot down or unreachable:** nodes fall back to the upstream registries on
-  their own, but Argo CD can't render any Application whose chart comes through
-  Zot (nothing is pruned; syncs stop). Delete the `fleet.io/oci-mirror` label
-  from `fleet/clusters/loft01/cluster-secret.yaml` and push to render every
-  chart from its upstream; put it back once Zot is healthy. Zot's own chart
-  always comes from the upstream.
+- **Harbor down or unreachable:** every node pull goes through Harbor with no
+  fallback (`--disable-default-registry-endpoint` in `nixos/k3s.nix`), so
+  running pods keep running but nothing new can be pulled, and Argo CD can't
+  render any Application whose chart comes through Harbor (nothing is pruned;
+  syncs stop). Delete the `fleet.io/oci-mirror` label from
+  `fleet/clusters/loft01/cluster-secret.yaml` and push to render every chart
+  from its upstream. To pull one image past Harbor,
+  `doas k3s ctr -n k8s.io images pull <image>` on loft01 (ctr ignores the
+  mirrors); for all of them, drop the flag and rebuild. Put both back once
+  Harbor is healthy. Harbor's own chart always comes from the upstream.
+- **Harbor admin:** people log in with Keycloak (`homelab-admins` are Harbor
+  admins). The built-in `admin` exists only for the in-cluster reconcile
+  (`tofu/harbor`); the wg Gateway refuses it and the attempt alerts. To use it,
+  `kubectl -n harbor port-forward svc/harbor-core 8080:80` and log in with
+  `just bao kv get -field=admin_password kv/loft01/harbor`.
 - **Image signing key:** CI signs `ghcr.io/leierx/*` images with the cosign key
-  in the GitHub secrets `COSIGN_PRIVATE_KEY`/`COSIGN_PASSWORD`; Zot trusts its
-  public half (`fleet/addons/zot/manifests/cosign-keys.yaml`). To rotate, run
-  `cosign generate-key-pair`, replace both secrets and `leierx-homelab.pub`, and
-  rebuild the images (until then they show as untrusted).
+  in the GitHub secrets `COSIGN_PRIVATE_KEY`/`COSIGN_PASSWORD`. To rotate, run
+  `cosign generate-key-pair`, replace both secrets, and rebuild the images.
