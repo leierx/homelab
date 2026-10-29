@@ -95,6 +95,13 @@ spec:
         - ports:
             - { port: "10080", protocol: TCP }
             - { port: "10443", protocol: TCP }
+    # in-cluster registry.skinke.net clients via CoreDNS split-horizon (Argo CD's Helm charts)
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: argocd
+            app.kubernetes.io/name: argocd-repo-server
+      toPorts:
+        - ports: [{ port: "10443", protocol: TCP }]
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: telemetry
