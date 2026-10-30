@@ -3,7 +3,8 @@
 One server running NixOS and a single-node k3s cluster,
 `loft01`. Git is the only source of truth: the host auto-upgrades from `main`,
 and Argo CD renders and deploys everything in `fleet/` straight from git, with
-no helper scripts or CI in the rendering path.
+no helper scripts or CI in the rendering path. Design principles are in
+[PRINCIPLES.md](PRINCIPLES.md).
 
 ## Hardware
 

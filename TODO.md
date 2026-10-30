@@ -1,0 +1,1 @@
+- [ ] Move host secrets out of git and off sops-nix — finish nixos/secrets.nix (reads /var/lib/secrets.yaml on the host) and drop sops-nix.

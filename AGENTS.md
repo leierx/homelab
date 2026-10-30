@@ -1,6 +1,8 @@
 # AGENTS.md
 
-Instructions for coding agents working in this repository.
+Instructions for coding agents working in this repository. Follow
+[PRINCIPLES.md](PRINCIPLES.md), and keep this file as concise.
+[TODO.md](TODO.md) is human-owned: add to it only when asked to.
 
 ## Repository Overview
 
