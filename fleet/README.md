@@ -1,7 +1,8 @@
 # fleet
 
-GitOps fleet controller for isolated clusters in a monorepo, driven by Argo CD
-with zero helper scripts and zero CI.
+GitOps fleet controller for isolated clusters in a monorepo, driven by Argo CD.
+Rendering never depends on helper scripts or CI: Argo CD renders everything
+from git with Helm and Kustomize/directory sources.
 
 Each cluster runs its own standalone Argo CD and never connects to or knows
 about any other cluster. Applying the cluster Secret

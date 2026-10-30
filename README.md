@@ -2,7 +2,8 @@
 
 One server running NixOS and a single-node k3s cluster,
 `loft01`. Git is the only source of truth: the host auto-upgrades from `main`,
-and Argo CD deploys everything in `fleet/` without helper scripts or CI.
+and Argo CD renders and deploys everything in `fleet/` straight from git, with
+no helper scripts or CI in the rendering path.
 
 ## Hardware
 
@@ -16,7 +17,8 @@ and Argo CD deploys everything in `fleet/` without helper scripts or CI.
 
 - **Host (`nixos/`).** Declarative NixOS configuration. `disko` lays out the
   disks, `sops-nix` provisions host secrets, and the host auto-upgrades from
-  `main` on Fridays.
+  `main` on Fridays. `nixos/backup.nix` backs up the k3s state and every PVC
+  to rsync.net nightly with restic.
 - **GitOps (`fleet/`).** Standalone per-cluster Argo CD driven by a Cluster
   Generator `ApplicationSet` (`fleet-root`). Bootstrap is 3 manual commands:
   apply `cilium`, apply `argocd`, and apply `cluster-secret.yaml`. The `/fleet`
@@ -37,13 +39,16 @@ and Argo CD deploys everything in `fleet/` without helper scripts or CI.
 ## Repository layout
 
 ```text
-nixos/          NixOS host configuration (disks, k3s, sops-nix)
+nixos/          NixOS host configuration (disks, k3s, sops-nix, backup)
 fleet/          GitOps fleet controller, shared addons, and cluster configs (see fleet/README.md)
   templates/    Helm templates computing dependency sync-waves and Multi-Source Applications
   addons/       Installable addons (helm, kustomize, manifests)
   clusters/     Per-cluster config (cluster-secret.yaml, <addon>/{values.yaml,manifests/})
+tofu/           OpenTofu roots (Keycloak realm)
+packages/       First-party controllers built with Nix (capi-argo-bridge)
+.github/        CI: Argo CD diff preview, capi-argo-bridge image, flake bump
 docs/           Operating guide for loft01 (see docs/README.md)
 AGENTS.md       Instructions for coding agents
 renovate.json5  Renovate configuration
-flake.nix       Nix flake for host and installer
+flake.nix       Nix flake for host, installer, and packages
 ```

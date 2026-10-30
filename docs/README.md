@@ -7,10 +7,11 @@ composition, see [fleet/README.md](../fleet/README.md).
 ## Overview
 
 `loft01` is a single-node NixOS + k3s cluster and
-the **production** cluster: it holds real data (Immich photo library, Grafana
-metrics, OpenBao secrets) with no backup. Treat deleting PVCs or stateful CRs as
-data loss; they carry `argocd.argoproj.io/sync-options: Delete=false,Prune=false`
-for that reason.
+the **production** cluster: it holds real data (Immich photo library, Mimir
+metrics, OpenBao secrets). `nixos/backup.nix` backs up the k3s state and every
+PVC to rsync.net nightly with restic, but restoring is manual and loses up to a
+day. Treat deleting PVCs or stateful CRs as data loss; they carry
+`argocd.argoproj.io/sync-options: Delete=false,Prune=false` for that reason.
 
 Git (`main`) is the single source of truth:
 

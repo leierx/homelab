@@ -4,19 +4,24 @@ Instructions for coding agents working in this repository.
 
 ## Repository Overview
 
-- `fleet/` — GitOps fleet controller rendered by Argo CD with Helm (no helper
-  scripts, no CI). Read `fleet/README.md` before modifying anything in `fleet/`.
+- `fleet/` — GitOps fleet controller rendered by Argo CD with Helm (rendering
+  never depends on scripts or CI). Read `fleet/README.md` before modifying
+  anything in `fleet/`.
 - `tofu/` — OpenTofu roots (e.g. `tofu/keycloak/`).
 - `packages/` — First-party controllers/apps built with Nix and exposed via
   `flake.nix` (e.g. `packages/capi-argo-bridge/`).
 - `nixos/` — Declarative NixOS configuration for `loft01` (disko, k3s,
-  sops-nix, WireGuard).
+  sops-nix, WireGuard, restic off-site backup).
+- `.github/workflows/` — CI: Argo CD diff preview on PRs, the
+  `capi-argo-bridge` image build, and the scheduled flake bump.
 - `docs/README.md` — Operational runbook for `loft01` (OpenBao secrets, SSO,
   break-glass).
 
-`loft01` is production: its data (Immich photo library, Grafana metrics,
-OpenBao secrets) has no backup. Do not tear it down, and delete nothing stateful
-without explicit instruction.
+`loft01` is production: it holds real data (Immich photo library, Mimir
+metrics, OpenBao secrets). `nixos/backup.nix` runs a nightly restic backup of
+the k3s state and every PVC to rsync.net, but a restore is manual and loses up
+to a day. Do not tear it down, and delete nothing stateful without explicit
+instruction.
 
 ## How `/fleet` Works
 
@@ -78,9 +83,10 @@ nix build .#nixosConfigurations.loft01.config.system.build.toplevel
 
 ## Conventions & Guardrails
 
-- **No helper scripts or CI:** Everything in `fleet/` must render purely via
-  Argo CD's Helm and Kustomize/directory sources. Never use Kustomize's Helm
-  chart inflation generator.
+- **Rendering never depends on scripts or CI:** Everything in `fleet/` must
+  render purely via Argo CD's Helm and Kustomize/directory sources; CI only
+  previews diffs and builds artifacts. Never use Kustomize's Helm chart
+  inflation generator.
 - **No `envs/` or capability flags:** Clusters enable addons via
   `fleet.io/<addon>.enable: "true"` labels on
   `clusters/<cluster>/cluster-secret.yaml` (or on a CAPI `Cluster` object) and
@@ -89,6 +95,14 @@ nix build .#nixosConfigurations.loft01.config.system.build.toplevel
 - **Dependencies:** Declare cross-addon ordering with `dependencies: []` in
   `addon.yaml` (base or cluster level). `_helpers.tpl` computes the topological
   `argocd.argoproj.io/sync-wave` automatically.
+- **Network policies:** Each addon owns the `CiliumNetworkPolicy` for its own
+  pods, in its `manifests/network-policy.yaml` (or `templates/` for local
+  charts). Open a flow on both ends: the client's egress in the client's addon,
+  the server's ingress in the server's addon.
+- **Pod security:** Every addon declares `podSecurity` in `addon.yaml`. Addons
+  sharing a namespace (e.g. `telemetry`, `monitoring`, `argocd`,
+  `kube-system`) must declare the same level, since each writes the same
+  namespace labels.
 - **Stateful resources:** Keep `argocd.argoproj.io/sync-options: Delete=false,Prune=false`
   on PVCs, CNPG `Cluster`/`Database` CRs, and persistent namespaces.
 - **Secrets:** Never commit plaintext or encrypted Kubernetes Secrets to git.
