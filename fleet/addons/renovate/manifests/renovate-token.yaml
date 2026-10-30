@@ -14,8 +14,8 @@ kind: ExternalSecret
 metadata:
   name: renovate-token
 spec:
-  # installation tokens expire after 60 min
-  refreshInterval: 30m
+  # tokens last 60 min and Renovate reads one at pod start: every run gets >=55 min, past activeDeadlineSeconds
+  refreshInterval: 5m
   target:
     name: renovate-token
     template:
