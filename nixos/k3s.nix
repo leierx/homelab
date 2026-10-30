@@ -159,18 +159,6 @@ let
       { level = "Metadata"; }
     ];
   };
-
-  # pull every image through Harbor's proxy cache projects (tofu/harbor/proxy.tf) on the wg Gateway, falling back to
-  # the upstream only while Harbor can't answer (a fresh install, an outage); fleet/addons/admission refuses other registries
-  registries = yaml.generate "k3s-registries.yaml" {
-    mirrors = {
-      "docker.io".endpoint = [ "https://registry.skinke.net/v2/docker.io" ];
-      "ghcr.io".endpoint = [ "https://registry.skinke.net/v2/ghcr.io" ];
-      "quay.io".endpoint = [ "https://registry.skinke.net/v2/quay.io" ];
-      "registry.k8s.io".endpoint = [ "https://registry.skinke.net/v2/registry.k8s.io" ];
-      "ecr-public.aws.com".endpoint = [ "https://registry.skinke.net/v2/ecr-public.aws.com" ];
-    };
-  };
 in
 {
   services.k3s = {
@@ -195,7 +183,6 @@ in
       "--kubelet-arg=read-only-port=0"
       # virt-launcher and CDI's importer run as uid 107 and must open raw block volumes
       "--nonroot-devices"
-      "--private-registry=${registries}"
       "--kube-apiserver-arg=authentication-config=${authentication}"
       "--kube-apiserver-arg=admission-control-config-file=${admission}"
       "--kube-apiserver-arg=audit-policy-file=${auditPolicy}"

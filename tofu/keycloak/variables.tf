@@ -45,8 +45,3 @@ variable "miniflux_client_secret" {
   sensitive = true
 }
 
-variable "harbor_client_secret" {
-  type      = string
-  sensitive = true
-}
-

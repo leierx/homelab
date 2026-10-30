@@ -110,12 +110,6 @@ kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
 
 ### 3. Apply the Cluster Secret
 
-On a fresh cluster Harbor doesn't exist yet, so first delete the
-`fleet.io/oci-mirror` label from `fleet/clusters/loft01/cluster-secret.yaml`
-and push (see [Helm charts through Harbor](#helm-charts-through-harbor)); put it
-back once `loft01-harbor` is Healthy. Nodes pull from the upstreams until then
-on their own.
-
 ```sh
 kubectl apply -f fleet/clusters/loft01/cluster-secret.yaml
 ```
@@ -131,31 +125,19 @@ enabled addons in dependency wave order:
 - **Wave 5:** `capi-argo-bridge`, `external-secrets`
 - **Wave 6:** `argo-workflows`, `renovate`
 - **Wave 7:** `keycloak`
-- **Wave 8:** `alerta`, `argocd`, `harbor`, `immich`, `miniflux`
+- **Wave 8:** `alerta`, `argocd`, `immich`, `miniflux`
 - **Wave 9:** `grafana`
 
-## Helm charts through Harbor
+## Helm charts through a registry mirror
 
 Every `helm.repoURL` points at the chart's upstream, and every chart that
 upstream publishes as an OCI artifact uses that form (`quay.io/cilium/charts`,
 not `https://helm.cilium.io`), so Renovate tracks it with `datasource=docker`.
 A cluster labelled `fleet.io/oci-mirror: <host>` gets those sources rewritten
 to `<host>/<upstream registry>/<path>` (`fleet.helmRepoURL` in
-`templates/_helpers.tpl`), which is the layout of Harbor's proxy cache
-projects (`tofu/harbor/proxy.tf`), so Argo CD pulls charts from the local
-cache instead of the internet. Sources with a scheme (`https://` chart
-repositories, git) stay as they are: Harbor can only proxy OCI registries, and
-`alloy`, `cluster-api-operator` and Harbor's own chart aren't published as OCI
-charts. Harbor's chart coming from upstream means a broken Harbor upgrade can
-still be rolled back through Argo CD.
-
-- Break-glass: if Harbor or the path to it (the wg Gateway, CoreDNS's
-  `registry.skinke.net` rewrite, the repo-server's network policy) is broken,
-  every other Application fails to render (nothing is pruned; syncs stop).
-  Delete the `fleet.io/oci-mirror` label in git and push; `fleet-<cluster>`
-  only reads git, so it re-renders every Application from upstream.
-- The argocd-diff-preview workflow renders without the label, because GitHub's
-  runners can't reach the WireGuard-only registry.
+`templates/_helpers.tpl`); sources with a scheme (`https://` chart
+repositories, git) and charts with `mirror: false` stay as they are. No cluster
+sets the label today.
 
 ## Addon Reference (`addon.yaml`)
 

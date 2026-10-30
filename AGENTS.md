@@ -39,7 +39,7 @@ without explicit instruction.
    - Addons with their own templates (`alerta`, `capi-argo-bridge`, `keycloak`,
      `mimir`, `miniflux`) include a local `Chart.yaml` and `templates/`.
 3. **Clusters (`fleet/clusters/<cluster>/`):**
-   - `cluster-secret.yaml` is the Argo CD cluster Secret (`argocd.argoproj.io/secret-type: cluster`) and the single cluster-level file: it sets the cluster's `name`, `server`, `fleet.io/repo-url`, `fleet.io/target-revision`, `fleet.io/oci-mirror` (pull OCI Helm charts through Harbor; see `fleet/README.md`), and `fleet.io/<addon>.enable: "true"` labels enabling addons.
+   - `cluster-secret.yaml` is the Argo CD cluster Secret (`argocd.argoproj.io/secret-type: cluster`) and the single cluster-level file: it sets the cluster's `name`, `server`, `fleet.io/repo-url`, `fleet.io/target-revision`, and `fleet.io/<addon>.enable: "true"` labels enabling addons.
    - `<name>/` (created only when `<cluster>` customizes or defines addon `<name>`):
      - `values.yaml` overlays `fleet/addons/<name>/values.yaml`.
      - `manifests/` adds cluster-specific resources (routes, Certificates,

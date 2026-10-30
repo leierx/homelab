@@ -1,11 +1,8 @@
-# ClusterClass for future workload clusters: kubeadm nodes as KubeVirt VMs on loft01, whose
-# containerd pulls every image through Harbor like loft01's own (nixos/k3s.nix), falling back to
-# the upstream when registry.skinke.net doesn't answer. The VMs resolve it through cluster DNS
-# (CoreDNS answers with the wg Gateway), and network-policy below lets them reach it.
+# ClusterClass for future workload clusters: kubeadm nodes as KubeVirt VMs on loft01.
 #
 #   apiVersion: cluster.x-k8s.io/v1beta2
 #   kind: Cluster
-#   metadata: {name: example, namespace: clusters, labels: {fleet.io/enabled: "true", fleet.io/oci-mirror: registry.skinke.net}}
+#   metadata: {name: example, namespace: clusters, labels: {fleet.io/enabled: "true"}}
 #   spec:
 #     clusterNetwork: {pods: {cidrBlocks: [10.243.0.0/16]}, services: {cidrBlocks: [10.95.0.0/16]}}
 #     topology:
@@ -13,9 +10,6 @@
 #       version: v1.34.1   # a tag of quay.io/capk/ubuntu-2404-container-disk
 #       controlPlane: {replicas: 1}
 #       workers: {machineDeployments: [{class: default-worker, name: md-0, replicas: 1}]}
-#
-# The CAPK node images (kubernetes-sigs/image-builder) set containerd's config_path to
-# /etc/containerd/certs.d, so the hosts.toml files below take effect without touching config.toml.
 apiVersion: cluster.x-k8s.io/v1beta2
 kind: ClusterClass
 metadata:
@@ -148,48 +142,7 @@ metadata:
 spec:
   template:
     spec:
-      kubeadmConfigSpec:
-        files:
-          - path: /etc/containerd/certs.d/docker.io/hosts.toml
-            owner: root:root
-            permissions: "0644"
-            content: |
-              server = "https://registry-1.docker.io"
-              [host."https://registry.skinke.net/v2/docker.io"]
-                capabilities = ["pull", "resolve"]
-                override_path = true
-          - path: /etc/containerd/certs.d/ghcr.io/hosts.toml
-            owner: root:root
-            permissions: "0644"
-            content: |
-              server = "https://ghcr.io"
-              [host."https://registry.skinke.net/v2/ghcr.io"]
-                capabilities = ["pull", "resolve"]
-                override_path = true
-          - path: /etc/containerd/certs.d/quay.io/hosts.toml
-            owner: root:root
-            permissions: "0644"
-            content: |
-              server = "https://quay.io"
-              [host."https://registry.skinke.net/v2/quay.io"]
-                capabilities = ["pull", "resolve"]
-                override_path = true
-          - path: /etc/containerd/certs.d/registry.k8s.io/hosts.toml
-            owner: root:root
-            permissions: "0644"
-            content: |
-              server = "https://registry.k8s.io"
-              [host."https://registry.skinke.net/v2/registry.k8s.io"]
-                capabilities = ["pull", "resolve"]
-                override_path = true
-          - path: /etc/containerd/certs.d/ecr-public.aws.com/hosts.toml
-            owner: root:root
-            permissions: "0644"
-            content: |
-              server = "https://ecr-public.aws.com"
-              [host."https://registry.skinke.net/v2/ecr-public.aws.com"]
-                capabilities = ["pull", "resolve"]
-                override_path = true
+      kubeadmConfigSpec: {}
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
@@ -198,65 +151,4 @@ metadata:
   namespace: clusters
 spec:
   template:
-    spec:
-      files:
-        - path: /etc/containerd/certs.d/docker.io/hosts.toml
-          owner: root:root
-          permissions: "0644"
-          content: |
-            server = "https://registry-1.docker.io"
-            [host."https://registry.skinke.net/v2/docker.io"]
-              capabilities = ["pull", "resolve"]
-              override_path = true
-        - path: /etc/containerd/certs.d/ghcr.io/hosts.toml
-          owner: root:root
-          permissions: "0644"
-          content: |
-            server = "https://ghcr.io"
-            [host."https://registry.skinke.net/v2/ghcr.io"]
-              capabilities = ["pull", "resolve"]
-              override_path = true
-        - path: /etc/containerd/certs.d/quay.io/hosts.toml
-          owner: root:root
-          permissions: "0644"
-          content: |
-            server = "https://quay.io"
-            [host."https://registry.skinke.net/v2/quay.io"]
-              capabilities = ["pull", "resolve"]
-              override_path = true
-        - path: /etc/containerd/certs.d/registry.k8s.io/hosts.toml
-          owner: root:root
-          permissions: "0644"
-          content: |
-            server = "https://registry.k8s.io"
-            [host."https://registry.skinke.net/v2/registry.k8s.io"]
-              capabilities = ["pull", "resolve"]
-              override_path = true
-        - path: /etc/containerd/certs.d/ecr-public.aws.com/hosts.toml
-          owner: root:root
-          permissions: "0644"
-          content: |
-            server = "https://ecr-public.aws.com"
-            [host."https://registry.skinke.net/v2/ecr-public.aws.com"]
-              capabilities = ["pull", "resolve"]
-              override_path = true
----
-# the VMs' virt-launcher pods pull through Harbor on the wg Gateway (the rest of a workload
-# cluster's traffic still needs its own policy before the first cluster is created)
-apiVersion: cilium.io/v2
-kind: CiliumNetworkPolicy
-metadata:
-  name: workload-cluster-registry
-  namespace: clusters
-spec:
-  endpointSelector:
-    matchLabels:
-      kubevirt.io: virt-launcher
-  egress:
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: envoy-gateway-system
-            app.kubernetes.io/name: envoy
-            gateway.envoyproxy.io/owning-gateway-name: wg
-      toPorts:
-        - ports: [{port: "10443", protocol: TCP}]
+    spec: {}

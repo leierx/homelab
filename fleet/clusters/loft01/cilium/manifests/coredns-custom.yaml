@@ -1,8 +1,6 @@
 # Keep skinke.net traffic in-cluster (OIDC clients and cert-manager HTTP-01
-# self-checks resolve to the edge Envoy Service on the first search-domain try;
-# registry.skinke.net, which only the wg Gateway serves, resolves to the wg Envoy
-# Service) and forward upstream queries over TCP to the host's systemd-resolved stub.
-# The first matching rewrite wins, so the registry rule comes first.
+# self-checks resolve to the edge Envoy Service on the first search-domain try)
+# and forward upstream queries over TCP to the host's systemd-resolved stub.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -11,7 +9,6 @@ metadata:
 data:
   split-horizon.override: |
     bind eth0
-    rewrite name regex ^registry\.skinke\.net(\..*\.cluster\.local)?\.$ wg.envoy-gateway-system.svc.cluster.local. answer auto
     rewrite name regex \.skinke\.net(\..*\.cluster\.local)?\.$ edge.envoy-gateway-system.svc.cluster.local. answer auto
   upstream.server: |
     .:53 {

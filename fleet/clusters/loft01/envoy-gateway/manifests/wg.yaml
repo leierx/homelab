@@ -64,17 +64,3 @@ spec:
   allowedListeners:
     namespaces:
       from: All
----
-# Stable in-cluster Service name for the wg proxy, which CoreDNS answers registry.skinke.net with (Envoy Gateway's own Service name includes a hash).
-apiVersion: v1
-kind: Service
-metadata:
-  name: wg
-spec:
-  selector:
-    app.kubernetes.io/name: envoy
-    gateway.envoyproxy.io/owning-gateway-name: wg
-  ports:
-    - name: https
-      port: 443
-      targetPort: 10443

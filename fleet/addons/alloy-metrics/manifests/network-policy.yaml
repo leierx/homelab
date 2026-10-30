@@ -34,7 +34,6 @@ spec:
         - ports:
             - {port: "3000", protocol: TCP}
             - {port: "3100", protocol: TCP}
-            - {port: "8001", protocol: TCP}
             - {port: "8080", protocol: TCP}
             - {port: "8081", protocol: TCP}
             - {port: "8082", protocol: TCP}
@@ -68,14 +67,6 @@ spec:
             app.kubernetes.io/instance: alloy-metrics
       toPorts:
         - ports: [{port: "12345", protocol: TCP}]
-    # Harbor's webhooks (loki.source.api "harbor")
-    - fromEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: harbor
-            app: harbor
-            component: jobservice
-      toPorts:
-        - ports: [{port: "3500", protocol: TCP}]
   egress:
     - toEntities: [kube-apiserver]
     - toEndpoints:

@@ -28,8 +28,7 @@ spec:
   policyName: image-versions
   validationActions: [Deny]
 ---
-# Every image comes from a registry Harbor proxies, so nodes pull it through Harbor (nixos/k3s.nix mirrors exactly
-# these). An image without a registry host is docker.io. Keep the list in step with tofu/harbor/proxy.tf.
+# Every image comes from one of a few known registries. An image without a registry host is docker.io.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
@@ -50,11 +49,11 @@ spec:
         .map(p, size(p) > 1 && (p[0].contains('.') || p[0].contains(':') || p[0] == 'localhost') ? p[0] : 'docker.io')
   validations:
     - expression: >-
-        variables.hosts.all(h, h in ['docker.io', 'ecr-public.aws.com', 'ghcr.io', 'quay.io', 'registry.k8s.io', 'registry.skinke.net'])
+        variables.hosts.all(h, h in ['docker.io', 'ecr-public.aws.com', 'ghcr.io', 'quay.io', 'registry.k8s.io'])
       messageExpression: >-
-        'images must come from a registry Harbor proxies (docker.io, ecr-public.aws.com, ghcr.io, quay.io,
-        registry.k8s.io) or from registry.skinke.net; not ' + variables.hosts.filter(h, !(h in ['docker.io',
-        'ecr-public.aws.com', 'ghcr.io', 'quay.io', 'registry.k8s.io', 'registry.skinke.net'])).join(', ')
+        'images must come from docker.io, ecr-public.aws.com, ghcr.io, quay.io or registry.k8s.io; not '
+        + variables.hosts.filter(h, !(h in ['docker.io', 'ecr-public.aws.com', 'ghcr.io', 'quay.io',
+        'registry.k8s.io'])).join(', ')
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

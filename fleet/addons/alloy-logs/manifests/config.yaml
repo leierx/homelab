@@ -190,17 +190,6 @@ data:
       forward_to = [loki.write.loki.receiver]
     }
     
-    // harbor.alloy
-    // Harbor's webhooks (tofu/harbor/proxy.tf) POST one JSON event per line to /loki/api/v1/raw
-    loki.source.api "harbor" {
-      http {
-        listen_address = "0.0.0.0"
-        listen_port    = 3500
-      }
-      labels     = {job = "harbor-webhook"}
-      forward_to = [loki.write.loki.receiver]
-    }
-    
     // remote-write.alloy
     loki.write "loki" {
       endpoint {
