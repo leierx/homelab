@@ -24,6 +24,7 @@ resource "keycloak_openid_client" "argocd" {
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
+  full_scope_allowed           = false
 
   valid_redirect_uris = ["https://argocd.skinke.net/auth/callback"]
 }
@@ -40,6 +41,7 @@ resource "keycloak_openid_client" "argocd_cli" {
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
+  full_scope_allowed           = false
   pkce_code_challenge_method   = "S256"
 
   valid_redirect_uris = ["http://localhost:8085/auth/callback"]
@@ -59,6 +61,7 @@ resource "keycloak_openid_client" "grafana" {
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
+  full_scope_allowed           = false
 
   valid_redirect_uris             = ["https://metrics.skinke.net/login/generic_oauth"]
   valid_post_logout_redirect_uris = ["https://metrics.skinke.net/login"]
@@ -79,6 +82,7 @@ resource "keycloak_openid_client" "immich" {
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
+  full_scope_allowed           = false
 
   valid_redirect_uris = [
     "https://photos.skinke.net/auth/login",
@@ -133,6 +137,7 @@ resource "keycloak_openid_client" "alerta" {
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
+  full_scope_allowed           = false
 
   valid_redirect_uris = ["https://alerta.skinke.net/*"]
   web_origins         = ["https://alerta.skinke.net"]
@@ -152,6 +157,7 @@ resource "keycloak_openid_client" "edge" {
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
+  full_scope_allowed           = false
 
   valid_redirect_uris = [
     "https://argocd.skinke.net/_envoy/callback",
@@ -173,6 +179,7 @@ resource "keycloak_openid_client" "kubernetes" {
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
+  full_scope_allowed           = false
   pkce_code_challenge_method   = "S256"
 
   access_token_lifespan       = "900"
@@ -199,6 +206,7 @@ resource "keycloak_openid_client" "argo_workflows" {
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
+  full_scope_allowed           = false
 
   valid_redirect_uris = ["https://workflows.skinke.net/oauth2/callback"]
 }
@@ -217,6 +225,7 @@ resource "keycloak_openid_client" "miniflux" {
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
+  full_scope_allowed           = false
 
   valid_redirect_uris = ["https://rss.skinke.net/oauth2/oidc/callback"]
   web_origins         = ["https://rss.skinke.net"]
