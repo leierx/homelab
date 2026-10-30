@@ -1,3 +1,4 @@
 namespace: cdi
+podSecurity: restricted
 dependencies:
   - cilium
