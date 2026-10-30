@@ -34,8 +34,11 @@ configs:
     controller.sync.timeout.seconds: '4800'
   rbac:
     policy.csv: |
+      p, role:operator, applications, sync, */*, allow
+      p, role:operator, applications, action/*, */*, allow
+      g, role:operator, role:readonly
       g, homelab-admins, role:admin
-      g, homelab-operators, role:admin
+      g, homelab-operators, role:operator
       g, homelab-viewers, role:readonly
 
 global:
