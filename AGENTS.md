@@ -104,7 +104,8 @@ nix build .#nixosConfigurations.loft01.config.system.build.toplevel
 - **Pod security:** Every addon declares `podSecurity` in `addon.yaml`. Addons
   sharing a namespace (e.g. `telemetry`, `monitoring`, `argocd`,
   `kube-system`) must declare the same level, since each writes the same
-  namespace labels.
+  namespace labels. When upstream ships the Namespace, its labels come from the
+  manifests: Argo CD ignores `podSecurity` then.
 - **Stateful resources:** Keep `argocd.argoproj.io/sync-options: Delete=false,Prune=false`
   on PVCs, CNPG `Cluster`/`Database` CRs, and persistent namespaces.
 - **Secrets:** Never commit plaintext or encrypted Kubernetes Secrets to git.
