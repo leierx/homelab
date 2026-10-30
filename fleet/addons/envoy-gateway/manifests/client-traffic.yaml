@@ -11,8 +11,6 @@ spec:
     - group: gateway.networking.k8s.io
       kind: Gateway
       name: wg
-  # no clientIPDetection: any xForwardedFor setting, even numTrustedHops 0, makes Envoy take the client's own
-  # (rightmost) X-Forwarded-For entry as its IP; without it Envoy uses the TCP peer and appends that
   http1:
     enableTrailers: false
   tls:
@@ -21,8 +19,7 @@ spec:
       - h2
       - http/1.1
   headers:
-    # nothing proxies in front of edge or wg, so a client's X-Forwarded-For is a claim; drop it before Envoy
-    # appends the peer, since backends (Keycloak among them) take the first entry
+    # no proxy in front: drop the client's XFF (clientIPDetection would trust it) so Envoy appends only the peer
     earlyRequestHeaders:
       remove:
         - X-Forwarded-For
