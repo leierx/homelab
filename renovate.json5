@@ -6,7 +6,6 @@
   labels: ['dependencies', 'needs-review'],
   pruneBranchAfterAutomerge: true,
   platformAutomerge: false,
-  ignoreTests: true,
   customManagers: [
     {
       customType: 'regex',
@@ -62,6 +61,19 @@
       matchUpdateTypes: ['minor', 'patch', 'pin', 'digest'],
       automerge: true,
       labels: ['dependencies'],
+    },
+    {
+      description: 'Minor bumps of stateful apps get a review; their patches stay automerged',
+      matchDepNames: [
+        'ghcr.io/immich-app/immich-charts/immich',
+        'ghcr.io/immich-app/immich-server',
+        'ghcr.io/immich-app/immich-machine-learning',
+        'quay.io/keycloak/keycloak',
+        'ghcr.io/openbao/charts/openbao',
+      ],
+      matchUpdateTypes: ['minor'],
+      automerge: false,
+      labels: ['dependencies', 'needs-review'],
     },
     {
       description: 'Run minor, patch and digest updates twice a week',

@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "fleet/**"
+      - "tofu/**"
       - ".github/argocd-diff-preview/**"
       - ".github/workflows/argocd-diff-preview.yml"
     types: [opened, reopened, synchronize, labeled]
@@ -19,14 +20,8 @@ concurrency:
 
 jobs:
   preview:
-    # A fork PR's token cannot comment; Renovate PRs only run when labeled needs-review.
-    if: >-
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      (github.event.action != 'labeled' || github.event.label.name == 'needs-review') &&
-      (
-        github.event.pull_request.user.login != 'leierx-renovate[bot]' ||
-        contains(github.event.pull_request.labels.*.name, 'needs-review')
-      )
+    # never skip on labels: a skipped run becomes the latest check, which Renovate reads as green; forks can't comment
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
@@ -113,6 +108,9 @@ jobs:
           retention-days: 7
 
       - name: Post diff as PR comment
+        if: >-
+          github.event.pull_request.user.login != 'leierx-renovate[bot]' ||
+          contains(github.event.pull_request.labels.*.name, 'needs-review')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
