@@ -69,9 +69,44 @@ spec:
         - path: { type: PathPrefix, value: /resources/ }
         # RFC 8414 metadata, for realm homelab only (the master realm stays internal)
         - path: { type: RegularExpression, value: "/\\.well-known/[^/]+/realms/homelab" }
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            # Keycloak takes the first X-Forwarded-For entry, which the client controls; give it only the peer Envoy saw
+            set:
+              - name: X-Forwarded-For
+                value: "%DOWNSTREAM_REMOTE_ADDRESS_WITHOUT_PORT%"
       backendRefs:
         - name: keycloak-service
           port: 8080
+---
+# Each client IP gets its own bucket for the POSTs that check passwords or issue tokens; pages and static resources are not limited
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: keycloak-edge
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: keycloak-edge
+  # keep the Gateway's request timeout
+  mergeType: StrategicMerge
+  rateLimit:
+    type: Local
+    local:
+      rules:
+        - clientSelectors:
+            - path: { type: PathPrefix, value: /realms/homelab/login-actions/ }
+              methods: [{ value: POST }]
+              sourceCIDR: { type: Distinct, value: 0.0.0.0/0 }
+          limit: { requests: 20, unit: Minute }
+        # apps and Envoy's own OIDC filter exchange and refresh tokens here, each from its pod IP
+        - clientSelectors:
+            - path: { type: PathPrefix, value: /realms/homelab/protocol/openid-connect/token }
+              methods: [{ value: POST }]
+              sourceCIDR: { type: Distinct, value: 0.0.0.0/0 }
+          limit: { requests: 60, unit: Minute }
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -85,7 +120,13 @@ spec:
   hostnames:
     - auth.skinke.net
   rules:
-    - backendRefs:
+    - filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Forwarded-For
+                value: "%DOWNSTREAM_REMOTE_ADDRESS_WITHOUT_PORT%"
+      backendRefs:
         - name: keycloak-service
           port: 8080
 ---
