@@ -1,0 +1,10 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: capi-argo-bridge
+spec:
+  endpointSelector:
+    matchLabels:
+      app: capi-argo-bridge
+  egress:
+    - toEntities: [kube-apiserver]

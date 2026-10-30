@@ -175,17 +175,6 @@ spec:
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: capi-argo-bridge
-spec:
-  endpointSelector:
-    matchLabels:
-      app: capi-argo-bridge
-  egress:
-    - toEntities: [kube-apiserver]
----
-apiVersion: cilium.io/v2
-kind: CiliumNetworkPolicy
-metadata:
   name: redis-secret-init
 spec:
   endpointSelector:
