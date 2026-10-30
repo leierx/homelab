@@ -21,6 +21,11 @@ spec:
       - h2
       - http/1.1
   headers:
+    # nothing proxies in front of edge or wg, so a client's X-Forwarded-For is a claim; drop it before Envoy
+    # appends the peer, since backends (Keycloak among them) take the first entry
+    earlyRequestHeaders:
+      remove:
+        - X-Forwarded-For
     enableEnvoyHeaders: false
     withUnderscoresAction: RejectRequest
     lateResponseHeaders:

@@ -69,13 +69,6 @@ spec:
         - path: { type: PathPrefix, value: /resources/ }
         # RFC 8414 metadata, for realm homelab only (the master realm stays internal)
         - path: { type: RegularExpression, value: "/\\.well-known/[^/]+/realms/homelab" }
-      filters:
-        - type: RequestHeaderModifier
-          requestHeaderModifier:
-            # Keycloak takes the first X-Forwarded-For entry, which the client controls; give it only the peer Envoy saw
-            set:
-              - name: X-Forwarded-For
-                value: "%DOWNSTREAM_REMOTE_ADDRESS_WITHOUT_PORT%"
       backendRefs:
         - name: keycloak-service
           port: 8080
@@ -120,13 +113,7 @@ spec:
   hostnames:
     - auth.skinke.net
   rules:
-    - filters:
-        - type: RequestHeaderModifier
-          requestHeaderModifier:
-            set:
-              - name: X-Forwarded-For
-                value: "%DOWNSTREAM_REMOTE_ADDRESS_WITHOUT_PORT%"
-      backendRefs:
+    - backendRefs:
         - name: keycloak-service
           port: 8080
 ---
