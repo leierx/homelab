@@ -11,9 +11,8 @@ spec:
     - group: gateway.networking.k8s.io
       kind: Gateway
       name: wg
-  clientIPDetection:
-    xForwardedFor:
-      numTrustedHops: 0
+  # no clientIPDetection: any xForwardedFor setting, even numTrustedHops 0, makes Envoy take the client's own
+  # (rightmost) X-Forwarded-For entry as its IP; without it Envoy uses the TCP peer and appends that
   http1:
     enableTrailers: false
   tls:
