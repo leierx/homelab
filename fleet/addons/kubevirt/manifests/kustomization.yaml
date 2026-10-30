@@ -23,14 +23,6 @@ patches:
           virtualMachineInstanceProfile:
             customProfile:
               runtimeDefaultProfile: true
-  # Template is Beta (on by default in v1.9.1) and only deploys virt-template, which nothing here uses
-  - target:
-      kind: KubeVirt
-    patch: |
-      - op: add
-        path: /spec/configuration/developerConfiguration/disabledFeatureGates
-        value:
-          - Template
   # an accidental CR delete must not tear the running VMs down (the DELETE webhook enforces this)
   - target:
       kind: KubeVirt

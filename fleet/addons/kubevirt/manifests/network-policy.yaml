@@ -130,3 +130,34 @@ spec:
             - {port: "8443", protocol: TCP}
   egress:
     - toEntities: [kube-apiserver]
+---
+# the Job virt-operator runs to dump a new install strategy, e.g. on upgrades
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: virt-operator-strategy-dumper
+  namespace: kubevirt
+spec:
+  endpointSelector:
+    matchLabels:
+      kubevirt.io: virt-operator-strategy-dumper
+  egress:
+    - toEntities: [kube-apiserver]
+---
+# 9443 is the aggregated API on the apiserver and the webhook on the controller
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: virt-template
+  namespace: kubevirt
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: virt-template
+  ingress:
+    - fromEntities: [kube-apiserver]
+      toPorts:
+        - ports:
+            - {port: "9443", protocol: TCP}
+  egress:
+    - toEntities: [kube-apiserver]
