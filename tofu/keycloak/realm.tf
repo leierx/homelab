@@ -51,3 +51,9 @@ resource "keycloak_realm_events" "homelab" {
   # new realms get jboss-logging by default; this resource would remove it otherwise
   events_listeners = ["jboss-logging"]
 }
+
+# Keycloak's defaults without offline_access: no client asks for offline tokens
+resource "keycloak_default_roles" "homelab" {
+  realm_id      = keycloak_realm.homelab.id
+  default_roles = ["uma_authorization", "account/view-profile", "account/manage-account"]
+}

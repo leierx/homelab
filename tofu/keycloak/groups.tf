@@ -24,11 +24,10 @@ resource "keycloak_group_roles" "admins" {
   realm_id = keycloak_realm.homelab.id
   group_id = keycloak_group.admins.id
 
-  role_ids = [
-    keycloak_role.homelab_access.id,
-    data.keycloak_role.realm_admin.id,
-    keycloak_role.immich_admin.id,
-  ]
+  role_ids = concat(
+    [keycloak_role.homelab_access.id, keycloak_role.immich_admin.id],
+    [for role in data.keycloak_role.realm_management_view : role.id],
+  )
 }
 
 resource "keycloak_group_roles" "operators" {
@@ -75,8 +74,10 @@ data "keycloak_openid_client" "realm_management" {
   client_id = "realm-management"
 }
 
-data "keycloak_role" "realm_admin" {
+# read-only: tofu makes every change, and break-glass is `kc.sh bootstrap-admin`
+data "keycloak_role" "realm_management_view" {
+  for_each  = toset(["view-realm", "view-users", "view-clients", "view-events"])
   realm_id  = keycloak_realm.homelab.id
   client_id = data.keycloak_openid_client.realm_management.id
-  name      = "realm-admin"
+  name      = each.key
 }

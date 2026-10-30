@@ -146,7 +146,22 @@ resource "keycloak_authentication_execution_config" "no_tier" {
   }
 }
 
+# password grants would skip the second factor and the tier check, and no client uses them
+resource "keycloak_authentication_flow" "direct_grant" {
+  realm_id = keycloak_realm.homelab.id
+  alias    = "homelab-direct-grant"
+}
+
+resource "keycloak_authentication_execution" "deny_direct_grant" {
+  realm_id          = keycloak_realm.homelab.id
+  parent_flow_alias = keycloak_authentication_flow.direct_grant.alias
+  authenticator     = "deny-access-authenticator"
+  requirement       = "REQUIRED"
+  priority          = 10
+}
+
 resource "keycloak_authentication_bindings" "homelab" {
-  realm_id     = keycloak_realm.homelab.id
-  browser_flow = keycloak_authentication_flow.browser.alias
+  realm_id          = keycloak_realm.homelab.id
+  browser_flow      = keycloak_authentication_flow.browser.alias
+  direct_grant_flow = keycloak_authentication_flow.direct_grant.alias
 }
