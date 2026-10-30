@@ -3,8 +3,7 @@ kind: ClusterRole
 metadata:
   name: alloy-logs
 rules:
-  # the discovery lists every namespace's pods and keeps the ones on this node;
-  # the logs themselves are read from /var/log, not through the API
+  # discovery only: the logs are read from /var/log
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list", "watch"]

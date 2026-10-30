@@ -1,6 +1,4 @@
-# Keep skinke.net traffic in-cluster (OIDC clients and cert-manager HTTP-01
-# self-checks resolve to the edge Envoy Service on the first search-domain try)
-# and forward upstream queries over TCP to the host's systemd-resolved stub.
+# skinke.net resolves to the edge Envoy so OIDC clients and HTTP-01 self-checks stay in-cluster
 apiVersion: v1
 kind: ConfigMap
 metadata:

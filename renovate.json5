@@ -1,12 +1,4 @@
-// Renovate configuration for this repository (Renovate reads it only from the repo root).
-// Version sources Renovate understands:
-//   fleet/**/addon.yaml                           upstream charts (`# renovate:` above targetRevision)
-//   fleet/**/values.yaml                          image.repository / image.tag style Helm values
-//   fleet/addons/**, fleet/clusters/**            kustomization `images:` and plain `image:` fields,
-//                                                 remote bases (?ref=, GitHub release download URLs),
-//                                                 OpenTofu providers
-//   anywhere in fleet/                            a value on the line after `# renovate: datasource=... depName=...`
-//   .github/workflows/                            GitHub Actions, pinned to digests
+// Renovate reads this only from the repo root.
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: ['config:recommended', 'helpers:pinGitHubActionDigests'],

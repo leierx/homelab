@@ -1,5 +1,4 @@
-# The provider namespaces are not this addon's destination, so they are manifests here.
-# The chart's createNamespace values are off; these carry the protection annotation and PSA labels instead.
+# not this addon's destination namespace, and the chart's createNamespace is off
 apiVersion: v1
 kind: Namespace
 metadata:

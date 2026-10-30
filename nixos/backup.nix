@@ -50,9 +50,7 @@ let
       cp -a /etc/rancher/node/password "$stage"/node-password
       r backup --host loft01 --tag k3s "$stage"
 
-      # one snapshot per PVC (zvol or dataset) from its latest daily snapshot; the
-      # stream is chunked and deduplicated like any other file, and stdin-filename
-      # keeps the parent snapshot so unchanged chunks are skipped
+      # --stdin-filename keeps a stable parent, so unchanged chunks of the zfs stream are skipped
       for vol in $(zfs list -H -t volume,filesystem -o name -r -d 1 tank | grep -v '^tank$'); do
         snap=$(zfs list -H -t snapshot -o name -s creation -d 1 "$vol" | grep '@autosnap_.*_daily$' | tail -n 1) || continue
         zfs send -L "$snap" | r backup --host loft01 --tag "volume:$vol" --stdin --stdin-filename "$vol"

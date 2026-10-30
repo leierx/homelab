@@ -1,6 +1,4 @@
-# Two issuers, identical except for the name, ACME server and account key Secret.
-# Every Certificate names one, so switching between staging and production is one line per Certificate.
-# Wave 1: only after the chart's CRDs, controller and webhook are healthy.
+# wave 1: waits for the cert-manager webhook
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:

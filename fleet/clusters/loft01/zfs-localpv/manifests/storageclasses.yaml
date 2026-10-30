@@ -14,9 +14,7 @@ allowVolumeExpansion: true
 reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer
 ---
-# zfs-thin: ZFS filesystems with 1M records, for bulk files; never databases.
-# A ZFS filesystem per PVC: the size is a refquota (snapshots don't count),
-# thin-provisioned so the quota is a limit and not space held in the pool.
+# zfs-thin: a 1M-recordsize dataset per PVC for bulk files, never databases; refquota so snapshots don't count
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:

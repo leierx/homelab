@@ -61,8 +61,7 @@ spec:
       matchExpressions:
         - { key: kubernetes.io/metadata.name, operator: NotIn, values: [alerta, envoy-gateway-system, immich, keycloak] }
 ---
-# Gateway/edge and Gateway/wg allow routes and listeners from All namespaces so each addon can bring its own;
-# restrict which namespaces may actually create HTTPRoute or ListenerSet objects.
+# the Gateways accept routes and listeners from All namespaces; this narrows who may create them
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:

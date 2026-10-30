@@ -346,8 +346,7 @@ data:
     }
     
     // kube-state-metrics.alloy
-    // the kube-state-metrics Service's endpoint slices; the job name and the one
-    // label are what the alerts query
+    // the alerts query this job name and source label
     discovery.kubernetes "kube_state_metrics" {
       role = "endpointslice"
     
@@ -564,8 +563,6 @@ data:
     }
     
     // operator.alloy
-    // every ServiceMonitor and PodMonitor in the cluster; the CRDs come from the
-    // prometheus-operator-crds addon
     prometheus.operator.servicemonitors "service_monitors" {
       kubernetes_role = "endpointslice"
     

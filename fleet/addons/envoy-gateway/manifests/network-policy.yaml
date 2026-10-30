@@ -1,5 +1,4 @@
-# Base Envoy Gateway policies: controller and edge proxy baseline.
-# Cluster-specific routes, OIDC, and internal Gateways live in clusters/<cluster>/envoy-gateway/manifests/.
+# per-cluster routes, OIDC and internal Gateways live in clusters/<cluster>/envoy-gateway/manifests/
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:

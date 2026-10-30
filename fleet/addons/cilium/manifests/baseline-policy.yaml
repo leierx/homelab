@@ -1,5 +1,4 @@
-# Cluster-wide pod baseline: every pod defaults to deny on both ingress and
-# egress and is only granted cluster DNS; each addon opens what its workloads need.
+# default-deny for every pod except cluster DNS; each addon opens its own flows
 apiVersion: cilium.io/v2
 kind: CiliumClusterwideNetworkPolicy
 metadata:

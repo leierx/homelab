@@ -313,8 +313,7 @@ in
           path = "/etc/ssh/ssh_host_ed25519_key";
         };
         "openbao/seal_key" = { };
-        # yescrypt hash for leier, so doas has something to prompt for;
-        # neededForUsers: users are updated before regular secrets are installed
+        # for doas; neededForUsers: users are updated before other secrets are installed
         "leier/password_hash" = {
           neededForUsers = true;
         };

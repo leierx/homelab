@@ -29,9 +29,7 @@ metadata:
     kubernetes.io/service-account.name: homelab-admins
 type: kubernetes.io/service-account-token
 ---
-# full Argo Workflows admin: the chart's aggregate role has no cluster-scoped
-# resources except ClusterWorkflowTemplates, which the UI lists, so bind it
-# cluster-wide; `view` adds pods/log and the rest the UI reads
+# cluster-wide: the UI lists ClusterWorkflowTemplates; `view` below adds pods/log
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:

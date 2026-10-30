@@ -1,5 +1,4 @@
-# Cluster-wide host firewall baseline: default-deny on node ingress and egress.
-# Cluster-specific host ingress (e.g. WireGuard and SSH) lives in clusters/<cluster>/cilium/manifests/.
+# default-deny on the host; per-cluster host ingress lives in clusters/<cluster>/cilium/manifests/
 apiVersion: cilium.io/v2
 kind: CiliumClusterwideNetworkPolicy
 metadata:
