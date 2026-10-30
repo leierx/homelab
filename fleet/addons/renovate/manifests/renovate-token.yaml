@@ -1,0 +1,29 @@
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: GithubAccessToken
+metadata:
+  name: renovate
+spec:
+  appIDRef: {name: renovate-github-app, key: GITHUB_APP_ID}
+  installIDRef: {name: renovate-github-app, key: GITHUB_APP_INSTALLATION_ID}
+  auth:
+    privateKey:
+      secretRef: {name: renovate-github-app, key: GITHUB_APP_PRIVATE_KEY}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: renovate-token
+spec:
+  # installation tokens expire after 60 min
+  refreshInterval: 30m
+  target:
+    name: renovate-token
+    template:
+      data:
+        RENOVATE_TOKEN: "{{ .token }}"
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: GithubAccessToken
+          name: renovate
