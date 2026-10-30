@@ -79,6 +79,9 @@ spec:
             # client_id lets the master-realm login alert skip bootstrap-admin, the realm reconcile's client
             - name: KC_EVENT_METRICS_USER_TAGS
               value: realm,clientId
+            # successful events and admin events at info, so Loki keeps them for the admin-event alert (errors are warn)
+            - name: KC_SPI_EVENTS_LISTENER__JBOSS_LOGGING__SUCCESS_LEVEL
+              value: info
             - name: KC_CACHE
               value: local
             # impersonation bypasses passkey/TOTP; keep the feature off

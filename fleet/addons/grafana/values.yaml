@@ -318,6 +318,102 @@ alerting:
                       type: gt
                       params:
                         - 0
+        - uid: keycloak-lockout
+          title: Keycloak temporary lockout
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Brute-force protection locked a user of realm homelab out for a while after ten failed logins; the LOGIN_ERROR events in the Keycloak log have the IP.'
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: sum(increase(keycloak_user_events_total{realm="homelab", event="user_disabled_by_temporary_lockout"}[10m])) > 0 or sum(keycloak_user_events_total{realm="homelab", event="user_disabled_by_temporary_lockout"} unless keycloak_user_events_total{realm="homelab", event="user_disabled_by_temporary_lockout"} offset 10m)
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
+        # invalid_request and invalid_redirect_uri are scanners following the edge login redirect with bad parameters
+        - uid: keycloak-login-errors
+          title: Keycloak login errors spike
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: 'More than five failed logins to realm homelab in ten minutes (wrong passwords or second factors, unknown users, denied password grants): someone may be guessing.'
+          data:
+            - refId: A
+              datasourceUid: mimir
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                instant: true
+                expr: sum((keycloak_user_events_total{realm="homelab", event="login", error!="", error!~"invalid_request|invalid_redirect_uri"} unless keycloak_user_events_total{realm="homelab", event="login", error!="", error!~"invalid_request|invalid_redirect_uri"} offset 10m) or increase(keycloak_user_events_total{realm="homelab", event="login", error!="", error!~"invalid_request|invalid_redirect_uri"}[10m]))
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 5
+        # Admin events log only the admin's internal ids, which differ per install, so the tofu client is recognised by its
+        # service-account user: whoever logged in as client bootstrap-admin in the last hour
+        - uid: keycloak-admin-event
+          title: Keycloak changed outside tofu
+          condition: C
+          for: 0s
+          noDataState: OK
+          execErrState: Error
+          labels:
+            severity: warning
+          annotations:
+            summary: 'Someone other than the realm reconcile (client bootstrap-admin) changed Keycloak through the admin API: break-glass, or a stolen admin session.'
+          data:
+            - refId: A
+              datasourceUid: loki
+              relativeTimeRange:
+                from: 3600
+                to: 0
+              model:
+                refId: A
+                queryType: instant
+                expr: sum by (auth_realm, user_id, operation_type, resource_type, resource_path) (count_over_time({namespace="keycloak", container="keycloak"} |= "operationType=" | regexp `operationType="(?P<operation_type>[^"]*)".*realmName="(?P<auth_realm>[^"]*)".*userId="(?P<user_id>[^"]*)".*resourceType="(?P<resource_type>[^"]*)", resourcePath="(?P<resource_path>[^"]*)"` [5m])) unless on (user_id) sum by (user_id) (count_over_time({namespace="keycloak", container="keycloak"} |= `type="CLIENT_LOGIN"` |= `clientId="bootstrap-admin"` | regexp `userId="(?P<user_id>[^"]*)"` [1h]))
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params:
+                        - 0
         - uid: keycloak-impersonation
           title: Keycloak impersonation
           condition: C
