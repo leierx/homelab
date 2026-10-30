@@ -1,3 +1,6 @@
+image:
+  repository: quay.io/keycloak/keycloak
+  tag: 26.8.1
 # public URL, per cluster
 hostname: ""
 # the pod network, where the Envoy proxies are; per cluster
