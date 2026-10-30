@@ -1,1 +1,3 @@
 - [ ] Move host secrets out of git and off sops-nix — finish nixos/secrets.nix (reads /var/lib/secrets.yaml on the host) and drop sops-nix.
+- [ ] Alerting: push critical alerts by email, plus an external dead-man's switch so a dead loft01 still alerts.
+- [ ] Backups: manual restore drill of one volume plus a short runbook in docs/; later a monthly automated drill.
