@@ -56,7 +56,8 @@ cluster. Then open the flow on both ends, as for any addon:
 Only what has no Service or can't be a ServiceMonitor, in
 `fleet/addons/alloy-metrics/manifests/config.yaml`:
 
-- the **kubelet** and **cAdvisor** through the node API;
+- the **kubelet** and **cAdvisor** through the node API, both as `job="kubelet"` and told
+  apart by `metrics_path`, which is how the dashboards and mixins select them;
 - the **API server**, because Alloy refuses a ServiceMonitor that points at a
   file on its own disk, and the service account token is one.
 
@@ -74,7 +75,11 @@ that sums across jobs double-counted.
   `kube-dns`, `kubelet`, `apiserver`, ...). Don't rename it: upstream
   dashboards and rules select on it.
 - `instance` is the **node name** for node-exporter, smartctl-exporter, the
-  kubelet and cAdvisor, so the ZFS and SMART dashboards can join them.
+  kubelet and cAdvisor, so the ZFS and SMART dashboards can join them. The
+  kubelet and cAdvisor also carry `node`, which the Kubernetes nodes view filters on.
+- Everything is scraped every 30s, and the `Mimir` datasource has the same
+  `timeInterval`: dashboards written for 15-30s scrapes use `[1m]` windows, which
+  a 60s scrape leaves with one sample.
 - A series that carries its own `namespace` (cert-manager, Argo CD, External
   Secrets, ...) arrives as `exported_namespace`: the usual operator convention.
 
@@ -208,3 +213,23 @@ PV: the storage class retains, so the dataset survives until then.
 `fleet/addons/mimir/values.yaml`. Renovate skips `smartctl-exporter` chart 0.18.0
 because of prometheus-community/smartctl_exporter#397; 0.19.0 still ships the
 same exporter version, so hold off on it too.
+
+## Dashboard status
+
+Audited through Grafana's own datasource API: every panel query of the 20
+dashboards, with the variables resolved. Panels that stay empty here are mostly
+not applicable to this cluster, not broken:
+
+- **Not applicable:** Windows panels, AWS/ENI and IPAM (Cilium operator), kvstore,
+  Hubble DNS/HTTP/L7 (needs L7 visibility on the policies), L2ARC, hardware fans
+  and PSUs, and SATA SMART attributes (the disks are SAS and NVMe).
+- **Nothing to show:** failures, OOMs, restarts, throttling (the admission policy
+  keeps CPU limits off), expiring certificates, paused applications.
+- **Upstream dashboard bugs:** CloudNativePG's TPS panels rate over `$__interval`,
+  which is as short as the scrape interval on a short time range. Rating over
+  `$__rate_interval` fixes them, but the grafana.com download can't be patched.
+- **Off by default upstream:** `node_interrupts_total` (one series per CPU and IRQ,
+  so too many here) and Argo CD's gRPC latency histograms.
+
+Re-run the audit after changing scrape config or labels, because most breakage
+is a label or job name a dashboard expects.
