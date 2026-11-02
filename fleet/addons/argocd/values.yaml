@@ -32,6 +32,7 @@ configs:
     server.insecure: true
     controller.diff.server.side: true
     controller.sync.timeout.seconds: '4800'
+    reposerver.log.level: warn
   rbac:
     policy.csv: |
       p, role:operator, applications, sync, */*, allow
