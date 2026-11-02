@@ -11,4 +11,4 @@ helm:
   repoURL: ghcr.io/argoproj/argo-helm
   chart: argo-workflows
   # renovate: datasource=docker depName=ghcr.io/argoproj/argo-helm/argo-workflows
-  targetRevision: 2.0.14
+  targetRevision: 2.0.15
