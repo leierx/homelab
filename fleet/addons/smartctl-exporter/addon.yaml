@@ -7,4 +7,4 @@ helm:
   repoURL: ghcr.io/prometheus-community/charts
   chart: prometheus-smartctl-exporter
   # renovate: datasource=docker depName=ghcr.io/prometheus-community/charts/prometheus-smartctl-exporter
-  targetRevision: 0.19.0
+  targetRevision: 0.17.1
