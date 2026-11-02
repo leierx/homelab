@@ -14,7 +14,8 @@ loki:
         object_store: filesystem
         schema: v13
         index: {prefix: index_, period: 24h}
-  limits_config: {retention_period: 30d}
+  # a restarted alloy-logs replays the 100M audit log and the journal at once
+  limits_config: {retention_period: 30d, ingestion_rate_mb: 32, ingestion_burst_size_mb: 64}
   compactor: {retention_enabled: true, delete_request_store: filesystem}
   pattern_ingester: {enabled: true}
   analytics: {reporting_enabled: false}
