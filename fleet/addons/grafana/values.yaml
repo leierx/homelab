@@ -49,7 +49,7 @@ datasources:
         type: prometheus
         url: http://mimir:8080/prometheus
         isDefault: true
-        jsonData: {prometheusType: Mimir, httpMethod: POST, timeInterval: 60s}
+        jsonData: {prometheusType: Mimir, httpMethod: POST, timeInterval: 30s}
       - {name: Loki, uid: loki, type: loki, url: 'http://loki:3100'}
       - name: Alertmanager
         uid: alertmanager

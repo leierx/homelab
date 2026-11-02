@@ -1,3 +1,10 @@
 collectorsExclude: [secrets]
 resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}
 prometheus: {monitor: {enabled: true, honorLabels: true}}
+# without an allowlist KSM exports no *_labels series, and the Kubernetes dashboards count resources with them
+metricLabelsAllowlist:
+  - namespaces=[kubernetes.io/metadata.name]
+  - deployments=[app.kubernetes.io/name]
+  - statefulsets=[app.kubernetes.io/name]
+  - daemonsets=[app.kubernetes.io/name]
+  - nodes=[topology.kubernetes.io/zone]

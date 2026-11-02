@@ -14,6 +14,11 @@ spec:
           labels: {severity: warning}
           annotations:
             summary: A scrape target has been down for 10 minutes, so its metrics and alerts are blind.
+    - name: k8s.rules.container_cpu_usage
+      rules:
+        # the name the kubernetes-mixin dashboards (CloudNativePG's among them) query
+        - record: node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate
+          expr: sum by (cluster, namespace, pod, container) (irate(container_cpu_usage_seconds_total{job="kubelet", metrics_path="/metrics/cadvisor", image!=""}[5m])) * on (cluster, namespace, pod) group_left (node) topk by (cluster, namespace, pod) (1, max by (cluster, namespace, pod, node) (kube_pod_info{node!=""}))
     - name: kubelet
       rules:
         - alert: VolumeFillingUp

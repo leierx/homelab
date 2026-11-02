@@ -9,7 +9,7 @@ data:
       kubernetes_role = "endpointslice"
 
       scrape {
-        default_scrape_interval = "60s"
+        default_scrape_interval = "30s"
         default_scrape_timeout  = "10s"
       }
 
@@ -18,7 +18,7 @@ data:
 
     prometheus.operator.podmonitors "pod_monitors" {
       scrape {
-        default_scrape_interval = "60s"
+        default_scrape_interval = "30s"
         default_scrape_timeout  = "10s"
       }
 
@@ -43,7 +43,7 @@ data:
       targets           = discovery.kubernetes.apiserver.targets
       job_name          = "apiserver"
       scheme            = "https"
-      scrape_interval   = "60s"
+      scrape_interval   = "30s"
       scrape_timeout    = "10s"
       bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
@@ -78,11 +78,25 @@ data:
       role = "node"
     }
 
+    discovery.relabel "kubelet" {
+      targets = discovery.kubernetes.nodes.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_node_name"]
+        target_label  = "node"
+      }
+
+      rule {
+        replacement  = "/metrics"
+        target_label = "metrics_path"
+      }
+    }
+
     prometheus.scrape "kubelet" {
-      targets           = discovery.kubernetes.nodes.targets
+      targets           = discovery.relabel.kubelet.output
       job_name          = "kubelet"
       scheme            = "https"
-      scrape_interval   = "60s"
+      scrape_interval   = "30s"
       scrape_timeout    = "10s"
       bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
@@ -104,20 +118,31 @@ data:
       forward_to = [prometheus.remote_write.mimir.receiver]
     }
 
+    // both scrapes are job kubelet, told apart by metrics_path, as the dashboards and mixins expect
     discovery.relabel "cadvisor" {
       targets = discovery.kubernetes.nodes.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_node_name"]
+        target_label  = "node"
+      }
 
       rule {
         replacement  = "/metrics/cadvisor"
         target_label = "__metrics_path__"
       }
+
+      rule {
+        replacement  = "/metrics/cadvisor"
+        target_label = "metrics_path"
+      }
     }
 
     prometheus.scrape "cadvisor" {
       targets           = discovery.relabel.cadvisor.output
-      job_name          = "cadvisor"
+      job_name          = "kubelet"
       scheme            = "https"
-      scrape_interval   = "60s"
+      scrape_interval   = "30s"
       scrape_timeout    = "10s"
       bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
