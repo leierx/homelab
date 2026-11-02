@@ -14,6 +14,40 @@ data:
       forward_to = [loki.write.loki.receiver]
     }
 
+    // the host journal, kept to the units in JOURNAL_UNITS; a cluster without a journal finds nothing
+    loki.relabel "journal" {
+      forward_to = []
+
+      rule {
+        source_labels = ["__journal__systemd_unit"]
+        target_label  = "unit"
+      }
+
+      rule {
+        source_labels = ["unit"]
+        regex         = ""
+        action        = "drop"
+      }
+
+      rule {
+        source_labels = ["unit"]
+        regex         = sys.env("JOURNAL_UNITS")
+        action        = "keep"
+      }
+
+      rule {
+        source_labels = ["__journal_priority_keyword"]
+        target_label  = "level"
+      }
+    }
+
+    loki.source.journal "host" {
+      path          = "/var/log/journal"
+      max_age       = "168h"
+      relabel_rules = loki.relabel.journal.rules
+      forward_to    = [loki.write.loki.receiver]
+    }
+
     // the pods on this node; containerd writes their logs under /var/log/pods
     discovery.kubernetes "pods" {
       role = "pod"

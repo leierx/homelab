@@ -1,0 +1,25 @@
+# the host's own services, from nixos/; their failures also trip SystemdUnitFailed
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: host-services-logs
+  labels:
+    fleet.io/ruler: loki
+spec:
+  groups:
+    - name: host-services
+      rules:
+        - alert: OffsiteBackupNotCompleted
+          expr: absent_over_time({unit="offsite-backup.service"} |= "this backup:" [26h])
+          labels:
+            severity: warning
+            instance: offsite-backup
+          annotations:
+            summary: "No off-site backup has finished in 26 hours: it failed, hung or never ran. `journalctl -u offsite-backup` on the host says which."
+        - alert: NixosUpgradeNotCompleted
+          expr: absent_over_time({unit="nixos-upgrade.service"} |= "Done. The new configuration is" [8d])
+          labels:
+            severity: warning
+            instance: nixos-upgrade
+          annotations:
+            summary: "No weekly NixOS upgrade has finished in 8 days: it failed, or the host can't reach GitHub. `journalctl -u nixos-upgrade` on the host says which."
