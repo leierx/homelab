@@ -25,7 +25,7 @@ spec:
     templateRef:
       apiVersion: controlplane.cluster.x-k8s.io/v1beta2
       kind: KubeadmControlPlaneTemplate
-      name: kubevirt-kubeadm-control-plane
+      name: kubevirt-kubeadm-control-plane-v2
     machineInfrastructure:
       templateRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
@@ -137,12 +137,15 @@ spec:
 apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: KubeadmControlPlaneTemplate
 metadata:
-  name: kubevirt-kubeadm-control-plane
+  # its spec is immutable: rename it to change it
+  name: kubevirt-kubeadm-control-plane-v2
   namespace: clusters
 spec:
   template:
     spec:
-      kubeadmConfigSpec: {}
+      # the CRD rejects empty objects (minProperties: 1)
+      kubeadmConfigSpec:
+        format: cloud-config
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
@@ -151,4 +154,5 @@ metadata:
   namespace: clusters
 spec:
   template:
-    spec: {}
+    spec:
+      format: cloud-config
