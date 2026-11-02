@@ -11,3 +11,9 @@ extraArgs:
   - --collector.diskstats.device-exclude=^(z?ram|loop|fd|sr|(h|s|v|xv)d[a-z]|nvme\d+n\d+p|zd(\d+p)?)\d+$
   - --collector.netdev.device-exclude=^(lxc.*|veth.*)$
   - --collector.systemd
+prometheus:
+  monitor:
+    enabled: true
+    # the pod is hostNetwork: the node, not its IP, is the instance the dashboards and smartctl join on
+    relabelings:
+      - {sourceLabels: [__meta_kubernetes_pod_node_name], targetLabel: instance}

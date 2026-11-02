@@ -33,9 +33,11 @@ no helper scripts or CI in the rendering path. Design principles are in
   1M-recordsize ZFS datasets (`zfs-thin`) on the `tank` pool.
 - **Virtualization & Clusters.** KubeVirt, CDI, and Cluster API run on `loft01`,
   along with the cluster-specific `dodde` Fedora VM addon.
-- **Observability.** `alloy-metrics`, `alloy-logs`, `kube-state-metrics`,
-  `node-exporter`, and `smartctl-exporter` ship metrics and logs to `mimir` and
-  `loki`, visualized in `grafana` and alerted through `alerta`.
+- **Observability.** `alloy-metrics` scrapes every ServiceMonitor and PodMonitor into
+  `mimir`; `alloy-logs` and `alloy-events` ship pod, audit and event logs to `loki`.
+  Alerts are `PrometheusRule`s next to the addon they watch (`fleet.io/ruler: mimir|loki`),
+  evaluated by the Mimir and Loki rulers, routed by `alertmanager` to `alerta`, and
+  shown in `grafana`.
 
 ## Repository layout
 

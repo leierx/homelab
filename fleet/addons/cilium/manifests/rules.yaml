@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cilium
+  labels:
+    fleet.io/ruler: mimir
+spec:
+  groups:
+    - name: cilium
+      rules:
+        - alert: NetworkPolicyDrops
+          expr: sum by (source, destination) (increase(hubble_drop_total{reason="POLICY_DENIED", source!="reserved:world"}[5m])) > 0
+          labels:
+            severity: warning
+            instance: '{{ $labels.source }} -> {{ $labels.destination }}'
+          annotations:
+            summary: "Cilium denied traffic: a missing allow rule, or something probing where it shouldn't."

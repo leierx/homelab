@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: grafana
+  labels:
+    fleet.io/ruler: mimir
+spec:
+  groups:
+    - name: grafana
+      rules:
+        # a counter starts existing at its first increment, which increase() can't see; the `unless … offset` half catches a series that has just appeared
+        - alert: GrafanaBreakGlassLogin
+          expr: sum(increase(grafana_authn_authn_successful_login_total{client="auth.client.form"}[10m])) > 0 or sum(grafana_authn_authn_successful_login_total{client="auth.client.form"} unless grafana_authn_authn_successful_login_total{client="auth.client.form"} offset 10m)
+          labels:
+            severity: warning
+            instance: grafana
+          annotations:
+            summary: Someone logged in to Grafana with a password instead of Keycloak; the only password account is the break-glass admin.

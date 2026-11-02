@@ -1,7 +1,7 @@
 namespace: monitoring
 podSecurity: restricted
 dependencies:
-  - alerta
+  - alertmanager
   - cilium
   - external-secrets
   - loki

@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: zfs-localpv
+  labels:
+    fleet.io/ruler: mimir
+spec:
+  groups:
+    - name: zfs
+      rules:
+        # the pool state comes from node-exporter's zfs collector
+        - alert: ZFSPoolUnhealthy
+          expr: min by (instance, zpool) (node_zfs_zpool_state{state="online"}) < 1 or absent(node_zfs_zpool_state)
+          for: 5m
+          labels:
+            severity: critical
+            instance: '{{ $labels.instance }}/{{ $labels.zpool }}'
+          annotations:
+            summary: "A ZFS pool is degraded, faulted, offline or not reporting: mirror redundancy is lost, so replace the failing disk before its pair goes."

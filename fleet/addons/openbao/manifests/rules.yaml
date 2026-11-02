@@ -1,0 +1,36 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: openbao
+  labels:
+    fleet.io/ruler: mimir
+spec:
+  groups:
+    - name: openbao
+      rules:
+        - alert: OpenBaoSealed
+          expr: max(vault_core_unsealed) < 1 or absent(vault_core_unsealed)
+          for: 5m
+          labels:
+            severity: critical
+            instance: openbao
+          annotations:
+            summary: 'OpenBao is sealed or not reporting: no secret can be read or generated.'
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: openbao-logs
+  labels:
+    fleet.io/ruler: loki
+spec:
+  groups:
+    - name: openbao
+      rules:
+        - alert: OpenBaoAdminLogin
+          expr: sum(count_over_time({namespace="openbao", container="openbao"} |= "\"type\":\"response\"" | json | auth_metadata_role="admin" [5m])) > 0
+          labels:
+            severity: informational
+            instance: openbao
+          annotations:
+            summary: Something logged in to OpenBao with the admin role (the bao CLI through kubectl exec, or a minted openbao-admin token).

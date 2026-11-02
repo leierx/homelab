@@ -1,0 +1,57 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: keycloak
+  labels:
+    fleet.io/ruler: mimir
+spec:
+  groups:
+    - name: keycloak
+      rules:
+        # a counter starts existing at its first increment, which increase() can't see; the `unless … offset` half catches a series that has just appeared
+        - alert: KeycloakMasterRealmLogin
+          expr: sum by (event, client_id) (increase(keycloak_user_events_total{realm="master", event=~"login|client_login", error="", client_id!="bootstrap-admin"}[10m])) > 0 or sum by (event, client_id) (keycloak_user_events_total{realm="master", event=~"login|client_login", error="", client_id!="bootstrap-admin"} unless keycloak_user_events_total{realm="master", event=~"login|client_login", error="", client_id!="bootstrap-admin"} offset 10m)
+          labels:
+            severity: warning
+            instance: '{{ $labels.client_id }}'
+          annotations:
+            summary: "Break-glass in Keycloak: a user logged in to the master realm (it has none), or a master client other than bootstrap-admin, which the realm reconcile uses, got a token."
+        - alert: KeycloakUserLockout
+          expr: sum(increase(keycloak_user_events_total{realm="homelab", event="user_disabled_by_temporary_lockout"}[10m])) > 0 or sum(keycloak_user_events_total{realm="homelab", event="user_disabled_by_temporary_lockout"} unless keycloak_user_events_total{realm="homelab", event="user_disabled_by_temporary_lockout"} offset 10m)
+          labels:
+            severity: warning
+            instance: keycloak
+          annotations:
+            summary: "Brute-force protection locked a user of realm homelab out for a while after ten failed logins; the LOGIN_ERROR events in the Keycloak log have the IP."
+        - alert: KeycloakLoginErrors
+          expr: sum((keycloak_user_events_total{realm="homelab", event="login", error!="", error!~"invalid_request|invalid_redirect_uri"} unless keycloak_user_events_total{realm="homelab", event="login", error!="", error!~"invalid_request|invalid_redirect_uri"} offset 10m) or increase(keycloak_user_events_total{realm="homelab", event="login", error!="", error!~"invalid_request|invalid_redirect_uri"}[10m])) > 5
+          labels:
+            severity: warning
+            instance: keycloak
+          annotations:
+            summary: "More than five failed logins to realm homelab in ten minutes (wrong passwords or second factors, unknown users, denied password grants): someone may be guessing."
+        - alert: KeycloakImpersonation
+          expr: sum by (realm, event, client_id) (increase(keycloak_user_events_total{event="impersonate"}[10m])) > 0 or sum by (realm, event, client_id) (keycloak_user_events_total{event="impersonate"} unless keycloak_user_events_total{event="impersonate"} offset 10m)
+          labels:
+            severity: critical
+            instance: '{{ $labels.realm }}'
+          annotations:
+            summary: "Someone impersonated a user in Keycloak. Impersonation bypasses the user's passkey/TOTP; the feature should be disabled. Investigate the realm events and rotate the bootstrap-admin client secret if this was not intentional."
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: keycloak-logs
+  labels:
+    fleet.io/ruler: loki
+spec:
+  groups:
+    - name: keycloak
+      rules:
+        - alert: KeycloakAdminEvent
+          expr: sum by (auth_realm, user_id, operation_type, resource_type, resource_path) (count_over_time({namespace="keycloak", container="keycloak"} |= "operationType=" | regexp `operationType="(?P<operation_type>[^"]*)".*realmName="(?P<auth_realm>[^"]*)".*userId="(?P<user_id>[^"]*)".*resourceType="(?P<resource_type>[^"]*)", resourcePath="(?P<resource_path>[^"]*)"` [5m])) unless on (user_id) sum by (user_id) (count_over_time({namespace="keycloak", container="keycloak"} |= `type="CLIENT_LOGIN"` |= `clientId="bootstrap-admin"` | regexp `userId="(?P<user_id>[^"]*)"` [1h]))
+          labels:
+            severity: warning
+            instance: '{{ $labels.user_id }}'
+          annotations:
+            summary: "Someone other than the realm reconcile (client bootstrap-admin) changed Keycloak through the admin API: break-glass, or a stolen admin session."

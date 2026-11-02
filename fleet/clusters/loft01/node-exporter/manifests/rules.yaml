@@ -1,0 +1,27 @@
+# the host's own timers, from nixos/
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: host-timers
+  labels:
+    fleet.io/ruler: mimir
+spec:
+  groups:
+    - name: host-timers
+      rules:
+        - alert: BackupOverdue
+          expr: max by (instance) (time() - node_systemd_timer_last_trigger_seconds{name="offsite-backup.timer"}) > 93600 or absent(node_systemd_timer_last_trigger_seconds{name="offsite-backup.timer"})
+          for: 15m
+          labels:
+            severity: warning
+            instance: '{{ $labels.instance }}'
+          annotations:
+            summary: offsite-backup.timer has not triggered in 26 hours (or node-exporter stopped reporting).
+        - alert: SystemdTimerOverdue
+          expr: max by (instance, name) ((time() - node_systemd_timer_last_trigger_seconds{name=~"sanoid\\.timer|logrotate\\.timer"} > 2 * 3600) or (time() - node_systemd_timer_last_trigger_seconds{name="systemd-tmpfiles-clean.timer"} > 26 * 3600) or (time() - node_systemd_timer_last_trigger_seconds{name="zfs-scrub.timer"} > 33 * 86400) or (time() - node_systemd_timer_last_trigger_seconds{name!~"offsite-backup\\.timer|sanoid\\.timer|logrotate\\.timer|systemd-tmpfiles-clean\\.timer|zfs-scrub\\.timer"} > 8 * 86400))
+          for: 1h
+          labels:
+            severity: warning
+            instance: '{{ $labels.instance }}/{{ $labels.name }}'
+          annotations:
+            summary: "A host systemd timer has not triggered within its expected schedule (2h for hourly, 26h for daily, 8d for weekly, 33d for monthly)."

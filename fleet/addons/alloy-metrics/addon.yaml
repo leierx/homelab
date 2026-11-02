@@ -2,7 +2,6 @@ namespace: telemetry
 podSecurity: privileged
 dependencies:
   - cilium
-  - loki
   - mimir
   - prometheus-operator-crds
 helm:

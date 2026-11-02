@@ -1,0 +1,13 @@
+namespace: monitoring
+podSecurity: restricted
+dependencies:
+  - alerta
+  - cilium
+  - external-secrets
+  - zfs-localpv
+  - prometheus-operator-crds
+helm:
+  repoURL: https://prometheus-community.github.io/helm-charts
+  chart: alertmanager
+  # renovate: datasource=helm depName=alertmanager registryUrl=https://prometheus-community.github.io/helm-charts
+  targetRevision: 2.1.4

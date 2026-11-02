@@ -2,3 +2,4 @@ namespace: kube-system
 podSecurity: privileged
 dependencies:
   - cilium
+  - prometheus-operator-crds

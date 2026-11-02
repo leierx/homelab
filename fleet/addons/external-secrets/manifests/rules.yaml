@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: external-secrets
+  labels:
+    fleet.io/ruler: mimir
+spec:
+  groups:
+    - name: external-secrets
+      rules:
+        - alert: SecretSyncFailing
+          expr: max by (exported_namespace, name) ({__name__=~"externalsecret_status_condition|pushsecret_status_condition", condition="Ready", status="False"}) > 0
+          for: 15m
+          labels:
+            severity: warning
+            instance: '{{ $labels.exported_namespace }}/{{ $labels.name }}'
+          annotations:
+            summary: An ExternalSecret or PushSecret has not been Ready for 15 minutes.

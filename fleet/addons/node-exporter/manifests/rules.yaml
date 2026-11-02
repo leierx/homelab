@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: node-exporter
+  labels:
+    fleet.io/ruler: mimir
+spec:
+  groups:
+    - name: host
+      rules:
+        - alert: SystemdUnitFailed
+          expr: max by (instance, name) (node_systemd_unit_state{state="failed"}) > 0
+          for: 5m
+          labels:
+            severity: warning
+            instance: '{{ $labels.instance }}/{{ $labels.name }}'
+          annotations:
+            summary: A host systemd unit has been in the failed state for 5 minutes.

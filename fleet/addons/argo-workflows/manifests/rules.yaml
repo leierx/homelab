@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: argo-workflows
+  labels:
+    fleet.io/ruler: mimir
+spec:
+  groups:
+    - name: argo-workflows
+      rules:
+        - alert: WorkflowFailed
+          expr: sum by (exported_namespace) (increase(argo_workflows_total_count{phase="Failed"}[15m])) > 0
+          labels:
+            severity: warning
+            instance: '{{ $labels.exported_namespace }}'
+          annotations:
+            summary: A workflow entered the Failed phase in the last 15 minutes. Every standing workflow here is started by a CronWorkflow (the controller's counter has no cron label).

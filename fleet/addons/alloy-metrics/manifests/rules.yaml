@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: alloy-metrics
+  labels:
+    fleet.io/ruler: mimir
+spec:
+  groups:
+    - name: scraping
+      rules:
+        - alert: TargetDown
+          expr: up == 0
+          for: 10m
+          labels: {severity: warning}
+          annotations:
+            summary: A scrape target has been down for 10 minutes, so its metrics and alerts are blind.
+    - name: kubelet
+      rules:
+        - alert: VolumeFillingUp
+          expr: max by (namespace, persistentvolumeclaim) (kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes) > 0.85
+          for: 15m
+          labels:
+            severity: warning
+            instance: '{{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }}'
+          annotations:
+            summary: A PVC is over 85% full.

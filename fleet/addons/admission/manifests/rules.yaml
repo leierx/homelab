@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: admission-logs
+  labels:
+    fleet.io/ruler: loki
+spec:
+  groups:
+    - name: admission
+      rules:
+        - alert: AdmissionPolicyWarning
+          expr: sum by (objectRef_namespace) (count_over_time({job="kube-audit"} |= "validation.policy.admission.k8s.io/validation_failure" | json [5m])) > 0
+          labels:
+            severity: informational
+            instance: '{{ $labels.objectRef_namespace }}'
+          annotations:
+            summary: A pod was admitted despite a Warn/Audit policy (addon admission), e.g. a CPU limit or a missing memory limit.

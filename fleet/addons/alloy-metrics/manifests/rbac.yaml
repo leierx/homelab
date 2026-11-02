@@ -3,25 +3,17 @@ kind: ClusterRole
 metadata:
   name: alloy-metrics
 rules:
-  # service discovery, plus events for the events source
+  # discovery.kubernetes reads the nodes, and the ServiceMonitor and PodMonitor components the pods, services and endpoint slices
   - apiGroups: ["", "discovery.k8s.io"]
-    resources: ["endpointslices", "pods", "services", "events"]
+    resources: ["endpointslices", "pods", "services", "namespaces"]
     verbs: ["get", "list", "watch"]
-  # the operator components read every ServiceMonitor and PodMonitor
   - apiGroups: ["monitoring.coreos.com"]
-    resources: ["servicemonitors", "podmonitors"]
+    resources: ["servicemonitors", "podmonitors", "prometheusrules"]
     verbs: ["get", "list", "watch"]
-  # kubelet and cAdvisor scrapes are authorized against nodes/metrics
+  # kubelet and cAdvisor are scraped through the node's /metrics and /metrics/cadvisor, which are cluster-scoped subresources
   - apiGroups: [""]
     resources: ["nodes", "nodes/metrics"]
     verbs: ["get", "list", "watch"]
-  # the API server's own /metrics is a non-resource URL
-  - nonResourceURLs: ["/metrics"]
-    verbs: ["get"]
-  # ServiceMonitor/PodMonitor scrape credentials, e.g. CDI's
-  - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

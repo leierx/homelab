@@ -122,12 +122,13 @@ enabled addons in dependency wave order:
 - **Wave 1:** `cilium`
 - **Wave 2:** `admission`, `cdi`, `cloudnative-pg`, `envoy-gateway`, `kube-state-metrics`, `kubevirt`, `node-exporter`, `rbac`, `smartctl-exporter`, `zfs-localpv`
 - **Wave 3:** `cert-manager`, `dodde`, `loki`, `mimir`
-- **Wave 4:** `alloy-logs`, `alloy-metrics`, `cluster-api`, `openbao`
+- **Wave 4:** `alloy-events`, `alloy-logs`, `alloy-metrics`, `cluster-api`, `openbao`
 - **Wave 5:** `capi-argo-bridge`, `external-secrets`
 - **Wave 6:** `argo-workflows`, `renovate`
 - **Wave 7:** `keycloak`
 - **Wave 8:** `alerta`, `argocd`, `immich`, `miniflux`
-- **Wave 9:** `grafana`
+- **Wave 9:** `alertmanager`
+- **Wave 10:** `grafana`
 
 ## Helm charts through a registry mirror
 

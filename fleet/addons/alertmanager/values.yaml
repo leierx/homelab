@@ -1,0 +1,26 @@
+automountServiceAccountToken: false
+config:
+  route:
+    receiver: alerta
+    group_by: [alertname]
+    group_wait: 10s
+    group_interval: 1m
+    repeat_interval: 4h
+  receivers:
+    - name: alerta
+      webhook_configs:
+        - url: http://alerta.alerta.svc:8080/api/webhooks/prometheus
+          http_config:
+            authorization: {type: Key, credentials_file: /etc/alertmanager-secrets/alerta-api-key}
+extraSecretMounts:
+  - {name: alerta-api-key, mountPath: /etc/alertmanager-secrets, secretName: alertmanager, readOnly: true}
+statefulSet: {enabled: true}
+persistence:
+  enabled: true
+  size: 1Gi
+  annotations: {argocd.argoproj.io/sync-options: "Delete=false,Prune=false"}
+resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 128Mi}}
+configmapReload:
+  resources: {requests: {memory: 16Mi}, limits: {memory: 64Mi}}
+serviceMonitor: {enabled: true}
+testFramework: {enabled: false}

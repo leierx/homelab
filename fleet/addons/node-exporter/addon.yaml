@@ -2,6 +2,7 @@ namespace: telemetry
 podSecurity: privileged
 dependencies:
   - cilium
+  - prometheus-operator-crds
 helm:
   repoURL: ghcr.io/prometheus-community/charts
   chart: prometheus-node-exporter

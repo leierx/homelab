@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cert-manager
+  labels:
+    fleet.io/ruler: mimir
+spec:
+  groups:
+    - name: cert-manager
+      rules:
+        - alert: CertificateExpiring
+          expr: min by (exported_namespace, name) (certmanager_certificate_expiration_timestamp_seconds - time()) < 14 * 86400
+          for: 1h
+          labels:
+            severity: warning
+            instance: '{{ $labels.exported_namespace }}/{{ $labels.name }}'
+          annotations:
+            summary: A cert-manager certificate expires within 14 days; renewal is failing.

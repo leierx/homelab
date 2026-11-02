@@ -1,0 +1,51 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: argocd
+  labels:
+    fleet.io/ruler: mimir
+spec:
+  groups:
+    - name: argocd
+      rules:
+        - alert: ArgoCDAppUnhealthy
+          expr: max by (name, health_status) (argocd_app_info{health_status!~"Healthy|Progressing|Suspended"} unless argocd_app_info{health_status="Missing", autosync_enabled="false"})
+          for: 15m
+          labels:
+            severity: warning
+            instance: '{{ $labels.name }}'
+          annotations:
+            summary: An Argo CD application has been Degraded, Missing or Unknown for 15 minutes. A paused application (no auto-sync) that was never synced is Missing by design and doesn't count.
+        - alert: ArgoCDAppPaused
+          expr: count_over_time((max by (name) (argocd_app_info{autosync_enabled="false"}))[7d:1h]) >= 168
+          labels:
+            severity: warning
+            instance: '{{ $labels.name }}'
+          annotations:
+            summary: An Argo CD application has had auto-sync off for 7 days, so git changes don't reach it. Resume it, or take the addon out of the cluster's values.yaml.
+        - alert: ArgoCDAppRenderFailing
+          expr: max by (name) (argocd_app_info{sync_status="Unknown"})
+          for: 15m
+          labels:
+            severity: warning
+            instance: '{{ $labels.name }}'
+          annotations:
+            summary: "Argo CD has failed to generate an application's manifests for 15 minutes, so git changes don't reach it: a chart the upstream doesn't serve, or a broken values file or manifest. The application's conditions say which."
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: argocd-logs
+  labels:
+    fleet.io/ruler: loki
+spec:
+  groups:
+    - name: argocd
+      rules:
+        - alert: ArgoCDLocalLogin
+          expr: sum(count_over_time({namespace="argocd", container="server"} |= "session.SessionService" | logfmt | msg="finished call" | grpc_service="session.SessionService" | grpc_method="Create" | grpc_code="OK" [5m])) > 0
+          labels:
+            severity: warning
+            instance: argocd
+          annotations:
+            summary: Someone logged in to Argo CD with a local account's password (the break-glass admin); SSO logins don't go through SessionService.Create.

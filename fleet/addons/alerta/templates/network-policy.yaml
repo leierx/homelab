@@ -15,11 +15,11 @@ spec:
       toPorts:
         - ports:
             - {port: "8080", protocol: TCP}
-    # Grafana pushes alert notifications
+    # Alertmanager pushes alert notifications
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
-            app.kubernetes.io/name: grafana
+            app.kubernetes.io/name: alertmanager
       toPorts:
         - ports:
             - {port: "8080", protocol: TCP}

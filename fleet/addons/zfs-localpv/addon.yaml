@@ -2,6 +2,7 @@ namespace: openebs
 podSecurity: privileged
 dependencies:
   - cilium
+  - prometheus-operator-crds
 helm:
   repoURL: ghcr.io/openebs/charts
   chart: zfs-localpv

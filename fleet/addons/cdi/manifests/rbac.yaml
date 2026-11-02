@@ -1,0 +1,25 @@
+# the CDI ServiceMonitor scrapes with this token, and the scraper reads it from here
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alloy-metrics
+  namespace: cdi
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["cdi-metrics-reader-token"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alloy-metrics
+  namespace: cdi
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: alloy-metrics
+subjects:
+  - kind: ServiceAccount
+    name: alloy-metrics
+    namespace: telemetry

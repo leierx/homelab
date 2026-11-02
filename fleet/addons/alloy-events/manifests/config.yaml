@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-events
+data:
+  config.alloy: |
+    // every namespace's events, once: a DaemonSet would send each node's copy
+    loki.source.kubernetes_events "events" {
+      job_name   = "kubernetes-events"
+      log_format = "logfmt"
+      forward_to = [loki.process.events.receiver]
+    }
+
+    loki.process "events" {
+      stage.logfmt {
+        mapping = {
+          type   = "",
+          reason = "",
+        }
+      }
+
+      stage.labels {
+        values = {
+          type   = "",
+          reason = "",
+        }
+      }
+
+      forward_to = [loki.write.loki.receiver]
+    }
+
+    // PrometheusRules labelled for Loki; alerts with PromQL go to alloy-metrics
+    loki.rules.kubernetes "loki" {
+      address = sys.env("LOKI_URL")
+
+      rule_selector {
+        match_labels = {"fleet.io/ruler" = "loki"}
+      }
+    }
+
+    loki.write "loki" {
+      endpoint {
+        url                 = sys.env("LOKI_URL") + "/loki/api/v1/push"
+        retry_on_http_429   = true
+        min_backoff_period  = "500ms"
+        max_backoff_period  = "5m"
+        max_backoff_retries = 10
+      }
+
+      external_labels = {
+        cluster = sys.env("CLUSTER_NAME"),
+      }
+    }

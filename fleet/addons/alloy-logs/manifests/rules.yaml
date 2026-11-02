@@ -1,0 +1,38 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kube-audit
+  labels:
+    fleet.io/ruler: loki
+spec:
+  groups:
+    - name: kube-audit
+      rules:
+        - alert: AdminKubeconfigUsed
+          expr: sum(count_over_time({job="kube-audit"} | json | user_username="system:admin" [5m])) > 0
+          labels:
+            severity: warning
+            instance: system:admin
+          annotations:
+            summary: "The host's system:masters certificate was used: break-glass, or someone who shouldn't have it."
+        - alert: RBACChangedByPerson
+          expr: sum by (user_username, objectRef_resource, objectRef_name) (count_over_time({job="kube-audit"} | json | objectRef_apiGroup="rbac.authorization.k8s.io" | verb=~"create|update|patch|delete" | user_username!~"system:serviceaccount:.*" | requestURI!~".*dryRun=All.*" [5m])) > 0
+          labels:
+            severity: warning
+            instance: '{{ $labels.user_username }}: {{ $labels.objectRef_resource }}/{{ $labels.objectRef_name }}'
+          annotations:
+            summary: A role or binding was created, changed or deleted by something other than a ServiceAccount.
+        - alert: SecretReadByPerson
+          expr: sum by (user_username, objectRef_namespace, objectRef_name) (count_over_time({job="kube-audit"} | json | user_username=~"oidc:.*" | objectRef_resource="secrets" [5m])) > 0
+          labels:
+            severity: informational
+            instance: '{{ $labels.user_username }}: {{ $labels.objectRef_namespace }}/{{ $labels.objectRef_name }}'
+          annotations:
+            summary: Someone logged in through Keycloak read a Secret.
+        - alert: PodEnteredByPerson
+          expr: sum by (user_username, objectRef_namespace, objectRef_name, objectRef_subresource) (count_over_time({job="kube-audit"} | json | user_username=~"oidc:.*" | objectRef_subresource=~"exec|attach|portforward" [5m])) > 0
+          labels:
+            severity: informational
+            instance: '{{ $labels.user_username }}: {{ $labels.objectRef_namespace }}/{{ $labels.objectRef_name }}'
+          annotations:
+            summary: Someone logged in through Keycloak used exec, attach or port-forward on a pod.

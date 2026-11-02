@@ -18,6 +18,13 @@ loki:
   compactor: {retention_enabled: true, delete_request_store: filesystem}
   pattern_ingester: {enabled: true}
   analytics: {reporting_enabled: false}
+  # the ruler only takes rules over its API (Alloy syncs PrometheusRules) with the thanos-style filesystem store
+  structuredConfig:
+    storage_config:
+      use_thanos_objstore: true
+      object_store: {filesystem: {dir: /var/loki/chunks}}
+    ruler_storage: {backend: filesystem, filesystem: {dir: /var/loki/rules-api}}
+    ruler: {alertmanager_url: 'http://alertmanager.monitoring.svc:9093'}
 singleBinary:
   resources: {requests: {cpu: 100m, memory: 512Mi}, limits: {memory: 2Gi}}
 read: {replicas: 0}
