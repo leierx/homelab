@@ -91,7 +91,6 @@
       description: 'Argo CD upgrades itself; never batch it with anything else',
       matchDepNames: ['ghcr.io/argoproj/argo-helm/argo-cd'],
       automerge: false,
-      dependencyDashboardApproval: true,
       labels: ['dependencies', 'needs-review'],
     },
     {
