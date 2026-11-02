@@ -9,7 +9,9 @@ spec:
     - name: cilium
       rules:
         - alert: NetworkPolicyDrops
-          expr: sum by (source, destination) (increase(hubble_drop_total{reason="POLICY_DENIED", source!="reserved:world"}[5m])) > 0
+          expr: sum by (source, destination) (increase(hubble_drop_total{reason="POLICY_DENIED", source!="reserved:world"}[2m])) > 0
+          # a backend restart drops for about three minutes; a missing allow rule or a probe keeps dropping
+          for: 5m
           labels:
             severity: warning
             instance: '{{ $labels.source }} -> {{ $labels.destination }}'
