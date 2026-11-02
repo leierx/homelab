@@ -2,7 +2,8 @@
 
 Operating guide for `loft01` and its GitOps platform. For the `/fleet` GitOps
 controller design, addon format, dependency waves, and multi-source
-composition, see [fleet/README.md](../fleet/README.md).
+composition, see [fleet/README.md](../fleet/README.md). For metrics, logs
+and alerts, see [monitoring.md](monitoring.md).
 
 ## Overview
 
