@@ -43,6 +43,40 @@ patches:
             handler:
               client-cert-file: /etc/virt-handler/migrationservercertificates/tls.crt
               client-key-file: /etc/virt-handler/migrationservercertificates/tls.key
+          # the admission policy wants a memory limit and no CPU limit on every container
+          patches:
+            - resourceType: Deployment
+              resourceName: virt-api
+              type: strategic
+              patch: '{"spec":{"template":{"spec":{"containers":[{"name":"virt-api","resources":{"limits":{"memory":"1Gi"}}}]}}}}'
+            - resourceType: Deployment
+              resourceName: virt-controller
+              type: strategic
+              patch: '{"spec":{"template":{"spec":{"containers":[{"name":"virt-controller","resources":{"limits":{"memory":"512Mi"}}}]}}}}'
+            - resourceType: Deployment
+              resourceName: virt-exportproxy
+              type: strategic
+              patch: '{"spec":{"template":{"spec":{"containers":[{"name":"exportproxy","resources":{"limits":{"memory":"256Mi"}}}]}}}}'
+            - resourceType: Deployment
+              resourceName: virt-template-apiserver
+              type: strategic
+              patch: '{"spec":{"template":{"spec":{"containers":[{"name":"apiserver","resources":{"limits":{"cpu":null}}}]}}}}'
+            - resourceType: Deployment
+              resourceName: virt-template-controller
+              type: strategic
+              patch: '{"spec":{"template":{"spec":{"containers":[{"name":"manager","resources":{"limits":{"cpu":null}}}]}}}}'
+            - resourceType: DaemonSet
+              resourceName: virt-handler
+              type: strategic
+              patch: '{"spec":{"template":{"spec":{"initContainers":[{"name":"virt-launcher","resources":{"requests":{"cpu":"5m","memory":"20Mi"},"limits":{"memory":"64Mi"}}}],"containers":[{"name":"virt-handler","resources":{"limits":{"memory":"1Gi"}}}]}}}}'
+  - target:
+      kind: Deployment
+      name: virt-operator
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/resources/limits
+        value:
+          memory: 1Gi
   # the CR waits for the operator to be Healthy
   - target:
       kind: KubeVirt
