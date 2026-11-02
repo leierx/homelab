@@ -2,6 +2,7 @@ multitenancy_enabled: false
 usage_stats:
   enabled: false
 server:
+  log_level: warn
   http_listen_port: 8080
   grpc_listen_port: 9095
   grpc_server_max_recv_msg_size: 104857600

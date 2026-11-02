@@ -26,6 +26,7 @@ loki:
       object_store: {filesystem: {dir: /var/loki/chunks}}
     ruler_storage: {backend: filesystem, filesystem: {dir: /var/loki/rules-api}}
     ruler: {alertmanager_url: 'http://alertmanager.monitoring.svc:9093'}
+    server: {log_level: warn}
 singleBinary:
   resources: {requests: {cpu: 100m, memory: 512Mi}, limits: {memory: 2Gi}}
 read: {replicas: 0}
