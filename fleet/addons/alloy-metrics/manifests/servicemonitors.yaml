@@ -1,33 +1,4 @@
-# both have a Service but no chart of ours, so their monitors live here
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: apiserver
-spec:
-  jobLabel: component
-  namespaceSelector:
-    matchNames: [default]
-  selector:
-    matchLabels:
-      component: apiserver
-      provider: kubernetes
-  endpoints:
-    - port: https
-      scheme: https
-      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-      tlsConfig:
-        caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-        serverName: kubernetes
-      metricRelabelings:
-        # the kubelet scrape owns these; k3s serves them here too
-        - sourceLabels: [__name__]
-          regex: kubelet_.*|volume_manager_.*|storage_operation_.*
-          action: drop
-        # the histogram buckets are most of the series and nothing here queries them
-        - sourceLabels: [__name__]
-          regex: (apiserver|etcd)_.*_bucket
-          action: drop
----
+# CoreDNS is k3s's, so no chart of ours carries its monitor
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

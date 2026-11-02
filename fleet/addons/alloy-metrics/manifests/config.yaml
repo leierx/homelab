@@ -25,6 +25,54 @@ data:
       forward_to = [prometheus.remote_write.mimir.receiver]
     }
 
+    // ServiceMonitors cannot read the service account token, so the API server is scraped here
+    discovery.kubernetes "apiserver" {
+      role = "endpointslice"
+
+      namespaces {
+        names = ["default"]
+      }
+
+      selectors {
+        role  = "endpointslice"
+        label = "kubernetes.io/service-name=kubernetes"
+      }
+    }
+
+    prometheus.scrape "apiserver" {
+      targets           = discovery.kubernetes.apiserver.targets
+      job_name          = "apiserver"
+      scheme            = "https"
+      scrape_interval   = "60s"
+      scrape_timeout    = "10s"
+      bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
+      tls_config {
+        ca_file     = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        server_name = "kubernetes"
+      }
+
+      forward_to = [prometheus.relabel.apiserver.receiver]
+    }
+
+    prometheus.relabel "apiserver" {
+      // the kubelet scrape owns these; k3s serves them here too
+      rule {
+        source_labels = ["__name__"]
+        regex         = "kubelet_.*|volume_manager_.*|storage_operation_.*"
+        action        = "drop"
+      }
+
+      // the histogram buckets are most of the series and nothing here queries them
+      rule {
+        source_labels = ["__name__"]
+        regex         = "(apiserver|etcd)_.*_bucket"
+        action        = "drop"
+      }
+
+      forward_to = [prometheus.remote_write.mimir.receiver]
+    }
+
     // kubelet and cAdvisor have no Service to monitor, so they are scraped through the node API
     discovery.kubernetes "nodes" {
       role = "node"
@@ -45,7 +93,7 @@ data:
       forward_to = [prometheus.relabel.kubelet.receiver]
     }
 
-    // k3s serves every control-plane component from one registry; the apiserver ServiceMonitor owns the rest
+    // k3s serves every control-plane component from one registry; the apiserver scrape owns the rest
     prometheus.relabel "kubelet" {
       rule {
         source_labels = ["__name__"]
