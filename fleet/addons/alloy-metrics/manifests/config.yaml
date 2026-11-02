@@ -97,7 +97,7 @@ data:
     prometheus.relabel "kubelet" {
       rule {
         source_labels = ["__name__"]
-        regex         = "kubelet_.*|volume_manager_.*|storage_operation_.*"
+        regex         = "up|kubelet_.*|volume_manager_.*|storage_operation_.*"
         action        = "keep"
       }
 
