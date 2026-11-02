@@ -119,17 +119,3 @@ wave(addon) = 0 if no dependencies, else 1 + max(wave(dep))
 {{- end -}}
 {{- printf "%d" $maxWave -}}
 {{- end -}}
-
-{{/*
-Pull an OCI Helm chart through the registry mirror named by the cluster's fleet.io/oci-mirror label:
-<mirror>/<upstream registry>/<path>. Repositories with a scheme (https:// chart repos, git) and
-charts with mirror: false are left alone.
-*/}}
-{{- define "fleet.helmRepoURL" -}}
-{{- $optOut := and (hasKey .helm "mirror") (not .helm.mirror) -}}
-{{- if and .mirror (not (contains "://" .repoURL)) (not $optOut) -}}
-{{- printf "%s/%s" .mirror .repoURL -}}
-{{- else -}}
-{{- .repoURL -}}
-{{- end -}}
-{{- end -}}

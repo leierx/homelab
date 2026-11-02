@@ -130,16 +130,11 @@ enabled addons in dependency wave order:
 - **Wave 9:** `alertmanager`
 - **Wave 10:** `grafana`
 
-## Helm charts through a registry mirror
+## Helm chart sources
 
 Every `helm.repoURL` points at the chart's upstream, and every chart that
 upstream publishes as an OCI artifact uses that form (`quay.io/cilium/charts`,
 not `https://helm.cilium.io`), so Renovate tracks it with `datasource=docker`.
-A cluster labelled `fleet.io/oci-mirror: <host>` gets those sources rewritten
-to `<host>/<upstream registry>/<path>` (`fleet.helmRepoURL` in
-`templates/_helpers.tpl`); sources with a scheme (`https://` chart
-repositories, git) and charts with `mirror: false` stay as they are. No cluster
-sets the label today.
 
 ## Addon Reference (`addon.yaml`)
 
@@ -159,7 +154,6 @@ helm:
   chart: immich
   targetRevision: 0.13.4
   releaseName: immich      # defaults to the addon name
-  mirror: false            # never pull this chart through fleet.io/oci-mirror (default true)
 sources:                   # optional extra helm or repo path sources
   - path: tofu/keycloak
   - helm:
