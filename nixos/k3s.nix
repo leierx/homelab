@@ -186,7 +186,7 @@ in
       "--kube-apiserver-arg=authentication-config=${authentication}"
       "--kube-apiserver-arg=admission-control-config-file=${admission}"
       "--kube-apiserver-arg=audit-policy-file=${auditPolicy}"
-      # Alloy (k8s-monitoring) tails it into Loki as job kube-audit
+      # alloy-logs tails it into Loki as job kube-audit
       "--kube-apiserver-arg=audit-log-path=/var/log/kubernetes/audit.log"
       "--kube-apiserver-arg=audit-log-maxage=30"
       "--kube-apiserver-arg=audit-log-maxbackup=10"
