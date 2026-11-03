@@ -2,7 +2,6 @@
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   description: 'What automerges and what waits for a review',
   labels: ['dependencies', 'needs-review'],
-  pruneBranchAfterAutomerge: true,
   platformAutomerge: false,
   minimumReleaseAgeBehaviour: 'timestamp-optional',
   packageRules: [
@@ -29,7 +28,6 @@
     {
       description: 'Major bumps wait for explicit approval on the Dependency Dashboard',
       matchUpdateTypes: ['major'],
-      automerge: false,
       dependencyDashboardApproval: true,
     },
     {

@@ -39,4 +39,4 @@ controllers are built, even when that costs dependencies.
 | No leader election | One replica on a single node. Every write is idempotent, so the brief overlap during a rollout is harmless. |
 | Fake client in tests, not envtest | Avoids downloading etcd and kube-apiserver in CI. envtest would be closer to upstream. |
 | Image built with Nix (`dockerTools.buildLayeredImage`) | Reproducible static Go binary container image built directly from `flake.nix` with no Dockerfile. |
-| Go modules bumped by Renovate | One grouped PR. `k8s.io/*` minors only arrive with a controller-runtime bump, which raises them to its matching release. CI commits the new Nix `vendorHash` to the PR. |
+| Go modules bumped by Renovate | `k8s.io/*` minors only arrive with a controller-runtime bump, which raises them to its matching release. CI commits the new Nix `vendorHash` to the PR. |

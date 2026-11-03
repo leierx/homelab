@@ -5,7 +5,6 @@
     'config:recommended',
     'helpers:pinGitHubActionDigests',
     'local>leierx/homelab//renovate/managers.json5',
-    'local>leierx/homelab//renovate/labels.json5',
     'local>leierx/homelab//renovate/review.json5',
     'local>leierx/homelab//renovate/schedule.json5',
     'local>leierx/homelab//renovate/nix.json5',

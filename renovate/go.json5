@@ -5,17 +5,6 @@
   postUpdateOptions: ['gomodTidy'],
   packageRules: [
     {
-      description: 'One PR for all Go modules',
-      matchManagers: ['gomod'],
-      groupName: 'capi-argo-bridge Go modules',
-    },
-    {
-      description: 'Go itself comes from nixpkgs',
-      matchManagers: ['gomod'],
-      matchDepTypes: ['golang', 'toolchain'],
-      enabled: false,
-    },
-    {
       description: 'k8s.io minors follow controller-runtime, whose bump raises them to its matching release',
       matchManagers: ['gomod'],
       matchPackageNames: ['k8s.io/**'],

@@ -22,23 +22,19 @@
     {
       customType: 'regex',
       description: 'GitHub release assets referenced from kustomizations',
-      managerFilePatterns: ['/^fleet/.+/kustomization\\.ya?ml$/'],
+      managerFilePatterns: ['/(^|/)kustomization\\.ya?ml$/'],
       matchStrings: [
         'https://github\\.com/(?<depName>[^/\\s]+/[^/\\s]+)/releases/download/(?<currentValue>[^/\\s]+)/',
       ],
       datasourceTemplate: 'github-releases',
     },
   ],
-  'helm-values': {
-    managerFilePatterns: ['/^fleet/.+/values\\.ya?ml$/'],
-  },
   kubernetes: {
-    managerFilePatterns: ['/^fleet/(addons|clusters)/.+\\.ya?ml$/'],
+    managerFilePatterns: ['/^fleet/.+\\.ya?ml$/'],
   },
   packageRules: [
     {
       description: 'OpenTofu roots resolve providers from the OpenTofu registry, not Terraform',
-      matchFileNames: ['tofu/**', 'fleet/**'],
       matchDatasources: ['terraform-provider', 'terraform-module'],
       registryUrls: ['https://registry.opentofu.org'],
     },
