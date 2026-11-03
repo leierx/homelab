@@ -1,0 +1,29 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  description: 'flake.nix inputs; loft01 auto-upgrades from main, so a merged flake.lock is deployed',
+  nix: {
+    enabled: true,
+    lockFileMaintenance: {
+      enabled: true,
+    },
+  },
+  packageRules: [
+    {
+      description: 'Refresh every flake input in one automerged PR, twice a week',
+      matchManagers: ['nix'],
+      matchUpdateTypes: ['lockFileMaintenance'],
+      automerge: true,
+      labels: ['dependencies'],
+      schedule: ['* 0-4 * * 1,4'],
+    },
+    {
+      description: 'A NixOS release bump gets a PR right away, but a review before merge',
+      matchManagers: ['nix'],
+      matchUpdateTypes: ['minor', 'major'],
+      automerge: false,
+      dependencyDashboardApproval: false,
+      labels: ['dependencies', 'needs-review'],
+      prBodyNotes: ['Move `services.k3s.package` in `nixos/k3s.nix` to a k3s release this nixpkgs ships.'],
+    },
+  ],
+}

@@ -8,7 +8,8 @@
     'local>leierx/homelab//renovate/labels.json5',
     'local>leierx/homelab//renovate/review.json5',
     'local>leierx/homelab//renovate/schedule.json5',
+    'local>leierx/homelab//renovate/nix.json5',
     'local>leierx/homelab//renovate/holds.json5',
   ],
-  includePaths: ['fleet/**', 'tofu/**', '.github/**'],
+  includePaths: ['fleet/**', 'tofu/**', '.github/**', 'flake.nix'],
 }

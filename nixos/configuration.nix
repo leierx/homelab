@@ -125,7 +125,7 @@
   system.autoUpgrade = {
     enable = true;
     flake = "git+https://github.com/leierx/homelab.git?ref=main#loft01";
-    # --upgrade is a no-op with flakes; nixpkgs moves via the CI flake bump
+    # --upgrade is a no-op with flakes; nixpkgs moves via Renovate's flake.lock PRs
     upgrade = false;
     flags = [ "-L" ];
     dates = "Fri 02:00";
