@@ -18,7 +18,7 @@
     isNormalUser = true;
     extraGroups = [ "wheel" ];
     # what doas prompts for; ssh stays key-only, PasswordAuthentication is off below
-    hashedPasswordFile = config.sops.secrets."leier/password_hash".path;
+    hashedPasswordFile = config.secrets.secrets."leier/password_hash".path;
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICKkHlDWS9S4YWSPSah1Pea5Jpt6+zasaPed0cR2FFhh"
     ];
@@ -77,8 +77,8 @@
   security.audit.rules = [
     # root commands started from a user session
     "-a always,exit -F arch=b64 -S execve -F euid=0 -F auid>=1000 -F auid!=unset -k root_exec"
-    # the two ways to own this host: the sops age key and the doas policy
-    "-w /var/lib/sops-nix -p rwa -k sops_key"
+    # the two ways to own this host: the secrets file and the doas policy
+    "-w /var/lib/secrets.yaml -p rwa -k secrets_file"
     "-w /etc/doas.conf -p wa -k privilege"
     "-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k modules"
   ];

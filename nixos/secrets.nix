@@ -1,6 +1,6 @@
-# Drop-in replacement for sops-nix + nixos/sops.nix reading a single 0400
-# root:root YAML file on the host (/var/lib/secrets.yaml) into ramfs at
-# /run/secrets and /run/secrets-for-users.
+# Installs host secrets from a single 0400 root:root plaintext YAML file kept
+# only on the host (/var/lib/secrets.yaml) into ramfs at /run/secrets and
+# /run/secrets-for-users.
 {
   config,
   lib,

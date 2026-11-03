@@ -5,8 +5,8 @@
   ...
 }:
 let
-  # enable only once secrets.yaml has restic/host, restic/ssh_key and restic/password:
-  # sops-nix fails the build on a missing secret
+  # enable only once /var/lib/secrets.yaml has restic/host, restic/ssh_key and restic/password:
+  # activation fails on a missing secret
   enable = true;
 
   stateDir = "/var/lib/offsite-backup";
@@ -23,11 +23,11 @@ let
       pkgs.jq
     ];
     text = ''
-      # <user>@<user>.rsync.net, from sops so no account name lands in the store
-      target=$(cat ${config.sops.secrets."restic/host".path})
-      key=${config.sops.secrets."restic/ssh_key".path}
+      # <user>@<user>.rsync.net, from the secrets file so no account name lands in the store
+      target=$(cat ${config.secrets.secrets."restic/host".path})
+      key=${config.secrets.secrets."restic/ssh_key".path}
       export RESTIC_REPOSITORY="sftp:$target:homelab-restic"
-      export RESTIC_PASSWORD_COMMAND="cat ${config.sops.secrets."restic/password".path}"
+      export RESTIC_PASSWORD_COMMAND="cat ${config.secrets.secrets."restic/password".path}"
       export RESTIC_CACHE_DIR=${stateDir}/cache
 
       # rsync.net only speaks sftp, and restic has to be told which key to use
@@ -76,7 +76,7 @@ in
     };
   };
 
-  sops.secrets = lib.mkIf enable {
+  secrets.secrets = lib.mkIf enable {
     "restic/host".mode = "0400";
     "restic/ssh_key".mode = "0400";
     "restic/password".mode = "0400";

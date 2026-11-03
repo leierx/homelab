@@ -3,8 +3,6 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     disko.url = "github:nix-community/disko/latest";
     disko.inputs.nixpkgs.follows = "nixpkgs";
-    sops-nix.url = "github:Mic92/sops-nix";
-    sops-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -12,19 +10,17 @@
       self,
       nixpkgs,
       disko,
-      sops-nix,
     }:
     {
       nixosConfigurations.loft01 = nixpkgs.lib.nixosSystem {
         modules = [
           disko.nixosModules.disko
-          sops-nix.nixosModules.sops
           ./nixos/configuration.nix
           ./nixos/hardware.nix
           ./nixos/disko.nix
           ./nixos/network.nix
           ./nixos/k3s.nix
-          ./nixos/sops.nix
+          ./nixos/secrets.nix
           ./nixos/backup.nix
         ];
       };
