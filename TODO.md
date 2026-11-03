@@ -1,4 +1,3 @@
 - [ ] Move host secrets out of git and off sops-nix — finish nixos/secrets.nix (reads /var/lib/secrets.yaml on the host) and drop sops-nix.
 - [ ] Alerting: push critical alerts by email.
 - [ ] Backups: manual restore drill of one volume plus a short runbook in docs/.
-- [ ] Split renovate config into smaller files.

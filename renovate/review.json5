@@ -1,0 +1,41 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  description: 'What automerges and what waits for a review',
+  labels: ['dependencies', 'needs-review'],
+  pruneBranchAfterAutomerge: true,
+  platformAutomerge: false,
+  packageRules: [
+    {
+      description: 'Automerge all non-major updates',
+      matchUpdateTypes: ['minor', 'patch', 'pin', 'digest'],
+      automerge: true,
+      labels: ['dependencies'],
+    },
+    {
+      description: 'Minor bumps of stateful apps get a review; their patches stay automerged',
+      matchDepNames: [
+        'ghcr.io/immich-app/immich-charts/immich',
+        'ghcr.io/immich-app/immich-server',
+        'ghcr.io/immich-app/immich-machine-learning',
+        'quay.io/keycloak/keycloak',
+        'ghcr.io/openbao/charts/openbao',
+      ],
+      matchUpdateTypes: ['minor'],
+      automerge: false,
+      labels: ['dependencies', 'needs-review'],
+    },
+    {
+      description: 'Major bumps wait for explicit approval on the Dependency Dashboard',
+      matchUpdateTypes: ['major'],
+      automerge: false,
+      dependencyDashboardApproval: true,
+      labels: ['dependencies', 'needs-review'],
+    },
+    {
+      description: 'Argo CD upgrades itself; never batch it with anything else',
+      matchDepNames: ['ghcr.io/argoproj/argo-helm/argo-cd'],
+      automerge: false,
+      labels: ['dependencies', 'needs-review'],
+    },
+  ],
+}

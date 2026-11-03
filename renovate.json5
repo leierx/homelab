@@ -1,102 +1,14 @@
-// Renovate reads this only from the repo root.
+// Renovate reads this only from the repo root; the presets in renovate/ load from main, so edits there apply once merged.
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
-  extends: ['config:recommended', 'helpers:pinGitHubActionDigests'],
+  extends: [
+    'config:recommended',
+    'helpers:pinGitHubActionDigests',
+    'local>leierx/homelab//renovate/managers.json5',
+    'local>leierx/homelab//renovate/labels.json5',
+    'local>leierx/homelab//renovate/review.json5',
+    'local>leierx/homelab//renovate/schedule.json5',
+    'local>leierx/homelab//renovate/holds.json5',
+  ],
   includePaths: ['fleet/**', 'tofu/**', '.github/**'],
-  labels: ['dependencies', 'needs-review'],
-  pruneBranchAfterAutomerge: true,
-  platformAutomerge: false,
-  customManagers: [
-    {
-      customType: 'regex',
-      description: 'the argocd-diff-preview image in the workflow, by tag and digest',
-      managerFilePatterns: ['/^\\.github/workflows/argocd-diff-preview\\.yml$/'],
-      matchStrings: [
-        '#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s*\\n\\s*ARGOCD_DIFF_PREVIEW_IMAGE:\\s*\\S+:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:\\S+)',
-      ],
-    },
-    {
-      customType: 'regex',
-      description: 'Values annotated with a `# renovate:` comment on the line above',
-      managerFilePatterns: ['/^fleet/.+\\.ya?ml$/'],
-      matchStrings: [
-        '#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+registryUrl=(?<registryUrl>\\S+))?(\\s+versioning=(?<versioning>\\S+))?(\\s+extractVersion=(?<extractVersion>\\S+))?\\s*\\n[^\\n]*[:=]\\s*"?(?<currentValue>[^\\s":]+)"?\\s*(\\n|$)',
-      ],
-    },
-    {
-      customType: 'regex',
-      description: 'GitHub release assets referenced from kustomizations',
-      managerFilePatterns: ['/^fleet/.+/kustomization\\.ya?ml$/'],
-      matchStrings: [
-        'https://github\\.com/(?<depName>[^/\\s]+/[^/\\s]+)/releases/download/(?<currentValue>[^/\\s]+)/',
-      ],
-      datasourceTemplate: 'github-releases',
-    },
-  ],
-  'helm-values': {
-    managerFilePatterns: ['/^fleet/.+/values\\.ya?ml$/'],
-  },
-  kubernetes: {
-    managerFilePatterns: ['/^fleet/(addons|clusters)/.+\\.ya?ml$/'],
-  },
-  packageRules: [
-    {
-      description: 'Label PRs by fleet area',
-      matchFileNames: ['fleet/addons/**'],
-      addLabels: ['fleet/addon'],
-    },
-    {
-      description: 'Label PRs by fleet area',
-      matchFileNames: ['fleet/clusters/**'],
-      addLabels: ['fleet/cluster'],
-    },
-    {
-      description: 'OpenTofu roots resolve providers from the OpenTofu registry, not Terraform',
-      matchFileNames: ['tofu/**', 'fleet/**'],
-      matchDatasources: ['terraform-provider', 'terraform-module'],
-      registryUrls: ['https://registry.opentofu.org'],
-    },
-    {
-      description: 'Automerge all non-major updates',
-      matchUpdateTypes: ['minor', 'patch', 'pin', 'digest'],
-      automerge: true,
-      labels: ['dependencies'],
-    },
-    {
-      description: 'Minor bumps of stateful apps get a review; their patches stay automerged',
-      matchDepNames: [
-        'ghcr.io/immich-app/immich-charts/immich',
-        'ghcr.io/immich-app/immich-server',
-        'ghcr.io/immich-app/immich-machine-learning',
-        'quay.io/keycloak/keycloak',
-        'ghcr.io/openbao/charts/openbao',
-      ],
-      matchUpdateTypes: ['minor'],
-      automerge: false,
-      labels: ['dependencies', 'needs-review'],
-    },
-    {
-      description: 'Run minor, patch and digest updates twice a week',
-      matchUpdateTypes: ['minor', 'patch', 'pin', 'digest'],
-      schedule: ['* 0-4 * * 1,4'],
-    },
-    {
-      description: 'Major bumps wait for explicit approval on the Dependency Dashboard',
-      matchUpdateTypes: ['major'],
-      automerge: false,
-      dependencyDashboardApproval: true,
-      labels: ['dependencies', 'needs-review'],
-    },
-    {
-      description: 'Argo CD upgrades itself; never batch it with anything else',
-      matchDepNames: ['ghcr.io/argoproj/argo-helm/argo-cd'],
-      automerge: false,
-      labels: ['dependencies', 'needs-review'],
-    },
-    {
-      description: 'smartctl-exporter v0.15.0 (charts 0.18.0, 0.19.0) fails SCSI scrapes with unregistered descriptors (prometheus-community/smartctl_exporter#397)',
-      matchDepNames: ['ghcr.io/prometheus-community/charts/prometheus-smartctl-exporter'],
-      allowedVersions: '<0.18.0',
-    },
-  ],
 }

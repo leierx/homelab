@@ -1,0 +1,11 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  description: 'When updates run',
+  packageRules: [
+    {
+      description: 'Run minor, patch and digest updates twice a week',
+      matchUpdateTypes: ['minor', 'patch', 'pin', 'digest'],
+      schedule: ['* 0-4 * * 1,4'],
+    },
+  ],
+}

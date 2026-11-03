@@ -1,0 +1,14 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  description: 'Label PRs by fleet area',
+  packageRules: [
+    {
+      matchFileNames: ['fleet/addons/**'],
+      addLabels: ['fleet/addon'],
+    },
+    {
+      matchFileNames: ['fleet/clusters/**'],
+      addLabels: ['fleet/cluster'],
+    },
+  ],
+}

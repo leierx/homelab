@@ -52,6 +52,7 @@ packages/       First-party controllers built with Nix (capi-argo-bridge)
 .github/        CI: Argo CD diff preview, capi-argo-bridge image, flake bump
 docs/           Operating guide for loft01 (see docs/README.md)
 AGENTS.md       Instructions for coding agents
-renovate.json5  Renovate configuration
+renovate.json5  Renovate entry point, extending the presets in renovate/
+renovate/       Renovate presets: managers, labels, review, schedule, holds
 flake.nix       Nix flake for host, installer, and packages
 ```

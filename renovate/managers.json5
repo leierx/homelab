@@ -1,0 +1,45 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  description: 'Where dependencies are found and which registries resolve them',
+  customManagers: [
+    {
+      customType: 'regex',
+      description: 'the argocd-diff-preview image in the workflow, by tag and digest',
+      managerFilePatterns: ['/^\\.github/workflows/argocd-diff-preview\\.yml$/'],
+      matchStrings: [
+        '#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s*\\n\\s*ARGOCD_DIFF_PREVIEW_IMAGE:\\s*\\S+:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:\\S+)',
+      ],
+    },
+    {
+      customType: 'regex',
+      description: 'Values annotated with a `# renovate:` comment on the line above',
+      managerFilePatterns: ['/^fleet/.+\\.ya?ml$/'],
+      matchStrings: [
+        '#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(\\s+registryUrl=(?<registryUrl>\\S+))?(\\s+versioning=(?<versioning>\\S+))?(\\s+extractVersion=(?<extractVersion>\\S+))?\\s*\\n[^\\n]*[:=]\\s*"?(?<currentValue>[^\\s":]+)"?\\s*(\\n|$)',
+      ],
+    },
+    {
+      customType: 'regex',
+      description: 'GitHub release assets referenced from kustomizations',
+      managerFilePatterns: ['/^fleet/.+/kustomization\\.ya?ml$/'],
+      matchStrings: [
+        'https://github\\.com/(?<depName>[^/\\s]+/[^/\\s]+)/releases/download/(?<currentValue>[^/\\s]+)/',
+      ],
+      datasourceTemplate: 'github-releases',
+    },
+  ],
+  'helm-values': {
+    managerFilePatterns: ['/^fleet/.+/values\\.ya?ml$/'],
+  },
+  kubernetes: {
+    managerFilePatterns: ['/^fleet/(addons|clusters)/.+\\.ya?ml$/'],
+  },
+  packageRules: [
+    {
+      description: 'OpenTofu roots resolve providers from the OpenTofu registry, not Terraform',
+      matchFileNames: ['tofu/**', 'fleet/**'],
+      matchDatasources: ['terraform-provider', 'terraform-module'],
+      registryUrls: ['https://registry.opentofu.org'],
+    },
+  ],
+}

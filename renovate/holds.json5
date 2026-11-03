@@ -1,0 +1,11 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  description: 'Temporary version holds; drop each once upstream ships the fix',
+  packageRules: [
+    {
+      description: 'smartctl-exporter v0.15.0 (charts 0.18.0, 0.19.0) fails SCSI scrapes with unregistered descriptors (prometheus-community/smartctl_exporter#397)',
+      matchDepNames: ['ghcr.io/prometheus-community/charts/prometheus-smartctl-exporter'],
+      allowedVersions: '<0.18.0',
+    },
+  ],
+}
