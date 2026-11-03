@@ -14,8 +14,10 @@ Instructions for coding agents working in this repository. Follow
   `flake.nix` (e.g. `packages/capi-argo-bridge/`).
 - `nixos/` — Declarative NixOS configuration for `loft01` (disko, k3s,
   sops-nix, WireGuard, restic off-site backup).
-- `.github/workflows/` — CI: Argo CD diff preview on PRs, the
-  `capi-argo-bridge` image build, and the scheduled flake bump.
+- `.github/workflows/` — CI: Argo CD diff preview and Nix checks on PRs, the
+  `capi-argo-bridge` image build, and Renovate config validation.
+- `renovate.json5` and `renovate/` — Renovate config, one preset per concern;
+  Renovate also bumps `flake.lock` and the Go modules in `packages/`.
 - `docs/README.md` — Operational runbook for `loft01` (OpenBao secrets, SSO,
   break-glass).
 

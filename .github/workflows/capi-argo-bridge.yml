@@ -16,7 +16,50 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  vendor-hash:
+    # Renovate can't recompute Nix's vendorHash after a Go module bump
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'renovate/') && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: write
+      statuses: write
+    outputs:
+      pushed: ${{ steps.fix.outputs.pushed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31
+
+      - name: Update vendorHash
+        id: fix
+        run: |
+          set -euo pipefail
+          if log=$(nix build --no-link .#capi-argo-bridge.goModules 2>&1); then exit 0; fi
+          hash=$(sed -n 's/^ *got: *\(sha256-[^ ]*\) *$/\1/p' <<<"$log")
+          if [ -z "$hash" ]; then echo "$log"; exit 1; fi
+          sed -i "s|vendorHash = \".*\";|vendorHash = \"$hash\";|" packages/capi-argo-bridge/default.nix
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "fix(capi-argo-bridge): update vendorHash" -- packages/capi-argo-bridge/default.nix
+          git push
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      # a push with GITHUB_TOKEN starts no workflows, so build the new commit here and report on it
+      - name: Build and test the fixed commit
+        if: steps.fix.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          state=success
+          nix build -L --no-link .#capi-argo-bridge-image || state=failure
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/$(git rev-parse HEAD)" \
+            -f state="$state" -f context="capi-argo-bridge / build"
+          [ "$state" = success ]
+
   build:
+    needs: vendor-hash
+    if: ${{ !cancelled() && needs.vendor-hash.result != 'failure' && needs.vendor-hash.outputs.pushed != 'true' }}
     runs-on: ubuntu-26.04
     permissions:
       contents: read
