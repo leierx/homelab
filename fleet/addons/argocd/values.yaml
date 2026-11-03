@@ -95,6 +95,8 @@ extraObjects:
             selector:
               matchLabels:
                 fleet.io/enabled: "true"
+      ignoreApplicationDifferences:
+        - jsonPointers: [/spec/syncPolicy/automated/enabled]
       template:
         metadata:
           name: 'fleet-{{ `{{ .name }}` }}'
@@ -116,6 +118,10 @@ extraObjects:
                   name: '{{ `{{ .name }}` }}'
                   server: '{{ `{{ .server }}` }}'
                   labels: '{{ `{{ .metadata.labels | toJson }}` }}'
+          ignoreDifferences:
+            - group: argoproj.io
+              kind: Application
+              jsonPointers: [/spec/syncPolicy/automated/enabled]
           syncPolicy:
             automated:
               prune: true

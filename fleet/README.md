@@ -209,5 +209,6 @@ kubectl -n argocd patch app <cluster>-<addon> --type merge \
   -p '{"spec":{"syncPolicy":{"automated":{"enabled":false}}}}'
 ```
 
-Both `fleet-root` and `fleet-<cluster>` ignore `/spec/syncPolicy` differences
+Both `fleet-root` and `fleet-<cluster>` ignore
+`/spec/syncPolicy/automated/enabled` differences
 on `Application` resources, so manual pauses persist until re-enabled.
