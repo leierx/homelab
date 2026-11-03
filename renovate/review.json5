@@ -4,11 +4,13 @@
   labels: ['dependencies', 'needs-review'],
   pruneBranchAfterAutomerge: true,
   platformAutomerge: false,
+  minimumReleaseAgeBehaviour: 'timestamp-optional',
   packageRules: [
     {
-      description: 'Automerge all non-major updates',
+      description: 'Automerge all non-major updates, 3 days after release so pulled ones are skipped (only where the registry has release dates)',
       matchUpdateTypes: ['minor', 'patch', 'pin', 'digest'],
       automerge: true,
+      minimumReleaseAge: '3 days',
       labels: ['dependencies'],
     },
     {
@@ -29,10 +31,9 @@
       matchUpdateTypes: ['major'],
       automerge: false,
       dependencyDashboardApproval: true,
-      labels: ['dependencies', 'needs-review'],
     },
     {
-      description: 'Argo CD upgrades itself; never batch it with anything else',
+      description: 'Argo CD upgrades itself, so every bump gets a review',
       matchDepNames: ['ghcr.io/argoproj/argo-helm/argo-cd'],
       automerge: false,
       labels: ['dependencies', 'needs-review'],

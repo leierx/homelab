@@ -49,7 +49,7 @@ fleet/          GitOps fleet controller, shared addons, and cluster configs (see
   clusters/     Per-cluster config (cluster-secret.yaml, <addon>/{values.yaml,manifests/})
 tofu/           OpenTofu roots (Keycloak realm)
 packages/       First-party controllers built with Nix (capi-argo-bridge)
-.github/        CI: Argo CD diff preview, capi-argo-bridge image, flake bump
+.github/        CI: Argo CD diff preview, capi-argo-bridge image, flake bump, Renovate config check
 docs/           Operating guide for loft01 (see docs/README.md)
 AGENTS.md       Instructions for coding agents
 renovate.json5  Renovate entry point, extending the presets in renovate/

@@ -1,4 +1,4 @@
-// Renovate reads this only from the repo root; the presets in renovate/ load from main, so edits there apply once merged.
+// Renovate can't read its repo config from renovate/; the presets there load from main, so edits apply once merged.
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: [

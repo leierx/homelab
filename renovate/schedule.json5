@@ -1,6 +1,7 @@
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   description: 'When updates run',
+  timezone: 'Europe/Oslo',
   packageRules: [
     {
       description: 'Run minor, patch and digest updates twice a week',
