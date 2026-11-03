@@ -15,6 +15,10 @@ let
   usersSecrets = lib.filterAttrs (_: s: s.neededForUsers) cfg.secrets;
   regularSecrets = lib.filterAttrs (_: s: !s.neededForUsers) cfg.secrets;
 
+  badNames = lib.filter (n: lib.any (p: p == "" || p == "." || p == "..") (lib.splitString "/" n)) (
+    map (x: x.name) (builtins.attrValues cfg.secrets ++ builtins.attrValues cfg.templates)
+  );
+
   parentDirs =
     name:
     let
@@ -27,7 +31,7 @@ let
     {
       options = {
         name = lib.mkOption {
-          type = lib.types.str;
+          type = lib.types.singleLineStr;
           default = config._module.args.name;
         };
         key = lib.mkOption {
@@ -125,10 +129,12 @@ let
 
         mountPoint=${lib.escapeShellArg mountPoint}
         symlinkPath=${lib.escapeShellArg symlinkPath}
-        install -d -m 0751 -o 0 -g ${dirGroup} "$mountPoint"
+        mkdir -p "$mountPoint"
         if ! mountpoint -q "$mountPoint"; then
-          mount -t ramfs -o nosuid,nodev,mode=0751,gid=${dirGroup} ramfs "$mountPoint"
+          mount -t ramfs -o nosuid,nodev,mode=0751 ramfs "$mountPoint"
         fi
+        # ramfs ignores gid=, so set ownership on the mounted root itself
+        install -d -m 0751 -o 0 -g ${dirGroup} "$mountPoint"
 
         gen=1
         if [ -L "$symlinkPath" ]; then
@@ -144,7 +150,9 @@ let
         dir="$mountPoint/$gen"
         rm -rf "$dir"
         install -d -m 0751 -o 0 -g ${dirGroup} "$dir"
-        ${lib.concatMapStringsSep "\n" (d: ''install -d -m 0751 -o 0 -g ${dirGroup} "$dir/${d}"'') dirs}
+        ${lib.concatMapStringsSep "\n" (
+          d: ''install -d -m 0751 -o 0 -g ${dirGroup} "$dir"/${lib.escapeShellArg d}''
+        ) dirs}
 
         umask 0077
         json=$(${pkgs.yq-go}/bin/yq -o=json "$file")
@@ -154,14 +162,15 @@ let
           let
             keyPath = builtins.toJSON (lib.splitString "/" s.key);
             ownerGroup = if forUsers then "0:0" else "${s.owner}:${s.group}";
+            f = ''"$dir"/${lib.escapeShellArg s.name}'';
           in
           ''
-            printf '%s\n' "$json" | ${pkgs.jq}/bin/jq -j -e 'getpath(${keyPath}) | select(type == "string")' > "$dir/${s.name}" || {
-              echo "secrets: missing or non-string key '${s.key}' in $file" >&2
+            printf '%s\n' "$json" | ${pkgs.jq}/bin/jq -j -e 'getpath(${keyPath}) | select(type == "string")' > ${f} || {
+              printf "secrets: missing or non-string key '%s' in %s\n" ${lib.escapeShellArg s.key} "$file" >&2
               exit 1
             }
-            chown ${lib.escapeShellArg ownerGroup} "$dir/${s.name}"
-            chmod ${lib.escapeShellArg s.mode} "$dir/${s.name}"
+            chown ${lib.escapeShellArg ownerGroup} ${f}
+            chmod ${lib.escapeShellArg s.mode} ${f}
           ''
         ) secretList}
 
@@ -172,6 +181,7 @@ let
             placeholderMap = builtins.toJSON (
               lib.mapAttrs' (n: s: lib.nameValuePair cfg.placeholder.${n} (lib.splitString "/" s.key)) usedSecrets
             );
+            f = ''"$dir"/rendered/${lib.escapeShellArg t.name}'';
           in
           ''
             printf '%s\n' "$json" | ${pkgs.jq}/bin/jq -j -e \
@@ -184,9 +194,9 @@ let
                 else
                   split($e.key) | join($val)
                 end
-              )' > "$dir/rendered/${t.name}"
-            chown ${lib.escapeShellArg "${t.owner}:${t.group}"} "$dir/rendered/${t.name}"
-            chmod ${lib.escapeShellArg t.mode} "$dir/rendered/${t.name}"
+              )' > ${f}
+            chown ${lib.escapeShellArg "${t.owner}:${t.group}"} ${f}
+            chmod ${lib.escapeShellArg t.mode} ${f}
           ''
         ) templateList}
 
@@ -261,6 +271,10 @@ in
       {
         assertion = (lib.filterAttrs (_: s: s.owner != "root" || s.group != "root") usersSecrets) == { };
         message = "neededForUsers secrets must be owned by root:root";
+      }
+      {
+        assertion = badNames == [ ];
+        message = "secret and template names must be relative paths without empty, `.` or `..` components: ${toString badNames}";
       }
     ];
 
