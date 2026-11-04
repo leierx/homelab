@@ -6,6 +6,8 @@ metadata:
   annotations:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    # the CRD comes from argo-workflows, which syncs in the same wave
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   workflowTemplateRef:
     name: tofu

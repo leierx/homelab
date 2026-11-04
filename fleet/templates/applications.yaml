@@ -1,140 +1,79 @@
-{{- $cluster := include "fleet.clusterName" . -}}
-{{- $gitSecret := fromYaml (include "fleet.gitClusterSecret" .) -}}
-{{- $gitMeta := default dict $gitSecret.metadata -}}
-{{- $gitStringData := default dict $gitSecret.stringData -}}
-{{- $annotations := mergeOverwrite (deepCopy (default dict $gitMeta.annotations)) (deepCopy (default dict .Values.metadata.annotations)) -}}
-{{- $server := default (default (default "https://kubernetes.default.svc" $gitStringData.server) .Values.stringData.server) .Values.cluster.server -}}
-{{- $repoURL := default (default "https://github.com/leierx/homelab.git" .Values.repoURL) (index $annotations "fleet.io/repo-url") -}}
-{{- $targetRevision := default (default "HEAD" .Values.targetRevision) (index $annotations "fleet.io/target-revision") -}}
 {{- $files := .Files -}}
-{{- $allAddons := fromYaml (include "fleet.mergedAddons" .) -}}
+{{- $argo := required "argo is required" .Values.argo -}}
+{{- $cluster := .Values.cluster -}}
+{{- $server := required "server is required" .Values.server -}}
+{{- $repoURL := required "repoURL is required" .Values.repoURL -}}
+{{- $targetRevision := required "targetRevision is required" .Values.targetRevision -}}
+{{- $addons := fromYaml (include "fleet.addons" .) -}}
 
-{{- range $name, $addon := $allAddons }}
-{{- $wave := include "fleet.calcWave" (dict "addon" $name "all" $allAddons "depth" 0 "cluster" $cluster) }}
+{{- range $name, $addon := $addons }}
+{{- if eq $addon.manager $argo }}
 {{- $sources := list -}}
-{{- $needsValuesRef := false -}}
 
-{{/* 1. Primary Helm source (if defined in base or cluster addon.yaml, or local Chart.yaml exists) */}}
-{{- $hasBaseChart := ne ($files.Get (printf "addons/%s/Chart.yaml" $name)) "" -}}
-{{- $hasClusterChart := ne ($files.Get (printf "clusters/%s/%s/Chart.yaml" $cluster $name)) "" -}}
-{{- if or $addon.helm $hasBaseChart $hasClusterChart }}
-  {{- $helmCfg := default dict $addon.helm -}}
+{{- with $addon.helm }}
+  {{- $source := omit . "releaseName" -}}
+  {{- if not .repoURL -}}
+    {{- $_ := set $source "repoURL" $repoURL -}}
+    {{- $_ := set $source "targetRevision" (default $targetRevision .targetRevision) -}}
+  {{- end -}}
+  {{- $helm := dict "releaseName" (default $name .releaseName) -}}
   {{- $valueFiles := list -}}
-  {{- if ne ($files.Get (printf "addons/%s/values.yaml" $name)) "" }}
-    {{- $valueFiles = append $valueFiles (printf "$values/fleet/addons/%s/values.yaml" $name) -}}
-    {{- $needsValuesRef = true -}}
-  {{- end }}
-  {{- if ne ($files.Get (printf "clusters/%s/%s/values.yaml" $cluster $name)) "" }}
-    {{- $valueFiles = append $valueFiles (printf "$values/fleet/clusters/%s/%s/values.yaml" $cluster $name) -}}
-    {{- $needsValuesRef = true -}}
-  {{- end }}
-  {{- $helmSource := dict
-      "repoURL" (default $repoURL $helmCfg.repoURL)
-      "targetRevision" (default $targetRevision $helmCfg.targetRevision)
-  -}}
-  {{- if $helmCfg.chart }}
-    {{- $_ := set $helmSource "chart" $helmCfg.chart -}}
-  {{- else if $helmCfg.path }}
-    {{- $_ := set $helmSource "path" $helmCfg.path -}}
-  {{- else if $hasBaseChart }}
-    {{- $_ := set $helmSource "path" (printf "fleet/addons/%s" $name) -}}
-  {{- else if $hasClusterChart }}
-    {{- $_ := set $helmSource "path" (printf "fleet/clusters/%s/%s" $cluster $name) -}}
-  {{- end }}
-  {{- $helmSpec := dict
-      "releaseName" (default $name $helmCfg.releaseName)
-  -}}
-  {{- if $valueFiles }}
-    {{- $_ := set $helmSpec "valueFiles" $valueFiles -}}
-  {{- end }}
-  {{- $_ := set $helmSource "helm" $helmSpec -}}
-  {{- $sources = append $sources $helmSource -}}
-{{- end }}
+  {{- range $layer := $addon.layers -}}
+    {{- if $files.Get (printf "%s/values.yaml" $layer) -}}
+      {{- $valueFiles = append $valueFiles (printf "$fleet/fleet/%s/values.yaml" $layer) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if $valueFiles -}}
+    {{- $_ := set $helm "valueFiles" $valueFiles -}}
+  {{- end -}}
+  {{- $_ := set $source "helm" $helm -}}
+  {{- $sources = append $sources $source -}}
+{{- end -}}
 
-{{/* 2. Base addon manifests/ (raw YAML or kustomization.yaml, auto-detected if present) */}}
-{{- if $files.Glob (printf "addons/%s/manifests/**" $name) }}
-  {{- $sources = append $sources (dict "repoURL" $repoURL "targetRevision" $targetRevision "path" (printf "fleet/addons/%s/manifests" $name)) -}}
-{{- end }}
+{{- $sources = append $sources (dict "repoURL" $repoURL "targetRevision" $targetRevision "ref" "fleet") -}}
 
-{{/* 3. Cluster addon manifests/ (raw YAML or kustomization.yaml, auto-detected if present) */}}
-{{- if $files.Glob (printf "clusters/%s/%s/manifests/**" $cluster $name) }}
-  {{- $sources = append $sources (dict "repoURL" $repoURL "targetRevision" $targetRevision "path" (printf "fleet/clusters/%s/%s/manifests" $cluster $name)) -}}
-{{- end }}
+{{- range $layer := $addon.layers -}}
+  {{- if $files.Glob (printf "%s/manifests/**" $layer) -}}
+    {{- $sources = append $sources (dict "repoURL" $repoURL "targetRevision" $targetRevision "path" (printf "fleet/%s/manifests" $layer)) -}}
+  {{- end -}}
+{{- end -}}
 
-{{/* 4. Any extra sources (extra Helm charts, CRDs, paths) declared in sources: [] */}}
-{{- range $extra := $addon.extraSources }}
-  {{- if $extra.helm }}
-    {{- $extraHelm := dict
-        "repoURL" (default $repoURL $extra.helm.repoURL)
-        "targetRevision" (default $targetRevision $extra.helm.targetRevision)
-    -}}
-    {{- if $extra.helm.chart }}{{- $_ := set $extraHelm "chart" $extra.helm.chart -}}{{- end }}
-    {{- if $extra.helm.path }}{{- $_ := set $extraHelm "path" $extra.helm.path -}}{{- end }}
-    {{- $extraHelmSpec := dict "releaseName" (default $name $extra.helm.releaseName) -}}
-    {{- if $extra.helm.valuesFile }}
-      {{- $_ := set $extraHelmSpec "valueFiles" (list (printf "$values/fleet/clusters/%s/%s/%s" $cluster $name $extra.helm.valuesFile)) -}}
-      {{- $needsValuesRef = true -}}
-    {{- end }}
-    {{- $_ := set $extraHelm "helm" $extraHelmSpec -}}
-    {{- $sources = append $sources $extraHelm -}}
-  {{- else if $extra.manifests }}
-    {{- $sources = append $sources (dict "repoURL" (default $repoURL $extra.manifests.repoURL) "targetRevision" (default $targetRevision $extra.manifests.targetRevision) "path" $extra.manifests.path) -}}
-  {{- else if $extra.path }}
-    {{- $sources = append $sources (dict "repoURL" (default $repoURL $extra.repoURL) "targetRevision" (default $targetRevision $extra.targetRevision) "path" $extra.path) -}}
-  {{- end }}
-{{- end }}
+{{- range $extra := $addon.sources -}}
+  {{- $source := deepCopy $extra -}}
+  {{- if not $source.repoURL -}}
+    {{- $_ := set $source "repoURL" $repoURL -}}
+    {{- $_ := set $source "targetRevision" (default $targetRevision $source.targetRevision) -}}
+  {{- end -}}
+  {{- $sources = append $sources $source -}}
+{{- end -}}
 
-{{/* Add the values ref source once if any Helm source referenced $values/... */}}
-{{- if $needsValuesRef }}
-  {{- $sources = append $sources (dict "repoURL" $repoURL "targetRevision" $targetRevision "ref" "values") -}}
-{{- end }}
+{{- $syncPolicy := dict
+    "automated" (dict "prune" true "selfHeal" true)
+    "syncOptions" (list "CreateNamespace=true" "ServerSideApply=true")
+    "retry" (dict "limit" 10 "backoff" (dict "duration" "10s" "maxDuration" "3m" "factor" 2))
+-}}
+{{- with $addon.managedNamespaceMetadata -}}
+  {{- $_ := set $syncPolicy "managedNamespaceMetadata" . -}}
+{{- end -}}
+
+{{- $app := dict
+    "apiVersion" "argoproj.io/v1alpha1"
+    "kind" "Application"
+    "metadata" (dict
+      "name" (printf "%s-%s" $cluster $name)
+      "namespace" "argocd"
+      "annotations" (dict
+        "argocd.argoproj.io/sync-wave" (toString $addon.wave)
+        "fleet.io/non-blocking" (toString $addon.nonBlocking))
+      "finalizers" (list "resources-finalizer.argocd.argoproj.io"))
+    "spec" (dict
+      "project" "default"
+      "destination" (dict "server" $server "namespace" (default $name $addon.namespace))
+      "sources" $sources
+      "syncPolicy" $syncPolicy)
+-}}
+{{- include "fleet.deepMerge" (dict "dst" $app "src" (default dict $addon.application)) }}
 ---
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: {{ $cluster }}-{{ $name }}
-  namespace: argocd
-  labels:
-    fleet.io/cluster: {{ $cluster }}
-    fleet.io/addon: {{ $name }}
-    {{- if $addon.nonBlocking }}
-    fleet.io/non-blocking: "true"
-    {{- end }}
-  annotations:
-    argocd.argoproj.io/sync-wave: {{ $wave | quote }}
-spec:
-  project: default
-  destination:
-    server: {{ $server }}
-    namespace: {{ default $name $addon.namespace }}
-  sources:
-    {{- toYaml $sources | nindent 4 }}
-  {{- with $addon.ignoreDifferences }}
-  ignoreDifferences:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply={{ ternary "false" "true" (eq $addon.serverSideApply false) }}
-      - RespectIgnoreDifferences=true
-      - SkipDryRunOnMissingResource=true
-      - ApplyOutOfSyncOnly=true
-    {{- with $addon.podSecurity }}
-    managedNamespaceMetadata:
-      labels:
-        pod-security.kubernetes.io/enforce: {{ . }}
-        pod-security.kubernetes.io/warn: {{ . }}
-        pod-security.kubernetes.io/audit: {{ . }}
-    {{- end }}
-    retry:
-      limit: 10
-      refresh: true
-      backoff:
-        duration: 15s
-        factor: 2
-        maxDuration: 10m
+{{ toYaml $app }}
+{{- end }}
 {{- end }}

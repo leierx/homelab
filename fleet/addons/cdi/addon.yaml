@@ -1,4 +1,8 @@
 namespace: cdi
-podSecurity: restricted
 dependencies:
   - cilium
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

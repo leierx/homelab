@@ -1,5 +1,4 @@
 namespace: telemetry
-podSecurity: privileged
 dependencies:
   - cilium
   - loki
@@ -9,3 +8,8 @@ helm:
   chart: alloy
   # renovate: datasource=helm depName=alloy registryUrl=https://grafana.github.io/helm-charts
   targetRevision: 1.15.0
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: privileged
+    pod-security.kubernetes.io/audit: privileged

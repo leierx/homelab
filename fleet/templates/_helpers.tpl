@@ -1,121 +1,130 @@
-{{/*
-Resolve the cluster name from cluster.name or cluster-secret.yaml's metadata.name.
-*/}}
-{{- define "fleet.clusterName" -}}
-{{- default .Values.metadata.name .Values.cluster.name | required "cluster.name or metadata.name is required" -}}
-{{- end -}}
-
-{{/*
-Load clusters/<cluster>/cluster-secret.yaml from the chart if present.
-*/}}
-{{- define "fleet.gitClusterSecret" -}}
-{{- $cluster := include "fleet.clusterName" . -}}
-{{- $raw := .Files.Get (printf "clusters/%s/cluster-secret.yaml" $cluster) -}}
+{{/* A YAML file from the chart as a map, or an empty map if it doesn't exist. */}}
+{{- define "fleet.readYaml" -}}
+{{- $raw := .files.Get .path -}}
+{{- $out := dict -}}
 {{- if $raw -}}
-{{- fromYaml $raw | toYaml -}}
-{{- else -}}
-{}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Resolve the cluster labels: values metadata.labels, then cluster-secret.yaml in git, then the
-live cluster Secret labels fleet-root passes as cluster.labels (CAPI clusters).
-*/}}
-{{- define "fleet.clusterLabels" -}}
-{{- $gitSecret := fromYaml (include "fleet.gitClusterSecret" .) -}}
-{{- $gitMeta := default dict $gitSecret.metadata -}}
-{{- $labels := dict -}}
-{{- if .Values.metadata.labels -}}
-  {{- $labels = .Values.metadata.labels -}}
-{{- else if $gitMeta.labels -}}
-  {{- $labels = $gitMeta.labels -}}
-{{- else if .Values.cluster.labels -}}
-  {{- if kindIs "string" .Values.cluster.labels -}}
-    {{- $labels = fromJson .Values.cluster.labels -}}
-  {{- else if kindIs "map" .Values.cluster.labels -}}
-    {{- $labels = .Values.cluster.labels -}}
+  {{- $out = fromYaml $raw | default dict -}}
+  {{- if hasKey $out "Error" -}}
+    {{- fail (printf "%s: %s" .path $out.Error) -}}
   {{- end -}}
 {{- end -}}
-{{- $labels | toYaml -}}
+{{- toYaml $out -}}
+{{- end -}}
+
+{{/* Deep-merges .src into .dst in place: maps recurse, everything else (lists too) is replaced. */}}
+{{- define "fleet.deepMerge" -}}
+{{- $dst := .dst -}}
+{{- range $k, $v := .src -}}
+  {{- if and (kindIs "map" $v) (kindIs "map" (index $dst $k)) -}}
+    {{- include "fleet.deepMerge" (dict "dst" (index $dst $k) "src" $v) -}}
+  {{- else -}}
+    {{- $_ := set $dst $k (deepCopy $v) -}}
+  {{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Layer directories in merge order: addons/<n> < envs/<e>/<n> < clusters/<c>/<n>. */}}
+{{- define "fleet.layers" -}}
+{{- $layers := list (printf "addons/%s" .name) -}}
+{{- if .env -}}
+  {{- $layers = append $layers (printf "envs/%s/%s" .env .name) -}}
+{{- end -}}
+{{- $layers = append $layers (printf "clusters/%s/%s" .cluster .name) -}}
+{{- toYaml $layers -}}
 {{- end -}}
 
 {{/*
-Build a merged map of all enabled addons and their combined metadata for this cluster.
-Addons are enabled via labels on cluster-secret.yaml (or the live cluster Secret):
-  fleet.io/<addon>.enable: "true"
-  addons.homelab/<addon>: "true"
+Every addon enabled on .Values.cluster, merged across its layers, with its
+resolved manager, layer dirs and sync wave. Fails on an invalid graph.
 */}}
-{{- define "fleet.mergedAddons" -}}
-{{- $cluster := include "fleet.clusterName" . -}}
+{{- define "fleet.addons" -}}
 {{- $files := .Files -}}
-{{- $labels := fromYaml (include "fleet.clusterLabels" .) -}}
+{{- $cluster := required "cluster is required" .Values.cluster -}}
+{{- $clusterPath := printf "clusters/%s/cluster.yaml" $cluster -}}
+{{- if not ($files.Get $clusterPath) -}}
+  {{- fail (printf "%s does not exist" $clusterPath) -}}
+{{- end -}}
+{{- $clusterCfg := fromYaml (include "fleet.readYaml" (dict "files" $files "path" $clusterPath)) -}}
+{{- $env := default "" $clusterCfg.env -}}
+{{- $enabled := dict -}}
+{{- if $env -}}
+  {{- $envPath := printf "envs/%s/env.yaml" $env -}}
+  {{- if not ($files.Get $envPath) -}}
+    {{- fail (printf "%s sets env %q, but %s does not exist" $clusterPath $env $envPath) -}}
+  {{- end -}}
+  {{- $envCfg := fromYaml (include "fleet.readYaml" (dict "files" $files "path" $envPath)) -}}
+  {{- $enabled = deepCopy (default dict $envCfg.addons) -}}
+{{- end -}}
+{{- include "fleet.deepMerge" (dict "dst" $enabled "src" (default dict $clusterCfg.addons)) -}}
+{{- $defaultManager := default "self" $clusterCfg.managedBy -}}
 
-{{- $enabled := list -}}
-{{- range $k, $v := $labels -}}
-  {{- if eq (toString $v) "true" -}}
-    {{- if and (hasPrefix "fleet.io/" $k) (hasSuffix ".enable" $k) -}}
-      {{- $enabled = append $enabled (trimSuffix ".enable" (trimPrefix "fleet.io/" $k)) -}}
-    {{- else if hasPrefix "addons.homelab/" $k -}}
-      {{- $enabled = append $enabled (trimPrefix "addons.homelab/" $k) -}}
+{{- $addons := dict -}}
+{{- range $name, $on := $enabled -}}
+  {{- if eq (toString $on) "true" -}}
+    {{- $layers := fromYamlArray (include "fleet.layers" (dict "name" $name "env" $env "cluster" $cluster)) -}}
+    {{- $merged := dict -}}
+    {{- $deps := list -}}
+    {{- $sources := list -}}
+    {{- $defined := false -}}
+    {{- range $layer := $layers -}}
+      {{- $path := printf "%s/addon.yaml" $layer -}}
+      {{- if $files.Get $path -}}
+        {{- $defined = true -}}
+        {{- $cfg := fromYaml (include "fleet.readYaml" (dict "files" $files "path" $path)) -}}
+        {{- $deps = concat $deps (default list $cfg.dependencies) -}}
+        {{- $sources = concat $sources (default list $cfg.sources) -}}
+        {{- include "fleet.deepMerge" (dict "dst" $merged "src" $cfg) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if not $defined -}}
+      {{- fail (printf "addon %q is enabled on cluster %q but has no addon.yaml in %s" $name $cluster (join ", " $layers)) -}}
+    {{- end -}}
+    {{- $manager := default $defaultManager $merged.managedBy -}}
+    {{- $_ := set $merged "manager" (ternary $cluster $manager (eq $manager "self")) -}}
+    {{- $_ := set $merged "dependencies" (uniq $deps) -}}
+    {{- $_ := set $merged "sources" $sources -}}
+    {{- $_ := set $merged "nonBlocking" (eq (toString $merged.nonBlocking) "true") -}}
+    {{- $_ := set $merged "layers" $layers -}}
+    {{- $_ := set $addons $name $merged -}}
+  {{- end -}}
+{{- end -}}
+
+{{- range $name, $a := $addons -}}
+  {{- range $dep := $a.dependencies -}}
+    {{- $d := index $addons $dep -}}
+    {{- if not $d -}}
+      {{- fail (printf "addon %q depends on %q, which is not enabled on cluster %q" $name $dep $cluster) -}}
+    {{- end -}}
+    {{- if ne $a.manager $d.manager -}}
+      {{- fail (printf "addon %q (managed by %q) depends on %q (managed by %q): dependencies must stay within one manager" $name $a.manager $dep $d.manager) -}}
+    {{- end -}}
+    {{- if and (not $a.nonBlocking) $d.nonBlocking -}}
+      {{- fail (printf "blocking addon %q depends on non-blocking addon %q" $name $dep) -}}
     {{- end -}}
   {{- end -}}
 {{- end -}}
 
-{{- $result := dict -}}
-{{- range $addonName := ($enabled | uniq | sortAlpha) -}}
-  {{- $baseFile := printf "addons/%s/addon.yaml" $addonName -}}
-  {{- $clusterFile := printf "clusters/%s/%s/addon.yaml" $cluster $addonName -}}
-
-  {{- $baseContent := $files.Get $baseFile -}}
-  {{- $clusterContent := $files.Get $clusterFile -}}
-  {{- if and (not $baseContent) (not $clusterContent) -}}
-    {{- fail (printf "Addon '%s' has neither %s nor %s" $addonName $baseFile $clusterFile) -}}
-  {{- end -}}
-
-  {{- $base := ternary (fromYaml $baseContent | default dict) (dict) (ne $baseContent "") -}}
-  {{- $ovr := ternary (fromYaml $clusterContent | default dict) (dict) (ne $clusterContent "") -}}
-
-  {{- $deps := uniq (concat (default list $base.dependencies) (default list $ovr.dependencies)) -}}
-  {{- $extraSources := concat (default list $base.sources) (default list $ovr.sources) -}}
-  {{- $ignoreDiffs := concat (default list $base.ignoreDifferences) (default list $ovr.ignoreDifferences) -}}
-
-  {{- $merged := mergeOverwrite (deepCopy $base) (deepCopy $ovr) -}}
-  {{- $_ := set $merged "dependencies" $deps -}}
-  {{- $_ := set $merged "extraSources" $extraSources -}}
-  {{- $_ := set $merged "ignoreDifferences" $ignoreDiffs -}}
-  {{- $_ := set $result $addonName $merged -}}
+{{- $n := len $addons -}}
+{{- $waves := dict -}}
+{{- range $name, $_ := $addons -}}
+  {{- $_ := set $waves $name 0 -}}
 {{- end -}}
-
-{{- if empty $result -}}
-  {{- fail (printf "No addons enabled for cluster '%s'; check fleet.io/<addon>.enable labels in clusters/%s/cluster-secret.yaml" $cluster $cluster) -}}
-{{- end -}}
-
-{{- $result | toYaml -}}
-{{- end -}}
-
-{{/*
-Recursively calculate sync-wave depth from dependencies:
-wave(addon) = 0 if no dependencies, else 1 + max(wave(dep))
-*/}}
-{{- define "fleet.calcWave" -}}
-{{- $addonName := .addon -}}
-{{- $all := .all -}}
-{{- $depth := .depth -}}
-{{- if gt $depth 20 -}}
-  {{- fail (printf "Circular dependency detected involving addon '%s'" $addonName) -}}
-{{- end -}}
-{{- if not (hasKey $all $addonName) -}}
-  {{- fail (printf "Addon dependency '%s' is not enabled in clusters/%s/cluster-secret.yaml" $addonName .cluster) -}}
-{{- end -}}
-{{- $cfg := index $all $addonName -}}
-{{- $maxWave := 0 -}}
-{{- range $dep := $cfg.dependencies -}}
-  {{- $depWave := include "fleet.calcWave" (dict "addon" $dep "all" $all "depth" (add1 $depth) "cluster" $.cluster) | int -}}
-  {{- $candidate := add1 $depWave -}}
-  {{- if gt $candidate $maxWave -}}
-    {{- $maxWave = $candidate -}}
+{{- range $pass := until $n -}}
+  {{- range $name, $a := $addons -}}
+    {{- $w := 0 -}}
+    {{- range $dep := $a.dependencies -}}
+      {{- $w = max $w (add1 (index $waves $dep)) -}}
+    {{- end -}}
+    {{- $_ := set $waves $name $w -}}
   {{- end -}}
 {{- end -}}
-{{- printf "%d" $maxWave -}}
+{{- range $name, $a := $addons -}}
+  {{- $w := index $waves $name -}}
+  {{- if ge (int $w) $n -}}
+    {{- fail (printf "dependency cycle involving addon %q" $name) -}}
+  {{- end -}}
+  {{- $_ := set $a "wave" $w -}}
+{{- end -}}
+
+{{- toYaml $addons -}}
 {{- end -}}

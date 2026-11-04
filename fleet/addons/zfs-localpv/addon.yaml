@@ -1,5 +1,4 @@
 namespace: openebs
-podSecurity: privileged
 dependencies:
   - cilium
   - prometheus-operator-crds
@@ -8,3 +7,8 @@ helm:
   chart: zfs-localpv
   # renovate: datasource=docker depName=ghcr.io/openebs/charts/zfs-localpv
   targetRevision: 2.11.2
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: privileged
+    pod-security.kubernetes.io/audit: privileged

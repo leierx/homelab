@@ -20,13 +20,13 @@ no helper scripts or CI in the rendering path. Design principles are in
   disks, `sops-nix` provisions host secrets, and the host auto-upgrades from
   `main` on Fridays. `nixos/backup.nix` backs up the k3s state and every PVC
   to rsync.net nightly with restic.
-- **GitOps (`fleet/`).** Standalone per-cluster Argo CD driven by a Cluster
-  Generator `ApplicationSet` (`fleet-root`). Bootstrap is 3 manual commands:
-  apply `cilium`, apply `argocd`, and apply `cluster-secret.yaml`. The `/fleet`
-  Helm controller resolves two-layer addon dependencies into sync waves and
-  generates Multi-Source `Application`s combining shared addons with
-  cluster-specific values, manifests, Kustomize overlays, or extra Helm charts.
-  See [fleet/README.md](fleet/README.md).
+- **GitOps (`fleet/`).** A catalog of addons, enabled and layered by envs and
+  clusters (`addon < env < cluster`). Each Argo CD instance runs a Cluster
+  Generator `ApplicationSet` (`fleet`) that renders the `/fleet` Helm chart per
+  cluster: one Multi-Source `Application` per addon, with dependencies turned
+  into sync waves. Bootstrap is 3 manual commands: apply `cilium`, apply
+  `argocd`, and apply the in-cluster Secret and root `ApplicationSet`. See
+  [fleet/README.md](fleet/README.md).
 - **Edge.** Envoy Gateway terminates TLS on two Gateways: `edge` (NodePort
   30080/30443) and `wg` (`10.0.0.1` on WireGuard).
 - **Storage.** OpenEBS `zfs-localpv` provisions ext4 zvols (`zfs`) and thin
@@ -45,8 +45,9 @@ no helper scripts or CI in the rendering path. Design principles are in
 nixos/          NixOS host configuration (disks, k3s, sops-nix, backup)
 fleet/          GitOps fleet controller, shared addons, and cluster configs (see fleet/README.md)
   templates/    Helm templates computing dependency sync-waves and Multi-Source Applications
-  addons/       Installable addons (helm, kustomize, manifests)
-  clusters/     Per-cluster config (cluster-secret.yaml, <addon>/{values.yaml,manifests/})
+  addons/       Addon catalog (helm, kustomize, manifests)
+  envs/         Per-env config (env.yaml, <addon>/{addon.yaml,values.yaml,manifests/})
+  clusters/     Per-cluster config (cluster.yaml, <addon>/{addon.yaml,values.yaml,manifests/})
 tofu/           OpenTofu roots (Keycloak realm)
 packages/       First-party controllers built with Nix (capi-argo-bridge)
 .github/        CI: Argo CD diff preview, Nix checks, capi-argo-bridge image, Renovate config check

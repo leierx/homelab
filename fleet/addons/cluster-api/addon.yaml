@@ -1,5 +1,4 @@
 namespace: capi-operator-system
-podSecurity: restricted
 dependencies:
   - cilium
   - cert-manager
@@ -9,3 +8,8 @@ helm:
   chart: cluster-api-operator
   # renovate: datasource=helm depName=cluster-api-operator registryUrl=https://kubernetes-sigs.github.io/cluster-api-operator
   targetRevision: 0.30.0
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

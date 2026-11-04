@@ -42,13 +42,21 @@ jobs:
             for d in "$checkout"/fleet/clusters/*/; do
               [ -d "$d" ] || continue
               cluster=$(basename "$d")
-              src="$d/cluster-secret.yaml"
-              [ -f "$d/cluster.yaml" ] && src="$d/cluster.yaml"
-              helm template fleet "$checkout/fleet" \
-                -f "$src" \
-                --set "cluster.name=$cluster" \
-                --set "cluster.server=https://kubernetes.default.svc" \
-                > "$checkout/rendered/applications-$cluster.yaml"
+              # pre-#167 layout, still on main until that PR merges
+              if [ -f "$d/cluster-secret.yaml" ]; then
+                helm template fleet "$checkout/fleet" -f "$d/cluster-secret.yaml" \
+                  > "$checkout/rendered/applications-$cluster.yaml"
+                continue
+              fi
+              # every Argo instance is named after a cluster; each renders only the addons it manages
+              for a in "$checkout"/fleet/clusters/*/; do
+                helm template fleet "$checkout/fleet" \
+                  --set "argo=$(basename "$a")" \
+                  --set "cluster=$cluster" \
+                  --set "server=https://kubernetes.default.svc" \
+                  --set "repoURL=https://github.com/${{ github.repository }}.git" \
+                  --set "targetRevision=main"
+              done > "$checkout/rendered/applications-$cluster.yaml"
             done
           done
 

@@ -1,6 +1,12 @@
 namespace: monitoring
-podSecurity: restricted
+helm:
+  path: fleet/addons/mimir
 dependencies:
   - cilium
   - zfs-localpv
   - prometheus-operator-crds
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

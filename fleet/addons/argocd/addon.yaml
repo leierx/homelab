@@ -1,5 +1,4 @@
 namespace: argocd
-podSecurity: restricted
 dependencies:
   - cilium
   - prometheus-operator-crds
@@ -12,3 +11,8 @@ helm:
   chart: argo-cd
   # renovate: datasource=docker depName=ghcr.io/argoproj/argo-helm/argo-cd
   targetRevision: 10.11.6
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

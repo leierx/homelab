@@ -29,41 +29,39 @@ instruction.
 
 ## How `/fleet` Works
 
-1. **Bootstrap & Cluster Generator:**
+Design: issue #167. Read `fleet/README.md` for the schema.
+
+1. **Bootstrap & root ApplicationSet:**
    - Cilium (`fleet/addons/cilium`) and Argo CD (`fleet/addons/argocd`) are
-     plain shared addons installed manually during the 3-step bootstrap, then
-     adopted by Argo CD.
-   - `fleet/addons/argocd/values.yaml` defines `ApplicationSet/fleet-root`
-     using the Argo CD **Cluster Generator** (`fleet.io/enabled: "true"`) and
-     the custom `argoproj.io/Application` Lua health check.
-   - Applying `fleet/clusters/<cluster>/cluster-secret.yaml` triggers
-     `fleet-root` to create `Application/fleet-<cluster>`, which renders the
-     Helm chart at `fleet/`.
-2. **Addons (`fleet/addons/<name>/`):**
-   - `addon.yaml` declares `namespace`, `podSecurity`, `dependencies: []`,
-     `helm: {repoURL, chart, targetRevision, releaseName}`, or `sources: []`.
-   - `values.yaml` holds base values passed directly to the chart.
-   - `manifests/` (raw YAML or `kustomization.yaml`) is automatically attached
-     as a source on the addon's `Application`.
-   - Addons with their own templates (`alerta`, `capi-argo-bridge`, `keycloak`,
-     `mimir`, `miniflux`) include a local `Chart.yaml` and `templates/`.
-3. **Clusters (`fleet/clusters/<cluster>/`):**
-   - `cluster-secret.yaml` is the Argo CD cluster Secret (`argocd.argoproj.io/secret-type: cluster`) and the single cluster-level file: it sets the cluster's `name`, `server`, `fleet.io/repo-url`, `fleet.io/target-revision`, and `fleet.io/<addon>.enable: "true"` labels enabling addons.
-   - `<name>/` (created only when `<cluster>` customizes or defines addon `<name>`):
-     - `values.yaml` overlays `fleet/addons/<name>/values.yaml`.
-     - `manifests/` adds cluster-specific resources (routes, Certificates,
-       PVCs, StorageClasses, CNPG Databases, ExternalSecrets).
-     - `addon.yaml` declares cluster-only addon metadata, extra cluster-level
-       `dependencies: []`, or extra `sources: []`.
-   - A folder in `fleet/clusters/<cluster>/<name>/` with no matching folder in
-     `fleet/addons/` is a cluster-only addon (e.g. `dodde` on `loft01`).
+     installed manually during the 3-step bootstrap, then adopted by Argo CD.
+   - `fleet/clusters/<cluster>/argocd/manifests/` holds the in-cluster Secret
+     (`fleet.io/enabled: "true"`) and `ApplicationSet/fleet`, whose Cluster
+     generator creates `Application/fleet-<cluster>` rendering the Helm chart
+     at `fleet/` with `argo`, `cluster`, `server`, `repoURL`, `targetRevision`.
+   - `fleet/addons/argocd/values.yaml` holds the `argoproj.io/Application`
+     health check that gates waves (non-blocking aware).
+2. **Layers:** `addons/<name>/` (catalog) < `envs/<env>/<name>/` <
+   `clusters/<cluster>/<name>/`. Each may hold `addon.yaml`, `values.yaml`
+   (Helm `valueFiles`, in layer order) and `manifests/` (plain YAML,
+   `kustomization.yaml`, or a chart).
+   - `addon.yaml`: `namespace`, `helm: {repoURL, chart | path, targetRevision,
+     releaseName}`, `dependencies`, `nonBlocking`, `managedBy`, `sources`,
+     `managedNamespaceMetadata`, `application`. Maps deep-merge, later layer
+     wins; `dependencies` and `sources` concatenate.
+   - Local charts (`alerta`, `capi-argo-bridge`, `keycloak`, `mimir`,
+     `miniflux`) set `helm.path: fleet/addons/<name>`.
+3. **Enabling:** `envs/<env>/env.yaml` and `clusters/<cluster>/cluster.yaml`
+   map `addons: {<name>: true|false}`; the cluster wins. A name with no
+   catalog entry is a scoped addon (e.g. `dodde` on `loft01`).
 
 ## Verification
 
 Always verify Helm rendering before committing changes to `fleet/`:
 
 ```sh
-helm template fleet fleet -f fleet/clusters/loft01/cluster-secret.yaml > /dev/null
+helm template fleet fleet --set argo=loft01,cluster=loft01 \
+  --set server=https://kubernetes.default.svc \
+  --set repoURL=https://github.com/leierx/homelab.git,targetRevision=main > /dev/null
 ```
 
 If editing local chart addons (e.g. `fleet/addons/keycloak` or
@@ -91,23 +89,22 @@ nix build .#nixosConfigurations.loft01.config.system.build.toplevel
   render purely via Argo CD's Helm and Kustomize/directory sources; CI only
   previews diffs and builds artifacts. Never use Kustomize's Helm chart
   inflation generator.
-- **No `envs/` or capability flags:** Clusters enable addons via
-  `fleet.io/<addon>.enable: "true"` labels on
-  `clusters/<cluster>/cluster-secret.yaml` (or on a CAPI `Cluster` object) and
-  place per-cluster values and manifests in
-  `clusters/<cluster>/<addon>/{values.yaml,manifests/}`.
+- **Enabling addons:** only through `env.yaml` / `cluster.yaml`. Per-cluster
+  values and manifests go in `clusters/<cluster>/<addon>/{values.yaml,manifests/}`,
+  shared per-env ones in `envs/<env>/<addon>/`.
 - **Dependencies:** Declare cross-addon ordering with `dependencies: []` in
-  `addon.yaml` (base or cluster level). `_helpers.tpl` computes the topological
-  `argocd.argoproj.io/sync-wave` automatically.
+  `addon.yaml` (any layer). `_helpers.tpl` computes the
+  `argocd.argoproj.io/sync-wave` and fails on missing deps, cycles, deps across
+  managers, and blocking addons depending on `nonBlocking` ones.
 - **Network policies:** Each addon owns the `CiliumNetworkPolicy` for its own
   pods, in its `manifests/network-policy.yaml` (or `templates/` for local
   charts). Open a flow on both ends: the client's egress in the client's addon,
   the server's ingress in the server's addon.
-- **Pod security:** Every addon declares `podSecurity` in `addon.yaml`. Addons
+- **Pod security:** Every addon sets the `pod-security.kubernetes.io/{enforce,warn,audit}`
+  labels under `managedNamespaceMetadata.labels` in `addon.yaml`. Addons
   sharing a namespace (e.g. `telemetry`, `monitoring`, `argocd`,
-  `kube-system`) must declare the same level, since each writes the same
-  namespace labels. When upstream ships the Namespace, its labels come from the
-  manifests: Argo CD ignores `podSecurity` then.
+  `kube-system`) must set the same level. When upstream ships the Namespace,
+  its labels come from the manifests and Argo CD ignores these.
 - **Stateful resources:** Keep `argocd.argoproj.io/sync-options: Delete=false,Prune=false`
   on PVCs, CNPG `Cluster`/`Database` CRs, and persistent namespaces.
 - **Secrets:** Never commit plaintext or encrypted Kubernetes Secrets to git.

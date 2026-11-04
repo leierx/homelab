@@ -1,5 +1,4 @@
 namespace: argo
-podSecurity: restricted
 nonBlocking: true
 dependencies:
   - cilium
@@ -12,3 +11,8 @@ helm:
   chart: argo-workflows
   # renovate: datasource=docker depName=ghcr.io/argoproj/argo-helm/argo-workflows
   targetRevision: 2.0.15
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

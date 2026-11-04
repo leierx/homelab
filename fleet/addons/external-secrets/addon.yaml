@@ -1,5 +1,4 @@
 namespace: external-secrets
-podSecurity: restricted
 dependencies:
   - cilium
   - openbao
@@ -9,3 +8,8 @@ helm:
   chart: external-secrets
   # renovate: datasource=docker depName=ghcr.io/external-secrets/charts/external-secrets
   targetRevision: 2.14.0
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

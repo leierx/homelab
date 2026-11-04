@@ -1,74 +1,147 @@
 # fleet
 
-GitOps fleet controller for isolated clusters in a monorepo, driven by Argo CD.
-Rendering never depends on helper scripts or CI: Argo CD renders everything
-from git with Helm and Kustomize/directory sources.
+GitOps fleet controller for Argo CD. Rendering never depends on helper scripts
+or CI: Argo CD renders everything from git with Helm and
+Kustomize/directory sources. Design: [#167](https://github.com/leierx/homelab/issues/167).
 
-Each cluster runs its own standalone Argo CD and never connects to or knows
-about any other cluster. Applying the cluster Secret
-(`argocd.argoproj.io/secret-type: cluster` with `fleet.io/enabled: "true"`)
-triggers the Cluster Generator in the `fleet-root` ApplicationSet, which
-renders the `/fleet` Helm chart for that cluster and emits one Multi-Source
-Argo CD `Application` per enabled addon.
+- **Addons** (`addons/<name>/`) are the catalog: a base install of one piece of
+  software with sensible defaults.
+- **Envs** (`envs/<env>/`) and **clusters** (`clusters/<cluster>/`) enable
+  addons, override values, attach extra manifests or sources, and can define
+  addons scoped to themselves.
+- Every addon layer merges as `addon < env < cluster`. Any layer can be absent.
+- Dependencies become sync waves. A **non-blocking** addon doesn't hold up its
+  wave.
+- A cluster's addons are managed by its own Argo CD (`self`), by another
+  instance (a hub), or split per addon.
 
-## Architecture
+## Layout
 
 ```text
 fleet/
-├── Chart.yaml                              # Fleet controller Helm chart
-├── values.yaml                             # Default values for the fleet controller
+├── Chart.yaml                  # renders addon Applications for one (argo, cluster) pair
+├── values.yaml                 # argo, cluster, server, repoURL, targetRevision (set by the root ApplicationSet)
 ├── templates/
-│   ├── _helpers.tpl                        # Two-layer dependency graph -> sync-wave resolver
-│   └── applications.yaml                   # Emits Multi-Source Argo CD Applications
-├── addons/<addon>/                         # Shared addons (helm, manifests)
-│   ├── addon.yaml                          # Metadata: namespace, dependencies, helm, sources
-│   ├── values.yaml                         # Default Helm values for the addon
-│   └── manifests/                          # Raw YAML or Kustomize directory installed with the addon
-└── clusters/<cluster>/                     # Isolated per-cluster configuration
-    ├── cluster-secret.yaml                 # Bootstrap Step 3: Argo CD cluster Secret + enabled addon labels
-    └── <addon>/                            # Optional per-addon cluster overrides or cluster-only addons
-        ├── addon.yaml                      # Cluster-only addon metadata or extra cluster dependencies/sources
-        ├── values.yaml                     # Cluster Helm values layered over addons/<addon>/values.yaml
-        └── manifests/                      # Cluster-specific manifests (raw YAML or Kustomize)
+│   ├── _helpers.tpl            # layer loading/merging, validation, wave computation
+│   └── applications.yaml
+├── addons/<addon>/
+│   ├── addon.yaml
+│   ├── values.yaml             # optional
+│   └── manifests/              # optional: plain YAML | kustomization.yaml | Chart.yaml
+├── envs/<env>/
+│   ├── env.yaml                # which addons this env enables
+│   └── <addon>/                # optional: addon.yaml, values.yaml, manifests/
+└── clusters/<cluster>/
+    ├── cluster.yaml
+    ├── argocd/manifests/       # self-managed: in-cluster Secret + root ApplicationSet
+    └── <addon>/                # optional: addon.yaml, values.yaml, manifests/
 ```
 
-### How it works
+The chart reads the layers through `.Files`, so it discovers what exists on its
+own.
 
-1. **Cluster Generator entrypoint.** The `argocd` addon includes the
-   `fleet-root` `ApplicationSet` (in `extraObjects`), which uses the Argo CD
-   **Cluster Generator** watching for Secrets labeled
-   `argocd.argoproj.io/secret-type: cluster` and `fleet.io/enabled: "true"`.
-2. **Fleet Helm controller.** For a matching cluster `<cluster>`, `fleet-root`
-   creates `Application/fleet-<cluster>` pointing at `fleet/` and reading the
-   cluster's `fleet.io/<addon>.enable: "true"` labels from
-   `clusters/<cluster>/cluster-secret.yaml` (or the live cluster Secret for
-   dynamic CAPI clusters).
-3. **Two-layer dependency graph.** `_helpers.tpl` merges `dependencies: []`
-   from `addons/<addon>/addon.yaml` and
-   `clusters/<cluster>/<addon>/addon.yaml`, computes each addon's
-   topological depth (`0` if no dependencies, `1 + max(dep wave)` otherwise),
-   and annotates the generated `Application` with
-   `argocd.argoproj.io/sync-wave: "<depth>"`. Missing or circular dependencies
-   fail template rendering immediately.
-4. **Application health gating.** `addons/argocd/values.yaml` configures a Lua
-   health check for `argoproj.io/Application` in `argocd-cm`, so Argo CD waits
-   for all Applications in wave $N$ to be `Healthy` and `Synced` before syncing
-   wave $N+1$.
-5. **Multi-Source composition.** Each addon `Application` automatically
-   combines:
-   - The primary Helm chart (`helm` in `addon.yaml` or a local `Chart.yaml`),
-     layering `addons/<addon>/values.yaml` and
-     `clusters/<cluster>/<addon>/values.yaml` (if present) via a `$values`
-     repository reference
-   - `addons/<addon>/manifests/` (raw YAML or `kustomization.yaml`, if present)
-   - `clusters/<cluster>/<addon>/manifests/` (if present)
-   - Any additional `helm` or `path` entries listed under `sources: []` in
-     either `addon.yaml`.
+## Schema
 
-## 3-Step Bootstrap
+### `addon.yaml` (the same at every layer)
 
-Run from the repository root on a fresh cluster (example: `loft01`). These steps
-are one-shot: `loft01` is already bootstrapped, so don't re-apply them.
+```yaml
+namespace: kube-system          # default: addon name
+helm:                           # optional; maps onto an Argo CD source
+  repoURL: quay.io/cilium/charts  # default: the fleet repo (for a local chart, with path:)
+  chart: cilium                 # or path: fleet/addons/<name> for a local chart
+  targetRevision: 1.20.4
+  releaseName: cilium           # default: addon name
+dependencies: []                # addon names
+nonBlocking: false
+managedBy: ""                   # Argo instance name; default comes from cluster.yaml
+sources: []                     # extra raw Argo CD sources; repoURL defaults to the fleet repo
+managedNamespaceMetadata: {}    # e.g. pod-security labels; maps to syncPolicy.managedNamespaceMetadata
+application: {}                 # deep-merged into the rendered Application
+```
+
+Layers merge as `addons/<n>/addon.yaml < envs/<e>/<n>/addon.yaml < clusters/<c>/<n>/addon.yaml`:
+
+- maps merge deeply, and the later layer wins for scalars and lists,
+- `dependencies` and `sources` are concatenated, so an env or cluster can add
+  to them,
+- a name with no catalog entry is a **scoped addon**: its env or cluster
+  `addon.yaml` is the whole definition (e.g. `clusters/loft01/dodde`).
+
+### `env.yaml`
+
+```yaml
+addons:
+  cilium: true
+  cert-manager: true
+```
+
+### `cluster.yaml`
+
+```yaml
+env: prod                       # optional
+managedBy: self                 # default manager for this cluster's addons: self | <argo instance>
+addons:
+  dodde: true                   # cluster-scoped addon
+  grafana: false                # drop an env-enabled addon
+```
+
+The enabled set is `env.addons` merged with `cluster.addons` (the cluster
+wins), keeping entries that are `true`.
+
+## Rendering one addon
+
+Each enabled addon becomes `Application/<cluster>-<addon>` with these sources:
+
+1. the `helm` source, with `valueFiles` from every layer's `values.yaml` that
+   exists, in layer order (`$fleet/fleet/...`),
+2. the fleet repo as `ref: fleet`,
+3. one `path:` source per existing `manifests/` directory, in layer order.
+   Argo CD detects the type: `kustomization.yaml` is Kustomize, `Chart.yaml`
+   is Helm, anything else is Directory,
+4. the concatenated `sources:` of all layers.
+
+Sync policy: automated with prune and self-heal,
+`CreateNamespace=true`, `ServerSideApply=true`, `managedNamespaceMetadata` if
+set, and retry (10 times, 10s to 3m). Anything else goes through
+`application:` or a per-resource `argocd.argoproj.io/sync-options` annotation
+(e.g. `SkipDryRunOnMissingResource=true` on a resource whose CRD comes from an
+addon in the same wave).
+
+## Dependencies and sync waves
+
+`wave(a) = 0` without dependencies, else `1 + max(wave(dep))`. Rendering fails
+on:
+
+- a dependency that isn't enabled on the cluster,
+- a dependency on an addon managed by a different Argo instance,
+- a blocking addon that depends on a non-blocking one,
+- a cycle,
+- an enabled addon with no `addon.yaml` in any layer,
+- a missing `cluster.yaml`, or an `env` without `env.yaml`.
+
+`addons/argocd/values.yaml` adds the `Application` health check that makes
+waves wait on child health. It reports a child annotated
+`fleet.io/non-blocking: "true"` as Healthy, so nothing waits for it, while
+the child still shows its real health.
+
+## Management modes
+
+Each Argo CD instance is named after the cluster it runs on and runs the root
+`ApplicationSet` `fleet`, whose Cluster generator selects cluster Secrets
+labelled `fleet.io/enabled: "true"` and creates `fleet-<cluster>` per target
+cluster. An addon's manager is `addon.managedBy`, then `cluster.managedBy`,
+then `self` (the cluster's own name). The chart for `(argo, cluster)` renders
+only the addons managed by `argo`.
+
+| Mode | Setup |
+|---|---|
+| Self-managed | `managedBy: self`, and the in-cluster Secret + root `ApplicationSet` in `clusters/<cluster>/argocd/manifests/`. |
+| Hub-managed | `managedBy: <hub>`, and a remote cluster Secret for it on the hub. |
+| Split | `managedBy: self`, plus `managedBy: <hub>` in e.g. `clusters/<cluster>/cilium/addon.yaml`. Give each instance its own `installationID` in `argocd-cm`. |
+
+## Bootstrap
+
+Run from the repository root on a fresh cluster (example: `loft01`).
 
 ### 1. Apply Cilium
 
@@ -92,7 +165,7 @@ kubectl wait --for=condition=Ready node --all --timeout=10m
 ```sh
 kubectl create namespace argocd
 
-helm template argocd oci://ghcr.io/argoproj/argo-helm/argo-cd --version 10.11.1 \
+helm template argocd oci://ghcr.io/argoproj/argo-helm/argo-cd --version 10.11.6 \
   -n argocd --include-crds \
   -f fleet/addons/argocd/values.yaml \
   -f fleet/clusters/loft01/argocd/values.yaml \
@@ -100,7 +173,7 @@ helm template argocd oci://ghcr.io/argoproj/argo-helm/argo-cd --version 10.11.1 
 
 kubectl wait --for=condition=Established crd/appprojects.argoproj.io crd/applicationsets.argoproj.io --timeout=60s
 
-helm template argocd oci://ghcr.io/argoproj/argo-helm/argo-cd --version 10.11.1 \
+helm template argocd oci://ghcr.io/argoproj/argo-helm/argo-cd --version 10.11.6 \
   -n argocd \
   -f fleet/addons/argocd/values.yaml \
   -f fleet/clusters/loft01/argocd/values.yaml \
@@ -109,26 +182,16 @@ helm template argocd oci://ghcr.io/argoproj/argo-helm/argo-cd --version 10.11.1 
 kubectl -n argocd wait --for=condition=Available deploy --all --timeout=10m
 ```
 
-### 3. Apply the Cluster Secret
+### 3. Apply the in-cluster Secret and root ApplicationSet
 
 ```sh
-kubectl apply -f fleet/clusters/loft01/cluster-secret.yaml
+kubectl apply --server-side --field-manager=argocd-controller \
+  -f fleet/clusters/loft01/argocd/manifests/cluster-secret.yaml \
+  -f fleet/clusters/loft01/argocd/manifests/fleet.yaml
 ```
 
-Argo CD picks up the cluster Secret, creates `fleet-loft01`, and rolls out all
-enabled addons in dependency wave order:
-
-- **Wave 0:** `prometheus-operator-crds`
-- **Wave 1:** `cilium`
-- **Wave 2:** `admission`, `cdi`, `cloudnative-pg`, `envoy-gateway`, `kube-state-metrics`, `kubevirt`, `node-exporter`, `rbac`, `smartctl-exporter`, `zfs-localpv`
-- **Wave 3:** `cert-manager`, `dodde`, `loki`, `mimir`
-- **Wave 4:** `alloy-events`, `alloy-logs`, `alloy-metrics`, `cluster-api`, `openbao`
-- **Wave 5:** `capi-argo-bridge`, `external-secrets`
-- **Wave 6:** `argo-workflows`, `renovate`
-- **Wave 7:** `keycloak`
-- **Wave 8:** `alerta`, `argocd`, `immich`, `miniflux`
-- **Wave 9:** `alertmanager`
-- **Wave 10:** `grafana`
+Argo CD creates `fleet-loft01`, rolls out all enabled addons in wave order,
+and from then on manages everything, itself included.
 
 ## Helm chart sources
 
@@ -136,70 +199,12 @@ Every `helm.repoURL` points at the chart's upstream, and every chart that
 upstream publishes as an OCI artifact uses that form (`quay.io/cilium/charts`,
 not `https://helm.cilium.io`), so Renovate tracks it with `datasource=docker`.
 
-## Addon Reference (`addon.yaml`)
-
-An addon lives in `fleet/addons/<name>/` (shared) or only in
-`fleet/clusters/<cluster>/<name>/` (cluster-specific, such as `dodde`).
-
-```yaml
-namespace: immich          # defaults to the addon name
-podSecurity: restricted    # privileged | baseline | restricted
-serverSideApply: true      # defaults to true
-nonBlocking: false         # if true, fleet does not block later waves on this addon's health
-dependencies:              # addons that must be Healthy before this addon syncs
-  - cilium
-  - cloudnative-pg
-helm:
-  repoURL: ghcr.io/immich-app/immich-charts
-  chart: immich
-  targetRevision: 0.13.4
-  releaseName: immich      # defaults to the addon name
-sources:                   # optional extra helm or repo path sources
-  - path: tofu/keycloak
-  - helm:
-      repoURL: https://example.com/charts
-      chart: extra-chart
-      targetRevision: 1.0.0
-      releaseName: immich-extra
-      valuesFile: extra-values.yaml
-```
-
-A cluster enables an addon by adding `fleet.io/<name>.enable: "true"` to the
-labels on `fleet/clusters/<cluster>/cluster-secret.yaml` (or on a CAPI
-`Cluster` object, which `capi-argo-bridge` copies to the cluster Secret):
-
-```yaml
-metadata:
-  name: loft01
-  namespace: argocd
-  labels:
-    argocd.argoproj.io/secret-type: cluster
-    fleet.io/enabled: "true"
-    fleet.io/admission.enable: "true"
-    fleet.io/keycloak.enable: "true"
-    fleet.io/loki.enable: "true"
-```
-
-When a cluster customizes an addon in `fleet/clusters/<cluster>/<name>/`:
-
-- `values.yaml` is layered after `fleet/addons/<name>/values.yaml` on the
-  primary Helm chart.
-- `manifests/` is automatically appended as an Application source and deployed
-  alongside the addon.
-- `addon.yaml` merges `dependencies: []`, `sources: []`, and
-  `ignoreDifferences: []` with the base addon (or defines a cluster-only
-  addon).
-
-## Rendering Locally
+## Rendering locally
 
 ```sh
-# Render all Argo CD Applications for loft01
-helm template fleet fleet -f fleet/clusters/loft01/cluster-secret.yaml
-
-# Render a local chart addon with its cluster values
-helm template mimir fleet/addons/mimir -n monitoring \
-  -f fleet/addons/mimir/values.yaml \
-  -f fleet/clusters/loft01/mimir/values.yaml
+helm template fleet fleet --set argo=loft01,cluster=loft01 \
+  --set server=https://kubernetes.default.svc \
+  --set repoURL=https://github.com/leierx/homelab.git,targetRevision=main
 ```
 
 ## Pausing an Application
@@ -209,6 +214,6 @@ kubectl -n argocd patch app <cluster>-<addon> --type merge \
   -p '{"spec":{"syncPolicy":{"automated":{"enabled":false}}}}'
 ```
 
-Both `fleet-root` and `fleet-<cluster>` ignore
-`/spec/syncPolicy/automated/enabled` differences
-on `Application` resources, so manual pauses persist until re-enabled.
+The root `ApplicationSet` and `fleet-<cluster>` ignore
+`/spec/syncPolicy/automated/enabled` on `Application`s, so manual pauses
+persist until re-enabled.
