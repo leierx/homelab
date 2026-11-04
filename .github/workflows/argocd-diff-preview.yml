@@ -42,12 +42,6 @@ jobs:
             for d in "$checkout"/fleet/clusters/*/; do
               [ -d "$d" ] || continue
               cluster=$(basename "$d")
-              # pre-#167 layout, still on main until that PR merges
-              if [ -f "$d/cluster-secret.yaml" ]; then
-                helm template fleet "$checkout/fleet" -f "$d/cluster-secret.yaml" \
-                  > "$checkout/rendered/applications-$cluster.yaml"
-                continue
-              fi
               # every Argo instance is named after a cluster; each renders only the addons it manages
               for a in "$checkout"/fleet/clusters/*/; do
                 helm template fleet "$checkout/fleet" \

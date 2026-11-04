@@ -30,6 +30,11 @@ apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: certgen
+  annotations:
+    # a hook, so it exists before the certgen hook Job on the first sync too
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-10"
 spec:
   endpointSelector:
     matchLabels:

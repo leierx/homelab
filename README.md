@@ -17,7 +17,7 @@ no helper scripts or CI in the rendering path. Design principles are in
 ## How it fits together
 
 - **Host (`nixos/`).** Declarative NixOS configuration. `disko` lays out the
-  disks, `sops-nix` provisions host secrets, and the host auto-upgrades from
+  disks, `nixos/secrets.nix` installs host secrets from a host-only file, and the host auto-upgrades from
   `main` on Fridays. `nixos/backup.nix` backs up the k3s state and every PVC
   to rsync.net nightly with restic.
 - **GitOps (`fleet/`).** A catalog of addons, enabled and layered by envs and
@@ -42,7 +42,7 @@ no helper scripts or CI in the rendering path. Design principles are in
 ## Repository layout
 
 ```text
-nixos/          NixOS host configuration (disks, k3s, sops-nix, backup)
+nixos/          NixOS host configuration (disks, k3s, secrets, backup)
 fleet/          GitOps fleet controller, shared addons, and cluster configs (see fleet/README.md)
   templates/    Helm templates computing dependency sync-waves and Multi-Source Applications
   addons/       Addon catalog (helm, kustomize, manifests)
