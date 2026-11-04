@@ -40,13 +40,13 @@ Design: issue #167. Read `fleet/README.md` for the schema.
      generator creates `Application/fleet-<cluster>` rendering the Helm chart
      at `fleet/` with `argo`, `cluster`, `server`, `repoURL`, `targetRevision`.
    - `fleet/addons/argocd/values.yaml` holds the `argoproj.io/Application`
-     health check that gates waves (non-blocking aware).
+     health check that gates waves (`fleet.io/non-blocking` aware).
 2. **Layers:** `addons/<name>/` (catalog) < `envs/<env>/<name>/` <
    `clusters/<cluster>/<name>/`. Each may hold `addon.yaml`, `values.yaml`
    (Helm `valueFiles`, in layer order) and `manifests/` (plain YAML,
    `kustomization.yaml`, or a chart).
    - `addon.yaml`: `namespace`, `helm: {repoURL, chart | path, targetRevision,
-     releaseName}`, `dependencies`, `nonBlocking`, `managedBy`, `sources`,
+     releaseName}`, `dependencies`, `blocking`, `managedBy`, `sources`,
      `managedNamespaceMetadata`, `application`. Maps deep-merge, later layer
      wins; `dependencies` and `sources` concatenate.
    - Local charts (`alerta`, `capi-argo-bridge`, `keycloak`, `mimir`,
@@ -95,8 +95,10 @@ nix build .#nixosConfigurations.loft01.config.system.build.toplevel
   shared per-env ones in `envs/<env>/<addon>/`.
 - **Dependencies:** Declare cross-addon ordering with `dependencies: []` in
   `addon.yaml` (any layer). `_helpers.tpl` computes the
-  `argocd.argoproj.io/sync-wave` and fails on missing deps, cycles, deps across
-  managers, and blocking addons depending on `nonBlocking` ones.
+  `argocd.argoproj.io/sync-wave` and fails on missing deps, cycles and deps
+  across managers. Later waves only wait for an addon something depends on, or
+  one with `blocking: true` (e.g. `admission`); declare real dependencies
+  rather than relying on wave order.
 - **Network policies:** Each addon owns the `CiliumNetworkPolicy` for its own
   pods, in its `manifests/network-policy.yaml` (or `templates/` for local
   charts). Open a flow on both ends: the client's egress in the client's addon,

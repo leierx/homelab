@@ -1,4 +1,6 @@
 namespace: kube-system
+# nothing declares a dependency, but later waves must not create pods before these policies exist
+blocking: true
 dependencies:
   - cilium
   - prometheus-operator-crds

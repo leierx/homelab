@@ -10,8 +10,8 @@ Kustomize/directory sources. Design: [#167](https://github.com/leierx/homelab/is
   addons, override values, attach extra manifests or sources, and can define
   addons scoped to themselves.
 - Every addon layer merges as `addon < env < cluster`. Any layer can be absent.
-- Dependencies become sync waves. A **non-blocking** addon doesn't hold up its
-  wave.
+- Dependencies become sync waves. Later waves only wait for an addon that
+  something depends on, or that sets `blocking: true`.
 - A cluster's addons are managed by its own Argo CD (`self`), by another
   instance (a hub), or split per addon.
 
@@ -52,7 +52,7 @@ helm:                           # optional; maps onto an Argo CD source
   targetRevision: 1.20.4
   releaseName: cilium           # default: addon name
 dependencies: []                # addon names
-nonBlocking: false
+blocking: false                 # true: later waves wait for it even if nothing depends on it
 managedBy: ""                   # Argo instance name; default comes from cluster.yaml
 sources: []                     # extra raw Argo CD sources; repoURL defaults to the fleet repo
 managedNamespaceMetadata: {}    # e.g. pod-security labels; maps to syncPolicy.managedNamespaceMetadata
@@ -114,7 +114,6 @@ on:
 
 - a dependency that isn't enabled on the cluster,
 - a dependency on an addon managed by a different Argo instance,
-- a blocking addon that depends on a non-blocking one,
 - a cycle,
 - an enabled addon with no `addon.yaml` in any layer,
 - a missing `cluster.yaml`, or an `env` without `env.yaml`.
@@ -122,7 +121,11 @@ on:
 `addons/argocd/values.yaml` adds the `Application` health check that makes
 waves wait on child health. It reports a child annotated
 `fleet.io/non-blocking: "true"` as Healthy, so nothing waits for it, while
-the child still shows its real health.
+the child still shows its real health. The chart sets that on every addon
+nothing depends on, so an unhealthy leaf (e.g. `immich`) doesn't hold up
+unrelated addons in later waves. An addon that later waves must wait for
+without depending on it sets `blocking: true` (e.g. `admission`, whose
+policies must exist before later pods are created).
 
 ## Management modes
 

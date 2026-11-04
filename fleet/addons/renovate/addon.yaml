@@ -1,5 +1,4 @@
 namespace: renovate
-nonBlocking: true
 dependencies:
   - cilium
   - external-secrets
