@@ -223,11 +223,11 @@ in
         bind eth0
         rewrite name regex \.skinke\.net(\..*\.cluster\.local)?\.$ edge.envoy-gateway-system.svc.cluster.local. answer auto
       '';
-      # the host's validating DoT stub (nixos/network.nix), on wg0's address so it stays off the LAN
+      # the host's validating DoT stub (nixos/network.nix), reachable from pods on 192.168.2.50
       "upstream.server" = ''
         .:53 {
           bind 127.0.0.53
-          forward . 10.0.0.1:53 {
+          forward . 192.168.2.50:53 {
             force_tcp
           }
         }

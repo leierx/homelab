@@ -19,10 +19,24 @@
       10.0.0.1 workflows.skinke.net
     '';
 
-    # Cilium hostFirewall (fleet/addons/cilium) enforces host ingress and egress in eBPF. Until it loads
-    # at boot the LAN reaches the API server and kubelet (both authenticated), and, by routing to
-    # 10.0.0.1 itself, sshd (keys only) and the DNS stub: docs/postmortem/2026-11-04-loft01-lockout.md
-    firewall.enable = false;
+    # Cilium's hostFirewall (fleet/addons/cilium) is the host policy but only loads after k3s; this
+    # shield lets nothing but WireGuard in from the LAN, from early boot on, and leaves the rest to Cilium
+    nftables.enable = true;
+    firewall = {
+      allowPing = false;
+      # strict drops pod->host packets: they arrive on lxc* but the pod CIDR routes via cilium_host
+      checkReversePath = "loose";
+      trustedInterfaces = [
+        "wg0"
+        "cilium_host"
+        "cilium_net"
+        "cilium_vxlan"
+        "lxc*"
+      ];
+      interfaces.eno1.allowedUDPPorts = [
+        config.systemd.network.netdevs."20-wg0".wireguardConfig.ListenPort
+      ];
+    };
   };
 
   # all=0 already wins while forwarding is on; default=0 keeps it so if forwarding goes
@@ -44,8 +58,11 @@
       FallbackDNS = "";
       LLMNR = "false";
       MulticastDNS = "false";
-      # WireGuard peers and CoreDNS (pod lookups use DoT + DNSSEC); not on the LAN address
-      DNSStubListenerExtra = [ "10.0.0.1" ];
+      # 10.0.0.1 serves WireGuard peers; tcp:192.168.2.50 serves CoreDNS so pod lookups use DoT + DNSSEC
+      DNSStubListenerExtra = [
+        "10.0.0.1"
+        "tcp:192.168.2.50"
+      ];
     };
   };
 
