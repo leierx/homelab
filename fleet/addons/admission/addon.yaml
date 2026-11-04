@@ -1,5 +1,5 @@
 namespace: kube-system
-# nothing declares a dependency, but later waves must not create pods before these policies exist
+# later waves must not create pods before these policies exist, even without depending on it
 blocking: true
 dependencies:
   - cilium

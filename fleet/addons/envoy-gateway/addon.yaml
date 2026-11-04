@@ -1,5 +1,6 @@
 namespace: envoy-gateway-system
 dependencies:
+  - admission
   - cilium
   - prometheus-operator-crds
 helm:
