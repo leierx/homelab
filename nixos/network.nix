@@ -19,8 +19,35 @@
       10.0.0.1 workflows.skinke.net
     '';
 
-    # Cilium hostFirewall (fleet/addons/cilium) enforces host ingress and egress in eBPF
-    firewall.enable = false;
+    # Cilium's hostFirewall (fleet/addons/cilium) is the policy, but it only enforces once k3s and
+    # Cilium are up; this mirrors its host ingress so the host is closed from early boot too
+    nftables.enable = true;
+    firewall = {
+      allowPing = false;
+      # strict drops pod->host packets: they arrive on lxc* but the pod CIDR routes via cilium_host
+      checkReversePath = "loose";
+      trustedInterfaces = [
+        "cilium_host"
+        "cilium_net"
+        "cilium_vxlan"
+        "lxc*"
+      ];
+      interfaces.eno1 = {
+        allowedTCPPorts = [
+          30080
+          30443
+        ];
+        allowedUDPPorts = [ 52820 ];
+      };
+      interfaces.wg0 = {
+        allowedTCPPorts = [
+          22
+          53
+          6443
+        ];
+        allowedUDPPorts = [ 53 ];
+      };
+    };
   };
 
   # all=0 already wins while forwarding is on; default=0 keeps it so if forwarding goes
