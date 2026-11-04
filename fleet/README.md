@@ -141,9 +141,20 @@ only the addons managed by `argo`.
 
 ## Bootstrap
 
-Run from the repository root on a fresh cluster (example: `loft01`).
+Run from the repository root on a fresh cluster (example: `loft01`). Pods and
+the host are default-deny (`policyEnforcementMode: always`, `hostFirewall`),
+so the policies Argo CD itself needs go in by hand before it can take over.
+`coredns-custom` comes from the host (`nixos/k3s.nix`), so pods resolve
+from the start. See
+[the 2026-11-04 postmortem](../docs/postmortem/2026-11-04-loft01-lockout.md)
+for why the order matters.
 
-### 1. Apply Cilium
+### 1. Apply Cilium and its policies
+
+Cilium starts with `hostFirewall` off: with it on, the host is default-deny
+the moment the agent is ready, before the host policies can be applied, which
+cuts off a bootstrap run over SSH or WireGuard. Argo CD turns it on when it
+first syncs `cilium`, by which time the policies exist.
 
 ```sh
 kubectl label ns kube-system \
@@ -155,15 +166,25 @@ helm template cilium oci://quay.io/cilium/charts/cilium --version 1.20.4 \
   -n kube-system --include-crds \
   -f fleet/addons/cilium/values.yaml \
   -f fleet/clusters/loft01/cilium/values.yaml \
+  --set hostFirewall.enabled=false \
   | kubectl apply -n kube-system --server-side --field-manager=argocd-controller -f - || true
 
 kubectl wait --for=condition=Ready node --all --timeout=10m
+kubectl wait --for=condition=Established --timeout=5m \
+  crd/ciliumnetworkpolicies.cilium.io crd/ciliumclusterwidenetworkpolicies.cilium.io
+
+kubectl apply --server-side --field-manager=argocd-controller \
+  -f fleet/addons/cilium/manifests/baseline-policy.yaml \
+  -f fleet/addons/cilium/manifests/host-policy.yaml \
+  -f fleet/clusters/loft01/cilium/manifests/host-policy.yaml
 ```
 
-### 2. Apply Argo CD
+### 2. Apply Argo CD and its policies
 
 ```sh
 kubectl create namespace argocd
+kubectl apply -n argocd --server-side --field-manager=argocd-controller \
+  -f fleet/addons/argocd/manifests/network-policy.yaml
 
 helm template argocd oci://ghcr.io/argoproj/argo-helm/argo-cd --version 10.11.6 \
   -n argocd --include-crds \
@@ -191,7 +212,9 @@ kubectl apply --server-side --field-manager=argocd-controller \
 ```
 
 Argo CD creates `fleet-loft01`, rolls out all enabled addons in wave order,
-and from then on manages everything, itself included.
+and from then on manages everything, itself included. Nothing else needs a
+hand: every policy a hook Job or an early-wave resource needs ships in the
+same or an earlier phase (see Network policies in `AGENTS.md`).
 
 ## Helm chart sources
 

@@ -100,6 +100,11 @@ nix build .#nixosConfigurations.loft01.config.system.build.toplevel
   pods, in its `manifests/network-policy.yaml` (or `templates/` for local
   charts). Open a flow on both ends: the client's egress in the client's addon,
   the server's ingress in the server's addon.
+  Under default-deny a policy must land no later than the pods it serves: give
+  a hook Job's policy the same hook (`argocd.argoproj.io/hook: PreSync` and an
+  earlier `sync-wave`), and an early-wave resource's policy the same wave
+  (e.g. a CNPG `Cluster` in wave `-1` and its `postgres` policy). Otherwise a
+  fresh cluster's first sync times out.
 - **Pod security:** Every addon sets the `pod-security.kubernetes.io/{enforce,warn,audit}`
   labels under `managedNamespaceMetadata.labels` in `addon.yaml`. Addons
   sharing a namespace (e.g. `telemetry`, `monitoring`, `argocd`,
