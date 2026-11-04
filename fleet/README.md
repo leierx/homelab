@@ -145,9 +145,7 @@ Run from the repository root on a fresh cluster (example: `loft01`). Pods and
 the host are default-deny (`policyEnforcementMode: always`, `hostFirewall`),
 so the policies Argo CD itself needs go in by hand before it can take over.
 `coredns-custom` comes from the host (`nixos/k3s.nix`), so pods resolve
-from the start. See
-[the 2026-11-04 postmortem](../docs/postmortem/2026-11-04-loft01-lockout.md)
-for why the order matters.
+from the start.
 
 ### 1. Apply Cilium and its policies
 

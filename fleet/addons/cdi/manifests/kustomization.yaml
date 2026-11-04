@@ -59,6 +59,13 @@ patches:
         path: /spec/template/spec/containers/0/resources/limits
         value:
           memory: 512Mi
+  # scratch space is throwaway; the clusters' default classes Retain, which strands one volume per import
+  - target:
+      kind: CDI
+    patch: |
+      - op: add
+        path: /spec/config/scratchSpaceStorageClass
+        value: zfs-scratch
   # the CR waits for the operator to be Healthy
   - target:
       kind: CDI
