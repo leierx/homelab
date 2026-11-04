@@ -209,6 +209,32 @@ in
     ];
   };
 
+  # k3s applies it on start, so pods resolve from the first boot of a fresh cluster
+  services.k3s.manifests.coredns-custom.content = {
+    apiVersion = "v1";
+    kind = "ConfigMap";
+    metadata = {
+      name = "coredns-custom";
+      namespace = "kube-system";
+    };
+    data = {
+      # skinke.net resolves to the edge Envoy so OIDC clients and HTTP-01 self-checks stay in-cluster
+      "split-horizon.override" = ''
+        bind eth0
+        rewrite name regex \.skinke\.net(\..*\.cluster\.local)?\.$ edge.envoy-gateway-system.svc.cluster.local. answer auto
+      '';
+      # the host's validating DoT stub (nixos/network.nix), reachable from pods on 192.168.2.50
+      "upstream.server" = ''
+        .:53 {
+          bind 127.0.0.53
+          forward . 192.168.2.50:53 {
+            force_tcp
+          }
+        }
+      '';
+    };
+  };
+
   systemd.tmpfiles.rules = [ "d /var/log/kubernetes 0700 root root -" ];
 
   # zfs-localpv's zvols have to exist before kubelet starts pods
