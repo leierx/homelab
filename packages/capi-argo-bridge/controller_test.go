@@ -73,10 +73,8 @@ func reconcileRequest(name string) reconcile.Request {
 
 func TestReconcileCreatesSecretWithCopiedLabelsAndConfig(t *testing.T) {
 	cluster := newTestCluster("test", map[string]string{
-		"addons.homelab/cilium": "true",
-		"fleet.io/enabled":      "true",
-		"unrelated-label":       "ignored",
-		"addons.homelab/argocd": "true",
+		"fleet.io/enabled": "true",
+		"unrelated-label":  "ignored",
 	})
 	kubeconfigSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Namespace: testNamespace, Name: "test-kubeconfig"},
@@ -96,9 +94,7 @@ func TestReconcileCreatesSecretWithCopiedLabelsAndConfig(t *testing.T) {
 	wantLabels := map[string]string{
 		"argocd.argoproj.io/secret-type": "cluster",
 		"app.kubernetes.io/managed-by":   "capi-argo-bridge",
-		"addons.homelab/cilium":          "true",
 		"fleet.io/enabled":               "true",
-		"addons.homelab/argocd":          "true",
 	}
 	for k, v := range wantLabels {
 		if secret.Labels[k] != v {
@@ -139,7 +135,7 @@ func TestReconcileRemovesDroppedLabel(t *testing.T) {
 		Data:       map[string][]byte{"value": testKubeconfig(t, "https://1.2.3.4:6443")},
 	}
 
-	cluster := newTestCluster("test", map[string]string{"addons.homelab/cilium": "true"})
+	cluster := newTestCluster("test", map[string]string{"fleet.io/enabled": "true"})
 	rec := newReconciler(cluster, kubeconfigSecret)
 	ctx := context.Background()
 	if _, err := rec.Reconcile(ctx, reconcileRequest("test")); err != nil {
@@ -158,8 +154,8 @@ func TestReconcileRemovesDroppedLabel(t *testing.T) {
 	if err := rec.Get(ctx, types.NamespacedName{Namespace: argocdNS, Name: "cluster-test"}, secret); err != nil {
 		t.Fatalf("expected secret to exist: %v", err)
 	}
-	if _, ok := secret.Labels["addons.homelab/cilium"]; ok {
-		t.Errorf("addon label should have been removed")
+	if _, ok := secret.Labels["fleet.io/enabled"]; ok {
+		t.Errorf("fleet label should have been removed")
 	}
 }
 
