@@ -3,6 +3,9 @@ apiVersion: argoproj.io/v1alpha1
 kind: ClusterWorkflowTemplate
 metadata:
   name: tofu
+  annotations:
+    # the chart installs its CRDs from a hook Job, so the kind is unknown when Argo CD validates the sync
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   entrypoint: reconcile
   arguments:
