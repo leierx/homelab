@@ -65,14 +65,14 @@ are up.
 
 Making the network wait for Cilium isn't possible: Cilium runs on k3s, which
 needs the network, and a host that only comes up once Cilium is healthy is the
-same lockout, permanently. An nftables layer under Cilium closed the gap
-(#174) but meant writing every host port twice, so it was dropped again in
-favour of Cilium alone, with a smaller gap: the DNS stub moved off the LAN
-address, so pods reach it on `10.0.0.1`. What is left reachable from the LAN
-until Cilium enforces, about a minute per boot: the API server and the kubelet
-(both authenticated, anonymous auth off), and, for a LAN host that routes
-`10.0.0.1` via loft01 (the kernel's weak host model), `sshd` (keys only) and
-the DNS stub.
+same lockout, permanently. A first fix (#174) put nftables back with every
+host port mirrored from `host-loft01`, which meant writing each port twice.
+The final fix (#176) keeps nftables down to a shield that never needs
+touching: from the LAN (`eno1`) only WireGuard gets in, with the port read
+from the WireGuard config, and `wg0` and Cilium's own interfaces are trusted.
+Cilium's policies still decide everything else, and its eBPF serves the
+NodePorts and the `wg` gateway before netfilter sees them. The host is now
+closed to the LAN from early boot on, and stays closed if Cilium is ever down.
 
 ## Same class of problem found during the rebuild
 
@@ -94,7 +94,7 @@ apply it failed:
 | --- | --- |
 | Bootstrap starts Cilium with `hostFirewall` off and applies the host and pod baseline policies before Argo CD; Argo CD turns it on in its first `cilium` sync | done (this change, `fleet/README.md`) |
 | Bootstrap applies Argo CD's own network policies before its pods start | done (this change) |
-| Boot gap shrunk to authenticated services; Cilium stays the only host firewall | done (#174, reworked in the follow-up) |
+| Boot gap closed: nftables lets only WireGuard in from the LAN, Cilium stays the host policy | done (#174, reworked in #176) |
 | `coredns-custom` moved to k3s's auto-deploy manifests (`nixos/k3s.nix`), so pods resolve from the start | done (#174) |
 | Hook Jobs' policies are PreSync hooks in an earlier wave | done (#173) |
 | CNPG `postgres` policies in the database's wave | done (#172) |
