@@ -13,7 +13,7 @@ Instructions for coding agents working in this repository. Follow
 - `packages/` — First-party controllers/apps built with Nix and exposed via
   `flake.nix` (e.g. `packages/capi-argo-bridge/`).
 - `nixos/` — Declarative NixOS configuration for `loft01` (disko, k3s,
-  sops-nix, WireGuard, restic off-site backup).
+  host secrets, WireGuard, restic off-site backup).
 - `.github/workflows/` — CI: Argo CD diff preview and Nix checks on PRs, the
   `capi-argo-bridge` image build, and Renovate config validation.
 - `renovate.json5` and `renovate/` — Renovate config, one preset per concern;
@@ -110,7 +110,8 @@ nix build .#nixosConfigurations.loft01.config.system.build.toplevel
 - **Secrets:** Never commit plaintext or encrypted Kubernetes Secrets to git.
   Use `ExternalSecret` and `PushSecret` against `fleet-secrets` and
   `fleet-secrets-push` (OpenBao `kv/<cluster>/<app>`). Host-only bootstrap
-  secrets live in `nixos/secrets.yaml` (sops age).
+  secrets live in `/var/lib/secrets.yaml` on the host, never in git
+  (`nixos/secrets.nix`).
 - **Renovate holds:** Remove temporary `allowedVersions` holds in
   `renovate/holds.json5` once upstream ships the fix (currently
   `prometheus-smartctl-exporter` held below 0.18.0 until a chart bundles an

@@ -17,7 +17,7 @@ day. Treat deleting PVCs or stateful CRs as data loss; they carry
 Git (`main`) is the single source of truth:
 
 - `nixos/` defines the host OS, disk layout (`disko`), k3s, and host-level
-  secrets (`sops-nix`).
+  secrets (`nixos/secrets.nix`, from the host-only `/var/lib/secrets.yaml`).
 - `fleet/` is the GitOps fleet controller. `loft01` runs its own Argo CD,
   bootstrapped in 3 manual steps (`cilium`, `argocd`, and the in-cluster
   Secret plus root `ApplicationSet`), after which Argo CD deploys and updates
@@ -33,8 +33,8 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 ## Secrets (OpenBao & External Secrets)
 
 - **OpenBao** runs in `openbao` on a `zfs` PVC and auto-unseals using the
-  static key in `Secret/openbao-seal-key` (provisioned by `sops-nix` from
-  `nixos/secrets.yaml`).
+  static key in `Secret/openbao-seal-key` (provisioned by `nixos/secrets.nix` from
+  the host-only `/var/lib/secrets.yaml`).
 - On first startup against empty storage, OpenBao initializes the `kv` v2
   mount, Kubernetes auth, and the `external-secrets`, `external-secrets-push`,
   and `admin` roles from `fleet/addons/openbao/values.yaml`.
