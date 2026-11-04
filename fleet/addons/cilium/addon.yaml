@@ -1,5 +1,7 @@
 namespace: kube-system
 dependencies:
+  # first, so every pod (Cilium's, and every addon's after it) is created under its policies
+  - admission
   - prometheus-operator-crds
 helm:
   repoURL: quay.io/cilium/charts

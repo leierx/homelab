@@ -1,6 +1,5 @@
 namespace: kube-system
 dependencies:
-  - cilium
   - prometheus-operator-crds
 managedNamespaceMetadata:
   labels:

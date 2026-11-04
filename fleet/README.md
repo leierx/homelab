@@ -147,7 +147,11 @@ so the policies Argo CD itself needs go in by hand before it can take over.
 `coredns-custom` comes from the host (`nixos/k3s.nix`), so pods resolve
 from the start.
 
-### 1. Apply Cilium and its policies
+### 1. Apply the admission policies, Cilium and its policies
+
+Every pod, Cilium's and Argo CD's included, must be created under the
+`admission` policies (user namespaces, image rules), so they go in first.
+Its `rules.yaml` is left to Argo CD: the `PrometheusRule` CRD isn't there yet.
 
 Cilium starts with `hostFirewall` off: with it on, the host is default-deny
 the moment the agent is ready, before the host policies can be applied, which
@@ -155,6 +159,12 @@ cuts off a bootstrap run over SSH or WireGuard. Argo CD turns it on when it
 first syncs `cilium`, by which time the policies exist.
 
 ```sh
+kubectl apply --server-side --field-manager=argocd-controller \
+  -f fleet/addons/admission/manifests/namespaces.yaml \
+  -f fleet/addons/admission/manifests/pods.yaml \
+  -f fleet/addons/admission/manifests/services.yaml \
+  -f fleet/addons/admission/manifests/user-namespaces.yaml
+
 kubectl label ns kube-system \
   pod-security.kubernetes.io/enforce=privileged \
   pod-security.kubernetes.io/warn=privileged \
