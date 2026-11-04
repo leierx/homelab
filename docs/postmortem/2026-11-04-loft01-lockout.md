@@ -69,9 +69,10 @@ same lockout, permanently. An nftables layer under Cilium closed the gap
 (#174) but meant writing every host port twice, so it was dropped again in
 favour of Cilium alone, with a smaller gap: the DNS stub moved off the LAN
 address, so pods reach it on `10.0.0.1`. What is left reachable from the LAN
-until Cilium enforces, about a minute per boot, all needs authentication: the
-API server, the kubelet (anonymous auth off) and `sshd` (keys only, reachable
-through the kernel's weak host model).
+until Cilium enforces, about a minute per boot: the API server and the kubelet
+(both authenticated, anonymous auth off), and, for a LAN host that routes
+`10.0.0.1` via loft01 (the kernel's weak host model), `sshd` (keys only) and
+the DNS stub.
 
 ## Same class of problem found during the rebuild
 
