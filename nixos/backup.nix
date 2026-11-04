@@ -21,6 +21,7 @@ let
       pkgs.coreutils
       pkgs.gnugrep
       pkgs.jq
+      config.services.k3s.package
     ];
     text = ''
       # <user>@<user>.rsync.net, from the secrets file so no account name lands in the store
@@ -50,10 +51,17 @@ let
       cp -a /etc/rancher/node/password "$stage"/node-password
       r backup --host loft01 --tag k3s "$stage"
 
+      # named by claim, so a PVC recreated by a cluster rebuild continues its history and ages out
+      # under the forget policy; a dataset without a bound claim keeps its dataset name
+      claims=$(KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get pv \
+        -o jsonpath='{range .items[?(@.status.phase=="Bound")]}{.metadata.name} {.spec.claimRef.namespace}/{.spec.claimRef.name}{"\n"}{end}')
+
       # --stdin-filename keeps a stable parent, so unchanged chunks of the zfs stream are skipped
       for vol in $(zfs list -H -t volume,filesystem -o name -r -d 1 tank | grep -v '^tank$'); do
         snap=$(zfs list -H -t snapshot -o name -s creation -d 1 "$vol" | grep '@autosnap_.*_daily$' | tail -n 1) || continue
-        zfs send -L "$snap" | r backup --host loft01 --tag "volume:$vol" --stdin --stdin-filename "$vol"
+        name=$(grep "^''${vol#tank/} " <<<"$claims" | cut -d ' ' -f 2 || true)
+        name=''${name:-$vol}
+        zfs send -L "$snap" | r backup --host loft01 --tag "volume:$name" --stdin --stdin-filename "$name"
       done
 
       after=$(r stats --mode raw-data --json | jq -r .total_size)
