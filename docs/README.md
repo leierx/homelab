@@ -18,10 +18,10 @@ Git (`main`) is the single source of truth:
 
 - `nixos/` defines the host OS, disk layout (`disko`), k3s, and host-level
   secrets (`sops-nix`).
-- `fleet/` is the GitOps fleet controller. Each cluster runs its own standalone
-  Argo CD, bootstrapped in 3 manual steps (`cilium`, `argocd`, and
-  `cluster-secret.yaml`), after which Argo CD deploys and updates all enabled
-  addons in dependency wave order.
+- `fleet/` is the GitOps fleet controller. `loft01` runs its own Argo CD,
+  bootstrapped in 3 manual steps (`cilium`, `argocd`, and the in-cluster
+  Secret plus root `ApplicationSet`), after which Argo CD deploys and updates
+  all enabled addons in dependency wave order.
 
 To trigger an immediate git refresh without waiting for Argo CD's 3-minute poll:
 

@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: fleet
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            fleet.io/enabled: "true"
+  # manual auto-sync pauses on fleet-<cluster> and its children persist until re-enabled
+  ignoreApplicationDifferences:
+    - jsonPointers: [/spec/syncPolicy/automated/enabled]
+  template:
+    metadata:
+      name: 'fleet-{{ .name }}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/leierx/homelab.git
+        targetRevision: main
+        path: fleet
+        helm:
+          valuesObject:
+            argo: loft01
+            cluster: '{{ .name }}'
+            server: '{{ .server }}'
+            repoURL: https://github.com/leierx/homelab.git
+            targetRevision: main
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: argocd
+      ignoreDifferences:
+        - group: argoproj.io
+          kind: Application
+          jsonPointers: [/spec/syncPolicy/automated/enabled]
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [RespectIgnoreDifferences=true]

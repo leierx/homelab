@@ -1,5 +1,4 @@
 namespace: monitoring
-podSecurity: restricted
 dependencies:
   - alerta
   - cilium
@@ -11,3 +10,8 @@ helm:
   chart: alertmanager
   # renovate: datasource=helm depName=alertmanager registryUrl=https://prometheus-community.github.io/helm-charts
   targetRevision: 2.1.4
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

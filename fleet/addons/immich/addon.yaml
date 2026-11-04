@@ -1,5 +1,4 @@
 namespace: immich
-podSecurity: restricted
 dependencies:
   - cilium
   - cloudnative-pg
@@ -14,3 +13,8 @@ helm:
   chart: immich
   # renovate: datasource=docker depName=ghcr.io/immich-app/immich-charts/immich
   targetRevision: 0.13.4
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

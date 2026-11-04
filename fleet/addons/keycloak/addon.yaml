@@ -1,13 +1,18 @@
 namespace: keycloak
-podSecurity: restricted
+helm:
+  path: fleet/addons/keycloak
 dependencies:
   - cilium
   - cloudnative-pg
   - external-secrets
-  - argo-workflows
   - prometheus-operator-crds
   - cert-manager
   - envoy-gateway
   - zfs-localpv
 sources:
   - path: tofu/keycloak
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

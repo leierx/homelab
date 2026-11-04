@@ -1,11 +1,6 @@
-repoURL: https://github.com/leierx/homelab.git
-targetRevision: HEAD
-cluster:
-  name: ""
-  server: ""
-metadata:
-  name: ""
-  labels: {}
-  annotations: {}
-stringData:
-  server: ""
+# set by the root ApplicationSet of the Argo CD instance rendering this chart
+argo: ""
+cluster: ""
+server: ""
+repoURL: ""
+targetRevision: ""

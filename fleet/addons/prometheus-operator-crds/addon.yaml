@@ -1,7 +1,11 @@
 namespace: monitoring
-podSecurity: restricted
 helm:
   repoURL: ghcr.io/prometheus-community/charts
   chart: prometheus-operator-crds
   # renovate: datasource=docker depName=ghcr.io/prometheus-community/charts/prometheus-operator-crds
   targetRevision: 32.0.2
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

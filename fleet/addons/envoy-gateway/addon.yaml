@@ -1,5 +1,4 @@
 namespace: envoy-gateway-system
-podSecurity: restricted
 dependencies:
   - cilium
   - prometheus-operator-crds
@@ -8,3 +7,8 @@ helm:
   chart: gateway-helm
   # renovate: datasource=docker depName=docker.io/envoyproxy/gateway-helm
   targetRevision: 1.9.3
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

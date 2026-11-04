@@ -1,5 +1,4 @@
 namespace: telemetry
-podSecurity: privileged
 dependencies:
   - cilium
   - prometheus-operator-crds
@@ -8,3 +7,8 @@ helm:
   chart: prometheus-smartctl-exporter
   # renovate: datasource=docker depName=ghcr.io/prometheus-community/charts/prometheus-smartctl-exporter
   targetRevision: 0.17.1
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: privileged
+    pod-security.kubernetes.io/audit: privileged

@@ -3,29 +3,15 @@ configs:
     admin.enabled: 'false'
 
     resource.customizations.health.argoproj.io_Application: |
-      hs = {}
-      hs.status = "Progressing"
-      hs.message = ""
-      if obj.status ~= nil then
-        if obj.status.health ~= nil then
-          hs.status = obj.status.health.status
-          if obj.status.health.message ~= nil then
-            hs.message = obj.status.health.message
-          end
-        end
-        if obj.status.sync ~= nil and obj.status.sync.status == "OutOfSync" and hs.status == "Healthy" then
-          hs.status = "Progressing"
-          hs.message = "Application is OutOfSync"
-        end
-        if obj.status.operationState ~= nil and obj.status.operationState.phase == "Running" and hs.status == "Healthy" then
-          hs.status = "Progressing"
-          hs.message = obj.status.operationState.message or "Operation is running"
-        end
-        if obj.metadata ~= nil and obj.metadata.labels ~= nil and obj.metadata.labels["fleet.io/non-blocking"] == "true" and obj.status.sync ~= nil and obj.status.sync.status == "Synced" and (hs.status == "Progressing" or hs.status == "Degraded") then
-          if obj.status.operationState == nil or obj.status.operationState.phase == "Succeeded" then
-            hs.status = "Healthy"
-          end
-        end
+      hs = { status = "Progressing", message = "" }
+      if obj.metadata.annotations ~= nil and obj.metadata.annotations["fleet.io/non-blocking"] == "true" then
+        hs.status = "Healthy"
+        hs.message = "non-blocking"
+        return hs
+      end
+      if obj.status ~= nil and obj.status.health ~= nil then
+        hs.status = obj.status.health.status
+        hs.message = obj.status.health.message or ""
       end
       return hs
   params:
@@ -82,56 +68,3 @@ extraObjects:
       clusterResourceWhitelist:
         - group: "*"
           kind: "*"
-  - apiVersion: argoproj.io/v1alpha1
-    kind: ApplicationSet
-    metadata:
-      name: fleet-root
-      namespace: argocd
-    spec:
-      goTemplate: true
-      goTemplateOptions: ["missingkey=error"]
-      generators:
-        - clusters:
-            selector:
-              matchLabels:
-                fleet.io/enabled: "true"
-      ignoreApplicationDifferences:
-        - jsonPointers: [/spec/syncPolicy/automated/enabled]
-      template:
-        metadata:
-          name: 'fleet-{{ `{{ .name }}` }}'
-          namespace: argocd
-          labels:
-            fleet.io/cluster: '{{ `{{ .name }}` }}'
-        spec:
-          project: default
-          destination:
-            server: https://kubernetes.default.svc
-            namespace: argocd
-          source:
-            repoURL: '{{ `{{ index .metadata.annotations "fleet.io/repo-url" | default "https://github.com/leierx/homelab.git" }}` }}'
-            targetRevision: '{{ `{{ index .metadata.annotations "fleet.io/target-revision" | default "HEAD" }}` }}'
-            path: fleet
-            helm:
-              valuesObject:
-                cluster:
-                  name: '{{ `{{ .name }}` }}'
-                  server: '{{ `{{ .server }}` }}'
-                  labels: '{{ `{{ .metadata.labels | toJson }}` }}'
-          ignoreDifferences:
-            - group: argoproj.io
-              kind: Application
-              jsonPointers: [/spec/syncPolicy/automated/enabled]
-          syncPolicy:
-            automated:
-              prune: true
-              selfHeal: true
-            syncOptions:
-              - ServerSideApply=true
-              - RespectIgnoreDifferences=true
-            retry:
-              limit: 10
-              backoff:
-                duration: 10s
-                factor: 2
-                maxDuration: 5m

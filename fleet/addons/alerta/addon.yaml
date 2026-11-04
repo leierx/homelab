@@ -1,5 +1,6 @@
 namespace: alerta
-podSecurity: restricted
+helm:
+  path: fleet/addons/alerta
 dependencies:
   - cilium
   - cloudnative-pg
@@ -9,3 +10,8 @@ dependencies:
   - cert-manager
   - envoy-gateway
   - keycloak
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

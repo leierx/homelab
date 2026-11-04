@@ -4,7 +4,7 @@ metadata:
   name: fedora
   namespace: dodde
   annotations:
-    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false,SkipDryRunOnMissingResource=true
 spec:
   runStrategy: Always
   template:
