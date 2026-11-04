@@ -35,7 +35,8 @@
 
 {{/*
 Every addon enabled on .Values.cluster, merged across its layers, with its
-resolved manager, layer dirs and sync wave. Fails on an invalid graph.
+resolved manager, layer dirs, sync wave, and whether later waves wait for it
+(something depends on it). Fails on an invalid graph.
 */}}
 {{- define "fleet.addons" -}}
 {{- $files := .Files -}}
@@ -83,7 +84,7 @@ resolved manager, layer dirs and sync wave. Fails on an invalid graph.
     {{- $_ := set $merged "manager" (ternary $cluster $manager (eq $manager "self")) -}}
     {{- $_ := set $merged "dependencies" (uniq $deps) -}}
     {{- $_ := set $merged "sources" $sources -}}
-    {{- $_ := set $merged "nonBlocking" (eq (toString $merged.nonBlocking) "true") -}}
+    {{- $_ := set $merged "blocking" false -}}
     {{- $_ := set $merged "layers" $layers -}}
     {{- $_ := set $addons $name $merged -}}
   {{- end -}}
@@ -98,9 +99,7 @@ resolved manager, layer dirs and sync wave. Fails on an invalid graph.
     {{- if ne $a.manager $d.manager -}}
       {{- fail (printf "addon %q (managed by %q) depends on %q (managed by %q): dependencies must stay within one manager" $name $a.manager $dep $d.manager) -}}
     {{- end -}}
-    {{- if and (not $a.nonBlocking) $d.nonBlocking -}}
-      {{- fail (printf "blocking addon %q depends on non-blocking addon %q" $name $dep) -}}
-    {{- end -}}
+    {{- $_ := set $d "blocking" true -}}
   {{- end -}}
 {{- end -}}
 

@@ -1,5 +1,4 @@
 namespace: argo
-nonBlocking: true
 dependencies:
   - cilium
   - external-secrets

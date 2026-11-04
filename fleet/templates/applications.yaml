@@ -64,7 +64,7 @@
       "namespace" "argocd"
       "annotations" (dict
         "argocd.argoproj.io/sync-wave" (toString $addon.wave)
-        "fleet.io/non-blocking" (toString $addon.nonBlocking))
+        "fleet.io/non-blocking" (toString (not $addon.blocking)))
       "finalizers" (list "resources-finalizer.argocd.argoproj.io"))
     "spec" (dict
       "project" "default"
