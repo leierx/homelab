@@ -19,7 +19,8 @@ Instructions for coding agents working in this repository. Follow
 - `renovate.json5` and `renovate/` — Renovate config, one preset per concern;
   Renovate also bumps `flake.lock` and the Go modules in `packages/`.
 - `docs/README.md` — Operational runbook for `loft01` (OpenBao secrets, SSO,
-  break-glass).
+  break-glass). `docs/postmortem/` holds incident write-ups; read them before
+  changing what they cover.
 
 `loft01` is production: it holds real data (Immich photo library, Mimir
 metrics, OpenBao secrets). `nixos/backup.nix` runs a nightly restic backup of

@@ -63,6 +63,16 @@ Cilium's health and metrics ports. d96af01 had replaced the nftables
 firewall with Cilium's host firewall, which only enforces once k3s and Cilium
 are up.
 
+Making the network wait for Cilium isn't possible: Cilium runs on k3s, which
+needs the network, and a host that only comes up once Cilium is healthy is the
+same lockout, permanently. An nftables layer under Cilium closed the gap
+(#174) but meant writing every host port twice, so it was dropped again in
+favour of Cilium alone, with a smaller gap: the DNS stub moved off the LAN
+address, so pods reach it on `10.0.0.1`. What is left reachable from the LAN
+until Cilium enforces, about a minute per boot, all needs authentication: the
+API server, the kubelet (anonymous auth off) and `sshd` (keys only, reachable
+through the kernel's weak host model).
+
 ## Same class of problem found during the rebuild
 
 Everything uses default-deny, and nothing had been bootstrapped since that
@@ -83,20 +93,24 @@ apply it failed:
 | --- | --- |
 | Bootstrap starts Cilium with `hostFirewall` off and applies the host and pod baseline policies before Argo CD; Argo CD turns it on in its first `cilium` sync | done (this change, `fleet/README.md`) |
 | Bootstrap applies Argo CD's own network policies before its pods start | done (this change) |
-| nftables firewall back as a boot-time layer under Cilium, mirroring `host-loft01` | done (#174) |
+| Boot gap shrunk to authenticated services; Cilium stays the only host firewall | done (#174, reworked in the follow-up) |
 | `coredns-custom` moved to k3s's auto-deploy manifests (`nixos/k3s.nix`), so pods resolve from the start | done (#174) |
 | Hook Jobs' policies are PreSync hooks in an earlier wave | done (#173) |
 | CNPG `postgres` policies in the database's wave | done (#172) |
 | Convention for default-deny ordering in `AGENTS.md` | done (this change) |
-| Out-of-band access to loft01 that doesn't go through the host it rescues (e.g. iLO reachable through the router's VPN) | open |
-| Rehearse the bootstrap on a throwaway VM (KubeVirt on loft01) after changes to Cilium, Argo CD or default-deny | open |
+| Rehearse the bootstrap by hand on a throwaway VM (KubeVirt on loft01), now and then or after changes to Cilium, Argo CD or default-deny; not automated | open |
+
+Not doing: out-of-band access. There is no router here that could put iLO
+behind a VPN, and iLO must not face the internet, so a revert timer is the
+safety net for risky changes instead.
 
 ## Lessons
 
 - A change to how the host is firewalled has to re-run, or at least re-read,
   the bootstrap. The bootstrap runs only on a rebuild, so it rots silently.
-- Run anything that can cut off its own session with a way back: a revert
-  timer (`systemd-run --on-active=… switch-to-configuration test`), or
-  out-of-band access.
+- Run anything that can cut off its own session with a way back. Without
+  out-of-band access, that means a revert timer
+  (`systemd-run --on-active=… switch-to-configuration test`) armed before
+  the change.
 - Before a planned rebuild, have backups verified by a restore. That turned
   this from an incident into an inconvenience.
