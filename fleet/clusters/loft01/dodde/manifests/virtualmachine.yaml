@@ -16,6 +16,10 @@ spec:
       dnsConfig:
         nameservers: [9.9.9.9, 149.112.112.112]
       domain:
+        # cloud-init keys its instance-id on this; a recreated VM would otherwise regenerate host keys
+        firmware:
+          uuid: e63f5b13-1e9b-4914-9cfa-00d8fb8af3ec
+          serial: 19e895a7-b873-478b-9e80-bcd9f58b1edc
         resources:
           requests:
             cpu: 4
