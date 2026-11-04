@@ -7,7 +7,7 @@ For every CAPI `Cluster` (`cluster.x-k8s.io/v1beta2`) in `--cluster-namespace`
 
 - writes the Argo CD cluster Secret `cluster-<name>` in `--argocd-namespace`
   with the server and client certs from that kubeconfig,
-- copies the Cluster's `fleet.io/*` and `addons.homelab/*` labels onto it
+- copies the Cluster's `fleet.io/*` labels onto it
   (`fleet.io/enabled: "true"` makes the root `ApplicationSet` pick it up; its
   addons come from `fleet/clusters/<name>/cluster.yaml`),
 - deletes it again when the Cluster is deleted.
