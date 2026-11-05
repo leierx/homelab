@@ -17,7 +17,7 @@ let
         in
         baseName != "default.nix";
     };
-    vendorHash = "sha256-tDMZwgkKS7AH8gTv5zq06Q9PfpqbZ1JxoKR2Kc6qKVk=";
+    vendorHash = "sha256-DPXa7xsBwTPdU/vsG5eRcbf4hvpk8lumnQQgmlbBFUQ=";
     env.CGO_ENABLED = 0;
     ldflags = [
       "-s"
