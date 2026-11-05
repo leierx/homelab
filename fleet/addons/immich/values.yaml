@@ -19,7 +19,7 @@ server:
         main:
           image:
             # renovate: datasource=docker depName=ghcr.io/immich-app/immich-server
-            tag: v3.3.5
+            tag: v3.3.6
           env:
             DB_URL: {valueFrom: {secretKeyRef: {name: immich-db-app, key: uri}}}
             IMMICH_ALLOW_SETUP: "false"
@@ -32,7 +32,7 @@ machine-learning:
         main:
           image:
             # renovate: datasource=docker depName=ghcr.io/immich-app/immich-machine-learning
-            tag: v3.3.5
+            tag: v3.3.6
           resources: {requests: {cpu: 500m, memory: 1Gi}, limits: {memory: 8Gi}}
   persistence:
     cache: {type: persistentVolumeClaim, existingClaim: model-cache}
