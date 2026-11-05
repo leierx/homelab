@@ -6,7 +6,7 @@ helm:
   repoURL: ghcr.io/prometheus-community/charts
   chart: kube-state-metrics
   # renovate: datasource=docker depName=ghcr.io/prometheus-community/charts/kube-state-metrics
-  targetRevision: 8.8.0
+  targetRevision: 9.0.0
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: privileged
