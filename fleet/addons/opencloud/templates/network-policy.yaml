@@ -1,0 +1,35 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: opencloud
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: opencloud
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: envoy-gateway-system
+            app.kubernetes.io/name: envoy
+            gateway.envoyproxy.io/owning-gateway-name: edge
+      toPorts:
+        - ports:
+            - {port: "9200", protocol: TCP}
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: telemetry
+            app.kubernetes.io/name: alloy
+            app.kubernetes.io/instance: alloy-metrics
+      toPorts:
+        - ports:
+            - {port: "9124", protocol: TCP}
+  egress:
+    # Keycloak OIDC via CoreDNS split-horizon to the edge Gateway; nothing else leaves the pod
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: envoy-gateway-system
+            app.kubernetes.io/name: envoy
+            gateway.envoyproxy.io/owning-gateway-name: edge
+      toPorts:
+        - ports:
+            - {port: "10443", protocol: TCP}

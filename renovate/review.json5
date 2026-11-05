@@ -36,6 +36,7 @@
         'ghcr.io/immich-app/immich-machine-learning',
         'quay.io/keycloak/keycloak',
         'ghcr.io/openbao/charts/openbao',
+        'docker.io/opencloudeu/opencloud-rolling',
       ],
       matchUpdateTypes: ['minor'],
       automerge: false,

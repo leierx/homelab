@@ -1,0 +1,14 @@
+url: https://oc.skinke.net
+oidc:
+  issuer: https://auth.skinke.net/realms/homelab
+ids:
+  systemUser: 81d600e3-8f11-4af4-931c-6b6ec5d1cc19
+  serviceAccount: 7ecce7a8-125a-43cf-b6c9-6d535c271d07
+  graphApplication: 83073234-2302-4cf7-a2df-bdad70935b1f
+  storageUsersMount: 32266ed9-b172-4802-b82b-13d88f7423df
+persistence:
+  data:
+    storageClass: zfs
+  # a ZFS dataset: user files keep their names on disk, browsable per file in snapshots
+  files:
+    storageClass: zfs-thin

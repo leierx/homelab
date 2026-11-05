@@ -16,6 +16,12 @@ locals {
     "organization",
     "microprofile-jwt",
   ]
+
+  # OpenCloud's web, desktop and mobile clients
+  opencloud_clients = merge(
+    { opencloud = keycloak_openid_client.opencloud.id },
+    { for name, client in keycloak_openid_client.opencloud_apps : name => client.id },
+  )
 }
 
 resource "keycloak_openid_client" "argocd" {
@@ -239,6 +245,65 @@ resource "keycloak_openid_client" "miniflux" {
   web_origins         = ["https://rss.skinke.net"]
 }
 
+# OpenCloud's web app; like its desktop and mobile apps, a public client with PKCE
+resource "keycloak_openid_client" "opencloud" {
+  realm_id  = keycloak_realm.homelab.id
+  client_id = "opencloud"
+  name      = "opencloud"
+  enabled   = true
+  base_url  = "https://oc.skinke.net"
+
+  access_type                  = "PUBLIC"
+  standard_flow_enabled        = true
+  direct_access_grants_enabled = false
+  implicit_flow_enabled        = false
+  service_accounts_enabled     = false
+  full_scope_allowed           = false
+  pkce_code_challenge_method   = "S256"
+
+  valid_redirect_uris = [
+    "https://oc.skinke.net/",
+    "https://oc.skinke.net/oidc-callback.html",
+    "https://oc.skinke.net/oidc-silent-redirect.html",
+  ]
+  valid_post_logout_redirect_uris = ["+"]
+  web_origins                     = ["https://oc.skinke.net"]
+}
+
+# OpenCloud's desktop and mobile apps, under the client IDs they ship with
+resource "keycloak_openid_client" "opencloud_apps" {
+  for_each = {
+    OpenCloudDesktop = ["http://127.0.0.1", "http://localhost"]
+    OpenCloudAndroid = ["oc://android.opencloud.eu"]
+    OpenCloudIOS     = ["oc://ios.opencloud.eu"]
+  }
+  realm_id  = keycloak_realm.homelab.id
+  client_id = each.key
+  name      = each.key
+  enabled   = true
+
+  access_type                  = "PUBLIC"
+  standard_flow_enabled        = true
+  direct_access_grants_enabled = false
+  implicit_flow_enabled        = false
+  service_accounts_enabled     = false
+  full_scope_allowed           = false
+  pkce_code_challenge_method   = "S256"
+
+  valid_redirect_uris             = each.value
+  valid_post_logout_redirect_uris = ["+"]
+}
+
+# OpenCloud refuses tokens without this audience (PROXY_OIDC_AUDIENCES), so the realm's other apps can't replay theirs
+resource "keycloak_openid_audience_protocol_mapper" "opencloud" {
+  for_each                 = local.opencloud_clients
+  realm_id                 = keycloak_realm.homelab.id
+  client_id                = each.value
+  name                     = "opencloud-audience"
+  included_client_audience = keycloak_openid_client.opencloud.client_id
+  add_to_id_token          = false
+}
+
 
 resource "keycloak_openid_client_default_scopes" "argocd" {
   realm_id       = keycloak_realm.homelab.id
@@ -294,6 +359,13 @@ resource "keycloak_openid_client_default_scopes" "miniflux" {
   default_scopes = local.default_client_scopes
 }
 
+resource "keycloak_openid_client_default_scopes" "opencloud" {
+  for_each       = local.opencloud_clients
+  realm_id       = keycloak_realm.homelab.id
+  client_id      = each.value
+  default_scopes = local.default_client_scopes
+}
+
 resource "keycloak_realm_optional_client_scopes" "homelab" {
   realm_id        = keycloak_realm.homelab.id
   optional_scopes = local.optional_client_scopes
@@ -313,6 +385,7 @@ resource "keycloak_openid_client_optional_scopes" "no_offline_access" {
       argo_workflows = keycloak_openid_client.argo_workflows.id
       miniflux       = keycloak_openid_client.miniflux.id
     },
+    local.opencloud_clients,
   )
   realm_id        = keycloak_realm.homelab.id
   client_id       = each.value

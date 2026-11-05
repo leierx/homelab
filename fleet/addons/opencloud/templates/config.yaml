@@ -1,0 +1,35 @@
+{{- $idp := urlParse (required "oidc.issuer is per cluster" .Values.oidc.issuer) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opencloud-config
+data:
+  # roles from the Keycloak groups claim, first match wins; a user in none of them is refused
+  proxy.yaml: |
+    role_assignment:
+      driver: oidc
+      oidc_role_mapper:
+        role_claim: groups
+        role_mapping:
+          - role_name: admin
+            claim_value: homelab-admins
+          - role_name: user
+            claim_value: homelab-operators
+          - role_name: user-light
+            claim_value: homelab-viewers
+  # upstream's CSP without its third-party origins (update check, app store, draw.io), plus Keycloak for the token calls
+  csp.yaml: |
+    directives:
+      child-src: ["'self'"]
+      connect-src: ["'self'", "blob:", "{{ $idp.scheme }}://{{ $idp.host }}/"]
+      default-src: ["'none'"]
+      font-src: ["'self'"]
+      frame-ancestors: ["'self'"]
+      frame-src: ["'self'", "blob:", "{{ $idp.scheme }}://{{ $idp.host }}/"]
+      img-src: ["'self'", "data:", "blob:"]
+      manifest-src: ["'self'"]
+      media-src: ["'self'", "blob:"]
+      object-src: ["'self'", "blob:"]
+      script-src: ["'self'", "'unsafe-inline'"]
+      style-src: ["'self'", "'unsafe-inline'", "blob:"]
+      worker-src: ["'self'", "blob:"]

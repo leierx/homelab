@@ -1,0 +1,245 @@
+{{- $url := required "url is per cluster" .Values.url -}}
+{{- $issuer := required "oidc.issuer is per cluster" .Values.oidc.issuer -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: opencloud
+  annotations:
+    # after its secrets are Healthy
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 1
+  serviceName: opencloud
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: opencloud
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: opencloud
+      annotations:
+        # proxy.yaml and csp.yaml are only read at start
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: opencloud
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          env:
+            - name: OC_URL
+              value: {{ $url | quote }}
+            - name: OC_OIDC_ISSUER
+              value: {{ $issuer | quote }}
+            # Keycloak replaces idp; ocm serves unauthenticated endpoints (opencloud#3780); auth-basic and auth-app are the password and app-token logins, which would bypass Keycloak's second factor
+            - name: OC_EXCLUDE_RUN_SERVICES
+              value: idp,ocm,auth-basic,auth-app
+            # JSON audit events on stdout, for Loki
+            - name: OC_ADD_RUN_SERVICES
+              value: audit
+            # no local admin: the admin role comes only from Keycloak
+            - name: OC_ADMIN_USER_ID
+              value: ""
+            - name: OC_SYSTEM_USER_ID
+              value: {{ required "ids.systemUser is per cluster" .Values.ids.systemUser | quote }}
+            - name: OC_SERVICE_ACCOUNT_ID
+              value: {{ required "ids.serviceAccount is per cluster" .Values.ids.serviceAccount | quote }}
+            - name: GRAPH_APPLICATION_ID
+              value: {{ required "ids.graphApplication is per cluster" .Values.ids.graphApplication | quote }}
+            - name: STORAGE_USERS_MOUNT_ID
+              value: {{ required "ids.storageUsersMount is per cluster" .Values.ids.storageUsersMount | quote }}
+            - name: GATEWAY_STORAGE_USERS_MOUNT_ID
+              value: {{ .Values.ids.storageUsersMount | quote }}
+            - name: OC_JWT_SECRET
+              valueFrom: {secretKeyRef: {name: opencloud, key: jwt_secret}}
+            - name: OC_MACHINE_AUTH_API_KEY
+              valueFrom: {secretKeyRef: {name: opencloud, key: machine_auth_api_key}}
+            - name: OC_TRANSFER_SECRET
+              valueFrom: {secretKeyRef: {name: opencloud, key: transfer_secret}}
+            - name: OC_URL_SIGNING_SECRET
+              valueFrom: {secretKeyRef: {name: opencloud, key: url_signing_secret}}
+            - name: OC_SYSTEM_USER_API_KEY
+              valueFrom: {secretKeyRef: {name: opencloud, key: system_user_api_key}}
+            - name: OC_SERVICE_ACCOUNT_SECRET
+              valueFrom: {secretKeyRef: {name: opencloud, key: service_account_secret}}
+            # idm writes its service users' passwords only into a new database; the binds must keep matching them
+            - name: IDM_SVC_PASSWORD
+              valueFrom: {secretKeyRef: {name: opencloud, key: idm_password}}
+            - name: GRAPH_LDAP_BIND_PASSWORD
+              valueFrom: {secretKeyRef: {name: opencloud, key: idm_password}}
+            - name: IDM_REVASVC_PASSWORD
+              valueFrom: {secretKeyRef: {name: opencloud, key: idm_reva_password}}
+            - name: USERS_LDAP_BIND_PASSWORD
+              valueFrom: {secretKeyRef: {name: opencloud, key: idm_reva_password}}
+            - name: GROUPS_LDAP_BIND_PASSWORD
+              valueFrom: {secretKeyRef: {name: opencloud, key: idm_reva_password}}
+            # required by idm even with idp excluded
+            - name: IDM_IDPSVC_PASSWORD
+              valueFrom: {secretKeyRef: {name: opencloud, key: idm_idp_password}}
+            - name: STORAGE_USERS_POSIX_ROOT
+              value: /var/lib/opencloud-files
+            # TLS ends at the Gateway
+            - name: PROXY_TLS
+              value: "false"
+            # Keycloak users are created in idm at first login, keyed by the immutable sub so a renamed user keeps their files
+            - name: PROXY_AUTOPROVISION_ACCOUNTS
+              value: "true"
+            - name: PROXY_USER_OIDC_CLAIM
+              value: sub
+            - name: PROXY_AUTOPROVISION_CLAIM_USERNAME
+              value: sub
+            - name: GRAPH_USERNAME_MATCH
+              value: none
+            - name: GRAPH_ASSIGN_DEFAULT_USER_ROLE
+              value: "false"
+            # tokens Keycloak issued to other apps in the realm are refused
+            - name: PROXY_OIDC_AUDIENCES
+              value: opencloud
+            # the desktop and mobile apps discover Keycloak through OpenCloud's URL
+            - name: PROXY_OIDC_REWRITE_WELLKNOWN
+              value: "true"
+            - name: PROXY_ENABLE_APP_AUTH
+              value: "false"
+            - name: PROXY_CSP_CONFIG_FILE_OVERRIDE_LOCATION
+              value: /etc/opencloud/csp.yaml
+            - name: WEB_OIDC_CLIENT_ID
+              value: opencloud
+            - name: WEBFINGER_WEB_OIDC_CLIENT_ID
+              value: opencloud
+            # the realm gives no client offline tokens; the apps' default scopes ask for them
+            - name: WEBFINGER_DESKTOP_OIDC_CLIENT_SCOPES
+              value: openid,profile,email
+            - name: WEBFINGER_ANDROID_OIDC_CLIENT_SCOPES
+              value: openid,profile,email
+            - name: WEBFINGER_IOS_OIDC_CLIENT_SCOPES
+              value: openid,profile,email
+            - name: WEB_OPTION_ACCOUNT_EDIT_LINK_HREF
+              value: {{ printf "%s/account" $issuer | quote }}
+            # Keycloak owns these; the oidc role driver and group sync would revert any edit
+            - name: FRONTEND_READONLY_USER_ATTRIBUTES
+              value: user.onPremisesSamAccountName,user.displayName,user.mail,user.passwordProfile,user.memberOf,user.appRoleAssignments
+            # nothing reaches out to opencloud.eu or GitHub: no update check, app store or feedback link
+            - name: FRONTEND_CHECK_FOR_UPDATES
+              value: "false"
+            - name: WEB_UI_CORE_APPS
+              value: files,search,text-editor,pdf-viewer,external,admin-settings,epub-reader,preview,rclone-crypt
+            - name: WEB_OPTION_DISABLE_FEEDBACK_LINK
+              value: "true"
+            # no cap on "download as zip": archives are streamed uncompressed, so size costs only bandwidth (default 1 GiB / 10000 files)
+            - name: FRONTEND_ARCHIVER_MAX_SIZE
+              value: "9223372036854775807"
+            - name: FRONTEND_ARCHIVER_MAX_NUM_FILES
+              value: "9223372036854775807"
+            # no Radicale here, so clients aren't offered CalDAV/CardDAV
+            - name: FRONTEND_DISABLE_RADICALE
+              value: "true"
+            # in-app notifications are the only ones without SMTP; the default store is memory, emptied on every restart
+            - name: USERLOG_STORE
+              value: nats-js-kv
+            - name: USERLOG_STORE_NODES
+              value: 127.0.0.1:9233
+            # one decoded image can take ~240 MB, and an OOM kill can corrupt the embedded NATS store
+            - name: THUMBNAILS_MAX_CONCURRENT_REQUESTS
+              value: "4"
+            # keep libvips off its ImageMagick loaders, which it picks by content whatever the file name (opencloud#3781)
+            - name: VIPS_BLOCK_UNTRUSTED
+              value: "1"
+            # Envoy cuts streams idle for 5 minutes
+            - name: SSE_KEEPALIVE_INTERVAL
+              value: 30s
+            # probes and metrics; the proxy's debug port also serves /config with secrets in clear, so it stays on loopback
+            - name: GRAPH_DEBUG_ADDR
+              value: 0.0.0.0:9124
+            - name: GOMEMLIMIT
+              value: 3600MiB
+          ports:
+            - name: http
+              containerPort: 9200
+              protocol: TCP
+            - name: debug
+              containerPort: 9124
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: debug
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: debug
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: debug
+          resources:
+            requests: { cpu: 100m, memory: 512Mi }
+            limits: { memory: 4Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/opencloud
+            # not under /var/lib/opencloud: a nested mount point would leave a root-owned storage/ that OpenCloud can't write into
+            - name: files
+              mountPath: /var/lib/opencloud-files
+            - name: config
+              mountPath: /etc/opencloud
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: data
+        - name: files
+          persistentVolumeClaim:
+            claimName: files
+        - name: config
+          configMap:
+            name: opencloud-config
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opencloud
+  labels:
+    app.kubernetes.io/name: opencloud
+spec:
+  selector:
+    app.kubernetes.io/name: opencloud
+  ports:
+    - name: http
+      port: 9200
+      targetPort: http
+      protocol: TCP
+    - name: debug
+      port: 9124
+      targetPort: debug
+      protocol: TCP
+---
+# one process: every service's debug port serves the same metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: opencloud
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: opencloud
+  endpoints:
+    - port: debug
+      path: /metrics
