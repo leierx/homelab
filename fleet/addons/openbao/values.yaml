@@ -4,6 +4,9 @@ injector: {enabled: false}
 server:
   resources: {requests: {cpu: 50m, memory: 128Mi}, limits: {memory: 512Mi}}
   extraEnvironmentVars: {BAO_CACERT: /openbao/tls/ca.crt}
+  # single replica with static auto-unseal: roll on image and config changes instead of waiting for a manual delete
+  updateStrategyType: RollingUpdate
+  configAnnotation: true
   volumes:
     - {name: tls, secret: {secretName: openbao-tls}}
     - {name: seal-key, secret: {secretName: openbao-seal-key}}
