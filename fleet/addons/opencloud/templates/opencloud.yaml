@@ -1,4 +1,4 @@
-# OpenCloud's own state: the built-in LDAP with the auto-provisioned users, NATS, settings, shares and the search index
+# OpenCloud's own state: the built-in LDAP with the auto-provisioned users, NATS and the search index
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -14,7 +14,7 @@ spec:
     requests:
       storage: {{ .Values.storage.data.size }}
 ---
-# the spaces as plain files and folders (posix driver), metadata in user xattrs
+# storage/: the spaces as plain files and folders (posix driver, metadata in user xattrs), plus settings and shares
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -144,8 +144,9 @@ spec:
               readOnly: true
             - name: data
               mountPath: /var/lib/opencloud
+            # storage/ itself, so the services can create users/ and metadata/ in it
             - name: files
-              mountPath: /var/lib/opencloud/storage/users
+              mountPath: /var/lib/opencloud/storage
             - name: thumbnails
               mountPath: /var/lib/opencloud/thumbnails
             - name: tmp
