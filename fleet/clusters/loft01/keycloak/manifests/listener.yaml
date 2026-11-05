@@ -11,6 +11,19 @@ spec:
   dnsNames:
     - auth.skinke.net
 ---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: keycloak-admin
+spec:
+  secretName: keycloak-admin-tls
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  dnsNames:
+    - keycloak.skinke.net
+---
 apiVersion: gateway.networking.k8s.io/v1
 kind: ListenerSet
 metadata:
@@ -43,13 +56,13 @@ spec:
     - name: https
       protocol: HTTPS
       port: 443
-      hostname: auth.skinke.net
+      hostname: keycloak.skinke.net
       tls:
         mode: Terminate
         certificateRefs:
           - group: ""
             kind: Secret
-            name: keycloak-tls
+            name: keycloak-admin-tls
 ---
 # Public: what a login to realm homelab needs (Keycloak's reverse-proxy guide); admin and the master realm are wg-only
 apiVersion: gateway.networking.k8s.io/v1
@@ -69,6 +82,19 @@ spec:
         - path: { type: PathPrefix, value: /resources/ }
         # RFC 8414 metadata, for realm homelab only (the master realm stays internal)
         - path: { type: RegularExpression, value: "/\\.well-known/[^/]+/realms/homelab" }
+      backendRefs:
+        - name: keycloak-service
+          port: 8080
+    # the admin console on keycloak.skinke.net frames these; frame-ancestors overrides the Gateway's X-Frame-Options
+    - matches:
+        - path: { type: PathPrefix, value: /realms/homelab/protocol/openid-connect/3p-cookies/ }
+        - path: { type: PathPrefix, value: /realms/homelab/protocol/openid-connect/login-status-iframe.html }
+      filters:
+        - type: ResponseHeaderModifier
+          responseHeaderModifier:
+            add:
+              - name: Content-Security-Policy
+                value: frame-ancestors 'self' https://keycloak.skinke.net
       backendRefs:
         - name: keycloak-service
           port: 8080
@@ -111,7 +137,7 @@ spec:
       kind: ListenerSet
       name: keycloak-wg
   hostnames:
-    - auth.skinke.net
+    - keycloak.skinke.net
   rules:
     - backendRefs:
         - name: keycloak-service

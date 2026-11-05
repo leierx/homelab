@@ -12,6 +12,8 @@ let
       {
         issuer = {
           url = "https://auth.skinke.net/realms/homelab";
+          # the wg Gateway (nixos/network.nix), not the public IP; Keycloak answers with JWKS on the same host
+          discoveryURL = "https://keycloak.skinke.net/realms/homelab/.well-known/openid-configuration";
           audiences = [ "kubernetes" ];
         };
         claimMappings = {

@@ -66,11 +66,13 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 - **Gateways:**
   - `edge` (public via NodePort 30080/30443): Keycloak login endpoints, Immich
     (`photos.skinke.net`), Miniflux (`rss.skinke.net`), OpenCloud
-    (`opencloud.skinke.net`, also on `wg` so WireGuard peers reach it and Keycloak
-    on the same side), and Grafana (`metrics.skinke.net`).
+    (`opencloud.skinke.net`), and Grafana (`metrics.skinke.net`).
   - `wg` (WireGuard `10.0.0.1` only): Alerta (`alerta.skinke.net`), Argo CD
-    (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), and Keycloak
-    admin console.
+    (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), and the Keycloak
+    admin console (`https://keycloak.skinke.net/admin/homelab/console/`).
+    `auth.skinke.net` stays public for WireGuard peers too, so an app's page and
+    Keycloak are never split between a public and a private address (browsers ask
+    for a Local Network Access permission when they are).
   - Both `edge` and `wg` attach `SecurityPolicy/oidc` and
     `ClientTrafficPolicy/default` at the `Gateway` level, so every HTTPS route
     (other than Keycloak, Immich, OpenCloud, and Alerta) is gated by Envoy's OIDC login (`/_envoy/callback`)

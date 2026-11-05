@@ -144,9 +144,3 @@ spec:
             app.kubernetes.io/name: keycloak
       toPorts:
         - ports: [{ port: "8080", protocol: TCP }]
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: opencloud
-            app.kubernetes.io/name: opencloud
-      toPorts:
-        - ports: [{ port: "9200", protocol: TCP }]

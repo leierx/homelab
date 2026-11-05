@@ -29,6 +29,13 @@ spec:
           env:
             - name: KC_HOSTNAME
               value: {{ required "hostname is per cluster" .Values.hostname }}
+            {{- with .Values.adminHostname }}
+            - name: KC_HOSTNAME_ADMIN
+              value: {{ . }}
+            # token, JWKS and userinfo URLs follow the request's host, so clients of the admin host stay on it
+            - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+              value: "true"
+            {{- end }}
             # TLS ends at the Gateways
             - name: KC_HTTP_ENABLED
               value: "true"

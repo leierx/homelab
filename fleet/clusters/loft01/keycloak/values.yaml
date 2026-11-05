@@ -1,4 +1,6 @@
 hostname: https://auth.skinke.net
+# wg only: auth.skinke.net is public for everyone, so browser apps never mix a public page with a private Keycloak
+adminHostname: https://keycloak.skinke.net
 proxyTrustedAddresses: 10.42.0.0/16
 database:
   storage:
