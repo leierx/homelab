@@ -107,11 +107,12 @@ in
     };
   };
 
-  # also after boot, so a run cut off by the auto-upgrade reboot resumes
+  # after autoUpgrade's 02:00-04:00 reboot window, so an upgrade reboot never cuts a run off; it
+  # sends the 00:00 daily snapshot either way. OnBootSec resumes a run cut off by any other reboot
   systemd.timers."offsite-backup" = lib.mkIf enable {
     wantedBy = [ "timers.target" ];
     timerConfig = {
-      OnCalendar = "01:00";
+      OnCalendar = "04:30";
       OnBootSec = "15min";
       Persistent = true;
     };
