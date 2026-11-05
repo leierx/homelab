@@ -25,7 +25,12 @@ resource "keycloak_group_roles" "admins" {
   group_id = keycloak_group.admins.id
 
   role_ids = concat(
-    [keycloak_role.homelab_access.id, keycloak_role.immich_admin.id],
+    [
+      keycloak_role.homelab_access.id,
+      keycloak_role.immich_admin.id,
+      keycloak_role.opencloud_admin.id,
+      data.keycloak_role.offline_access.id,
+    ],
     [for role in data.keycloak_role.realm_management_view : role.id],
   )
 }
@@ -37,6 +42,8 @@ resource "keycloak_group_roles" "operators" {
   role_ids = [
     keycloak_role.homelab_access.id,
     keycloak_role.immich_user.id,
+    keycloak_role.opencloud_user.id,
+    data.keycloak_role.offline_access.id,
   ]
 }
 
@@ -47,7 +54,15 @@ resource "keycloak_group_roles" "viewers" {
   role_ids = [
     keycloak_role.homelab_access.id,
     keycloak_role.immich_user.id,
+    keycloak_role.opencloud_user.id,
+    data.keycloak_role.offline_access.id,
   ]
+}
+
+# only clients with the offline_access scope can use it: OpenCloud's sync apps
+data "keycloak_role" "offline_access" {
+  realm_id = keycloak_realm.homelab.id
+  name     = "offline_access"
 }
 
 # direct memberships by name, the shape Argo CD, Grafana, Envoy and the API server read

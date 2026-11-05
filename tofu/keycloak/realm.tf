@@ -10,6 +10,10 @@ resource "keycloak_realm" "homelab" {
   sso_session_idle_timeout = "12h"
   sso_session_max_lifespan = "12h"
 
+  # the only offline sessions are OpenCloud's sync apps; they log in again after 30 days at the latest
+  offline_session_max_lifespan_enabled = true
+  offline_session_max_lifespan         = "720h"
+
   # the name a security key or passkey shows for this site
   web_authn_policy {
     relying_party_entity_name = "homelab"
@@ -52,7 +56,7 @@ resource "keycloak_realm_events" "homelab" {
   events_listeners = ["jboss-logging"]
 }
 
-# Keycloak's defaults without offline_access: no client asks for offline tokens
+# Keycloak's defaults without offline_access, which the tiers grant instead
 resource "keycloak_default_roles" "homelab" {
   realm_id      = keycloak_realm.homelab.id
   default_roles = ["uma_authorization", "account/view-profile", "account/manage-account"]
