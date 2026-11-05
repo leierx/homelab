@@ -84,10 +84,10 @@ spec:
               value: {{ .Values.oidc.issuer | quote }}
             - name: PROXY_OIDC_REWRITE_WELLKNOWN
               value: "true"
-            # Keycloak logs in instead of the built-in IdP; ocm would serve an unauthenticated URL fetcher; app
-            # tokens are a login that bypasses Keycloak and survives disabling the user there
+            # Keycloak is the only login: no built-in IdP, app tokens (they bypass Keycloak and survive disabling the
+            # user there) or LDAP passwords; ocm would serve an unauthenticated URL fetcher; the rest is unused
             - name: OC_EXCLUDE_RUN_SERVICES
-              value: idp,ocm,auth-app
+              value: idp,auth-app,auth-basic,ocm,storage-publiclink,app-provider
             - name: PROXY_ENABLE_APP_AUTH
               value: "false"
             - name: PROXY_AUTOPROVISION_ACCOUNTS
@@ -104,6 +104,33 @@ spec:
               value: opencloud-web
             - name: WEB_OPTION_ACCOUNT_EDIT_LINK_HREF
               value: {{ printf "%s/account" .Values.oidc.issuer | quote }}
+            # Keycloak owns name and email; auto-provisioning rewrites them at every login
+            - name: FRONTEND_READONLY_USER_ATTRIBUTES
+              value: user.onPremisesSamAccountName,user.displayName,user.mail,user.passwordProfile,user.appRoleAssignments,user.memberOf
+            # nine services otherwise answer any origin
+            - name: OC_CORS_ALLOW_ORIGINS
+              value: {{ .Values.url | quote }}
+            - name: OC_ENABLE_OCM
+              value: "false"
+            # no CalDAV server behind the Calendar entry
+            - name: FRONTEND_DISABLE_RADICALE
+              value: "true"
+            - name: WEB_OPTION_DISABLE_FEEDBACK_LINK
+              value: "true"
+            # buttons for the app tokens and public links that are switched off
+            - name: WEB_OPTION_DISABLED_EXTENSIONS
+              value: com.github.opencloud-eu.web.runtime.preferences-panels.app-tokens,com.github.opencloud-eu.web.files.quick-action.quicklink
+            # the code keeps events forever; two weeks is what the docs describe
+            - name: EVENTHISTORY_STORE_TTL
+              value: 336h
+            # whole meme folders as one zip: 10 GiB and 100,000 files instead of 1 GiB and 10,000
+            - name: FRONTEND_ARCHIVER_MAX_SIZE
+              value: "10737418240"
+            - name: FRONTEND_ARCHIVER_MAX_NUM_FILES
+              value: "100000"
+            # deleting a user keeps their personal space for 30 days
+            - name: GRAPH_USER_SOFT_DELETE_RETENTION_TIME
+              value: 720h
             - name: FRONTEND_CHECK_FOR_UPDATES
               value: "false"
             - name: PROXY_CSP_CONFIG_FILE_OVERRIDE_LOCATION
