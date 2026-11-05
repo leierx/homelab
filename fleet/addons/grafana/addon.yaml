@@ -14,7 +14,7 @@ helm:
   repoURL: ghcr.io/grafana-community/helm-charts
   chart: grafana
   # renovate: datasource=docker depName=ghcr.io/grafana-community/helm-charts/grafana
-  targetRevision: 14.3.0
+  targetRevision: 14.3.1
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted
