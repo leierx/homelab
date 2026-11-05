@@ -65,3 +65,10 @@ spec:
             instance: '{{ $labels.username }}'
           annotations:
             summary: "Someone logged in to Argo CD with a local account's password. The admin account is disabled and SSO logins are logged as login.type=sso, so a local account was turned on: break-glass, or someone who shouldn't."
+        - alert: ArgoCDLocalLoginFailed
+          expr: sum by (username, error) (count_over_time({namespace="argocd", container="server"} |= "Login failed" | logfmt | msg="Login failed" | login_type="local" [5m])) > 0
+          labels:
+            severity: warning
+            instance: '{{ $labels.username }}: {{ $labels.error }}'
+          annotations:
+            summary: "Someone tried a password on Argo CD's local login. No local account is enabled, so every attempt fails: someone guessing, or SSO credentials typed into `argocd login` without --sso."
