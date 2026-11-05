@@ -101,7 +101,8 @@ Each enabled addon becomes `Application/<cluster>-<addon>` with these sources:
 
 Sync policy: automated with prune and self-heal,
 `CreateNamespace=true`, `ServerSideApply=true`, `managedNamespaceMetadata` if
-set, and retry (10 times, 10s to 3m). Anything else goes through
+set, and retry (10 times, 10s to 3m, each on the latest commit so a fix
+lands without waiting out a failing sync). Anything else goes through
 `application:` or a per-resource `argocd.argoproj.io/sync-options` annotation
 (e.g. `SkipDryRunOnMissingResource=true` on a resource whose CRD comes from an
 addon in the same wave).

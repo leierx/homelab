@@ -23,6 +23,22 @@ spec:
             instance: '{{ $labels.name }}'
           annotations:
             summary: An Argo CD application has had auto-sync off for 7 days, so git changes don't reach it. Resume it, or take the addon out of the cluster's values.yaml.
+        - alert: ArgoCDAppSyncStuck
+          expr: max by (name) (argocd_app_info{sync_status="OutOfSync", autosync_enabled="true"})
+          for: 1h
+          labels:
+            severity: warning
+            instance: '{{ $labels.name }}'
+          annotations:
+            summary: "An auto-synced Argo CD application has been OutOfSync for an hour: its sync failed, and auto-sync won't retry the same revision, or the sync is still waiting on a resource. Fix and push, or sync by hand."
+        - alert: ArgoCDMetricsAbsent
+          expr: absent(argocd_app_info)
+          for: 15m
+          labels:
+            severity: warning
+            instance: argocd
+          annotations:
+            summary: The Argo CD application controller has reported no applications for 15 minutes, so it is down or not scraped, and the other Argo CD alerts can't fire.
         - alert: ArgoCDAppRenderFailing
           expr: max by (name) (argocd_app_info{sync_status="Unknown"})
           for: 15m

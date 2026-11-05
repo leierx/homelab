@@ -13,6 +13,10 @@ spec:
         selector:
           matchLabels:
             fleet.io/enabled: "true"
+  # never delete fleet-<cluster>, and never cascade if it is deleted: one bad generator run would take every addon with it
+  syncPolicy:
+    applicationsSync: create-update
+    preserveResourcesOnDeletion: true
   # manual auto-sync pauses on fleet-<cluster> and its children persist until re-enabled
   ignoreApplicationDifferences:
     - jsonPointers: [/spec/syncPolicy/automated/enabled]
@@ -42,3 +46,4 @@ spec:
       syncPolicy:
         automated: { prune: true, selfHeal: true }
         syncOptions: [RespectIgnoreDifferences=true]
+        retry: {limit: 10, refresh: true, backoff: {duration: 10s, factor: 2, maxDuration: 3m}}
