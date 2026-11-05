@@ -5,6 +5,8 @@ metadata:
   name: data
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
+    # with the pod: WaitForFirstConsumer claims stay Pending until it exists
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   accessModes: [ReadWriteOnce]
   {{- with .Values.storage.data.storageClass }}
@@ -21,6 +23,8 @@ metadata:
   name: files
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
+    # with the pod: WaitForFirstConsumer claims stay Pending until it exists
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   accessModes: [ReadWriteOnce]
   {{- with .Values.storage.files.storageClass }}
@@ -34,6 +38,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: opencloud
+  annotations:
+    # after the ExternalSecret is Healthy, so the pod never starts without its secrets
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   replicas: 1
   # RWO volumes can't be mounted by two pods at once
