@@ -82,6 +82,7 @@ spec:
           'argocd',
           'cert-manager',
           'envoy-gateway-system',
+          'filebrowser',
           'immich',
           'keycloak',
           'miniflux',

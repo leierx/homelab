@@ -1,0 +1,11 @@
+oidc:
+  issuer: https://auth.skinke.net/realms/homelab
+  # Envoy's logout also ends the Keycloak session; FileBrowser only accepts a same-origin URL
+  logoutRedirectUrl: /_envoy/logout
+storage:
+  files:
+    storageClass: zfs-thin
+    size: 100Gi
+  state:
+    storageClass: zfs
+    size: 1Gi

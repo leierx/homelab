@@ -36,6 +36,7 @@
         'ghcr.io/immich-app/immich-machine-learning',
         'quay.io/keycloak/keycloak',
         'ghcr.io/openbao/charts/openbao',
+        'ghcr.io/gtsteffaniak/filebrowser',
       ],
       matchUpdateTypes: ['minor'],
       automerge: false,

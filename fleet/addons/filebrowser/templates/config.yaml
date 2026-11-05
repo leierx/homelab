@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebrowser-config
+data:
+  config.yaml: |
+    server:
+      # GitHub can't be reached, and the check blocks startup until it times out
+      disableUpdateCheck: true
+      sources:
+        - path: /srv
+          name: drive
+          config:
+            # no share links
+            private: true
+            defaultUserScope: /users
+            createUserDir: true
+            defaultPermissions:
+              view: true
+              download: true
+              create: true
+              modify: true
+              delete: true
+    http:
+      port: 8080
+      # only the edge Envoy reaches the pod; it sets X-Forwarded-Proto for the OIDC redirect and Secure cookies
+      trustProxyHeaders: true
+      disableWebDAV: true
+    auth:
+      methods:
+        password:
+          enabled: false
+        oidc:
+          enabled: true
+          clientId: filebrowser
+          issuerUrl: {{ required "oidc.issuer is per cluster" .Values.oidc.issuer | quote }}
+          userGroups: [homelab-admins, homelab-operators, homelab-viewers]
+          adminGroup: homelab-admins
+          {{- with .Values.oidc.logoutRedirectUrl }}
+          logoutRedirectUrl: {{ . | quote }}
+          {{- end }}
+    frontend:
+      disableDefaultLinks: true
+    integrations:
+      media:
+        convert:
+          imagePreview:
+            heic: true

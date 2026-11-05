@@ -45,3 +45,7 @@ variable "miniflux_client_secret" {
   sensitive = true
 }
 
+variable "filebrowser_client_secret" {
+  type      = string
+  sensitive = true
+}
