@@ -161,7 +161,6 @@ resource "keycloak_openid_client" "edge" {
 
   valid_redirect_uris = [
     "https://argocd.skinke.net/_envoy/callback",
-    "https://drive.skinke.net/_envoy/callback",
     "https://metrics.skinke.net/_envoy/callback",
     "https://rss.skinke.net/_envoy/callback",
     "https://workflows.skinke.net/_envoy/callback",
@@ -232,26 +231,6 @@ resource "keycloak_openid_client" "miniflux" {
   web_origins         = ["https://rss.skinke.net"]
 }
 
-# FileBrowser Quantum sends neither PKCE nor a nonce, so neither is required here
-resource "keycloak_openid_client" "filebrowser" {
-  realm_id  = keycloak_realm.homelab.id
-  client_id = "filebrowser"
-  name      = "filebrowser"
-  enabled   = true
-  base_url  = "https://drive.skinke.net"
-
-  access_type                  = "CONFIDENTIAL"
-  client_secret_wo             = var.filebrowser_client_secret
-  client_secret_wo_version     = "1"
-  standard_flow_enabled        = true
-  direct_access_grants_enabled = false
-  implicit_flow_enabled        = false
-  service_accounts_enabled     = false
-  full_scope_allowed           = false
-
-  valid_redirect_uris = ["https://drive.skinke.net/api/auth/oidc/callback"]
-}
-
 
 resource "keycloak_openid_client_default_scopes" "argocd" {
   realm_id       = keycloak_realm.homelab.id
@@ -304,12 +283,6 @@ resource "keycloak_openid_client_default_scopes" "argo_workflows" {
 resource "keycloak_openid_client_default_scopes" "miniflux" {
   realm_id       = keycloak_realm.homelab.id
   client_id      = keycloak_openid_client.miniflux.id
-  default_scopes = local.default_client_scopes
-}
-
-resource "keycloak_openid_client_default_scopes" "filebrowser" {
-  realm_id       = keycloak_realm.homelab.id
-  client_id      = keycloak_openid_client.filebrowser.id
   default_scopes = local.default_client_scopes
 }
 
