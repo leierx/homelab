@@ -50,7 +50,7 @@
 {{- $syncPolicy := dict
     "automated" (dict "prune" true "selfHeal" true)
     "syncOptions" (list "CreateNamespace=true" "ServerSideApply=true")
-    "retry" (dict "limit" 10 "backoff" (dict "duration" "10s" "maxDuration" "3m" "factor" 2))
+    "retry" (dict "limit" 10 "refresh" true "backoff" (dict "duration" "10s" "maxDuration" "3m" "factor" 2))
 -}}
 {{- with $addon.managedNamespaceMetadata -}}
   {{- $_ := set $syncPolicy "managedNamespaceMetadata" . -}}
