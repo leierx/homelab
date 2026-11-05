@@ -4,6 +4,13 @@
   labels: ['dependencies', 'needs-review'],
   platformAutomerge: false,
   minimumReleaseAgeBehaviour: 'timestamp-optional',
+  logLevelRemap: [
+    {
+      description: 'Expected for registries without release dates (GHCR, Quay); keep it off the Dependency Dashboard',
+      matchMessage: "/Some .+ did not have a releaseTimestamp, but as we're running with minimumReleaseAgeBehaviour=timestamp-optional, proceeding/",
+      newLogLevel: 'info',
+    },
+  ],
   packageRules: [
     {
       description: 'Automerge all non-major updates, 3 days after release so pulled ones are skipped (only where the registry has release dates)',
@@ -24,11 +31,6 @@
       matchUpdateTypes: ['minor'],
       automerge: false,
       labels: ['dependencies', 'needs-review'],
-    },
-    {
-      description: 'Major bumps wait for explicit approval on the Dependency Dashboard',
-      matchUpdateTypes: ['major'],
-      dependencyDashboardApproval: true,
     },
     {
       description: 'Argo CD upgrades itself, so every bump gets a review',

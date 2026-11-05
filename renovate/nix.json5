@@ -9,19 +9,18 @@
   },
   packageRules: [
     {
-      description: "Refresh every flake input Thursday night, merged a day before loft01's Friday 02:00 autoUpgrade",
+      description: 'Refresh every flake input nightly; loft01 deploys main at its Friday 02:00 autoUpgrade',
       matchManagers: ['nix'],
       matchUpdateTypes: ['lockFileMaintenance'],
       automerge: true,
       labels: ['dependencies'],
-      schedule: ['* 0-4 * * 4'],
+      schedule: ['* 0-4 * * *'],
     },
     {
-      description: 'A NixOS release bump gets a PR right away, but a review before merge',
+      description: 'A NixOS release bump waits for a review before merge',
       matchManagers: ['nix'],
       matchUpdateTypes: ['minor', 'major'],
       automerge: false,
-      dependencyDashboardApproval: false,
       labels: ['dependencies', 'needs-review'],
     },
   ],
