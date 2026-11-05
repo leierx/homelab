@@ -1,0 +1,85 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: filebrowser
+spec:
+  secretName: filebrowser-tls
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  dnsNames:
+    - drive.skinke.net
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: filebrowser-edge
+spec:
+  parentRef:
+    name: edge
+    namespace: envoy-gateway-system
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: drive.skinke.net
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: filebrowser-tls
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: filebrowser-edge
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: filebrowser-edge
+  hostnames:
+    - drive.skinke.net
+  rules:
+    - backendRefs:
+        - name: filebrowser
+          port: 8080
+      # no 300 s cap on downloading a large file or folder archive
+      timeouts:
+        request: 0s
+      filters:
+        # a second policy: the app's own allowlists jsDelivr and Google, which GHSA-rmjp-pfrq-cc3v uses to run injected script
+        - type: ResponseHeaderModifier
+          responseHeaderModifier:
+            add:
+              - name: Content-Security-Policy
+                value: "script-src 'self' 'unsafe-inline'; worker-src 'self' blob:"
+    # Unused features with open advisories on the stable line: extracting an archive is the only way to
+    # create a symlink (GHSA-3j46-5w28-f8p2, GHSA-qqf3-2wvq-q4w9, GHSA-g2q5-r6ch-v25f, GHSA-p93p-v944-4p44);
+    # WebDAV and share links are also off in the config.
+    - matches:
+        - path: { type: PathPrefix, value: /api/resources/unarchive }
+        - path: { type: PathPrefix, value: /dav }
+        - path: { type: PathPrefix, value: /public/api }
+        - path: { type: PathPrefix, value: /public/share }
+        - path: { type: PathPrefix, value: /swagger }
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: gateway.envoyproxy.io
+            kind: HTTPRouteFilter
+            name: blocked
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: HTTPRouteFilter
+metadata:
+  name: blocked
+spec:
+  directResponse:
+    statusCode: 403
+    contentType: text/plain
+    body:
+      type: Inline
+      inline: "blocked at the gateway\n"

@@ -65,8 +65,8 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   Every login requires WebAuthn/passkey or TOTP.
 - **Gateways:**
   - `edge` (public via NodePort 30080/30443): Keycloak login endpoints, Immich
-    (`photos.skinke.net`), Miniflux (`rss.skinke.net`), and Grafana
-    (`metrics.skinke.net`).
+    (`photos.skinke.net`), Miniflux (`rss.skinke.net`), FileBrowser Quantum
+    (`drive.skinke.net`), and Grafana (`metrics.skinke.net`).
   - `wg` (WireGuard `10.0.0.1` only): Alerta (`alerta.skinke.net`), Argo CD
     (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), and Keycloak
     admin console.

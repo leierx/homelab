@@ -23,6 +23,9 @@ spec:
         - matchLabels:
             app.kubernetes.io/name: envoy
         - matchLabels:
+            k8s:io.kubernetes.pod.namespace: filebrowser
+            app.kubernetes.io/name: filebrowser
+        - matchLabels:
             k8s:io.kubernetes.pod.namespace: immich
             app.kubernetes.io/name: server
         - matchLabels:
@@ -69,6 +72,12 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: miniflux
             app.kubernetes.io/name: miniflux
+      toPorts:
+        - ports: [{ port: "8080", protocol: TCP }]
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: filebrowser
+            app.kubernetes.io/name: filebrowser
       toPorts:
         - ports: [{ port: "8080", protocol: TCP }]
 ---

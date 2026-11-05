@@ -1,0 +1,133 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: files
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.storage.files.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.files.size }}
+---
+# the SQLite database: users, sessions and the token signing key
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: state
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.storage.state.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.state.size }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: filebrowser
+spec:
+  replicas: 1
+  # RWO volumes can't be mounted by two pods at once
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: filebrowser
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: filebrowser
+      annotations:
+        # the config is only read at startup
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: filebrowser
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          env:
+            - name: FILEBROWSER_CONFIG
+              value: /config/config.yaml
+            - name: FILEBROWSER_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: filebrowser
+                  key: oidc-client-secret
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources:
+            requests: { cpu: 50m, memory: 256Mi }
+            limits: { memory: 2Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: files
+              mountPath: /srv
+            - name: state
+              mountPath: /home/filebrowser/data
+            # thumbnails, the search index and the archive download spool; rebuilt after a restart
+            - name: cache
+              mountPath: /home/filebrowser/tmp
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: filebrowser-config
+        - name: files
+          persistentVolumeClaim:
+            claimName: files
+        - name: state
+          persistentVolumeClaim:
+            claimName: state
+        - name: cache
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: filebrowser
+  labels:
+    app.kubernetes.io/name: filebrowser
+spec:
+  selector:
+    app.kubernetes.io/name: filebrowser
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
