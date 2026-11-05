@@ -20,6 +20,15 @@
       labels: ['dependencies'],
     },
     {
+      description: 'Node majors in CI workflows only affect CI, so they automerge too',
+      matchFileNames: ['.github/workflows/**'],
+      matchDepNames: ['node'],
+      matchUpdateTypes: ['major'],
+      automerge: true,
+      minimumReleaseAge: '3 days',
+      labels: ['dependencies'],
+    },
+    {
       description: 'Minor bumps of stateful apps get a review; their patches stay automerged',
       matchDepNames: [
         'ghcr.io/immich-app/immich-charts/immich',
