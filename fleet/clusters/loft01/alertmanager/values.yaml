@@ -1,1 +1,6 @@
 persistence: {storageClass: zfs}
+# SPF for skinke.net allows its A record, which is also the HELO name
+config:
+  global:
+    smtp_from: loft01 <alertmanager@skinke.net>
+    smtp_hello: skinke.net
