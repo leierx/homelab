@@ -19,3 +19,5 @@ persistence:
   # the posix tree of user and project spaces, with their versions, trash and uploads
   files:
     size: 100Gi
+# web extensions by name: the opencloudeu/web-extensions tag, per cluster
+apps: {}

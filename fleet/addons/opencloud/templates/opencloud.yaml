@@ -159,6 +159,9 @@ spec:
               value: 0.0.0.0:9124
             - name: GOMEMLIMIT
               value: 3600MiB
+            # web extensions, each mounted read-only from its upstream image
+            - name: WEB_ASSET_APPS_PATH
+              value: /var/lib/opencloud-apps
           ports:
             - name: http
               containerPort: 9200
@@ -199,6 +202,11 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
+            {{- range $app, $tag := .Values.apps }}
+            - name: app-{{ $app }}
+              mountPath: /var/lib/opencloud-apps/{{ $app }}
+              subPath: web/apps/{{ $app }}
+            {{- end }}
       volumes:
         - name: data
           persistentVolumeClaim:
@@ -211,6 +219,11 @@ spec:
             name: opencloud-config
         - name: tmp
           emptyDir: {}
+        {{- range $app, $tag := .Values.apps }}
+        - name: app-{{ $app }}
+          image:
+            reference: docker.io/opencloudeu/web-extensions:{{ $tag }}
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service

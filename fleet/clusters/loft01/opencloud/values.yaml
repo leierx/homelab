@@ -12,3 +12,8 @@ persistence:
   # a ZFS dataset: user files keep their names on disk, browsable per file in snapshots
   files:
     storageClass: zfs-thin
+apps:
+  # renovate: datasource=docker depName=docker.io/opencloudeu/web-extensions versioning=regex:^progress-bars-(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)$
+  progress-bars: progress-bars-2.1.0
+  # renovate: datasource=docker depName=docker.io/opencloudeu/web-extensions versioning=regex:^unzip-(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)$
+  unzip: unzip-2.2.1
