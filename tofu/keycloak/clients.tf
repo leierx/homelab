@@ -9,7 +9,7 @@ locals {
     keycloak_openid_client_scope.groups.name,
   ]
 
-  # Keycloak's optional scopes without offline_access, which only OpenCloud's sync apps may ask for
+  # Keycloak's optional scopes without offline_access: no client gets offline tokens
   optional_client_scopes = [
     "address",
     "phone",
@@ -239,143 +239,6 @@ resource "keycloak_openid_client" "miniflux" {
   web_origins         = ["https://rss.skinke.net"]
 }
 
-# OpenCloud's apps are public clients with PKCE; the native ones use upstream's fixed IDs and redirect URIs
-resource "keycloak_openid_client" "opencloud_web" {
-  realm_id  = keycloak_realm.homelab.id
-  client_id = "opencloud-web"
-  name      = "opencloud-web"
-  enabled   = true
-  base_url  = "https://opencloud.skinke.net"
-
-  access_type                  = "PUBLIC"
-  standard_flow_enabled        = true
-  direct_access_grants_enabled = false
-  implicit_flow_enabled        = false
-  service_accounts_enabled     = false
-  full_scope_allowed           = false
-  pkce_code_challenge_method   = "S256"
-
-  valid_redirect_uris = [
-    "https://opencloud.skinke.net/",
-    "https://opencloud.skinke.net/oidc-callback.html",
-    "https://opencloud.skinke.net/oidc-silent-redirect.html",
-  ]
-  valid_post_logout_redirect_uris = ["https://opencloud.skinke.net/"]
-  web_origins                     = ["https://opencloud.skinke.net"]
-}
-
-# the desktop app listens on a random loopback port, which Keycloak accepts for 127.0.0.1 and localhost
-resource "keycloak_openid_client" "opencloud_desktop" {
-  realm_id  = keycloak_realm.homelab.id
-  client_id = "OpenCloudDesktop"
-  name      = "OpenCloudDesktop"
-  enabled   = true
-
-  access_type                  = "PUBLIC"
-  standard_flow_enabled        = true
-  direct_access_grants_enabled = false
-  implicit_flow_enabled        = false
-  service_accounts_enabled     = false
-  full_scope_allowed           = false
-  pkce_code_challenge_method   = "S256"
-
-  valid_redirect_uris = ["http://127.0.0.1", "http://localhost"]
-}
-
-resource "keycloak_openid_client" "opencloud_android" {
-  realm_id  = keycloak_realm.homelab.id
-  client_id = "OpenCloudAndroid"
-  name      = "OpenCloudAndroid"
-  enabled   = true
-
-  access_type                  = "PUBLIC"
-  standard_flow_enabled        = true
-  direct_access_grants_enabled = false
-  implicit_flow_enabled        = false
-  service_accounts_enabled     = false
-  full_scope_allowed           = false
-  pkce_code_challenge_method   = "S256"
-
-  valid_redirect_uris             = ["oc://android.opencloud.eu"]
-  valid_post_logout_redirect_uris = ["oc://android.opencloud.eu"]
-}
-
-resource "keycloak_openid_client" "opencloud_ios" {
-  realm_id  = keycloak_realm.homelab.id
-  client_id = "OpenCloudIOS"
-  name      = "OpenCloudIOS"
-  enabled   = true
-
-  access_type                  = "PUBLIC"
-  standard_flow_enabled        = true
-  direct_access_grants_enabled = false
-  implicit_flow_enabled        = false
-  service_accounts_enabled     = false
-  full_scope_allowed           = false
-  pkce_code_challenge_method   = "S256"
-
-  valid_redirect_uris             = ["oc://ios.opencloud.eu"]
-  valid_post_logout_redirect_uris = ["oc://ios.opencloud.eu"]
-}
-
-# holds the OpenCloud roles; no one logs in to it
-resource "keycloak_openid_client" "opencloud" {
-  realm_id  = keycloak_realm.homelab.id
-  client_id = "opencloud"
-  name      = "opencloud"
-  enabled   = true
-
-  access_type                  = "BEARER-ONLY"
-  standard_flow_enabled        = false
-  direct_access_grants_enabled = false
-  implicit_flow_enabled        = false
-  service_accounts_enabled     = false
-  full_scope_allowed           = false
-}
-
-# the values of OpenCloud's default role mapping; a user without one is refused
-resource "keycloak_role" "opencloud_admin" {
-  realm_id  = keycloak_realm.homelab.id
-  client_id = keycloak_openid_client.opencloud.id
-  name      = "opencloudAdmin"
-}
-
-resource "keycloak_role" "opencloud_user" {
-  realm_id  = keycloak_realm.homelab.id
-  client_id = keycloak_openid_client.opencloud.id
-  name      = "opencloudUser"
-}
-
-# the user's OpenCloud roles as the roles claim, only in tokens for the OpenCloud apps
-resource "keycloak_openid_client_scope" "opencloud" {
-  realm_id               = keycloak_realm.homelab.id
-  name                   = "opencloud"
-  include_in_token_scope = false
-}
-
-resource "keycloak_openid_user_client_role_protocol_mapper" "opencloud_roles" {
-  realm_id                    = keycloak_realm.homelab.id
-  client_scope_id             = keycloak_openid_client_scope.opencloud.id
-  name                        = "roles"
-  claim_name                  = "roles"
-  client_id_for_role_mappings = keycloak_openid_client.opencloud.client_id
-  multivalued                 = true
-  add_to_id_token             = true
-  add_to_access_token         = true
-  add_to_userinfo             = true
-}
-
-# the apps don't have full scope, so the scope brings the roles along
-resource "keycloak_generic_role_mapper" "opencloud" {
-  for_each = {
-    admin = keycloak_role.opencloud_admin.id
-    user  = keycloak_role.opencloud_user.id
-  }
-  realm_id        = keycloak_realm.homelab.id
-  client_scope_id = keycloak_openid_client_scope.opencloud.id
-  role_id         = each.value
-}
-
 
 resource "keycloak_openid_client_default_scopes" "argocd" {
   realm_id       = keycloak_realm.homelab.id
@@ -431,18 +294,6 @@ resource "keycloak_openid_client_default_scopes" "miniflux" {
   default_scopes = local.default_client_scopes
 }
 
-resource "keycloak_openid_client_default_scopes" "opencloud" {
-  for_each = {
-    web     = keycloak_openid_client.opencloud_web.id
-    desktop = keycloak_openid_client.opencloud_desktop.id
-    android = keycloak_openid_client.opencloud_android.id
-    ios     = keycloak_openid_client.opencloud_ios.id
-  }
-  realm_id       = keycloak_realm.homelab.id
-  client_id      = each.value
-  default_scopes = concat(local.default_client_scopes, [keycloak_openid_client_scope.opencloud.name])
-}
-
 resource "keycloak_realm_optional_client_scopes" "homelab" {
   realm_id        = keycloak_realm.homelab.id
   optional_scopes = local.optional_client_scopes
@@ -461,7 +312,6 @@ resource "keycloak_openid_client_optional_scopes" "no_offline_access" {
       kubernetes     = keycloak_openid_client.kubernetes.id
       argo_workflows = keycloak_openid_client.argo_workflows.id
       miniflux       = keycloak_openid_client.miniflux.id
-      opencloud_web  = keycloak_openid_client.opencloud_web.id
     },
   )
   realm_id        = keycloak_realm.homelab.id
@@ -475,16 +325,3 @@ data "keycloak_openid_client" "builtin" {
   realm_id  = keycloak_realm.homelab.id
   client_id = each.key
 }
-
-# desktop and mobile sync on a refresh token that outlives the 12 h SSO session
-resource "keycloak_openid_client_optional_scopes" "opencloud_sync" {
-  for_each = {
-    desktop = keycloak_openid_client.opencloud_desktop.id
-    android = keycloak_openid_client.opencloud_android.id
-    ios     = keycloak_openid_client.opencloud_ios.id
-  }
-  realm_id        = keycloak_realm.homelab.id
-  client_id       = each.value
-  optional_scopes = concat(local.optional_client_scopes, ["offline_access"])
-}
-

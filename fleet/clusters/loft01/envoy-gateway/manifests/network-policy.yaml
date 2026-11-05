@@ -31,9 +31,6 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
             app.kubernetes.io/name: grafana
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: opencloud
-            app.kubernetes.io/name: opencloud
       toPorts:
         - ports: [{ port: "10443", protocol: TCP }]
     # cert-manager HTTP-01 self-check for auth.skinke.net
@@ -74,12 +71,6 @@ spec:
             app.kubernetes.io/name: miniflux
       toPorts:
         - ports: [{ port: "8080", protocol: TCP }]
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: opencloud
-            app.kubernetes.io/name: opencloud
-      toPorts:
-        - ports: [{ port: "9200", protocol: TCP }]
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
