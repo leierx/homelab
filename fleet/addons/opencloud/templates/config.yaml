@@ -33,3 +33,8 @@ data:
       script-src: ["'self'", "'unsafe-inline'"]
       style-src: ["'self'", "'unsafe-inline'", "blob:"]
       worker-src: ["'self'", "blob:"]
+  # unzip extracts in the browser; desktop browsers page large blobs to disk (default 64 MB)
+  apps.yaml: |
+    unzip:
+      config:
+        maxArchiveSize: 1000000000
