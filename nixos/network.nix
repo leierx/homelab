@@ -11,7 +11,7 @@
       "149.112.112.112#dns.quad9.net"
     ];
     # wg Gateway routes for local processes (kube-apiserver OIDC) and WireGuard peers querying 10.0.0.1:53.
-    # One line per name: names sharing a line are aliases of the first one, which resolved returns as a CNAME.
+    # resolved answers every name sharing an address as a CNAME to the first one (alerta), even on separate lines; clients follow it.
     extraHosts = ''
       10.0.0.1 alerta.skinke.net
       10.0.0.1 argocd.skinke.net
