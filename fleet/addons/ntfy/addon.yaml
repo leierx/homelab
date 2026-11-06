@@ -1,0 +1,16 @@
+namespace: ntfy
+helm:
+  path: fleet/addons/ntfy
+dependencies:
+  - cilium
+  - cloudnative-pg
+  - external-secrets
+  - zfs-localpv
+  - prometheus-operator-crds
+  - cert-manager
+  - envoy-gateway
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

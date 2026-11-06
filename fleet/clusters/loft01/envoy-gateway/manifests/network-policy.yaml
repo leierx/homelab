@@ -83,6 +83,12 @@ spec:
             app.kubernetes.io/name: opencloud
       toPorts:
         - ports: [{ port: "9200", protocol: TCP }]
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: ntfy
+            app.kubernetes.io/name: ntfy
+      toPorts:
+        - ports: [{ port: "8080", protocol: TCP }]
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy

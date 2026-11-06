@@ -1,0 +1,4 @@
+url: https://ntfy.skinke.net
+database:
+  storage:
+    storageClass: zfs

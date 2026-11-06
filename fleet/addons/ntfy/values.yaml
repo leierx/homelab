@@ -1,0 +1,8 @@
+image:
+  repository: docker.io/binwiederhier/ntfy
+  tag: v2.37.2
+# URL, per cluster
+url: ""
+database:
+  storage:
+    size: 1Gi
