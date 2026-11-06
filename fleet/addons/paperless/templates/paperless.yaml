@@ -16,6 +16,8 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: paperless
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
     spec:
       automountServiceAccountToken: false
       # Service links would set PAPERLESS_PORT=tcp://… and break the webserver
@@ -82,7 +84,7 @@ spec:
               value: redis://127.0.0.1:6379
             - name: PAPERLESS_TIME_ZONE
               value: {{ .Values.timeZone | quote }}
-            # break-glass only (manage.py, API): regular login is off; it exists so the first sign-up can't become superuser
+            # created only so the first sign-up can't become superuser; disable-admin.sh deactivates it on every start
             - name: PAPERLESS_ADMIN_USER
               value: admin
             - name: PAPERLESS_ADMIN_PASSWORD
@@ -163,6 +165,10 @@ spec:
             # also the scratch dir for uploads and OCR
             - name: tmp
               mountPath: /tmp
+            # a single root-owned file: the image refuses scripts from a writable or non-root directory
+            - name: init
+              mountPath: /custom-cont-init.d/disable-admin.sh
+              subPath: disable-admin.sh
       volumes:
         - name: data
           persistentVolumeClaim:
@@ -178,6 +184,10 @@ spec:
           emptyDir:
             # uploads and OCR scratch; evicts this pod before the node's root disk fills
             sizeLimit: 10Gi
+        - name: init
+          configMap:
+            name: paperless-init
+            defaultMode: 0444
 ---
 apiVersion: v1
 kind: Service

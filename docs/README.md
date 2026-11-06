@@ -103,3 +103,10 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   kcadm config credentials --server http://localhost:8080 --realm master \
     --client "$KC_BOOTSTRAP_ADMIN_CLIENT_ID" --secret "$KC_BOOTSTRAP_ADMIN_CLIENT_SECRET"
   ```
+- **Paperless-ngx:** `manage.py` in the pod needs no login. For the API as
+  `admin`, enable it (the next restart disables it again) and use the password
+  from `just bao kv get -field=admin_password kv/loft01/paperless`:
+  ```sh
+  kubectl -n paperless exec -it paperless-0 -c paperless -- python3 manage.py shell \
+    -c "from django.contrib.auth.models import User; User.objects.filter(username='admin').update(is_active=True)"
+  ```

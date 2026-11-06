@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: paperless
+  labels:
+    fleet.io/ruler: loki
+spec:
+  groups:
+    - name: paperless
+      rules:
+        - alert: PaperlessPasswordLogin
+          expr: sum by (username) (count_over_time({namespace="paperless", container="paperless"} |= "[paperless.auth]" |= "Login failed for user" | regexp "Login failed for user `(?P<username>[^`]*)`" [5m])) > 0
+          labels:
+            severity: warning
+            instance: '{{ $labels.username }}'
+          annotations:
+            summary: "Someone tried a password on Paperless (API basic auth or token). Only Keycloak logins are allowed and admin is disabled outside break-glass, so every attempt fails: someone guessing, or break-glass in progress."
