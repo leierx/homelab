@@ -6,9 +6,16 @@ valkey:
   image:
     repository: docker.io/valkey/valkey
     tag: 9.1.3-alpine
+# tesseract's eng, nor and osd data, mounted over the image's (packages/tessdata)
+tessdata:
+  image:
+    repository: ghcr.io/leierx/tessdata
+    tag: 0.1.1
 # URL, per cluster
 url: ""
 timeZone: UTC
+# tesseract languages, main one first
+ocrLanguage: nor+eng
 database:
   storage:
     size: 1Gi
