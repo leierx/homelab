@@ -1,4 +1,4 @@
-url: https://oc.skinke.net
+url: https://opencloud.skinke.net
 oidc:
   issuer: https://auth.skinke.net/realms/homelab
 ids:

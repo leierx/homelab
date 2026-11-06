@@ -9,7 +9,7 @@ spec:
     kind: ClusterIssuer
     name: letsencrypt-prod
   dnsNames:
-    - photos.skinke.net
+    - immich.skinke.net
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: ListenerSet
@@ -23,7 +23,7 @@ spec:
     - name: https
       protocol: HTTPS
       port: 443
-      hostname: photos.skinke.net
+      hostname: immich.skinke.net
       tls:
         mode: Terminate
         certificateRefs:
@@ -41,7 +41,7 @@ spec:
       kind: ListenerSet
       name: immich-edge
   hostnames:
-    - photos.skinke.net
+    - immich.skinke.net
   rules:
     - backendRefs:
         - name: immich-server

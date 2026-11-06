@@ -9,7 +9,7 @@ spec:
     kind: ClusterIssuer
     name: letsencrypt-prod
   dnsNames:
-    - oc.skinke.net
+    - opencloud.skinke.net
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: ListenerSet
@@ -23,7 +23,7 @@ spec:
     - name: https
       protocol: HTTPS
       port: 443
-      hostname: oc.skinke.net
+      hostname: opencloud.skinke.net
       tls:
         mode: Terminate
         certificateRefs:
@@ -41,7 +41,7 @@ spec:
       kind: ListenerSet
       name: opencloud-edge
   hostnames:
-    - oc.skinke.net
+    - opencloud.skinke.net
   rules:
     - backendRefs:
         - name: opencloud

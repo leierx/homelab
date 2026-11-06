@@ -26,7 +26,7 @@ spec:
           passwordLogin:
             enabled: false
           server:
-            externalDomain: https://photos.skinke.net
+            externalDomain: https://immich.skinke.net
           machineLearning:
             urls: [http://immich-machine-learning:3003]
           # Renovate brings new versions

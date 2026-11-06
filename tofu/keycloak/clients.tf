@@ -87,7 +87,7 @@ resource "keycloak_openid_client" "immich" {
   client_id = "immich"
   name      = "immich"
   enabled   = true
-  base_url  = "https://photos.skinke.net"
+  base_url  = "https://immich.skinke.net"
 
   access_type                  = "CONFIDENTIAL"
   client_secret_wo             = var.immich_client_secret
@@ -99,8 +99,8 @@ resource "keycloak_openid_client" "immich" {
   full_scope_allowed           = false
 
   valid_redirect_uris = [
-    "https://photos.skinke.net/auth/login",
-    "https://photos.skinke.net/user-settings",
+    "https://immich.skinke.net/auth/login",
+    "https://immich.skinke.net/user-settings",
     "app.immich:///oauth-callback",
   ]
 }
@@ -272,7 +272,7 @@ resource "keycloak_openid_client" "opencloud" {
   client_id = "opencloud"
   name      = "opencloud"
   enabled   = true
-  base_url  = "https://oc.skinke.net"
+  base_url  = "https://opencloud.skinke.net"
 
   access_type                  = "PUBLIC"
   standard_flow_enabled        = true
@@ -283,12 +283,12 @@ resource "keycloak_openid_client" "opencloud" {
   pkce_code_challenge_method   = "S256"
 
   valid_redirect_uris = [
-    "https://oc.skinke.net/",
-    "https://oc.skinke.net/oidc-callback.html",
-    "https://oc.skinke.net/oidc-silent-redirect.html",
+    "https://opencloud.skinke.net/",
+    "https://opencloud.skinke.net/oidc-callback.html",
+    "https://opencloud.skinke.net/oidc-silent-redirect.html",
   ]
   valid_post_logout_redirect_uris = ["+"]
-  web_origins                     = ["https://oc.skinke.net"]
+  web_origins                     = ["https://opencloud.skinke.net"]
 }
 
 # OpenCloud's desktop and mobile apps, under the client IDs they ship with
