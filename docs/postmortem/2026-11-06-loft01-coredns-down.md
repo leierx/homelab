@@ -145,15 +145,77 @@ the host's break-glass kubeconfig was left, which is how it was diagnosed.
 
 The health check afterwards found one older problem: **email alerts have
 never been delivered.** Alertmanager mails critical alerts straight to
-`mail.protonmail.ch:25`. Cilium allows the SYN and sends it out on `eno1`,
-but no reply comes back, to Proton or to Gmail's MX. Outbound port 25 is
-blocked upstream of loft01, at the router or the ISP. Mimir has no successful
-email notification on record. So the "critical alerts by email" channel in
-`docs/monitoring.md` didn't exist even before this outage.
+`mail.protonmail.ch:25`, and Mimir has no successful email notification on
+record. The "critical alerts by email" channel in `docs/monitoring.md` didn't
+exist even before this outage. Tests at 19:00–19:15:
+
+| Test | Result |
+| --- | --- |
+| Probe pod on loft01 to port 25 of both Proton MXs, Gmail's MX, and `portquiz.net` (which answers on every port) | All time out. Cilium allows the SYN and sends it out on `eno1`; nothing comes back |
+| Same probe to port 587 of `smtp.protonmail.ch` and `smtp.gmail.com`, and to `portquiz.net` on 587 and 2525 | All answer |
+| Synthetic critical alert `EmailDeliveryTest` through Alertmanager | Alerta gets it; email fails with `dial tcp 176.119.200.128:25: i/o timeout` |
+| Same mail from the workstation, on another ISP, to Proton's MX on port 25 | Accepted (`250 Ok: queued as 4jLnF268S3zNs`), although SPF fails from that IP |
+
+So outbound port 25 is blocked at loft01's uplink (Lyse/Altibox,
+`184.81-167-247.customer.lyse.net`) for every destination, and Proton's side
+works. `skinke.net` has no MX or DKIM record, so it isn't a Proton custom
+domain, and Proton's authenticated submission on 587 isn't available for
+`alertmanager@skinke.net` as it stands.
 
 Outage: 02:28 to 18:31 CET, about 16 hours. It took about an hour from the
 start of the investigation to recovery. The off-site backup still ran, at 02:47
 (`OnBootSec`) and at 09:44, because it only needs the local API.
+
+## Follow-up: pod DNS reworked (CET)
+
+After recovery, the question was why `coredns-custom` lived in Nix at all.
+It had two jobs: the split-horizon rewrite, and an upstream server block,
+bound to `127.0.0.53` inside the CoreDNS pod, that forced TCP to the host's
+resolved. The kubelet's `resolv-conf` pointed CoreDNS at `127.0.0.53`, so
+without the ConfigMap CoreDNS forwarded to itself and its `loop` plugin
+stopped it. That made the ConfigMap a bootstrap dependency, so c303924 moved
+it into Nix, where it was generated and broke.
+
+- **19:50** c520efb and 1c88f7f try to drop the upstream block: the kubelet
+  points CoreDNS straight at resolved on `192.168.2.50`, which now listens on
+  UDP too, and the k3s manifest goes. k3s leaves the ConfigMap in place when
+  its manifest file disappears (`pkg/deploy/controller.go` only deletes
+  disabled manifests).
+- **19:58:37** CoreDNS restarted on that config. External lookups from pods
+  time out (cluster names and the rewrite still work), from 19:58:44 to
+  20:00:13. resolved receives and answers the queries, but for extra stub
+  listeners it sends UDP replies with `IP_PKTINFO` pinned to the ingress
+  interface (`resolved-dns-stub.c`). Cilium delivers pod→host traffic in on
+  `cilium_net`, while the route back to pods is `cilium_host`, so the replies
+  never arrive. TCP is unaffected, which is why the old block forced TCP.
+- **20:00** Mitigated without root: CoreDNS's Deployment gets
+  `dnsPolicy: None` with nameserver `127.0.0.53`, so it uses the old TCP
+  block, which is still in the ConfigMap.
+- **20:05** Tested in a scratch pod on the same CoreDNS 1.14.6 image: an
+  upstream block on `127.0.0.53` that speaks DoT to Quad9. The main block
+  can't stay on the wildcard ("zone overlap" with `127.0.0.53`), and
+  `bind eth0` fails on every first start because eth0's IPv6 link-local
+  address isn't bindable yet. In production this showed up as one restart
+  per new CoreDNS pod. `bind 0.0.0.0` works: lookups, the rewrite, DNSSEC
+  failures (`SERVFAIL`) and `NXDOMAIN` all behave as expected, over DoT only.
+- **20:10** 8642ca2 lets CoreDNS reach world:853, and 8548612 puts
+  `coredns-custom` back in the `cilium` addon as a plain YAML file
+  (`bind 0.0.0.0`, DoT to Quad9). CoreDNS reloads it live; upstream traffic
+  goes to `9.9.9.9:853`.
+- **20:16** 9f9f340 switched (the first switch built a cached `main`, so the
+  rev was pinned): the kubelet is back on `127.0.0.53`, and resolved no longer
+  listens on `192.168.2.50`. The temporary Deployment patch is reverted, so
+  CoreDNS is k3s's stock Deployment again. The stale k3s `Addon` and k3s's
+  tracking metadata on the ConfigMap are deleted. A new CoreDNS pod starts
+  with zero restarts.
+- **20:18** 247811a drops CoreDNS's egress to host:53 and the host's ingress
+  rule for it, and bootstrap step 1 applies `coredns-custom` again
+  (`fleet/README.md`).
+
+Now resolved only serves WireGuard peers (`10.0.0.1`) and the host itself.
+Pods use CoreDNS, which talks DoT to Quad9 directly, and Quad9 validates
+DNSSEC. `coredns-custom` is a reviewed plain file under Argo CD again, with
+the Argo CD diff preview on PRs.
 
 ## Action items
 
@@ -163,9 +225,10 @@ start of the investigation to recovery. The off-site backup still ran, at 02:47
 | Check the other generated k3s configs (`authentication`, `admission`, `audit`) for the same fold: no generated YAML in the closure has a line ending in a backslash | done |
 | `CoreDNSConfigRejected` alert on `coredns_reload_failed_total > 0` (critical, so it mails). It would have fired from 04 Nov 21:05 on | done (3abdc29) |
 | An out-of-cluster dead man's switch, e.g. on a Raspberry Pi: an always-firing `Watchdog` alert it expects, and a notification when it stops. Today a total outage is silent because alert delivery needs cluster DNS and Alerta | open, later |
-| Email alerts: outbound port 25 is blocked upstream. Unblock it at the router or ISP, or point `smtp_smarthost` at a sending provider on 587 with auth (`docs/monitoring.md`) | open |
-| Validate the generated CoreDNS config at build time (e.g. a flake check that starts `coredns` on the generated files), so a bad Corefile fails `nix build` instead of the cluster | open |
+| Email alerts: outbound port 25 is blocked at the ISP. Ask Lyse/Altibox to open it (the generic `customer.lyse.net` PTR may still hurt deliverability), or point `smtp_smarthost` at an authenticated relay on 587: Proton (needs `skinke.net` as a custom domain), Gmail with an app password, or a transactional provider | open |
+| Validate the generated CoreDNS config at build time | superseded: `coredns-custom` is a plain file in Argo CD again, nothing generates it, and `CoreDNSConfigRejected` catches a bad one (8548612) |
 | Delete the `Failed` pods left by the shutdowns, and explain the `cilium-operator` pile-up | done (Recovery, 18:40) |
+| Remove `bind eth0`, which crashed every new CoreDNS pod once (IPv6 link-local not yet bindable) | done (8548612) |
 
 ## Lessons
 
@@ -183,3 +246,9 @@ start of the investigation to recovery. The off-site backup still ran, at 02:47
 - Cluster DNS is a dependency of the tools for noticing and fixing a DNS outage
   too (Keycloak, `kubectl` over OIDC, Alertmanager, both Gateways). The host's
   `doas` kubeconfig was the only way in, as `docs/README.md` intends.
+- Test a DNS path change in a scratch pod before it reaches CoreDNS. The
+  resolved/Cilium UDP problem cost 90 seconds of pod DNS. The same test, run
+  first, found the `bind` constraints before production did.
+- Pin `nixos-rebuild --flake` to a rev (or `--refresh`) right after a push.
+  Nix caches the `ref=main` lookup, so a quick second switch can silently build
+  the previous commit.
