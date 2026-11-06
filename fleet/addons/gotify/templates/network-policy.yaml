@@ -59,7 +59,7 @@ spec:
             app.kubernetes.io/name: cloudnative-pg
       toPorts:
         - ports:
-            - {port: "8080", protocol: TCP}
+            - {port: "8000", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: telemetry
