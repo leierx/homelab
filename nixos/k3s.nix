@@ -173,9 +173,7 @@ in
       "--disable=traefik,servicelb,local-storage,metrics-server"
       "--disable-cloud-controller"
       "--cluster-cidr=10.42.0.0/16"
-      # CoreDNS (dnsPolicy Default) forwards here: 127.0.0.53 inside its pod is coredns-custom's upstream.server,
-      # DoT to Quad9 (fleet/clusters/loft01/cilium/manifests). Not the host's resolved: it pins UDP replies to
-      # cilium_net, which doesn't route back to pods
+      # CoreDNS's upstream: coredns-custom's DoT block in its pod; resolved's UDP replies don't route back through Cilium
       "--resolv-conf=${pkgs.writeText "k3s-resolv.conf" "nameserver 127.0.0.53\n"}"
       "--secrets-encryption"
       "--kubelet-arg=system-reserved=cpu=2,memory=16Gi"
@@ -212,6 +210,27 @@ in
       }
     ];
   };
+
+  # literal YAML, not generated: a generator folded the regex (docs/postmortem/2026-11-06-loft01-coredns-down.md)
+  services.k3s.manifests.coredns-custom.source = pkgs.writeText "coredns-custom.yaml" ''
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: coredns-custom
+      namespace: kube-system
+    data:
+      split-horizon.override: |
+        bind 0.0.0.0
+        rewrite name regex \.skinke\.net(\..*\.cluster\.local)?\.$ edge.envoy-gateway-system.svc.cluster.local. answer auto
+      upstream.server: |
+        .:53 {
+          bind 127.0.0.53
+          forward . tls://9.9.9.9 tls://149.112.112.112 {
+            tls_servername dns.quad9.net
+          }
+          cache 30
+        }
+  '';
 
   systemd.tmpfiles.rules = [ "d /var/log/kubernetes 0700 root root -" ];
 
