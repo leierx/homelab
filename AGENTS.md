@@ -15,7 +15,7 @@ Instructions for coding agents working in this repository. Follow
 - `nixos/` — Declarative NixOS configuration for `loft01` (disko, k3s,
   host secrets, WireGuard, restic off-site backup).
 - `.github/workflows/` — CI: Argo CD diff preview and Nix checks on PRs, the
-  `capi-argo-bridge` and `tessdata-nor` image builds, and Renovate config
+  `capi-argo-bridge` and `tessdata` image builds, and Renovate config
   validation.
 - `renovate.json5` and `renovate/` — Renovate config, one preset per concern;
   Renovate also bumps `flake.lock` and the Go modules in `packages/`.
