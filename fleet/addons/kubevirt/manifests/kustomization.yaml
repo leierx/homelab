@@ -13,6 +13,12 @@ patches:
       - op: add
         path: /metadata/annotations/argocd.argoproj.io~1sync-options
         value: Delete=false,Prune=false
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1warn
+        value: privileged
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1audit
+        value: privileged
   # the seccomp profile is the one thing keeping virt-launcher (uid 107) out of Pod Security restricted in v1.9.1
   - target:
       kind: KubeVirt
