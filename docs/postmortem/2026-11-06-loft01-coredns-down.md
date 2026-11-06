@@ -157,10 +157,12 @@ exist even before this outage. Tests at 19:00–19:15:
 | Same mail from the workstation, on another ISP, to Proton's MX on port 25 | Accepted (`250 Ok: queued as 4jLnF268S3zNs`), although SPF fails from that IP |
 
 So outbound port 25 is blocked at loft01's uplink (Lyse/Altibox,
-`184.81-167-247.customer.lyse.net`) for every destination, and Proton's side
-works. `skinke.net` has no MX or DKIM record, so it isn't a Proton custom
-domain, and Proton's authenticated submission on 587 isn't available for
-`alertmanager@skinke.net` as it stands.
+`184.81-167-247.customer.lyse.net`) for every destination except Altibox's
+own relay, and Proton's side works. The relay (`smtp.altibox.no:25`)
+rejects us at `RCPT`: `Client host [81.167.247.184] blocked using
+zen.spamhaus.org; Listed by PBL`. On 587 it wants a login. ntfy.sh no longer
+sends email anonymously, and Proton's SMTP submission needs a paid plan and
+`skinke.net` as a custom domain.
 
 Outage: 02:28 to 18:31 CET, about 16 hours. It took about an hour from the
 start of the investigation to recovery. The off-site backup still ran, at 02:47
@@ -214,8 +216,11 @@ it into Nix, where it was generated and broke.
 
 Now resolved only serves WireGuard peers (`10.0.0.1`) and the host itself.
 Pods use CoreDNS, which talks DoT to Quad9 directly, and Quad9 validates
-DNSSEC. `coredns-custom` is a reviewed plain file under Argo CD again, with
-the Argo CD diff preview on PRs.
+DNSSEC.
+- **20:52** 2778e6c and 21bd669 move `coredns-custom` back into
+  `nixos/k3s.nix`, as a literal YAML string, so k3s applies it at boot and
+  nothing generates it. `Prune=false` kept Argo CD from deleting it on the way
+  out.
 
 ## Action items
 
@@ -225,8 +230,8 @@ the Argo CD diff preview on PRs.
 | Check the other generated k3s configs (`authentication`, `admission`, `audit`) for the same fold: no generated YAML in the closure has a line ending in a backslash | done |
 | `CoreDNSConfigRejected` alert on `coredns_reload_failed_total > 0` (critical, so it mails). It would have fired from 04 Nov 21:05 on | done (3abdc29) |
 | An out-of-cluster dead man's switch, e.g. on a Raspberry Pi: an always-firing `Watchdog` alert it expects, and a notification when it stops. Today a total outage is silent because alert delivery needs cluster DNS and Alerta | open, later |
-| Email alerts: outbound port 25 is blocked at the ISP. Ask Lyse/Altibox to open it (the generic `customer.lyse.net` PTR may still hurt deliverability), or point `smtp_smarthost` at an authenticated relay on 587: Proton (needs `skinke.net` as a custom domain), Gmail with an app password, or a transactional provider | open |
-| Validate the generated CoreDNS config at build time | superseded: `coredns-custom` is a plain file in Argo CD again, nothing generates it, and `CoreDNSConfigRejected` catches a bad one (8548612) |
+| Email alerts without a new account: delist 81.167.247.184 from the Spamhaus PBL, then relay through `smtp.altibox.no:25` if it accepts customers without a login; otherwise ask Altibox to open port 25, or use Proton SMTP submission if the plan is paid | open |
+| Validate the generated CoreDNS config at build time | superseded: `coredns-custom` is a literal string in `nixos/k3s.nix`, nothing generates it, and `CoreDNSConfigRejected` catches a bad one (21bd669) |
 | Delete the `Failed` pods left by the shutdowns, and explain the `cilium-operator` pile-up | done (Recovery, 18:40) |
 | Remove `bind eth0`, which crashed every new CoreDNS pod once (IPv6 link-local not yet bindable) | done (8548612) |
 
