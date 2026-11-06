@@ -84,6 +84,8 @@ spec:
               value: redis://127.0.0.1:6379
             - name: PAPERLESS_TIME_ZONE
               value: {{ .Values.timeZone | quote }}
+            - name: PAPERLESS_OCR_LANGUAGE
+              value: {{ .Values.ocrLanguage | quote }}
             # created only so the first sign-up can't become superuser; disable-admin.sh deactivates it on every start
             - name: PAPERLESS_ADMIN_USER
               value: admin
@@ -165,6 +167,10 @@ spec:
             # also the scratch dir for uploads and OCR
             - name: tmp
               mountPath: /tmp
+            # upstream's PAPERLESS_OCR_LANGUAGES would apt-get it as root at boot
+            - name: tessdata-nor
+              mountPath: /usr/share/tesseract-ocr/5/tessdata/nor.traineddata
+              subPath: nor.traineddata
             # a single root-owned file: the image refuses scripts from a writable or non-root directory
             - name: init
               mountPath: /custom-cont-init.d/disable-admin.sh
@@ -184,6 +190,9 @@ spec:
           emptyDir:
             # uploads and OCR scratch; evicts this pod before the node's root disk fills
             sizeLimit: 10Gi
+        - name: tessdata-nor
+          image:
+            reference: {{ .Values.tessdataNor.image.repository }}:{{ .Values.tessdataNor.image.tag }}
         - name: init
           configMap:
             name: paperless-init
