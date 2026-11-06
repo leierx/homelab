@@ -1,0 +1,17 @@
+namespace: paperless
+helm:
+  path: fleet/addons/paperless
+dependencies:
+  - cilium
+  - cloudnative-pg
+  - external-secrets
+  - zfs-localpv
+  - prometheus-operator-crds
+  - cert-manager
+  - envoy-gateway
+  - keycloak
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

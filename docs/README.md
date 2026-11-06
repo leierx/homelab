@@ -68,7 +68,8 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
     (`photos.skinke.net`), Miniflux (`rss.skinke.net`), OpenCloud
     (`oc.skinke.net`), and Grafana (`metrics.skinke.net`).
   - `wg` (WireGuard `10.0.0.1` only): Alerta (`alerta.skinke.net`), Argo CD
-    (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), and the Keycloak
+    (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), Paperless-ngx
+    (`paperless.skinke.net`), and the Keycloak
     admin console (`https://keycloak.skinke.net/admin/homelab/console/`).
     `auth.skinke.net` stays public for WireGuard peers too, so an app's page and
     Keycloak are never split between a public and a private address (browsers ask

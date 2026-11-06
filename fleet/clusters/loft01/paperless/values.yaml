@@ -1,0 +1,13 @@
+url: https://paperless.skinke.net
+timeZone: Europe/Oslo
+database:
+  storage:
+    storageClass: zfs
+    size: 5Gi
+persistence:
+  data:
+    storageClass: zfs
+  # a ZFS dataset: documents keep their names on disk, browsable per file in snapshots
+  media:
+    storageClass: zfs-thin
+    size: 50Gi

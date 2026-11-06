@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+    # with the pod: WaitForFirstConsumer leaves it Pending until then
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.persistence.data.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.data.size }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.persistence.media.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.media.size }}

@@ -86,7 +86,8 @@ spec:
           'keycloak',
           'miniflux',
           'monitoring',
-          'opencloud'
+          'opencloud',
+          'paperless'
         ]
       message: >-
         only approved web-facing namespaces may attach HTTPRoute or ListenerSet

@@ -37,6 +37,7 @@
         'quay.io/keycloak/keycloak',
         'ghcr.io/openbao/charts/openbao',
         'docker.io/opencloudeu/opencloud-rolling',
+        'ghcr.io/paperless-ngx/paperless-ngx',
       ],
       matchUpdateTypes: ['minor'],
       automerge: false,

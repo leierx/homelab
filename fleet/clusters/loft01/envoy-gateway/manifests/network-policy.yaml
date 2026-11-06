@@ -34,6 +34,9 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: opencloud
             app.kubernetes.io/name: opencloud
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: paperless
+            app.kubernetes.io/name: paperless
       toPorts:
         - ports: [{ port: "10443", protocol: TCP }]
     # cert-manager HTTP-01 self-check for auth.skinke.net
@@ -138,6 +141,12 @@ spec:
             app.kubernetes.io/name: alerta
       toPorts:
         - ports: [{ port: "8080", protocol: TCP }]
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: paperless
+            app.kubernetes.io/name: paperless
+      toPorts:
+        - ports: [{ port: "8000", protocol: TCP }]
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: keycloak

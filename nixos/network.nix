@@ -16,6 +16,7 @@
       10.0.0.1 alerta.skinke.net
       10.0.0.1 argocd.skinke.net
       10.0.0.1 keycloak.skinke.net
+      10.0.0.1 paperless.skinke.net
       10.0.0.1 workflows.skinke.net
     '';
 
