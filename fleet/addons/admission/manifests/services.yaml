@@ -36,6 +36,10 @@ metadata:
   name: security-policies-keep-oidc
 spec:
   failurePolicy: Fail
+  # a SecurityPolicy being deleted only loses finalizers; blocking that leaves it stuck
+  matchConditions:
+    - name: not-deleting
+      expression: "!has(object.metadata.deletionTimestamp)"
   matchConstraints:
     resourceRules:
       - apiGroups: [gateway.envoyproxy.io]
