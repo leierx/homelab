@@ -15,7 +15,8 @@ Instructions for coding agents working in this repository. Follow
 - `nixos/` — Declarative NixOS configuration for `loft01` (disko, k3s,
   host secrets, WireGuard, restic off-site backup).
 - `.github/workflows/` — CI: Argo CD diff preview and Nix checks on PRs, the
-  `capi-argo-bridge` image build, and Renovate config validation.
+  `capi-argo-bridge` and `tessdata-nor` image builds, and Renovate config
+  validation.
 - `renovate.json5` and `renovate/` — Renovate config, one preset per concern;
   Renovate also bumps `flake.lock` and the Go modules in `packages/`.
 - `docs/README.md` — Operational runbook for `loft01` (OpenBao secrets, SSO,
@@ -50,7 +51,7 @@ Design: issue #167. Read `fleet/README.md` for the schema.
      `managedNamespaceMetadata`, `application`. Maps deep-merge, later layer
      wins; `dependencies` and `sources` concatenate.
    - Local charts (`alerta`, `capi-argo-bridge`, `keycloak`, `mimir`,
-     `miniflux`) set `helm.path: fleet/addons/<name>`.
+     `miniflux`, `paperless`) set `helm.path: fleet/addons/<name>`.
 3. **Enabling:** `envs/<env>/env.yaml` and `clusters/<cluster>/cluster.yaml`
    map `addons: {<name>: true|false}`; the cluster wins. A name with no
    catalog entry is a scoped addon (e.g. `dodde` on `loft01`).

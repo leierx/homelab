@@ -38,10 +38,11 @@
         {
           inherit capi-argo-bridge;
           capi-argo-bridge-image = capi-argo-bridge.image;
+          tessdata-nor-image = pkgs.callPackage ./packages/tessdata-nor { };
         };
 
       checks.x86_64-linux = {
-        inherit (self.packages.x86_64-linux) capi-argo-bridge capi-argo-bridge-image;
+        inherit (self.packages.x86_64-linux) capi-argo-bridge capi-argo-bridge-image tessdata-nor-image;
       };
 
       formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-tree;
