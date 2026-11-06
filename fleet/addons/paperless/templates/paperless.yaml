@@ -173,6 +173,9 @@ spec:
             # documents come in through the web UI and API; nothing can write to a consume folder
             - name: PAPERLESS_CONSUMER_DISABLE
               value: "true"
+            # an upload byte-identical to an existing document (trash included) is rejected instead of consumed
+            - name: PAPERLESS_CONSUMER_DELETE_DUPLICATES
+              value: "true"
             # an emptyDir /run is world-writable and root-owned; s6 refuses it otherwise
             - name: S6_YES_I_WANT_A_WORLD_WRITABLE_RUN_BECAUSE_KUBERNETES
               value: "1"
