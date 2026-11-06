@@ -2,6 +2,7 @@ namespace: monitoring
 dependencies:
   - alerta
   - cilium
+  - ntfy
   - external-secrets
   - zfs-localpv
   - prometheus-operator-crds

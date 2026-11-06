@@ -1,9 +1,5 @@
 automountServiceAccountToken: false
 config:
-  global:
-    # no relay or account: straight to the recipient's MX
-    smtp_smarthost: mail.protonmail.ch:25
-    smtp_require_tls: true
   route:
     receiver: alerta
     group_by: [alertname]
@@ -11,22 +7,26 @@ config:
     group_interval: 1m
     repeat_interval: 4h
     routes:
-      - receiver: email
+      - receiver: ntfy
         matchers: ['severity="critical"']
         continue: true
       - receiver: alerta
   receivers:
-    - name: email
-      email_configs:
-        - to: larssmitheier@protonmail.com
-          send_resolved: true
+    - name: ntfy
+      webhook_configs:
+        - url: http://ntfy.ntfy.svc:8080/alerts?template=alertmanager
+          http_config:
+            authorization: {type: Bearer, credentials_file: /etc/alertmanager-secrets/ntfy-token}
     - name: alerta
       webhook_configs:
         - url: http://alerta.alerta.svc:8080/api/webhooks/prometheus
           http_config:
             authorization: {type: Key, credentials_file: /etc/alertmanager-secrets/alerta-api-key}
+# receiver_name on the notification metrics, so Alerta and ntfy (both webhooks) report each other
+extraArgs:
+  enable-feature: receiver-name-in-metrics
 extraSecretMounts:
-  - {name: alerta-api-key, mountPath: /etc/alertmanager-secrets, secretName: alertmanager, readOnly: true}
+  - {name: secrets, mountPath: /etc/alertmanager-secrets, secretName: alertmanager, readOnly: true}
 statefulSet: {enabled: true}
 persistence:
   enabled: true

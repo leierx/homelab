@@ -13,7 +13,7 @@ How metrics, logs and alerts work on `loft01`. Everything here is an addon in
                                      │                           │ ruler
                        syncs PrometheusRules                     ▼
                        (fleet.io/ruler: mimir)             alertmanager ──webhook──▶ alerta
-                                                                 ▲    └──critical: SMTP──▶ inbox
+                                                                 ▲    └──critical: webhook──▶ ntfy ──▶ phone
  pod logs, audit log, host journal ─▶ alloy-logs ──┐             │
  Kubernetes events ─▶ alloy-events ────────────────┴─▶ loki ─────┘ ruler
                        syncs PrometheusRules (fleet.io/ruler: loki)
@@ -23,8 +23,9 @@ How metrics, logs and alerts work on `loft01`. Everything here is an addon in
 |---|---|---|
 | `mimir` | `monitoring` | Metrics TSDB and rule evaluation. One StatefulSet running `-target=all` (upstream's monolithic mode) on a filesystem volume, 90 days of retention. |
 | `loki` | `monitoring` | Logs and log-based rules, single binary, 30 days. |
-| `alertmanager` | `monitoring` | Routes every alert to Alerta, and mails the critical ones. |
+| `alertmanager` | `monitoring` | Routes every alert to Alerta, and pushes the critical ones through ntfy. |
 | `alerta` | `alerta` | Keeps alert history, acknowledgements and notes (180 days, CloudNativePG). |
+| `ntfy` | `ntfy` | Push notifications to the phone at `ntfy.skinke.net` (CloudNativePG). |
 | `grafana` | `monitoring` | Dashboards only. Holds no alert rules and nothing that can't be rebuilt from git. |
 | `alloy-metrics` | `telemetry` | Scrapes everything into Mimir and syncs the Mimir rules. |
 | `alloy-logs` | `telemetry` | DaemonSet: pod logs, the API server audit log, the host journal. |
@@ -137,28 +138,30 @@ as a webhook (`/api/webhooks/prometheus`) with the API key from
 with notes and acknowledgements. Mimir's ruler also writes `ALERTS` and
 `ALERTS_FOR_STATE` series back, so Grafana can chart and count past alerts.
 
-Alerts with `severity: critical` are also mailed, every 4 hours while they
-fire and once when they resolve; everything else waits in Alerta. Alertmanager
-hands the mail straight to Proton's MX (`mail.protonmail.ch:25`) as
-`alertmanager@skinke.net`, so there is no relay, provider account or secret.
-That needs two things outside git, once:
+Alerts with `severity: critical` are also pushed to the phone through `ntfy`,
+every 4 hours while they fire and once when they resolve; everything else waits
+in Alerta. Alertmanager posts to ntfy's `alerts` topic inside the cluster, and
+ntfy's `alertmanager` template (`fleet/addons/ntfy/files/alertmanager.yml`)
+turns the webhook into the title, message and priority: urgent while firing,
+low once resolved. ntfy denies everyone but two users, both from
+`ExternalSecret/ntfy`: `alertmanager` may only publish (a token), `leier` may
+only subscribe.
 
-- SPF for the domain, `skinke.net TXT "v=spf1 a -all"`: its A record is the
-  home IP, which is also the HELO name.
-- `alertmanager@skinke.net` on Proton's allow list (Settings, Filters), so it
-  skips the spam folder.
+To subscribe, install the ntfy app, add the server `https://ntfy.skinke.net`
+with user `leier` and the password from
+`just bao kv get -field=leier_password kv/loft01/ntfy`, and subscribe to
+`alerts`. ntfy has no web app here and no OIDC; the phone app talks to it
+through the `edge` Gateway, outside Envoy's OIDC login.
 
 To stop the repeats, silence the alert in Grafana (Alerting, Silences, with
 the `Alertmanager` datasource). Acknowledging it in Alerta doesn't: the
 `prometheus` plugin in the `alerta-web` image still calls Alertmanager's v1
 API, which Alertmanager has removed.
 
-The two channels watch each other: `AlertmanagerEmailFailing` (warning) shows a
-failed mail in Alerta, and `AlertmanagerAlertaFailing` (critical) mails you when
-Alerta can't be reached. If mail keeps failing because the ISP blocks port 25
-or Proton refuses a residential IP, point `smtp_smarthost` at a sending
-provider on 587, with `smtp_auth_username` and `smtp_auth_password_file` from
-an `ExternalSecret`.
+The two channels watch each other: `AlertmanagerNtfyFailing` (warning) shows a
+failed push in Alerta, and `AlertmanagerAlertaFailing` (critical) pushes when
+Alerta can't be reached. Both read `receiver_name`, which Alertmanager only adds
+with `--enable-feature=receiver-name-in-metrics`.
 
 Nothing alerts if the whole stack is down.
 

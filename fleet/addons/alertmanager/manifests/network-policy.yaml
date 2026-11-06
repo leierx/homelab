@@ -29,8 +29,10 @@ spec:
       toPorts:
         - ports:
             - {port: "8080", protocol: TCP}
-    # critical alerts by email, straight to the recipient's MX
-    - toEntities: [world]
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: ntfy
+            app.kubernetes.io/name: ntfy
       toPorts:
         - ports:
-            - {port: "25", protocol: TCP}
+            - {port: "8080", protocol: TCP}

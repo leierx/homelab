@@ -8,19 +8,19 @@ spec:
   groups:
     - name: alertmanager
       rules:
-        # each channel reports the other: a mail failure shows in Alerta, an Alerta failure arrives by mail
-        - alert: AlertmanagerEmailFailing
-          expr: sum(increase(alertmanager_notifications_failed_total{integration="email"}[15m])) > 0
+        # each channel reports the other: a failed push shows in Alerta, an Alerta failure arrives as a push
+        - alert: AlertmanagerNtfyFailing
+          expr: sum(increase(alertmanager_notifications_failed_total{receiver_name="ntfy"}[15m])) > 0
           labels:
             severity: warning
-            instance: alertmanager/email
+            instance: alertmanager/ntfy
           annotations:
-            summary: 'A critical alert could not be mailed: the Alertmanager log has the SMTP error (port 25 blocked, or the recipient refused it).'
+            summary: 'A critical alert could not be pushed: the Alertmanager log has the ntfy error.'
         - alert: AlertmanagerAlertaFailing
-          expr: sum(increase(alertmanager_notifications_failed_total{integration="webhook"}[15m])) > 0
+          expr: sum(increase(alertmanager_notifications_failed_total{receiver_name="alerta"}[15m])) > 0
           for: 15m
           labels:
             severity: critical
             instance: alertmanager/alerta
           annotations:
-            summary: 'Alertmanager cannot deliver to Alerta: only critical alerts reach you, by email.'
+            summary: 'Alertmanager cannot deliver to Alerta: only critical alerts reach you, as ntfy pushes.'
