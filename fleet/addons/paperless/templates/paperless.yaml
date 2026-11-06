@@ -49,6 +49,52 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+        - name: tika
+          image: {{ .Values.tika.image.repository }}:{{ .Values.tika.image.tag }}
+          restartPolicy: Always
+          # the image's entrypoint hardcodes -h 0.0.0.0, and the first -h wins
+          command:
+            - /bin/sh
+            - -c
+            - exec java -cp "/tika-server-standard-${TIKA_VERSION}.jar:/tika-extras/*" org.apache.tika.server.core.TikaServerCli -h 127.0.0.1
+          resources:
+            requests: { cpu: 10m, memory: 384Mi }
+            limits: { memory: 2Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tika-tmp
+              mountPath: /tmp
+        # documents are untrusted: no fetching beyond its own /tmp, no JavaScript, no webhooks
+        - name: gotenberg
+          image: {{ .Values.gotenberg.image.repository }}:{{ .Values.gotenberg.image.tag }}
+          restartPolicy: Always
+          args:
+            - gotenberg
+            - --api-bind-ip=127.0.0.1
+            - --api-disable-download-from
+            - --webhook-disable
+            - --libreoffice-deny-private-ips
+            - --chromium-disable-javascript
+            - --chromium-allow-list=^file:///tmp/.*
+          env:
+            # Chromium's crash handler needs a writable home; the image's belongs to another UID
+            - name: HOME
+              value: /tmp
+          resources:
+            requests: { cpu: 10m, memory: 128Mi }
+            limits: { memory: 2Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: gotenberg-tmp
+              mountPath: /tmp
       containers:
         - name: paperless
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -86,6 +132,12 @@ spec:
               value: {{ .Values.timeZone | quote }}
             - name: PAPERLESS_OCR_LANGUAGE
               value: {{ .Values.ocrLanguage | quote }}
+            - name: PAPERLESS_TIKA_ENABLED
+              value: "true"
+            - name: PAPERLESS_TIKA_ENDPOINT
+              value: http://127.0.0.1:9998
+            - name: PAPERLESS_TIKA_GOTENBERG_ENDPOINT
+              value: http://127.0.0.1:3000
             # created only so the first sign-up can't become superuser; disable-admin.sh deactivates it on every start
             - name: PAPERLESS_ADMIN_USER
               value: admin
@@ -190,6 +242,12 @@ spec:
           emptyDir:
             # uploads and OCR scratch; evicts this pod before the node's root disk fills
             sizeLimit: 10Gi
+        - name: tika-tmp
+          emptyDir:
+            sizeLimit: 2Gi
+        - name: gotenberg-tmp
+          emptyDir:
+            sizeLimit: 2Gi
         - name: tessdata
           image:
             reference: {{ .Values.tessdata.image.repository }}:{{ .Values.tessdata.image.tag }}
