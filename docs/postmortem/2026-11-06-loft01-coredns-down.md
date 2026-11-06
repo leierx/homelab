@@ -24,7 +24,8 @@ it surfaced only when the pod was recreated by the reboot.
   admin kubeconfig through `doas` worked.
 - No alerts or mails: Mimir's ruler couldn't resolve
   `alertmanager.monitoring.svc`, and Alertmanager couldn't have resolved Alerta
-  or the SMTP server anyway.
+  anyway. Email wouldn't have worked even with DNS (outbound port 25 is
+  blocked, see Recovery).
 - Renovate's hourly runs failed. The `dodde` VM, OpenBao and the databases
   kept running. No data loss.
 
@@ -124,11 +125,31 @@ the host's break-glass kubeconfig was left, which is how it was diagnosed.
   ExternalSecrets had failed to reach OpenBao during the outage and were in
   backoff on a 1 h refresh. A `force-sync` annotation fixes both. Every Argo CD
   app is Synced and Healthy.
-- **18:31 onwards** Alert delivery works again. Mimir re-sent what it held,
-  among it `SmartStatusFailed` and `ZFSPoolUnhealthy`. Both fired through
-  their `absent(...)` branch because no metrics reached Mimir during the outage,
-  and both resolved on their own. Every disk reports SMART status 1 and the pool
-  is ONLINE.
+- **18:31 onwards** Delivery to Alerta works again. Mimir re-sent what it
+  held, among it `SmartStatusFailed`, `ZFSPoolUnhealthy` and `OpenBaoSealed`.
+  All three fired through their `absent(...)` branch because no metrics reached
+  Mimir during the outage, and all resolved on their own. Every disk reports
+  SMART status 1, the pool is ONLINE and OpenBao is unsealed.
+- **18:40** Cleanup: the Failed pods left by the two shutdowns are deleted.
+  These were 95 `cilium-operator` pods rejected with `NodeShutdown`, 13 pods
+  killed by the 04 and 06 Nov shutdowns, 13 failed Renovate retries from the
+  outage, and 29 ReplicaSet pods left `Completed` by the shutdown.
+  `cilium-operator` piled up because it tolerates
+  `node.kubernetes.io/not-ready`: while the node shut down, the scheduler kept
+  placing each replacement on it, and the kubelet kept rejecting them. Other
+  Deployments don't tolerate the taint and stayed Pending instead.
+- **18:48** `alloy-events` restarted. It had been OOMKilled at its 256 Mi limit
+  every ~1 h 53 min from 04:25 to 17:34 while it buffered events it couldn't
+  push to Loki, and none on the previous boot. It was still at 211 Mi
+  (normally ~90 Mi).
+
+The health check afterwards found one older problem: **email alerts have
+never been delivered.** Alertmanager mails critical alerts straight to
+`mail.protonmail.ch:25`. Cilium allows the SYN and sends it out on `eno1`,
+but no reply comes back, to Proton or to Gmail's MX. Outbound port 25 is
+blocked upstream of loft01, at the router or the ISP. Mimir has no successful
+email notification on record. So the "critical alerts by email" channel in
+`docs/monitoring.md` didn't exist even before this outage.
 
 Outage: 02:28 to 18:31 CET, about 16 hours. It took about an hour from the
 start of the investigation to recovery. The off-site backup still ran, at 02:47
@@ -141,9 +162,10 @@ start of the investigation to recovery. The off-site backup still ran, at 02:47
 | Generate `coredns-custom` as JSON, so no emitter folds the rewrite regex | done (745d372) |
 | Check the other generated k3s configs (`authentication`, `admission`, `audit`) for the same fold: no generated YAML in the closure has a line ending in a backslash | done |
 | `CoreDNSConfigRejected` alert on `coredns_reload_failed_total > 0` (critical, so it mails). It would have fired from 04 Nov 21:05 on | done (3abdc29) |
-| An out-of-cluster dead man's switch: an always-firing `Watchdog` alert to an external heartbeat service, which mails when it stops. Today a total outage is silent because alert delivery needs cluster DNS, Alerta and SMTP name lookups | open |
+| An out-of-cluster dead man's switch, e.g. on a Raspberry Pi: an always-firing `Watchdog` alert it expects, and a notification when it stops. Today a total outage is silent because alert delivery needs cluster DNS and Alerta | open, later |
+| Email alerts: outbound port 25 is blocked upstream. Unblock it at the router or ISP, or point `smtp_smarthost` at a sending provider on 587 with auth (`docs/monitoring.md`) | open |
 | Validate the generated CoreDNS config at build time (e.g. a flake check that starts `coredns` on the generated files), so a bad Corefile fails `nix build` instead of the cluster | open |
-| Delete the `Failed` pods that the kubelet's graceful shutdown leaves behind (about 95 `cilium-operator` pods with `NodeShutdown`), and find out why the Deployment kept recreating them while the node was going down | open |
+| Delete the `Failed` pods left by the shutdowns, and explain the `cilium-operator` pile-up | done (Recovery, 18:40) |
 
 ## Lessons
 
