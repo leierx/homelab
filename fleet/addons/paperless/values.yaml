@@ -6,16 +6,9 @@ valkey:
   image:
     repository: docker.io/valkey/valkey
     tag: 9.1.3-alpine
-# Norwegian OCR data, mounted into the image's tessdata (packages/tessdata-nor)
-tessdataNor:
-  image:
-    repository: ghcr.io/leierx/tessdata-nor
-    tag: 0.1.1
 # URL, per cluster
 url: ""
 timeZone: UTC
-# tesseract languages, main one first
-ocrLanguage: nor+eng
 database:
   storage:
     size: 1Gi
