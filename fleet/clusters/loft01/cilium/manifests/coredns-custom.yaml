@@ -6,6 +6,8 @@ kind: ConfigMap
 metadata:
   name: coredns-custom
   namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
 data:
   # skinke.net resolves to the edge Envoy so OIDC clients and HTTP-01 self-checks stay in-cluster.
   # bind 0.0.0.0, not eth0: CoreDNS refuses a wildcard next to 127.0.0.53, and eth0's IPv6
