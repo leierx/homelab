@@ -14,6 +14,16 @@ spec:
           labels: {severity: warning}
           annotations:
             summary: A scrape target has been down for 10 minutes, so its metrics and alerts are blind.
+    - name: coredns
+      rules:
+        # reload keeps the old config when the new one fails, so a broken coredns-custom only bites on the next restart
+        - alert: CoreDNSConfigRejected
+          expr: max by (pod) (coredns_reload_failed_total) > 0
+          labels:
+            severity: critical
+            instance: 'kube-system/{{ $labels.pod }}'
+          annotations:
+            summary: CoreDNS rejected a config change and still runs the old one; it will crash-loop on its next restart (docs/postmortem/2026-11-06-loft01-coredns-down.md).
     - name: k8s.rules.container_cpu_usage
       rules:
         # the name the kubernetes-mixin dashboards (CloudNativePG's among them) query
