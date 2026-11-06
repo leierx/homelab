@@ -4,7 +4,7 @@ kind: ConfigMap
 metadata:
   name: opencloud-config
 data:
-  # roles from the Keycloak groups claim, first match wins; a user in none of them is refused
+  # roles from the Keycloak groups claim, first match wins; a user in none of them is refused. No local admin exists, so this is the only source of the admin role
   proxy.yaml: |
     role_assignment:
       driver: oidc
