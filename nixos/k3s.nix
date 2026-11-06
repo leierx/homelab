@@ -173,8 +173,9 @@ in
       "--disable=traefik,servicelb,local-storage,metrics-server"
       "--disable-cloud-controller"
       "--cluster-cidr=10.42.0.0/16"
-      # keep /etc/resolv.conf on 127.0.0.53 (forwarded by coredns-custom upstream.server) instead of /run/systemd/resolve/resolv.conf
-      "--resolv-conf=${pkgs.writeText "k3s-resolv.conf" "nameserver 127.0.0.53\n"}"
+      # CoreDNS (dnsPolicy Default) forwards to the host's validating DoT stub (nixos/network.nix); not 127.0.0.53,
+      # which inside the pod is CoreDNS itself
+      "--resolv-conf=${pkgs.writeText "k3s-resolv.conf" "nameserver 192.168.2.50\n"}"
       "--secrets-encryption"
       "--kubelet-arg=system-reserved=cpu=2,memory=16Gi"
       "--kubelet-arg=kube-reserved=cpu=2,memory=16Gi"
@@ -210,35 +211,6 @@ in
       }
     ];
   };
-
-  # k3s applies it on start, so pods resolve from the first boot of a fresh cluster. JSON, not `content`:
-  # its YAML emitter folded the rewrite line and the fold turned `\.local` into `\ .local` (postmortem 2026-11-06)
-  services.k3s.manifests.coredns-custom.source =
-    (pkgs.formats.json { }).generate "coredns-custom.yaml"
-      {
-        apiVersion = "v1";
-        kind = "ConfigMap";
-        metadata = {
-          name = "coredns-custom";
-          namespace = "kube-system";
-        };
-        data = {
-          # skinke.net resolves to the edge Envoy so OIDC clients and HTTP-01 self-checks stay in-cluster
-          "split-horizon.override" = ''
-            bind eth0
-            rewrite name regex \.skinke\.net(\..*\.cluster\.local)?\.$ edge.envoy-gateway-system.svc.cluster.local. answer auto
-          '';
-          # the host's validating DoT stub (nixos/network.nix), reachable from pods on 192.168.2.50
-          "upstream.server" = ''
-            .:53 {
-              bind 127.0.0.53
-              forward . 192.168.2.50:53 {
-                force_tcp
-              }
-            }
-          '';
-        };
-      };
 
   systemd.tmpfiles.rules = [ "d /var/log/kubernetes 0700 root root -" ];
 
