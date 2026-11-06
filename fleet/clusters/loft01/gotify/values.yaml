@@ -1,0 +1,8 @@
+url: https://gotify.skinke.net
+oidc:
+  issuer: https://auth.skinke.net/realms/homelab
+  adminGroups: homelab-admins
+  userGroups: homelab-operators
+database:
+  storage:
+    storageClass: zfs

@@ -49,3 +49,8 @@ variable "paperless_client_secret" {
   type      = string
   sensitive = true
 }
+
+variable "gotify_client_secret" {
+  type      = string
+  sensitive = true
+}

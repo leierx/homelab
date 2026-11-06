@@ -267,6 +267,30 @@ resource "keycloak_openid_client" "paperless" {
   valid_redirect_uris = ["https://paperless.skinke.net/accounts/oidc/keycloak/login/callback/"]
 }
 
+resource "keycloak_openid_client" "gotify" {
+  realm_id  = keycloak_realm.homelab.id
+  client_id = "gotify"
+  name      = "gotify"
+  enabled   = true
+  base_url  = "https://gotify.skinke.net"
+
+  access_type                  = "CONFIDENTIAL"
+  client_secret_wo             = var.gotify_client_secret
+  client_secret_wo_version     = "1"
+  standard_flow_enabled        = true
+  direct_access_grants_enabled = false
+  implicit_flow_enabled        = false
+  service_accounts_enabled     = false
+  full_scope_allowed           = false
+  pkce_code_challenge_method   = "S256"
+
+  # the Android app's login returns to the app; the server still does the code exchange
+  valid_redirect_uris = [
+    "https://gotify.skinke.net/auth/oidc/callback",
+    "gotify://oidc/callback",
+  ]
+}
+
 # OpenCloud's web app; like its desktop and mobile apps, a public client with PKCE
 resource "keycloak_openid_client" "opencloud" {
   realm_id  = keycloak_realm.homelab.id
@@ -387,6 +411,12 @@ resource "keycloak_openid_client_default_scopes" "paperless" {
   default_scopes = local.default_client_scopes
 }
 
+resource "keycloak_openid_client_default_scopes" "gotify" {
+  realm_id       = keycloak_realm.homelab.id
+  client_id      = keycloak_openid_client.gotify.id
+  default_scopes = local.default_client_scopes
+}
+
 resource "keycloak_openid_client_default_scopes" "opencloud" {
   for_each       = local.opencloud_clients
   realm_id       = keycloak_realm.homelab.id
@@ -413,6 +443,7 @@ resource "keycloak_openid_client_optional_scopes" "no_offline_access" {
       argo_workflows = keycloak_openid_client.argo_workflows.id
       miniflux       = keycloak_openid_client.miniflux.id
       paperless      = keycloak_openid_client.paperless.id
+      gotify         = keycloak_openid_client.gotify.id
     },
     local.opencloud_clients,
   )

@@ -1,0 +1,64 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: gotify
+spec:
+  secretName: gotify-tls
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  dnsNames:
+    - gotify.skinke.net
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: gotify-edge
+spec:
+  parentRef:
+    name: edge
+    namespace: envoy-gateway-system
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: gotify.skinke.net
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: gotify-tls
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: gotify-edge
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: gotify-edge
+  hostnames:
+    - gotify.skinke.net
+  rules:
+    - backendRefs:
+        - name: gotify
+          port: 8080
+      # the app holds one stream open
+      timeouts:
+        request: 0s
+---
+# the phone app can't get through Envoy's OIDC login, so Gotify's own Keycloak login guards it
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: gotify-edge
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: gotify-edge
+  authorization:
+    defaultAction: Allow
