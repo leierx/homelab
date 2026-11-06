@@ -6,7 +6,7 @@ helm:
   repoURL: ghcr.io/prometheus-community/charts
   chart: prometheus-node-exporter
   # renovate: datasource=docker depName=ghcr.io/prometheus-community/charts/prometheus-node-exporter
-  targetRevision: 4.60.1
+  targetRevision: 5.0.0
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: privileged
