@@ -26,15 +26,6 @@ spec:
       toPorts:
         - ports:
             - {port: "6443", protocol: TCP}
-    # CoreDNS forwards upstream queries to the host's validating DoT stub resolver
-    - fromEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: kube-system
-            k8s-app: kube-dns
-      toPorts:
-        - ports:
-            - {port: "53", protocol: UDP}
-            - {port: "53", protocol: TCP}
     # alloy-metrics scrapes the API server, kubelet/cAdvisor, node-exporter, and Cilium/Hubble metrics
     - fromEndpoints:
         - matchLabels:

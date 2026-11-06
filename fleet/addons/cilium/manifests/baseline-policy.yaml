@@ -54,8 +54,3 @@ spec:
       toPorts:
         - ports:
             - {port: "853", protocol: TCP}
-    - toEntities: [host]
-      toPorts:
-        - ports:
-            - {port: "53", protocol: UDP}
-            - {port: "53", protocol: TCP}

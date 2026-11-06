@@ -147,8 +147,10 @@ only the addons managed by `argo`.
 Run from the repository root on a fresh cluster (example: `loft01`). Pods and
 the host are default-deny (`policyEnforcementMode: always`, `hostFirewall`),
 so the policies Argo CD itself needs go in by hand before it can take over.
-`coredns-custom` comes from the host (`nixos/k3s.nix`), so pods resolve
-from the start.
+So does `coredns-custom`: the kubelet points CoreDNS at `127.0.0.53`
+(`nixos/k3s.nix`), which only its `upstream.server` block answers (DoT to
+Quad9). Until it's applied, CoreDNS forwards to itself and its `loop` plugin
+stops it, so nothing resolves.
 
 ### 1. Apply the admission policies, Cilium and its policies
 
@@ -187,7 +189,8 @@ kubectl wait --for=condition=Established --timeout=5m \
 kubectl apply --server-side --field-manager=argocd-controller \
   -f fleet/addons/cilium/manifests/baseline-policy.yaml \
   -f fleet/addons/cilium/manifests/host-policy.yaml \
-  -f fleet/clusters/loft01/cilium/manifests/host-policy.yaml
+  -f fleet/clusters/loft01/cilium/manifests/host-policy.yaml \
+  -f fleet/clusters/loft01/cilium/manifests/coredns-custom.yaml
 ```
 
 ### 2. Apply Argo CD and its policies
