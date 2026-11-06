@@ -17,11 +17,11 @@ data:
             claim_value: homelab-operators
           - role_name: user-light
             claim_value: homelab-viewers
-  # upstream's CSP without its third-party origins (update check, app store, draw.io), plus Keycloak for the token calls
+  # upstream's CSP without its third-party origins (update check, app store, draw.io), plus Keycloak for the token calls and the one file admin-settings' Extensions page reads for app compatibility
   csp.yaml: |
     directives:
       child-src: ["'self'"]
-      connect-src: ["'self'", "blob:", "{{ $idp.scheme }}://{{ $idp.host }}/"]
+      connect-src: ["'self'", "blob:", "{{ $idp.scheme }}://{{ $idp.host }}/", "https://raw.githubusercontent.com/opencloud-eu/awesome-apps/main/webApps/apps.json"]
       default-src: ["'none'"]
       font-src: ["'self'"]
       frame-ancestors: ["'self'"]

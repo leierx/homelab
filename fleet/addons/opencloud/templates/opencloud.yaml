@@ -122,7 +122,7 @@ spec:
             # Keycloak owns these; the oidc role driver and group sync would revert any edit
             - name: FRONTEND_READONLY_USER_ATTRIBUTES
               value: user.onPremisesSamAccountName,user.displayName,user.mail,user.passwordProfile,user.memberOf,user.appRoleAssignments
-            # nothing reaches out to opencloud.eu or GitHub: no update check, app store or feedback link
+            # no update check, app store or feedback link; only the admin's browser fetches the app compatibility list from GitHub
             - name: FRONTEND_CHECK_FOR_UPDATES
               value: "false"
             - name: WEB_UI_CORE_APPS
