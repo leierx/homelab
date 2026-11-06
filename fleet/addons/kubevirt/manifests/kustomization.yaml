@@ -23,6 +23,16 @@ patches:
           virtualMachineInstanceProfile:
             customProfile:
               runtimeDefaultProfile: true
+  # at the default 2 virt-operator logs a no-op reconcile every ~6s (lease renewals requeue it)
+  # and virt-api logs every aggregator discovery probe; 1 keeps warnings and errors
+  - target:
+      kind: KubeVirt
+    patch: |
+      - op: add
+        path: /spec/configuration/developerConfiguration/logVerbosity
+        value:
+          virtAPI: 1
+          virtOperator: 1
   # an accidental CR delete must not tear the running VMs down (the DELETE webhook enforces this)
   - target:
       kind: KubeVirt
@@ -45,10 +55,11 @@ patches:
               client-key-file: /etc/virt-handler/migrationservercertificates/tls.key
           # the admission policy wants a memory limit and no CPU limit on every container
           patches:
+            # json, not strategic: virt-operator decodes every virt-api patch as a JSON patch and warns on each reconcile
             - resourceType: Deployment
               resourceName: virt-api
-              type: strategic
-              patch: '{"spec":{"template":{"spec":{"containers":[{"name":"virt-api","resources":{"limits":{"memory":"1Gi"}}}]}}}}'
+              type: json
+              patch: '[{"op":"add","path":"/spec/template/spec/containers/0/resources/limits","value":{"memory":"1Gi"}}]'
             - resourceType: Deployment
               resourceName: virt-controller
               type: strategic
