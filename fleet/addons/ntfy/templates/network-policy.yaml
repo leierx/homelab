@@ -33,6 +33,11 @@ spec:
       toPorts:
         - ports:
             - {port: "5432", protocol: TCP}
+    # Web Push through the browser's push service (e.g. fcm.googleapis.com), end-to-end encrypted
+    - toEntities: [world]
+      toPorts:
+        - ports:
+            - {port: "443", protocol: TCP}
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy

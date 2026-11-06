@@ -176,6 +176,7 @@ resource "keycloak_openid_client" "edge" {
   valid_redirect_uris = [
     "https://argocd.skinke.net/_envoy/callback",
     "https://metrics.skinke.net/_envoy/callback",
+    "https://ntfy.skinke.net/_envoy/callback",
     "https://paperless.skinke.net/_envoy/callback",
     "https://rss.skinke.net/_envoy/callback",
     "https://workflows.skinke.net/_envoy/callback",

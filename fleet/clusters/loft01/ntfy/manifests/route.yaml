@@ -46,19 +46,6 @@ spec:
     - backendRefs:
         - name: ntfy
           port: 8080
-      # the phone app holds one subscription open
+      # the web app holds one subscription open
       timeouts:
         request: 0s
----
-# the phone app can't get through Envoy's OIDC login; ntfy denies everyone but its two users
-apiVersion: gateway.envoyproxy.io/v1alpha1
-kind: SecurityPolicy
-metadata:
-  name: ntfy-edge
-spec:
-  targetRefs:
-    - group: gateway.networking.k8s.io
-      kind: ListenerSet
-      name: ntfy-edge
-  authorization:
-    defaultAction: Allow

@@ -3,6 +3,8 @@ image:
   tag: v2.37.2
 # URL, per cluster
 url: ""
+# the VAPID contact sent to browser push services, per cluster
+webPushEmailAddress: ""
 database:
   storage:
     size: 1Gi

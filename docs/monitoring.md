@@ -143,15 +143,17 @@ every 4 hours while they fire and once when they resolve; everything else waits
 in Alerta. Alertmanager posts to ntfy's `alerts` topic inside the cluster, and
 ntfy's `alertmanager` template (`fleet/addons/ntfy/files/alertmanager.yml`)
 turns the webhook into the title, message and priority: urgent while firing,
-low once resolved. ntfy denies everyone but two users, both from
-`ExternalSecret/ntfy`: `alertmanager` may only publish (a token), `leier` may
-only subscribe.
+low once resolved. Only Alertmanager may publish (a token from
+`ExternalSecret/ntfy`); people read through the `edge` Gateway, behind Envoy's
+OIDC login, since ntfy and its Android app have no OIDC of their own.
 
-To subscribe, install the ntfy app, add the server `https://ntfy.skinke.net`
-with user `leier` and the password from
-`just bao kv get -field=leier_password kv/loft01/ntfy`, and subscribe to
-`alerts`. ntfy has no web app here and no OIDC; the phone app talks to it
-through the `edge` Gateway, outside Envoy's OIDC login.
+To subscribe on a phone, open `https://ntfy.skinke.net` in Chrome, log in, add
+it to the home screen, subscribe to `alerts` and turn on background
+notifications in Settings. ntfy delivers through the browser's Web Push
+service, end-to-end encrypted. A push subscription expires after 60 days
+without a refresh, which happens when the app is opened; ntfy warns at 55
+days. The VAPID keys in `kv/loft01/ntfy` came from `ntfy webpush keys`;
+replacing them invalidates every subscription.
 
 To stop the repeats, silence the alert in Grafana (Alerting, Silences, with
 the `Alertmanager` datasource). Acknowledging it in Alerta doesn't: the

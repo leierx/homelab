@@ -36,6 +36,10 @@ spec:
               valueFrom: {secretKeyRef: {name: ntfy, key: auth-users}}
             - name: NTFY_AUTH_TOKENS
               valueFrom: {secretKeyRef: {name: ntfy, key: auth-tokens}}
+            - name: NTFY_WEB_PUSH_PUBLIC_KEY
+              valueFrom: {secretKeyRef: {name: ntfy, key: web-push-public-key}}
+            - name: NTFY_WEB_PUSH_PRIVATE_KEY
+              valueFrom: {secretKeyRef: {name: ntfy, key: web-push-private-key}}
           ports:
             - name: http
               containerPort: 8080

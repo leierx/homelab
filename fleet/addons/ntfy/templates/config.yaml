@@ -8,11 +8,12 @@ data:
     listen-http: ":8080"
     metrics-listen-http: ":9090"
     behind-proxy: true
-    web-root: disable
     template-dir: /etc/ntfy/templates
+    web-push-email-address: {{ required "webPushEmailAddress is per cluster" .Values.webPushEmailAddress }}
     auth-default-access: deny-all
     auth-access:
       - "alertmanager:alerts:wo"
-      - "leier:alerts:ro"
+      # people reach ntfy only through Envoy's OIDC login (the edge Gateway)
+      - "*:alerts:ro"
   alertmanager.yml: |
 {{ .Files.Get "files/alertmanager.yml" | indent 4 }}
