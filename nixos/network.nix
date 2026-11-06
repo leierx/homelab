@@ -59,11 +59,8 @@
       FallbackDNS = "";
       LLMNR = "false";
       MulticastDNS = "false";
-      # 10.0.0.1 serves WireGuard peers; 192.168.2.50 serves CoreDNS (nixos/k3s.nix --resolv-conf) so pod lookups use DoT + DNSSEC
-      DNSStubListenerExtra = [
-        "10.0.0.1"
-        "192.168.2.50"
-      ];
+      # WireGuard peers; pods use CoreDNS, which talks DoT to Quad9 itself
+      DNSStubListenerExtra = [ "10.0.0.1" ];
     };
   };
 

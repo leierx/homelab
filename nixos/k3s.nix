@@ -173,9 +173,10 @@ in
       "--disable=traefik,servicelb,local-storage,metrics-server"
       "--disable-cloud-controller"
       "--cluster-cidr=10.42.0.0/16"
-      # CoreDNS (dnsPolicy Default) forwards to the host's validating DoT stub (nixos/network.nix); not 127.0.0.53,
-      # which inside the pod is CoreDNS itself
-      "--resolv-conf=${pkgs.writeText "k3s-resolv.conf" "nameserver 192.168.2.50\n"}"
+      # CoreDNS (dnsPolicy Default) forwards here: 127.0.0.53 inside its pod is coredns-custom's upstream.server,
+      # DoT to Quad9 (fleet/clusters/loft01/cilium/manifests). Not the host's resolved: it pins UDP replies to
+      # cilium_net, which doesn't route back to pods
+      "--resolv-conf=${pkgs.writeText "k3s-resolv.conf" "nameserver 127.0.0.53\n"}"
       "--secrets-encryption"
       "--kubelet-arg=system-reserved=cpu=2,memory=16Gi"
       "--kubelet-arg=kube-reserved=cpu=2,memory=16Gi"
