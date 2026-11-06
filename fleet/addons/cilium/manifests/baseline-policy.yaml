@@ -49,6 +49,11 @@ spec:
             - {port: "9153", protocol: TCP}
   egress:
     - toEntities: [kube-apiserver]
+    # upstream lookups go to Quad9 over DoT (coredns-custom upstream.server)
+    - toEntities: [world]
+      toPorts:
+        - ports:
+            - {port: "853", protocol: TCP}
     - toEntities: [host]
       toPorts:
         - ports:
