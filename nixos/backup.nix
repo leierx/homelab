@@ -10,18 +10,21 @@ let
   enable = true;
 
   stateDir = "/var/lib/offsite-backup";
+  # what restic reads, the same paths every run so each run only reads files changed since the last:
+  # k3s/ and volumes/<namespace>/<claim>/, the latter read-only mounts of one atomic snapshot
+  root = "/run/offsite-backup";
 
   backup = pkgs.writeShellApplication {
     name = "offsite-backup";
     runtimeInputs = [
       config.boot.zfs.package
+      config.services.k3s.package
       pkgs.restic
       pkgs.sqlite
       pkgs.openssh
       pkgs.coreutils
-      pkgs.gnugrep
+      pkgs.util-linux
       pkgs.jq
-      config.services.k3s.package
     ];
     text = ''
       # <user>@<user>.rsync.net, from the secrets file so no account name lands in the store
@@ -30,44 +33,58 @@ let
       export RESTIC_REPOSITORY="sftp:$target:homelab-restic"
       export RESTIC_PASSWORD_COMMAND="cat ${config.secrets.secrets."restic/password".path}"
       export RESTIC_CACHE_DIR=${stateDir}/cache
+      export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
       # rsync.net only speaks sftp, and restic has to be told which key to use
       r() {
         restic -o "sftp.command=ssh -i $key -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${stateDir}/known_hosts $target -s sftp" "$@"
       }
 
-      # this unit is the repo's only writer, so any lock left behind is stale
-      r unlock || true
-      r snapshots >/dev/null 2>&1 || r init
-
-      before=$(r stats --mode raw-data --json | jq -r .total_size)
-
-      # k3s state: restoring a PVC needs its k8s objects too
-      stage=${stateDir}/k3s
-      rm -rf "$stage" && mkdir -p "$stage"
-      sqlite3 /var/lib/rancher/k3s/server/db/state.db ".backup '$stage/state.db'"
-      cp -a /var/lib/rancher/k3s/server/{token,cred,tls} "$stage"/
-      # state.db holds its hash; without it a reinstalled node is rejected
-      cp -a /etc/rancher/node/password "$stage"/node-password
-      r backup --host loft01 --tag k3s "$stage"
-
-      # named by claim, so a PVC recreated by a cluster rebuild continues its history and ages out
-      # under the forget policy; a dataset without a bound claim keeps its dataset name
-      claims=$(KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get pv \
-        -o jsonpath='{range .items[?(@.status.phase=="Bound")]}{.metadata.name} {.spec.claimRef.namespace}/{.spec.claimRef.name}{"\n"}{end}')
-
-      # --stdin-filename keeps a stable parent, so unchanged chunks of the zfs stream are skipped
-      for vol in $(zfs list -H -t volume,filesystem -o name -r -d 1 tank | grep -v '^tank$'); do
-        snap=$(zfs list -H -t snapshot -o name -s creation -d 1 "$vol" | grep '@autosnap_.*_daily$' | tail -n 1) || continue
-        name=$(grep "^''${vol#tank/} " <<<"$claims" | cut -d ' ' -f 2 || true)
-        name=''${name:-$vol}
-        zfs send -L "$snap" | r backup --host loft01 --tag "volume:$name" --stdin --stdin-filename "$name"
+      # every volume must be a dataset directly under tank, which is what zfs-localpv's zfs class makes;
+      # anything else (a zvol from zfs-block, a nested dataset) isn't backed up here, so stop
+      zfs list -H -o name,type -r tank | while read -r name type; do
+        [ "$name" = tank ] && continue
+        [ "$type" = filesystem ] || { echo "$name is a $type, not a dataset" >&2; exit 1; }
+        [ "''${name%/*}" = tank ] || { echo "$name is nested below tank/<pv>" >&2; exit 1; }
       done
 
-      after=$(r stats --mode raw-data --json | jq -r .total_size)
+      # 10 is restic's "repository does not exist"; any other failure stops the run
+      rc=0
+      r cat config >/dev/null || rc=$?
+      if [ "$rc" = 10 ]; then r init; elif [ "$rc" != 0 ]; then exit "$rc"; fi
+      # this unit is the repo's only writer, so any lock left behind is stale
+      r unlock
+
+      # one point in time for every volume; kept until the next run
+      if zfs list tank@restic >/dev/null 2>&1; then zfs destroy -r tank@restic; fi
+      zfs snapshot -r tank@restic
+      time=$(date -d "@$(zfs get -Hp -o value creation tank@restic)" '+%F %T')
+
+      # k3s state: restoring a PVC needs its k8s objects too
+      mkdir ${root}/k3s
+      sqlite3 /var/lib/rancher/k3s/server/db/state.db ".backup '${root}/k3s/state.db'"
+      cp -a /var/lib/rancher/k3s/server/{token,cred,tls} ${root}/k3s/
+      # state.db holds its hash; without it a reinstalled node is rejected
+      cp -a /etc/rancher/node/password ${root}/k3s/node-password
+
+      # named by claim, so a volume recreated by a cluster rebuild continues its history
+      bound=$(kubectl get pv -o json \
+        | jq -r '.items[] | select(.status.phase == "Bound") | "\(.metadata.name) \(.spec.claimRef.namespace)/\(.spec.claimRef.name)"')
+      declare -A claims
+      while read -r pv claim; do claims[$pv]=$claim; done <<<"$bound"
+      for dataset in $(zfs list -H -o name -d 1 tank); do
+        [ "$dataset" = tank ] && continue
+        pv=''${dataset#tank/}
+        dir=${root}/volumes/''${claims[$pv]:-unbound/$pv}
+        mkdir -p "$dir"
+        mount -t zfs -o ro "$dataset@restic" "$dir"
+      done
+
+      added=$(r backup --host loft01 --time "$time" --json ${root} | jq -r 'select(.message_type == "summary") | .data_added')
       r forget --host loft01 --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
+      r check
       total=$(r stats --mode raw-data --json | jq -r .total_size)
-      echo "this backup: $(numfmt --to=iec-i --suffix=B "$((after - before))") added, total in cloud: $(numfmt --to=iec-i --suffix=B "$total")"
+      echo "this backup: $(numfmt --to=iec-i --suffix=B "$added") added, total in cloud: $(numfmt --to=iec-i --suffix=B "$total")"
     '';
   };
 in
@@ -102,13 +119,16 @@ in
       Type = "oneshot";
       ExecStart = lib.getExe backup;
       StateDirectory = "offsite-backup";
+      # a fresh, empty root each run; the snapshot mounts live in the unit's own namespace and go with it
+      RuntimeDirectory = "offsite-backup";
+      PrivateMounts = true;
       Nice = 10;
       IOSchedulingClass = "idle";
     };
   };
 
-  # after autoUpgrade's 02:00-04:00 reboot window, so an upgrade reboot never cuts a run off; it
-  # sends the 00:00 daily snapshot either way. OnBootSec resumes a run cut off by any other reboot
+  # after autoUpgrade's 02:00-04:00 reboot window, so an upgrade reboot never cuts a run off.
+  # OnBootSec resumes a run cut off by any other reboot
   systemd.timers."offsite-backup" = lib.mkIf enable {
     wantedBy = [ "timers.target" ];
     timerConfig = {
