@@ -1,0 +1,26 @@
+# a filesystem claim on zfs-block would get ext4 on a zvol; filesystems come from zfs
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: zfs-block
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE]
+        resources: [persistentvolumeclaims]
+  validations:
+    - expression: >-
+        !has(object.spec.storageClassName) || object.spec.storageClassName != 'zfs-block'
+        || object.spec.volumeMode == 'Block'
+      message: zfs-block only provides volumeMode Block; use zfs for a filesystem
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: zfs-block
+spec:
+  policyName: zfs-block
+  validationActions: [Deny]

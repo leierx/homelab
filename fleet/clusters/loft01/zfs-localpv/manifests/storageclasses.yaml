@@ -1,4 +1,4 @@
-# zfs: ext4 zvols, for databases and anything that needs a normal filesystem (default)
+# zfs: a ZFS dataset per PVC (default); refquota so snapshots don't count against the claim
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -8,26 +8,26 @@ metadata:
 provisioner: zfs.csi.openebs.io
 parameters:
   poolname: tank
-  fstype: ext4
-allowVolumeExpansion: true
-# a deleted claim must not take the data with it: the zvol stays until removed by hand
-reclaimPolicy: Retain
-volumeBindingMode: WaitForFirstConsumer
----
-# zfs-thin: a 1M-recordsize dataset per PVC for bulk files, never databases; refquota so snapshots don't count
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: zfs-thin
-provisioner: zfs.csi.openebs.io
-parameters:
-  poolname: tank
   fstype: zfs
-  recordsize: 1M
+  recordsize: 128k
   quotatype: refquota
   thinprovision: "yes"
 allowVolumeExpansion: true
 # a deleted claim must not take the data with it: the dataset stays until removed by hand
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+---
+# zfs-block: a raw zvol for volumeMode: Block only (zfs-block-policy.yaml), never formatted on the host
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: zfs-block
+provisioner: zfs.csi.openebs.io
+parameters:
+  poolname: tank
+  thinprovision: "yes"
+allowVolumeExpansion: true
+# a deleted claim must not take the data with it: the zvol stays until removed by hand
 reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer
 ---
@@ -39,6 +39,8 @@ metadata:
 provisioner: zfs.csi.openebs.io
 parameters:
   poolname: tank
-  fstype: ext4
+  fstype: zfs
+  quotatype: refquota
+  thinprovision: "yes"
 reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer

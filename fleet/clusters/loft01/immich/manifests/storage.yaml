@@ -7,7 +7,7 @@ metadata:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
 spec:
   accessModes: [ReadWriteOnce]
-  storageClassName: zfs-thin
+  storageClassName: zfs
   resources:
     requests:
       storage: 770Gi
@@ -19,7 +19,7 @@ metadata:
   name: model-cache
 spec:
   accessModes: [ReadWriteOnce]
-  storageClassName: zfs-thin
+  storageClassName: zfs
   resources:
     requests:
       storage: 10Gi

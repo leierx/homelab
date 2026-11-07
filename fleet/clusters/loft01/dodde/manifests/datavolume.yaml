@@ -15,7 +15,7 @@ spec:
   storage:
     storageClassName: zfs
     accessModes: [ReadWriteOnce]
-    volumeMode: Block
+    volumeMode: Filesystem
     resources:
       requests:
         storage: 200Gi

@@ -9,5 +9,5 @@ persistence:
     storageClass: zfs
   # a ZFS dataset: documents keep their names on disk, browsable per file in snapshots
   media:
-    storageClass: zfs-thin
+    storageClass: zfs
     size: 50Gi
