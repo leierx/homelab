@@ -14,7 +14,7 @@ tika:
 gotenberg:
   image:
     repository: docker.io/gotenberg/gotenberg
-    tag: 8.40.0
+    tag: 9.1.0
 # tesseract's eng, nor and osd data, mounted over the image's (packages/tessdata)
 tessdata:
   image:
