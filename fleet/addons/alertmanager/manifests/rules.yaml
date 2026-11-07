@@ -9,13 +9,13 @@ spec:
     - name: alertmanager
       rules:
         # each channel reports the other: a failed push shows in Alerta, an Alerta failure arrives as a push
-        - alert: AlertmanagerGotifyFailing
-          expr: sum(increase(alertmanager_notifications_failed_total{receiver_name="gotify"}[15m])) > 0
+        - alert: AlertmanagerAppriseFailing
+          expr: sum(increase(alertmanager_notifications_failed_total{receiver_name="apprise"}[15m])) > 0
           labels:
             severity: warning
-            instance: alertmanager/gotify
+            instance: alertmanager/apprise
           annotations:
-            summary: 'A critical alert could not be pushed: the Alertmanager log has the Gotify bridge error.'
+            summary: 'A critical alert could not be pushed: the Alertmanager log has the Apprise error.'
         - alert: AlertmanagerAlertaFailing
           expr: sum(increase(alertmanager_notifications_failed_total{receiver_name="alerta"}[15m])) > 0
           for: 15m

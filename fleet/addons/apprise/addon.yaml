@@ -1,14 +1,10 @@
-namespace: ntfy
+namespace: apprise
 helm:
-  path: fleet/addons/ntfy
+  path: fleet/addons/apprise
 dependencies:
   - cilium
-  - cloudnative-pg
   - external-secrets
-  - zfs-localpv
-  - prometheus-operator-crds
-  - cert-manager
-  - envoy-gateway
+  - gotify
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted

@@ -11,8 +11,3 @@ oidc:
 database:
   storage:
     size: 1Gi
-# turns Alertmanager's webhook into Gotify messages (files/alertmanager.tmpl)
-bridge:
-  image:
-    repository: docker.io/druggeri/alertmanager_gotify_bridge
-    tag: 2.3.2

@@ -66,8 +66,8 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 - **Gateways:**
   - `edge` (public via NodePort 30080/30443): Keycloak login endpoints, Immich
     (`immich.skinke.net`), Miniflux (`rss.skinke.net`), OpenCloud
-    (`opencloud.skinke.net`), Grafana (`metrics.skinke.net`), ntfy
-    (`ntfy.skinke.net`), and Gotify (`gotify.skinke.net`).
+    (`opencloud.skinke.net`), Grafana (`metrics.skinke.net`), and Gotify
+    (`gotify.skinke.net`).
   - `wg` (WireGuard `10.0.0.1` only): Alerta (`alerta.skinke.net`), Argo CD
     (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), Paperless-ngx
     (`paperless.skinke.net`), and the Keycloak

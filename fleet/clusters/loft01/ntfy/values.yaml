@@ -1,5 +1,0 @@
-url: https://ntfy.skinke.net
-webPushEmailAddress: larssmitheier@protonmail.com
-database:
-  storage:
-    storageClass: zfs

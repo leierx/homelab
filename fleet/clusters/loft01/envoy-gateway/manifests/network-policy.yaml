@@ -88,12 +88,6 @@ spec:
         - ports: [{ port: "9200", protocol: TCP }]
     - toEndpoints:
         - matchLabels:
-            k8s:io.kubernetes.pod.namespace: ntfy
-            app.kubernetes.io/name: ntfy
-      toPorts:
-        - ports: [{ port: "8080", protocol: TCP }]
-    - toEndpoints:
-        - matchLabels:
             k8s:io.kubernetes.pod.namespace: gotify
             app.kubernetes.io/name: gotify
       toPorts:

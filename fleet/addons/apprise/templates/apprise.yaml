@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apprise
+data:
+  loft01.yml: |
+{{ required "config is per cluster" .Values.config | indent 4 }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: apprise
+  annotations:
+    # after its secret is Healthy
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 1
+  serviceName: apprise
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: apprise
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: apprise
+      annotations:
+        checksum/config: {{ .Values.config | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: apprise
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          env:
+            # /config/<ID>.yml from git, read-only: nobody can change or read it over the API
+            - name: APPRISE_STATEFUL_MODE
+              value: simple
+            - name: APPRISE_CONFIG_LOCK
+              value: "yes"
+            - name: APPRISE_WORKER_COUNT
+              value: "1"
+            - name: APPRISE_TEMPLATE_GOTIFY_TOKEN
+              valueFrom: {secretKeyRef: {name: apprise, key: gotify-token}}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: http
+          resources:
+            requests: { cpu: 10m, memory: 128Mi }
+            limits: { memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /config/loft01.yml
+              subPath: loft01.yml
+            # nginx, gunicorn and supervisord scratch space
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /run
+            - name: attach
+              mountPath: /attach
+            - name: plugin
+              mountPath: /plugin
+      volumes:
+        - name: config
+          configMap:
+            name: apprise
+        - name: tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+        - name: attach
+          emptyDir: {}
+        - name: plugin
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apprise
+  labels:
+    app.kubernetes.io/name: apprise
+spec:
+  selector:
+    app.kubernetes.io/name: apprise
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      protocol: TCP

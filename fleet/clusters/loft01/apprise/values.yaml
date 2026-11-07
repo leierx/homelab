@@ -1,0 +1,12 @@
+# a sender picks how loud a message is by its tag; the Gotify priorities are 8, 5 and 3 (Android: pop-up, sound, silent)
+config: |
+  version: 1
+  template:
+    gotify_token:
+  urls:
+    - gotify://gotify.gotify.svc:8080/${GOTIFY_TOKEN}?priority=high&format=markdown:
+        - tag: urgent
+    - gotify://gotify.gotify.svc:8080/${GOTIFY_TOKEN}?priority=normal&format=markdown:
+        - tag: normal
+    - gotify://gotify.gotify.svc:8080/${GOTIFY_TOKEN}?priority=moderate&format=markdown:
+        - tag: quiet
