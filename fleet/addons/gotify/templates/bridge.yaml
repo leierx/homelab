@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gotify-bridge
+data:
+  alertmanager.tmpl: |
+{{ .Files.Get "files/alertmanager.tmpl" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: gotify-bridge
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 1
+  serviceName: gotify-bridge
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gotify-bridge
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gotify-bridge
+      annotations:
+        checksum/config: {{ .Files.Get "files/alertmanager.tmpl" | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: bridge
+          image: {{ .Values.bridge.image.repository }}:{{ .Values.bridge.image.tag }}
+          env:
+            - name: GOTIFY_ENDPOINT
+              value: http://gotify:8080/message
+            - name: GOTIFY_TOKEN
+              valueFrom: {secretKeyRef: {name: gotify-bridge, key: token}}
+            # only critical alerts are routed here; the bridge can't vary it by status
+            - name: DEFAULT_PRIORITY
+              value: "8"
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: http
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          # single files: the bridge walks ./templates and would parse a ConfigMap's ..data copies twice
+          volumeMounts:
+            - name: config
+              mountPath: /templates/alertmanager.tmpl
+              subPath: alertmanager.tmpl
+            # the template names are the app token, so this part comes from OpenBao
+            - name: token
+              mountPath: /templates/token.tmpl
+              subPath: token.tmpl
+      volumes:
+        - name: config
+          configMap:
+            name: gotify-bridge
+        - name: token
+          secret:
+            secretName: gotify-bridge
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gotify-bridge
+  labels:
+    app.kubernetes.io/name: gotify-bridge
+spec:
+  selector:
+    app.kubernetes.io/name: gotify-bridge
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gotify-bridge
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gotify-bridge
+  endpoints:
+    - port: http

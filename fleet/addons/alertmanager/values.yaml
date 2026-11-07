@@ -7,22 +7,20 @@ config:
     group_interval: 1m
     repeat_interval: 4h
     routes:
-      - receiver: ntfy
+      - receiver: gotify
         matchers: ['severity="critical"']
         continue: true
       - receiver: alerta
   receivers:
-    - name: ntfy
+    - name: gotify
       webhook_configs:
-        - url: http://ntfy.ntfy.svc:8080/alerts?template=alertmanager
-          http_config:
-            authorization: {type: Bearer, credentials_file: /etc/alertmanager-secrets/ntfy-token}
+        - url: http://gotify-bridge.gotify.svc:8080/gotify_webhook
     - name: alerta
       webhook_configs:
         - url: http://alerta.alerta.svc:8080/api/webhooks/prometheus
           http_config:
             authorization: {type: Key, credentials_file: /etc/alertmanager-secrets/alerta-api-key}
-# receiver_name on the notification metrics, so Alerta and ntfy (both webhooks) report each other
+# receiver_name on the notification metrics, so Alerta and Gotify (both webhooks) report each other
 extraArgs:
   enable-feature: receiver-name-in-metrics
 extraSecretMounts:

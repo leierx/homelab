@@ -13,7 +13,7 @@ How metrics, logs and alerts work on `loft01`. Everything here is an addon in
                                      │                           │ ruler
                        syncs PrometheusRules                     ▼
                        (fleet.io/ruler: mimir)             alertmanager ──webhook──▶ alerta
-                                                                 ▲    └──critical: webhook──▶ ntfy ──▶ phone
+                                                                 ▲    └──critical: webhook──▶ gotify ──▶ phone
  pod logs, audit log, host journal ─▶ alloy-logs ──┐             │
  Kubernetes events ─▶ alloy-events ────────────────┴─▶ loki ─────┘ ruler
                        syncs PrometheusRules (fleet.io/ruler: loki)
@@ -23,9 +23,9 @@ How metrics, logs and alerts work on `loft01`. Everything here is an addon in
 |---|---|---|
 | `mimir` | `monitoring` | Metrics TSDB and rule evaluation. One StatefulSet running `-target=all` (upstream's monolithic mode) on a filesystem volume, 90 days of retention. |
 | `loki` | `monitoring` | Logs and log-based rules, single binary, 30 days. |
-| `alertmanager` | `monitoring` | Routes every alert to Alerta, and pushes the critical ones through ntfy. |
+| `alertmanager` | `monitoring` | Routes every alert to Alerta, and pushes the critical ones through Gotify. |
 | `alerta` | `alerta` | Keeps alert history, acknowledgements and notes (180 days, CloudNativePG). |
-| `ntfy` | `ntfy` | Push notifications to the phone at `ntfy.skinke.net` (CloudNativePG). |
+| `gotify` | `gotify` | Push notifications to the phone at `gotify.skinke.net` (CloudNativePG), with the Alertmanager bridge. |
 | `grafana` | `monitoring` | Dashboards only. Holds no alert rules and nothing that can't be rebuilt from git. |
 | `alloy-metrics` | `telemetry` | Scrapes everything into Mimir and syncs the Mimir rules. |
 | `alloy-logs` | `telemetry` | DaemonSet: pod logs, the API server audit log, the host journal. |
@@ -138,29 +138,34 @@ as a webhook (`/api/webhooks/prometheus`) with the API key from
 with notes and acknowledgements. Mimir's ruler also writes `ALERTS` and
 `ALERTS_FOR_STATE` series back, so Grafana can chart and count past alerts.
 
-Alerts with `severity: critical` are also pushed to the phone through `ntfy`,
+Alerts with `severity: critical` are also pushed to the phone through Gotify,
 every 4 hours while they fire and once when they resolve; everything else waits
-in Alerta. Alertmanager posts to ntfy's `alerts` topic inside the cluster, and
-ntfy's `alertmanager` template (`fleet/addons/ntfy/files/alertmanager.yml`)
-turns the webhook into the title, message and priority: urgent while firing,
-low once resolved. Only Alertmanager may publish (a token from
-`ExternalSecret/ntfy`); people read through the `edge` Gateway, behind Envoy's
-OIDC login, since ntfy and its Android app have no OIDC of their own.
+in Alerta. Alertmanager posts to `gotify-bridge` in the `gotify` namespace
+([alertmanager_gotify_bridge](https://github.com/DRuggeri/alertmanager_gotify_bridge)),
+which sends one message per alert to Gotify's `Alertmanager` application. Its
+template (`fleet/addons/gotify/files/alertmanager.tmpl`) makes the title and
+message; the priority is 8 for firing and resolved alike, as the bridge can't
+vary it by status.
 
-To subscribe on a phone, open `https://ntfy.skinke.net` in Chrome, log in, add
-it to the home screen, subscribe to `alerts` and turn on background
-notifications in Settings. ntfy delivers through the browser's Web Push
-service, end-to-end encrypted. A push subscription expires after 60 days
-without a refresh, which happens when the app is opened; ntfy warns at 55
-days. The VAPID keys in `kv/loft01/ntfy` came from `ntfy webpush keys`;
-replacing them invalidates every subscription.
+Gotify and its Android app log in through Keycloak (client `gotify`):
+`homelab-admins` are Gotify admins, `homelab-operators` users. Local logins are
+off; the first-start `admin` has a random password in `kv/loft01/gotify` as
+break-glass (`GOTIFY_LOCALAUTH_ENABLED=true` to use it). The app keeps its own
+connection to the server, so no push service is involved.
+
+Gotify generates application tokens itself, so the bridge's is set by hand,
+once per cluster: log in, create the application `Alertmanager` (its messages
+reach only its owner), and store the token with
+`read -rs T && printf %s "$T" | just bao kv patch kv/loft01/gotify alertmanager_token=- && unset T`.
+The bridge selects its templates by the token's name, so `ExternalSecret/gotify-bridge`
+renders those two lines from it.
 
 To stop the repeats, silence the alert in Grafana (Alerting, Silences, with
 the `Alertmanager` datasource). Acknowledging it in Alerta doesn't: the
 `prometheus` plugin in the `alerta-web` image still calls Alertmanager's v1
 API, which Alertmanager has removed.
 
-The two channels watch each other: `AlertmanagerNtfyFailing` (warning) shows a
+The two channels watch each other: `AlertmanagerGotifyFailing` (warning) shows a
 failed push in Alerta, and `AlertmanagerAlertaFailing` (critical) pushes when
 Alerta can't be reached. Both read `receiver_name`, which Alertmanager only adds
 with `--enable-feature=receiver-name-in-metrics`.
