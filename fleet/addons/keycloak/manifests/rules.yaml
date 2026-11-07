@@ -55,4 +55,4 @@ spec:
             severity: critical
             instance: '{{ $labels.ip }}'
           annotations:
-            summary: 'Failed login to Keycloak realm {{ $labels.realm }}{{ with $labels.username }} as "{{ . }}"{{ end }} through {{ $labels.client }} ({{ $labels.reason }}): the owner never fails, so someone else is trying.'
+            summary: 'Failed login to Keycloak realm {{ $labels.realm }}{{ with $labels.username }} as "{{ . }}"{{ end }} through {{ $labels.client }} ({{ $labels.reason }}).'
