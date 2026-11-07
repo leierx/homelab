@@ -23,13 +23,6 @@ spec:
             instance: keycloak
           annotations:
             summary: "Brute-force protection locked a user of realm homelab out for a while after ten failed logins; the LOGIN_ERROR events in the Keycloak log have the IP."
-        - alert: KeycloakLoginErrors
-          expr: sum((keycloak_user_events_total{realm="homelab", event="login", error!="", error!~"invalid_request|invalid_redirect_uri"} unless keycloak_user_events_total{realm="homelab", event="login", error!="", error!~"invalid_request|invalid_redirect_uri"} offset 10m) or increase(keycloak_user_events_total{realm="homelab", event="login", error!="", error!~"invalid_request|invalid_redirect_uri"}[10m])) > 5
-          labels:
-            severity: warning
-            instance: keycloak
-          annotations:
-            summary: "More than five failed logins to realm homelab in ten minutes (wrong passwords or second factors, unknown users, denied password grants): someone may be guessing."
         - alert: KeycloakImpersonation
           expr: sum by (realm, event, client_id) (increase(keycloak_user_events_total{event="impersonate"}[10m])) > 0 or sum by (realm, event, client_id) (keycloak_user_events_total{event="impersonate"} unless keycloak_user_events_total{event="impersonate"} offset 10m)
           labels:
@@ -55,3 +48,11 @@ spec:
             instance: '{{ $labels.user_id }}'
           annotations:
             summary: "Someone other than the realm reconcile (client bootstrap-admin) changed Keycloak through the admin API: break-glass, or a stolen admin session."
+        # a wrong passkey, TOTP or password, or an unknown or locked user; a cancelled passkey prompt is not_allowed and stale tabs expired_code or cookie_not_found, so neither pages
+        - alert: KeycloakLoginFailed
+          expr: sum by (realm, client, ip, reason, username) (count_over_time({namespace="keycloak", container="keycloak"} |= `type="LOGIN_ERROR"` | regexp `realmName="(?P<realm>[^"]*)"` | regexp `clientId="(?P<client>[^"]*)"` | regexp `ipAddress="(?P<ip>[^"]*)"` | regexp `, error="(?P<reason>[^"]*)"` | regexp `username="(?P<username>[^"]*)"` | reason=~"invalid_user_credentials|user_not_found|user_disabled|user_temporarily_disabled" [10m])) > 0
+          labels:
+            severity: critical
+            instance: '{{ $labels.ip }}'
+          annotations:
+            summary: 'Failed login to Keycloak realm {{ $labels.realm }}{{ with $labels.username }} as "{{ . }}"{{ end }} through {{ $labels.client }} ({{ $labels.reason }}): the owner never fails, so someone else is trying.'
