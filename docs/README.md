@@ -10,8 +10,9 @@ and alerts, see [monitoring.md](monitoring.md).
 `loft01` is a single-node NixOS + k3s cluster and
 the **production** cluster: it holds real data (Immich photo library, Mimir
 metrics, OpenBao secrets). `nixos/backup.nix` backs up the k3s state and every
-PVC to rsync.net nightly with restic, but restoring is manual and loses up to a
-day. Treat deleting PVCs or stateful CRs as data loss; they carry
+PVC except metrics, logs and caches to rsync.net nightly with restic, but
+restoring is manual and loses up to a day. Treat deleting PVCs or stateful CRs
+as data loss; they carry
 `argocd.argoproj.io/sync-options: Delete=false,Prune=false` for that reason.
 
 Git (`main`) is the single source of truth:
@@ -87,6 +88,50 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   2. Sign in at `https://auth.skinke.net/realms/homelab/account/`, register a
      passkey, and set a permanent password.
   3. Refresh workstation kubeconfig: `just kubeconfig`.
+
+## Backup & Restore
+
+Each PVC is a dataset `tank/<pv>`. sanoid keeps local snapshots (24 hourly,
+14 daily, 3 monthly); `offsite-backup.service` copies a snapshot of every
+volume plus the k3s state to rsync.net nightly at 04:30 (restic: 7 daily,
+4 weekly, 6 monthly), except the claims in `excluded` (Mimir, Loki, caches).
+Example: Immich originals live in claim `immich/library` under `library/`.
+Run everything as root on `loft01` (`doas -s`).
+
+**From a local snapshot** (last 14 days, instant):
+
+```sh
+pv=$(kubectl -n immich get pvc library -o jsonpath='{.spec.volumeName}')
+zfs list -t snapshot -o name,creation tank/$pv
+mkdir -p /mnt/snap && mount -t zfs -o ro tank/$pv@<snapshot> /mnt/snap
+cp -a /mnt/snap/library/<path> /var/tmp/restore/
+umount /mnt/snap
+```
+
+**From rsync.net** (older, or if the pool is gone):
+
+```sh
+nix shell nixpkgs#restic
+target=$(cat /run/secrets/restic/host)
+export RESTIC_REPOSITORY="sftp:$target:homelab-restic" RESTIC_PASSWORD_COMMAND="cat /run/secrets/restic/password"
+r() { restic -o "sftp.command=ssh -i /run/secrets/restic/ssh_key -o UserKnownHostsFile=/var/lib/offsite-backup/known_hosts $target -s sftp" "$@"; }
+r snapshots
+r find 'IMG_1234*'                     # locate a file across snapshots
+r restore latest:/run/offsite-backup/volumes/immich/library/library --target /var/tmp/restore
+```
+
+Other volumes are under `/run/offsite-backup/volumes/<namespace>/<claim>`,
+the k3s state under `/run/offsite-backup/k3s`. Add `--include <path>` to
+restore part of a volume, and `--sparse` for dodde's `disk.img`. Postgres
+volumes are crash-consistent and recover like after a power cut.
+
+Copy the result to a workstation and clean up:
+
+```sh
+chown -R leier /var/tmp/restore                        # on loft01
+rsync -a --info=progress2 loft01:/var/tmp/restore/ ~/restore/   # on the workstation
+rm -rf /var/tmp/restore                                # on loft01
+```
 
 ## Break-Glass
 
