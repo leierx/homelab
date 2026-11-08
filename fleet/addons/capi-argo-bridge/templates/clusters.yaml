@@ -36,3 +36,29 @@ roleRef:
   kind: Role
   name: capi-argo-bridge
   apiGroup: rbac.authorization.k8s.io
+---
+# workload clusters' API servers, for CAPI's controllers and Argo CD
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: api-servers
+  namespace: {{ .Values.clusterNamespace }}
+spec:
+  endpointSelector:
+    matchLabels:
+      kubevirt.io: virt-launcher
+  ingress:
+    - fromEndpoints:
+        {{- range list "capi-system" "kubeadm-bootstrap-system" "kubeadm-control-plane-system" "kubevirt-infrastructure-system" }}
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: {{ . }}
+            control-plane: controller-manager
+        {{- end }}
+        {{- range list "argocd-server" "argocd-application-controller" }}
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: {{ $.Release.Namespace }}
+            app.kubernetes.io/name: {{ . }}
+        {{- end }}
+      toPorts:
+        - ports:
+            - {port: "6443", protocol: TCP}

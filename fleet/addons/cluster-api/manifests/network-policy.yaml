@@ -43,6 +43,14 @@ spec:
             - {port: "9443", protocol: TCP}
   egress:
     - toEntities: [kube-apiserver]
+    # workload clusters' API servers, on their control-plane VMs
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: clusters
+            kubevirt.io: virt-launcher
+      toPorts:
+        - ports:
+            - {port: "6443", protocol: TCP}
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
@@ -60,6 +68,14 @@ spec:
             - {port: "9443", protocol: TCP}
   egress:
     - toEntities: [kube-apiserver]
+    # workload clusters' API servers, on their control-plane VMs
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: clusters
+            kubevirt.io: virt-launcher
+      toPorts:
+        - ports:
+            - {port: "6443", protocol: TCP}
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
@@ -77,6 +93,14 @@ spec:
             - {port: "9443", protocol: TCP}
   egress:
     - toEntities: [kube-apiserver]
+    # workload clusters' API servers, on their control-plane VMs
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: clusters
+            kubevirt.io: virt-launcher
+      toPorts:
+        - ports:
+            - {port: "6443", protocol: TCP}
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
@@ -94,3 +118,11 @@ spec:
             - {port: "9443", protocol: TCP}
   egress:
     - toEntities: [kube-apiserver]
+    # workload clusters' API servers, on their control-plane VMs
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: clusters
+            kubevirt.io: virt-launcher
+      toPorts:
+        - ports:
+            - {port: "6443", protocol: TCP}
