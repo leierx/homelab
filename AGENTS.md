@@ -25,9 +25,9 @@ Instructions for coding agents working in this repository. Follow
 
 `loft01` is production: it holds real data (Immich photo library, Mimir
 metrics, OpenBao secrets). `nixos/backup.nix` runs a nightly restic backup of
-the k3s state and every PVC to rsync.net, but a restore is manual and loses up
-to a day. Do not tear it down, and delete nothing stateful without explicit
-instruction.
+the k3s state and every PVC except metrics, logs and caches to rsync.net, but
+a restore is manual and loses up to a day. Do not tear it down, and delete
+nothing stateful without explicit instruction.
 
 ## How `/fleet` Works
 

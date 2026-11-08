@@ -9,6 +9,14 @@ let
   # what restic reads, the same paths every run so each run only reads files changed since the last:
   # k3s/ and volumes/<namespace>/<claim>/, the latter read-only mounts of one atomic snapshot
   root = "/run/offsite-backup";
+  # claims not worth the upload: metrics and logs expire anyway (mimir is most of the nightly churn),
+  # caches refill on their own
+  excluded = [
+    "monitoring/data-mimir-0"
+    "monitoring/storage-loki-0"
+    "renovate/renovate-cache"
+    "immich/model-cache"
+  ];
 
   backup = pkgs.writeShellApplication {
     name = "offsite-backup";
@@ -66,12 +74,14 @@ let
       # named by claim, so a volume recreated by a cluster rebuild continues its history
       bound=$(kubectl get pv -o json \
         | jq -r '.items[] | select(.status.phase == "Bound") | "\(.metadata.name) \(.spec.claimRef.namespace)/\(.spec.claimRef.name)"')
-      declare -A claims
+      declare -A claims excluded=(${lib.concatMapStringsSep " " (c: "[${c}]=1") excluded})
       while read -r pv claim; do claims[$pv]=$claim; done <<<"$bound"
       for dataset in $(zfs list -H -o name -d 1 tank); do
         [ "$dataset" = tank ] && continue
         pv=''${dataset#tank/}
-        dir=${root}/volumes/''${claims[$pv]:-unbound/$pv}
+        claim=''${claims[$pv]:-unbound/$pv}
+        [[ -v excluded[$claim] ]] && continue
+        dir=${root}/volumes/$claim
         mkdir -p "$dir"
         mount -t zfs -o ro "$dataset@restic" "$dir"
       done
