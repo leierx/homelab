@@ -95,29 +95,45 @@ let
   };
 in
 {
-  services.sanoid = {
+  # local snapshots of every volume, hourly; independent of the off-site backup, which takes its own
+  services.zrepl = {
     enable = true;
-    # 2.3.0 closes the snapshot cache it is appending to (one shared FH), so recursive snapshots go
-    # missing from the cache and are taken twice; fixed upstream (#1023, #1071) after the last release
-    package = pkgs.sanoid.overrideAttrs (old: {
-      patches = (old.patches or [ ]) ++ [
-        (pkgs.fetchpatch {
-          url = "https://github.com/jimsalterjrs/sanoid/commit/efd52f416d1ecf95c9e7db225476c6a5fd1d1808.patch";
-          hash = "sha256-18tuCF+37osXvaWgomcaX0ekSvnt8a36EvudsY6dszc=";
-        })
-        (pkgs.fetchpatch {
-          url = "https://github.com/jimsalterjrs/sanoid/commit/2343089a0809740d0dad27c74e54f43153e558fd.patch";
-          hash = "sha256-fh13/ANtOSl1K+0lZt0ldYaSDEWpaRmivBg8NwOSyv8=";
-        })
+    settings = {
+      # journald adds the time; info logs each snapshot, which the Loki rules watch
+      global.logging = [
+        {
+          type = "stdout";
+          level = "info";
+          format = "human";
+          time = false;
+        }
       ];
-    });
-    datasets.tank = {
-      recursive = "zfs";
-      autosnap = true;
-      autoprune = true;
-      hourly = 24;
-      daily = 14;
-      monthly = 3;
+      jobs = [
+        {
+          name = "tank";
+          type = "snap";
+          filesystems."tank<" = true;
+          snapshotting = {
+            type = "cron";
+            cron = "0 * * * *";
+            prefix = "zrepl_";
+            timestamp_format = "human";
+          };
+          # zrepl destroys every snapshot no rule keeps, tank@restic and manual ones included
+          pruning.keep = [
+            {
+              type = "regex";
+              negate = true;
+              regex = "^zrepl_";
+            }
+            {
+              type = "grid";
+              regex = "^zrepl_";
+              grid = "1x1h(keep=all) | 24x1h | 14x1d | 3x30d";
+            }
+          ];
+        }
+      ];
     };
   };
 

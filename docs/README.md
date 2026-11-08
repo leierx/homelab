@@ -91,7 +91,7 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 
 ## Backup & Restore
 
-Each PVC is a dataset `tank/<pv>`. sanoid keeps local snapshots (24 hourly,
+Each PVC is a dataset `tank/<pv>`. zrepl keeps local snapshots (24 hourly,
 14 daily, 3 monthly); `offsite-backup.service` copies a snapshot of every
 volume plus the k3s state to rsync.net nightly at 04:30 (restic: 7 daily,
 4 weekly, 6 monthly), except the claims in `excluded` (Mimir, Loki, caches).

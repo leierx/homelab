@@ -16,6 +16,20 @@ spec:
             instance: offsite-backup
           annotations:
             summary: "No off-site backup has finished in 26 hours: it failed, hung or never ran. `journalctl -u offsite-backup` on the host says which."
+        - alert: ZfsSnapshotsMissing
+          expr: absent_over_time({unit="zrepl.service"} |= "end run job plan successful" [2h])
+          labels:
+            severity: warning
+            instance: zrepl
+          annotations:
+            summary: "zrepl has taken no ZFS snapshot in 2 hours. `journalctl -u zrepl` and `zrepl status` on the host say why."
+        - alert: ZreplErrors
+          expr: sum(count_over_time({unit="zrepl.service"} |= "[ERRO]" [1h])) > 0
+          labels:
+            severity: warning
+            instance: zrepl
+          annotations:
+            summary: "zrepl logged errors in the last hour: a snapshot or prune failed. `journalctl -u zrepl | grep ERRO` on the host says which."
         - alert: NixosUpgradeNotCompleted
           expr: absent_over_time({unit="nixos-upgrade.service"} |= "Done. The new configuration is" [8d])
           labels:
