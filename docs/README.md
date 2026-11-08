@@ -46,7 +46,7 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   Keycloak credentials) are generated once via ESO `Password` generators and
   pushed with `PushSecret` (`updatePolicy: IfNotExists`).
 - **Renovate GitHub App credentials** (`app_id`, `installation_id`,
-  `private_key`) are set by hand, like Gotify's `alertmanager_token`
+  `private_key`) are set by hand, like Gotify's `apprise_token`
   ([monitoring.md](monitoring.md)):
 
   ```sh

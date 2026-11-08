@@ -168,7 +168,7 @@ connection to the server, so no push service is involved.
 Gotify generates application tokens itself, so Apprise's is set by hand, once
 per cluster: log in, create an application (its messages reach only its
 owner), and store its token with
-`read -rs T && printf %s "$T" | just bao kv patch kv/loft01/gotify alertmanager_token=- && unset T`.
+`read -rs T && printf %s "$T" | just bao kv patch kv/loft01/gotify apprise_token=- && unset T`.
 
 To stop the repeats, silence the alert in Grafana (Alerting, Silences, with
 the `Alertmanager` datasource). Acknowledging it in Alerta doesn't: the

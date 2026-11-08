@@ -54,7 +54,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: alerta
-                  key: grafana-api-key
+                  key: admin-key
             # 180 days
             - name: HK_EXPIRED_DELETE_HRS
               value: "4320"
