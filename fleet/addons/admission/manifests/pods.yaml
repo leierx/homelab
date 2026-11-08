@@ -1,4 +1,3 @@
-# every image names a version: a tag other than latest, or a digest
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
@@ -28,7 +27,7 @@ spec:
   policyName: image-versions
   validationActions: [Deny]
 ---
-# Every image comes from one of a few known registries. An image without a registry host is docker.io.
+# an image without a registry host is docker.io
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
@@ -103,4 +102,4 @@ spec:
     namespaceSelector:
       matchExpressions:
         # the Cilium agent deliberately has no memory limit
-        - { key: kubernetes.io/metadata.name, operator: NotIn, values: [kube-system] }
+        - {key: kubernetes.io/metadata.name, operator: NotIn, values: [kube-system]}

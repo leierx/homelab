@@ -1,4 +1,4 @@
-# zfs: a ZFS dataset per PVC (default); refquota so snapshots don't count against the claim
+# zfs (default): refquota, so snapshots don't count against the claim
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -13,7 +13,7 @@ parameters:
   quotatype: refquota
   thinprovision: "yes"
 allowVolumeExpansion: true
-# a deleted claim must not take the data with it: the dataset stays until removed by hand
+# a deleted claim keeps its data until removed by hand
 reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer
 ---
@@ -27,7 +27,6 @@ parameters:
   poolname: tank
   thinprovision: "yes"
 allowVolumeExpansion: true
-# a deleted claim must not take the data with it: the zvol stays until removed by hand
 reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer
 ---

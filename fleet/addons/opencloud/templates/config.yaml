@@ -4,7 +4,7 @@ kind: ConfigMap
 metadata:
   name: opencloud-config
 data:
-  # roles from the Keycloak groups claim, first match wins; a user in none of them is refused. No local admin exists, so this is the only source of the admin role
+  # first match wins; with no local admin, homelab-admins is the only path to the admin role
   proxy.yaml: |
     role_assignment:
       driver: oidc
@@ -17,7 +17,7 @@ data:
             claim_value: homelab-operators
           - role_name: user-light
             claim_value: homelab-viewers
-  # upstream's CSP without its third-party origins (update check, app store, draw.io), plus Keycloak for the token calls and the one file admin-settings' Extensions page reads for app compatibility
+  # upstream's CSP minus third-party origins, plus Keycloak and the app compatibility list
   csp.yaml: |
     directives:
       child-src: ["'self'"]

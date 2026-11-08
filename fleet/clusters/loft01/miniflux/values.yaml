@@ -1,4 +1,5 @@
 url: https://rss.skinke.net
+metricsAllowedNetworks: 10.42.0.0/16
 oidc:
   issuer: https://auth.skinke.net/realms/homelab
 database:

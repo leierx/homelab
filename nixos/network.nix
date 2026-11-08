@@ -10,8 +10,7 @@
       "9.9.9.9#dns.quad9.net"
       "149.112.112.112#dns.quad9.net"
     ];
-    # wg Gateway routes for local processes (kube-apiserver OIDC) and WireGuard peers querying 10.0.0.1:53.
-    # resolved answers every name sharing an address as a CNAME to the first one (alerta), even on separate lines; clients follow it.
+    # the wg Gateway for the host and WireGuard peers; resolved answers these as CNAMEs to alerta, which clients follow
     extraHosts = ''
       10.0.0.1 alerta.skinke.net
       10.0.0.1 argocd.skinke.net
@@ -20,8 +19,7 @@
       10.0.0.1 workflows.skinke.net
     '';
 
-    # Cilium's hostFirewall (fleet/addons/cilium) is the host policy but only loads after k3s; this
-    # shield lets nothing but WireGuard in from the LAN, from early boot on, and leaves the rest to Cilium
+    # only WireGuard in from the LAN until Cilium's hostFirewall loads after k3s
     nftables.enable = true;
     firewall = {
       allowPing = false;
@@ -40,9 +38,11 @@
     };
   };
 
-  # all=0 already wins while forwarding is on; default=0 keeps it so if forwarding goes
   boot.kernel.sysctl = {
+    "net.ipv4.conf.all.accept_redirects" = 0;
+    # all=0 only wins while forwarding is on
     "net.ipv4.conf.default.accept_redirects" = 0;
+    "net.ipv4.conf.all.send_redirects" = 0;
     "net.ipv4.conf.all.secure_redirects" = 0;
     "net.ipv4.conf.default.secure_redirects" = 0;
     # Cilium sets all.rp_filter=0 for lxc*; strict on eno1 and wg0 stops LAN spoofing of 10.0.0.0/24 or 10.42.0.0/16
@@ -98,5 +98,10 @@
       matchConfig.Name = "wg0";
       address = [ "10.0.0.1/24" ];
     };
+  };
+
+  secrets.secrets = {
+    "wireguard/private_key".owner = "systemd-network";
+    "wireguard/psk".owner = "systemd-network";
   };
 }

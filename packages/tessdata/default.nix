@@ -12,11 +12,12 @@ let
     ];
   };
 in
-# data only: mounted over Paperless-ngx's tessdata directory as an image volume (containerd can't mount a single file from one); copies, since store symlinks wouldn't resolve there
+# a whole directory, since containerd can't mount one file from an image volume
 dockerTools.buildImage {
   name = "ghcr.io/leierx/tessdata";
   copyToRoot = runCommand "tessdata" { } ''
     mkdir $out
+    # store symlinks wouldn't resolve inside the mounted image
     cp -rL --no-preserve=mode ${tesseract}/share/tessdata $out/tessdata
     chmod -R a-w,a+rX $out/tessdata
   '';

@@ -47,7 +47,7 @@ spec:
         - name: opencloud
           port: 9200
       filters:
-        # OpenCloud 9.0.0 takes the client IP from these when present (fixed in 9.0.1); the Gateway already sets X-Forwarded-For
+        # TODO(opencloud 9.0.1): drop; 9.0.0 takes the client IP from these over the Gateway's X-Forwarded-For
         - type: RequestHeaderModifier
           requestHeaderModifier:
             remove: [True-Client-IP, X-Real-IP]

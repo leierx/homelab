@@ -10,15 +10,14 @@ resource "keycloak_realm" "homelab" {
   sso_session_idle_timeout = "12h"
   sso_session_max_lifespan = "12h"
 
-  # the name a security key or passkey shows for this site
   web_authn_policy {
     relying_party_entity_name = "homelab"
   }
 
-  # F2: no simple passwords, and the password history stops a quick change back
+  # the password history stops a quick change back
   password_policy = "length(16) and notUsername(1) and passwordHistory(5)"
 
-  # F3: temporary lockout at ten failures; the strategy is explicit, not inherited
+  # the strategy is explicit, not inherited
   security_defenses {
     brute_force_detection {
       permanent_lockout                = false
@@ -39,15 +38,13 @@ resource "keycloak_realm" "homelab" {
   }
 }
 
-# F5: events and admin events are the audit trail of the realm
 resource "keycloak_realm_events" "homelab" {
   realm_id = keycloak_realm.homelab.id
 
   events_enabled               = true
   admin_events_enabled         = true
   admin_events_details_enabled = false
-  # 90 days
-  events_expiration = 7776000
+  events_expiration            = 90 * 24 * 3600
   # new realms get jboss-logging by default; this resource would remove it otherwise
   events_listeners = ["jboss-logging"]
 }

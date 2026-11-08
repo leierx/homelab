@@ -14,7 +14,7 @@ config:
   receivers:
     - name: apprise
       webhook_configs:
-        - url: http://apprise.apprise.svc:8000/notify/loft01
+        - url: http://apprise.apprise.svc:8000/notify/homelab
           # Apprise's request format; values that parse as YAML lists or maps are sent as such, so the bullets are "* "
           payload:
             tag: '{{ if eq .Status "firing" }}urgent{{ else }}quiet{{ end }}'

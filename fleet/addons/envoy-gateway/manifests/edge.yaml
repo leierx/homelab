@@ -9,8 +9,8 @@ spec:
       envoyDeployment:
         container:
           resources:
-            requests: { cpu: 100m, memory: 128Mi }
-            limits: { memory: 1Gi }
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 1Gi}
         patch:
           type: StrategicMerge
           value:
@@ -20,7 +20,7 @@ spec:
                   containers:
                     - name: shutdown-manager
                       resources:
-                        limits: { memory: 64Mi }
+                        limits: {memory: 64Mi}
       envoyService:
         type: NodePort
         patch:
@@ -38,7 +38,7 @@ spec:
                   targetPort: 10443
                   nodePort: 30443
 ---
-# Stable in-cluster Service name for the edge proxy (Envoy Gateway's own Service name includes a hash).
+# a stable name for CoreDNS split-horizon (nixos/k3s.nix); Envoy Gateway's own Service name has a hash
 apiVersion: v1
 kind: Service
 metadata:
@@ -98,7 +98,7 @@ spec:
   rules:
     # ACME HTTP-01 challenges still get through: cert-manager's solver routes match their exact path
     - matches:
-        - path: { type: PathPrefix, value: / }
+        - path: {type: PathPrefix, value: /}
       filters:
         - type: RequestRedirect
           requestRedirect:
@@ -122,4 +122,3 @@ spec:
       sectionName: http
   authorization:
     defaultAction: Allow
-

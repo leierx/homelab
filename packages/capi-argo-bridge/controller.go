@@ -195,7 +195,6 @@ func parseKubeconfig(raw []byte) (server string, caData, certData, keyData []byt
 	return cluster.Server, cluster.CertificateAuthorityData, user.ClientCertificateData, user.ClientKeyData, nil
 }
 
-// maps a CAPI kubeconfig Secret to its Cluster
 func (r *ClusterReconciler) secretToCluster(ctx context.Context, obj client.Object) []reconcile.Request {
 	if name := obj.GetLabels()["cluster.x-k8s.io/cluster-name"]; name != "" && obj.GetName() == kubeconfigSecretName(name) {
 		return []reconcile.Request{{NamespacedName: types.NamespacedName{Namespace: obj.GetNamespace(), Name: name}}}

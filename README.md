@@ -18,8 +18,9 @@ no helper scripts or CI in the rendering path. Design principles are in
 
 - **Host (`nixos/`).** Declarative NixOS configuration. `disko` lays out the
   disks, `nixos/secrets.nix` installs host secrets from a host-only file, and the host auto-upgrades from
-  `main` on Fridays. `nixos/backup.nix` backs up the k3s state and every PVC
-  to rsync.net nightly with restic.
+  `main` on Fridays. zrepl snapshots every volume hourly, and
+  `nixos/backup.nix` backs up the k3s state and every PVC except metrics, logs
+  and caches to rsync.net nightly with restic.
 - **GitOps (`fleet/`).** A catalog of addons, enabled and layered by envs and
   clusters (`addon < env < cluster`). Each Argo CD instance runs a Cluster
   Generator `ApplicationSet` (`fleet`) that renders the `/fleet` Helm chart per
@@ -49,11 +50,12 @@ fleet/          GitOps fleet controller, shared addons, and cluster configs (see
   envs/         Per-env config (env.yaml, <addon>/{addon.yaml,values.yaml,manifests/})
   clusters/     Per-cluster config (cluster.yaml, <addon>/{addon.yaml,values.yaml,manifests/})
 tofu/           OpenTofu roots (Keycloak realm)
-packages/       First-party controllers built with Nix (capi-argo-bridge)
-.github/        CI: Argo CD diff preview, Nix checks, capi-argo-bridge image, Renovate config check
+packages/       First-party packages built with Nix (capi-argo-bridge, tessdata image)
+.github/        CI: Argo CD diff preview, Nix checks, capi-argo-bridge and tessdata images, Renovate config check
 docs/           Operating guide for loft01 (see docs/README.md)
 AGENTS.md       Instructions for coding agents
 renovate.json5  Renovate entry point, extending the presets in renovate/
 renovate/       Renovate presets: managers, review, schedule, nix, go, holds
 flake.nix       Nix flake for host, installer, and packages
+justfile        Workstation helpers: kubeconfig, bao
 ```

@@ -1,4 +1,4 @@
-# Only External Secrets and metrics scraping talk to OpenBao; people use the bao CLI through kubectl exec.
+# people use the bao CLI through kubectl exec
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:

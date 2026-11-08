@@ -13,7 +13,7 @@ Instructions for coding agents working in this repository. Follow
 - `packages/` — First-party controllers/apps built with Nix and exposed via
   `flake.nix` (e.g. `packages/capi-argo-bridge/`).
 - `nixos/` — Declarative NixOS configuration for `loft01` (disko, k3s,
-  host secrets, WireGuard, restic off-site backup).
+  host secrets, WireGuard, zrepl local snapshots, restic off-site backup).
 - `.github/workflows/` — CI: Argo CD diff preview and Nix checks on PRs, the
   `capi-argo-bridge` and `tessdata` image builds, and Renovate config
   validation.
@@ -50,8 +50,8 @@ Design: issue #167. Read `fleet/README.md` for the schema.
      releaseName}`, `dependencies`, `managedBy`, `sources`,
      `managedNamespaceMetadata`, `application`. Maps deep-merge, later layer
      wins; `dependencies` and `sources` concatenate.
-   - Local charts (`alerta`, `capi-argo-bridge`, `keycloak`, `mimir`,
-     `apprise`, `gotify`, `miniflux`, `paperless`) set `helm.path: fleet/addons/<name>`.
+   - Local charts (`alerta`, `apprise`, `capi-argo-bridge`, `gotify`, `keycloak`,
+     `mimir`, `miniflux`, `opencloud`, `paperless`) set `helm.path: fleet/addons/<name>`.
 3. **Enabling:** `envs/<env>/env.yaml` and `clusters/<cluster>/cluster.yaml`
    map `addons: {<name>: true|false}`; the cluster wins. A name with no
    catalog entry is a scoped addon (e.g. `dodde` on `loft01`).
@@ -82,7 +82,7 @@ helm template mimir fleet/addons/mimir -n monitoring \
 If editing `nixos/`, verify the NixOS configuration builds:
 
 ```sh
-nix build .#nixosConfigurations.loft01.config.system.build.toplevel
+nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
 ```
 
 ## Conventions & Guardrails

@@ -87,12 +87,12 @@ spec:
         name: data
       spec:
         accessModes: ["ReadWriteOnce"]
-        {{- with .Values.storage.className }}
+        {{- with .Values.persistence.data.storageClass }}
         storageClassName: {{ . }}
         {{- end }}
         resources:
           requests:
-            storage: {{ .Values.storage.size }}
+            storage: {{ .Values.persistence.data.size }}
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor

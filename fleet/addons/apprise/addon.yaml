@@ -1,10 +1,10 @@
 namespace: apprise
-helm:
-  path: fleet/addons/apprise
 dependencies:
   - cilium
   - external-secrets
   - gotify
+helm:
+  path: fleet/addons/apprise
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted

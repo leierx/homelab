@@ -1,4 +1,3 @@
-# Every HTTPS route on edge and wg logs in to Keycloak (client edge) at Envoy before reaching the backend
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:

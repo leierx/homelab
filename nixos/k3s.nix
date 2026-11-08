@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 let
   yaml = pkgs.formats.yaml { };
 
@@ -32,7 +32,6 @@ let
     anonymous.enabled = false;
   };
 
-  # pods in namespaces without a pod-security label get baseline, and warnings for restricted
   admission = yaml.generate "k3s-admission.yaml" {
     apiVersion = "apiserver.config.k8s.io/v1";
     kind = "AdmissionConfiguration";
@@ -49,11 +48,6 @@ let
             audit-version = "latest";
             warn = "restricted";
             warn-version = "latest";
-          };
-          exemptions = {
-            usernames = [ ];
-            runtimeClasses = [ ];
-            namespaces = [ ];
           };
         };
       }
@@ -234,7 +228,7 @@ in
 
   systemd.tmpfiles.rules = [ "d /var/log/kubernetes 0700 root root -" ];
 
-  # zfs-localpv's zvols have to exist before kubelet starts pods
+  # tank must be imported before kubelet starts zfs-localpv pods
   systemd.services.k3s = {
     wants = [ "zfs-import.target" ];
     after = [ "zfs-import.target" ];
@@ -243,23 +237,39 @@ in
   # above the kubelet's 280 s total, so logind never cuts its shutdown short
   services.logind.settings.Login.InhibitDelayMaxSec = "360s";
 
-  # the admin kubeconfig is a year-long system:masters client cert owned 0600 by
-  # root; break-glass goes through doas so unprivileged processes cannot read it
-  environment.systemPackages = with pkgs; [
-    (writeShellScriptBin "kubectl" ''
-      export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-      [ "$(id -u)" -eq 0 ] && exec ${k3s}/bin/kubectl "$@"
-      exec /run/wrappers/bin/doas ${k3s}/bin/kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml "$@"
-    '')
-    (writeShellScriptBin "helm" ''
-      export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-      [ "$(id -u)" -eq 0 ] && exec ${kubernetes-helm}/bin/helm "$@"
-      exec /run/wrappers/bin/doas ${kubernetes-helm}/bin/helm --kubeconfig=/etc/rancher/k3s/k3s.yaml "$@"
-    '')
-    (writeShellScriptBin "cilium" ''
-      export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-      [ "$(id -u)" -eq 0 ] && exec ${cilium-cli}/bin/cilium "$@"
-      exec /run/wrappers/bin/doas ${cilium-cli}/bin/cilium --kubeconfig=/etc/rancher/k3s/k3s.yaml "$@"
-    '')
-  ];
+  # k3s.yaml is a root-only system:masters cert, so break-glass goes through doas
+  environment.systemPackages =
+    pkgs.lib.mapAttrsToList
+      (
+        name: pkg:
+        pkgs.writeShellScriptBin name ''
+          doas=; [ "$(id -u)" -eq 0 ] || doas=/run/wrappers/bin/doas
+          exec $doas ${pkg}/bin/${name} --kubeconfig=/etc/rancher/k3s/k3s.yaml "$@"
+        ''
+      )
+      {
+        kubectl = k3s;
+        helm = pkgs.kubernetes-helm;
+        cilium = pkgs.cilium-cli;
+      };
+
+  secrets.secrets."openbao/seal_key" = { };
+  # OpenBao's static auto-unseal key, through k3s's auto-deploy manifests
+  secrets.templates."openbao-seal-key.yaml" = {
+    path = "/var/lib/rancher/k3s/server/manifests/openbao-seal-key.yaml";
+    content = ''
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: openbao
+      ---
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: openbao-seal-key
+        namespace: openbao
+      stringData:
+        key: ${config.secrets.placeholder."openbao/seal_key"}
+    '';
+  };
 }

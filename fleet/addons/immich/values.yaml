@@ -47,6 +47,7 @@ valkey:
       containers:
         main:
           resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 512Mi}}
+          securityContext: {readOnlyRootFilesystem: true}
 immich:
   metrics: {enabled: true}
   persistence: {library: {existingClaim: library}}

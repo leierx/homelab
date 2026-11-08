@@ -1,5 +1,5 @@
 image:
   repository: docker.io/caronc/apprise
   tag: 2.0.2
-# Apprise YAML for the config ID loft01 (POST /notify/loft01), per cluster; ${NAME}s come from APPRISE_TEMPLATE_<NAME>
+# Apprise YAML for config ID homelab (POST /notify/homelab); ${NAME}s come from APPRISE_TEMPLATE_<NAME>
 config: ""

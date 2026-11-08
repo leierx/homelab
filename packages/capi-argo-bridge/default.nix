@@ -2,7 +2,6 @@
   lib,
   buildGoModule,
   dockerTools,
-  cacert,
 }:
 let
   capi-argo-bridge = buildGoModule {
@@ -29,9 +28,8 @@ let
 
   image = dockerTools.buildLayeredImage {
     name = "ghcr.io/leierx/capi-argo-bridge";
-    contents = [ cacert ];
     config = {
-      Label = {
+      Labels = {
         "org.opencontainers.image.source" = "https://github.com/leierx/homelab";
       };
       Entrypoint = [ (lib.getExe capi-argo-bridge) ];

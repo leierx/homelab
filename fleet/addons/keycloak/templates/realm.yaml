@@ -1,4 +1,21 @@
-# reconciles realm homelab from tofu/ (the keycloak-realm-tofu ConfigMap) on sync
+{{- define "keycloak.realmWorkflowSpec" -}}
+workflowTemplateRef:
+  name: tofu
+  clusterScope: true
+serviceAccountName: keycloak-tofu
+podMetadata:
+  labels:
+    app.kubernetes.io/name: keycloak-tofu
+arguments:
+  parameters:
+    - name: configMap
+      value: keycloak-realm-tofu
+    - name: secret
+      value: keycloak-tofu
+    - name: waitUrl
+      value: http://keycloak-service:8080/realms/master
+{{- end -}}
+# on sync, so a realm change applies at once
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
@@ -9,21 +26,20 @@ metadata:
     # the CRD comes from argo-workflows, which syncs in the same wave
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
-  workflowTemplateRef:
-    name: tofu
-    clusterScope: true
-  serviceAccountName: keycloak-tofu
-  podMetadata:
-    labels:
-      app.kubernetes.io/name: keycloak-tofu
-  arguments:
-    parameters:
-      - name: configMap
-        value: keycloak-realm-tofu
-      - name: secret
-        value: keycloak-tofu
-      - name: waitUrl
-        value: http://keycloak-service:8080/realms/master
+  {{- include "keycloak.realmWorkflowSpec" . | nindent 2 }}
+---
+# hourly, so changes made by hand in Keycloak are reverted
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: keycloak-realm
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  schedules: ["0 * * * *"]
+  concurrencyPolicy: Forbid
+  workflowSpec:
+    {{- include "keycloak.realmWorkflowSpec" . | nindent 4 }}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -35,9 +51,7 @@ kind: Role
 metadata:
   name: keycloak-tofu
 rules:
-  # the kubernetes backend: Secret tfstate-default-keycloak, Lease lock-tfstate-default-keycloak
-  # list cannot be narrowed with resourceNames, and the backend needs it to find
-  # existing workspaces ("Failed to get existing workspaces: secrets is forbidden")
+  # the kubernetes backend lists Secrets to find workspaces, and list can't be narrowed with resourceNames
   - apiGroups: [""]
     resources: [secrets]
     verbs: [list]

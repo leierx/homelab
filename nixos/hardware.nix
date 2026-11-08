@@ -17,8 +17,6 @@
     "kernel.unprivileged_bpf_disabled" = 1;
     "kernel.yama.ptrace_scope" = 1;
     "net.core.bpf_jit_harden" = 1;
-    "net.ipv4.conf.all.accept_redirects" = 0;
-    "net.ipv4.conf.all.send_redirects" = 0;
   };
   boot.kernelParams = [
     "slab_nomerge"
@@ -52,7 +50,7 @@
 
   services.smartd = {
     enable = true;
-    # short self-test daily at 05, long Wednesdays at 03, clear of the Friday upgrade window
+    # clear of the Friday upgrade window
     defaults.monitored = "-a -s (S/../.././05|L/../../3/03)";
   };
   services.irqbalance.enable = true;

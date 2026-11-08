@@ -1,4 +1,3 @@
-# Hardened downstream defaults and browser response headers for every listener on edge and wg
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: ClientTrafficPolicy
 metadata:

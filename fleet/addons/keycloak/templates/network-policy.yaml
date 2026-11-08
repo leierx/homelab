@@ -36,6 +36,9 @@ apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: postgres
+  annotations:
+    # with the database Cluster, whose initdb job needs the API server
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   endpointSelector:
     matchLabels:
@@ -75,7 +78,6 @@ spec:
         - ports:
             - {port: "5432", protocol: TCP}
 ---
-# The reconcile pod: Keycloak, DNS (baseline), the API server for its state, and the OpenTofu registry.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:

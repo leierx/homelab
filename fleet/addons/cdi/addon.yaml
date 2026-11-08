@@ -1,6 +1,7 @@
 namespace: cdi
 dependencies:
   - cilium
+  - zfs-localpv
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted

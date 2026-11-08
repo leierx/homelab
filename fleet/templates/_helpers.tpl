@@ -1,4 +1,3 @@
-{{/* A YAML file from the chart as a map, or an empty map if it doesn't exist. */}}
 {{- define "fleet.readYaml" -}}
 {{- $raw := .files.Get .path -}}
 {{- $out := dict -}}
@@ -11,7 +10,6 @@
 {{- toYaml $out -}}
 {{- end -}}
 
-{{/* Deep-merges .src into .dst in place: maps recurse, everything else (lists too) is replaced. */}}
 {{- define "fleet.deepMerge" -}}
 {{- $dst := .dst -}}
 {{- range $k, $v := .src -}}
@@ -23,7 +21,6 @@
 {{- end -}}
 {{- end -}}
 
-{{/* Layer directories in merge order: addons/<n> < envs/<e>/<n> < clusters/<c>/<n>. */}}
 {{- define "fleet.layers" -}}
 {{- $layers := list (printf "addons/%s" .name) -}}
 {{- if .env -}}
@@ -33,11 +30,6 @@
 {{- toYaml $layers -}}
 {{- end -}}
 
-{{/*
-Every addon enabled on .Values.cluster, merged across its layers, with its
-resolved manager, layer dirs, sync wave, and whether later waves wait for it
-(something depends on it). Fails on an invalid graph.
-*/}}
 {{- define "fleet.addons" -}}
 {{- $files := .Files -}}
 {{- $cluster := required "cluster is required" .Values.cluster -}}

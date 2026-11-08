@@ -5,7 +5,7 @@
   customManagers: [
     {
       customType: 'regex',
-      description: 'the argocd-diff-preview image in the workflow, by tag and digest',
+      description: 'The argocd-diff-preview image in the workflow, by tag and digest',
       managerFilePatterns: ['/^\\.github/workflows/argocd-diff-preview\\.yml$/'],
       matchStrings: [
         '#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s*\\n\\s*ARGOCD_DIFF_PREVIEW_IMAGE:\\s*\\S+:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:\\S+)',

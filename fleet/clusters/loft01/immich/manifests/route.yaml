@@ -46,7 +46,7 @@ spec:
     - backendRefs:
         - name: immich-server
           port: 2283
-      # no 15 s cap (Envoy's default) on downloading or streaming a large original
+      # no 300 s gateway cap on downloading or streaming a large original
       timeouts:
         request: 0s
 ---
@@ -62,4 +62,3 @@ spec:
       name: immich-edge
   authorization:
     defaultAction: Allow
-

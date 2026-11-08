@@ -2,6 +2,9 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: miniflux
+  annotations:
+    # after its database and secrets are Healthy
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   replicas: 1
   serviceName: miniflux
@@ -61,7 +64,7 @@ spec:
             - name: METRICS_COLLECTOR
               value: "1"
             - name: METRICS_ALLOWED_NETWORKS
-              value: 10.42.0.0/16
+              value: {{ required "metricsAllowedNetworks is per cluster" .Values.metricsAllowedNetworks }}
           ports:
             - name: http
               containerPort: 8080
@@ -75,8 +78,8 @@ spec:
               path: /healthcheck
               port: http
           resources:
-            requests: { cpu: 50m, memory: 64Mi }
-            limits: { memory: 512Mi }
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 512Mi}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

@@ -1,9 +1,9 @@
 namespace: argocd
-helm:
-  path: fleet/addons/capi-argo-bridge
 dependencies:
   - cilium
   - cluster-api
+helm:
+  path: fleet/addons/capi-argo-bridge
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted

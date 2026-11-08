@@ -22,7 +22,7 @@ spec:
       toPorts:
         - ports:
             - {port: "5432", protocol: TCP}
-    # Keycloak OIDC via CoreDNS split-horizon to the edge Gateway; nothing else leaves the pod
+    # Keycloak OIDC via CoreDNS split-horizon to the edge Gateway
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: envoy-gateway-system

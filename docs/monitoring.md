@@ -25,7 +25,7 @@ How metrics, logs and alerts work on `loft01`. Everything here is an addon in
 | `loki` | `monitoring` | Logs and log-based rules, single binary, 30 days. |
 | `alertmanager` | `monitoring` | Routes every alert to Alerta, and pushes the critical ones through Apprise. |
 | `alerta` | `alerta` | Keeps alert history, acknowledgements and notes (180 days, CloudNativePG). |
-| `apprise` | `apprise` | Notification hub: senders post to `/notify/loft01` with a tag, Apprise routes it on (Apprise API). |
+| `apprise` | `apprise` | Notification hub: senders post to `/notify/homelab` with a tag, Apprise routes it on (Apprise API). |
 | `gotify` | `gotify` | Push notifications to the phone at `gotify.skinke.net` (CloudNativePG). |
 | `grafana` | `monitoring` | Dashboards only. Holds no alert rules and nothing that can't be rebuilt from git. |
 | `alloy-metrics` | `telemetry` | Scrapes everything into Mimir and syncs the Mimir rules. |
@@ -110,7 +110,7 @@ A rule object carries one label saying who evaluates it:
 
 A file can't mix the two, so an addon with both has `rules.yaml` and
 `rules-logs.yaml` (or two documents). Cluster-specific rules (the host's
-systemd timers, the backup and upgrade services) live in
+systemd timers, the backup, snapshot and upgrade services) live in
 `fleet/clusters/loft01/<addon>/manifests/rules.yaml`.
 
 An addon with rules must depend on `prometheus-operator-crds`.
@@ -146,7 +146,7 @@ Alertmanager formats them itself, with its webhook `payload` templates
 `apprise` namespace, which sends them on to Gotify.
 
 Apprise is the hub for anything that wants to notify: post `title`, `body`,
-`format` and a `tag` to `http://apprise.apprise.svc:8000/notify/loft01` and open
+`format` and a `tag` to `http://apprise.apprise.svc:8000/notify/homelab` and open
 the sender's egress and Apprise's ingress for it. The tag sets how loud it is:
 `urgent` (Gotify priority 8: pop-up and sound), `normal` (5: sound) or `quiet`
 (3: silent). Alertmanager uses `urgent` while an alert fires and `quiet` once it
@@ -192,9 +192,10 @@ Alloy ships these to Loki with `cluster` as the only external label:
   `AUDIT_LOG_PATH`. The security alerts query it.
 - **Host journal** (`alloy-logs`): only the units in `JOURNAL_UNITS`
   (`fleet/clusters/loft01/alloy-logs/manifests/env.yaml`), labelled `unit` and
-  `level`. Today that is `nixos-upgrade.service` and `offsite-backup.service`,
-  and two rules fire when their success line is missing: no backup finished in
-  26 hours, no upgrade in 8 days. A failed unit also trips `SystemdUnitFailed`.
+  `level`. Today that is `nixos-upgrade.service`, `offsite-backup.service` and
+  `zrepl.service`. Rules fire when no backup finished in 26 hours, no snapshot
+  was taken in 2 hours, zrepl logged an error, or no upgrade finished in 8
+  days. A failed unit also trips `SystemdUnitFailed`.
   A cluster without a journal finds nothing.
 - **Kubernetes events** (`alloy-events`): `job="kubernetes-events"`, labelled
   `type` and `reason`.
@@ -245,16 +246,17 @@ Deployment for Loki).
 
 **Data.** Mimir, Loki, Grafana and Alertmanager each have a `zfs` PVC marked
 `Delete=false,Prune=false`; Alerta's database is a CloudNativePG volume. The
-metrics and logs can be rebuilt, so losing them costs history only. The
-nightly restic backup covers the volumes like any other.
+metrics and logs can be rebuilt, so losing them costs history only, and the
+nightly restic backup skips Mimir's and Loki's volumes (zrepl still snapshots
+them locally).
 
 **Wiping a volume.** Delete the PVC and the pod, then the old `ZFSVolume` and
 PV: the storage class retains, so the dataset survives until then.
 
 **Upgrades.** Renovate bumps every chart. Mimir's image tag is in
-`fleet/addons/mimir/values.yaml`. Renovate skips `smartctl-exporter` chart 0.18.0
-because of prometheus-community/smartctl_exporter#397; 0.19.0 still ships the
-same exporter version, so hold off on it too.
+`fleet/addons/mimir/values.yaml`. `smartctl-exporter` is held below chart
+0.18.0 (`renovate/holds.json5`) until a chart ships an exporter with
+prometheus-community/smartctl_exporter#397 fixed.
 
 ## Dashboard status
 

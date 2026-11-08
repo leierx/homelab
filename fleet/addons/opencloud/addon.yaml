@@ -1,6 +1,4 @@
 namespace: opencloud
-helm:
-  path: fleet/addons/opencloud
 dependencies:
   - cilium
   - external-secrets
@@ -9,6 +7,8 @@ dependencies:
   - cert-manager
   - envoy-gateway
   - keycloak
+helm:
+  path: fleet/addons/opencloud
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted

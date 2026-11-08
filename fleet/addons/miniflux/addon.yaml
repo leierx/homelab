@@ -1,6 +1,4 @@
 namespace: miniflux
-helm:
-  path: fleet/addons/miniflux
 dependencies:
   - cilium
   - cloudnative-pg
@@ -10,6 +8,8 @@ dependencies:
   - cert-manager
   - envoy-gateway
   - keycloak
+helm:
+  path: fleet/addons/miniflux
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted

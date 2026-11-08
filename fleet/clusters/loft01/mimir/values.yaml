@@ -1,3 +1,4 @@
-storage:
-  className: zfs
-  size: 100Gi
+persistence:
+  data:
+    storageClass: zfs
+    size: 100Gi

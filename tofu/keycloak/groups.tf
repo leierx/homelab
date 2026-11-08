@@ -74,7 +74,7 @@ data "keycloak_openid_client" "realm_management" {
   client_id = "realm-management"
 }
 
-# read-only: tofu makes every change, and break-glass is `kc.sh bootstrap-admin`
+# read-only: tofu makes every change, and break-glass is `kc.sh bootstrap-admin user`
 data "keycloak_role" "realm_management_view" {
   for_each  = toset(["view-realm", "view-users", "view-clients", "view-events"])
   realm_id  = keycloak_realm.homelab.id

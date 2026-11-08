@@ -15,8 +15,8 @@ spec:
       owner: paperless
   storage: {{ toJson .Values.database.storage }}
   resources:
-    requests: { cpu: 50m, memory: 256Mi }
-    limits: { memory: 1Gi }
+    requests: {cpu: 50m, memory: 256Mi}
+    limits: {memory: 1Gi}
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor

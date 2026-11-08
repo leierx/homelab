@@ -2,7 +2,6 @@ apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: vm-isolation
-  namespace: dodde
 spec:
   # every VM's pod, not CDI's importer, which needs cluster DNS for the image URL
   endpointSelector:
@@ -19,12 +18,10 @@ spec:
         - 169.254.0.0/16
         - 100.64.0.0/10
 ---
-# Default-deny for the namespace, then SSH in and the public internet out.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: default
-  namespace: dodde
 spec:
   endpointSelector: {}
   enableDefaultDeny:
@@ -37,7 +34,6 @@ spec:
         - ports:
             - {port: "22", protocol: TCP}
   egress:
-    # every port and protocol to the public internet, nothing private (pod/service CIDRs, wg0, LAN, iLO, loft01)
     - toCIDRSet:
         - cidr: 0.0.0.0/0
           except:

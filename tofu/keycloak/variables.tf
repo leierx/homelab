@@ -1,13 +1,11 @@
 variable "keycloak_client_secret" {
-  description = "Secret of the master realm's service client bootstrap-admin"
-  type        = string
-  sensitive   = true
+  type      = string
+  sensitive = true
 }
 
 variable "leier_password" {
-  description = "First password for leier; only used when the account is created"
-  type        = string
-  sensitive   = true
+  type      = string
+  sensitive = true
 }
 
 variable "argocd_client_secret" {

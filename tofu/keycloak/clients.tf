@@ -17,7 +17,20 @@ locals {
     "microprofile-jwt",
   ]
 
-  # OpenCloud's web, desktop and mobile clients
+  clients = {
+    argocd         = keycloak_openid_client.argocd.id
+    argocd_cli     = keycloak_openid_client.argocd_cli.id
+    grafana        = keycloak_openid_client.grafana.id
+    immich         = keycloak_openid_client.immich.id
+    alerta         = keycloak_openid_client.alerta.id
+    edge           = keycloak_openid_client.edge.id
+    kubernetes     = keycloak_openid_client.kubernetes.id
+    argo_workflows = keycloak_openid_client.argo_workflows.id
+    miniflux       = keycloak_openid_client.miniflux.id
+    paperless      = keycloak_openid_client.paperless.id
+    gotify         = keycloak_openid_client.gotify.id
+  }
+
   opencloud_clients = merge(
     { opencloud = keycloak_openid_client.opencloud.id },
     { for name, client in keycloak_openid_client.opencloud_apps : name => client.id },
@@ -76,6 +89,7 @@ resource "keycloak_openid_client" "grafana" {
   implicit_flow_enabled        = false
   service_accounts_enabled     = false
   full_scope_allowed           = false
+  pkce_code_challenge_method   = "S256"
 
   valid_redirect_uris             = ["https://metrics.skinke.net/login/generic_oauth"]
   valid_post_logout_redirect_uris = ["https://metrics.skinke.net/login"]
@@ -117,7 +131,7 @@ resource "keycloak_role" "immich_user" {
   name      = "user"
 }
 
-# the user's roles on this client, as a list in this claim (Immich reads immich_role)
+# Immich reads its role from claim immich_role
 resource "keycloak_generic_protocol_mapper" "immich_role" {
   realm_id        = keycloak_realm.homelab.id
   client_id       = keycloak_openid_client.immich.id
@@ -290,7 +304,7 @@ resource "keycloak_openid_client" "gotify" {
   ]
 }
 
-# OpenCloud's web app; like its desktop and mobile apps, a public client with PKCE
+# OpenCloud's web app
 resource "keycloak_openid_client" "opencloud" {
   realm_id  = keycloak_realm.homelab.id
   client_id = "opencloud"
@@ -349,78 +363,71 @@ resource "keycloak_openid_audience_protocol_mapper" "opencloud" {
   add_to_id_token          = false
 }
 
-
-resource "keycloak_openid_client_default_scopes" "argocd" {
-  realm_id       = keycloak_realm.homelab.id
-  client_id      = keycloak_openid_client.argocd.id
-  default_scopes = local.default_client_scopes
-}
-
-resource "keycloak_openid_client_default_scopes" "argocd_cli" {
-  realm_id       = keycloak_realm.homelab.id
-  client_id      = keycloak_openid_client.argocd_cli.id
-  default_scopes = local.default_client_scopes
-}
-
-resource "keycloak_openid_client_default_scopes" "grafana" {
-  realm_id       = keycloak_realm.homelab.id
-  client_id      = keycloak_openid_client.grafana.id
-  default_scopes = local.default_client_scopes
-}
-
-resource "keycloak_openid_client_default_scopes" "immich" {
-  realm_id       = keycloak_realm.homelab.id
-  client_id      = keycloak_openid_client.immich.id
-  default_scopes = local.default_client_scopes
-}
-
-resource "keycloak_openid_client_default_scopes" "alerta" {
-  realm_id       = keycloak_realm.homelab.id
-  client_id      = keycloak_openid_client.alerta.id
-  default_scopes = local.default_client_scopes
-}
-
-resource "keycloak_openid_client_default_scopes" "edge" {
-  realm_id       = keycloak_realm.homelab.id
-  client_id      = keycloak_openid_client.edge.id
-  default_scopes = local.default_client_scopes
-}
-
-resource "keycloak_openid_client_default_scopes" "kubernetes" {
-  realm_id       = keycloak_realm.homelab.id
-  client_id      = keycloak_openid_client.kubernetes.id
-  default_scopes = local.default_client_scopes
-}
-
-resource "keycloak_openid_client_default_scopes" "argo_workflows" {
-  realm_id       = keycloak_realm.homelab.id
-  client_id      = keycloak_openid_client.argo_workflows.id
-  default_scopes = local.default_client_scopes
-}
-
-resource "keycloak_openid_client_default_scopes" "miniflux" {
-  realm_id       = keycloak_realm.homelab.id
-  client_id      = keycloak_openid_client.miniflux.id
-  default_scopes = local.default_client_scopes
-}
-
-resource "keycloak_openid_client_default_scopes" "paperless" {
-  realm_id       = keycloak_realm.homelab.id
-  client_id      = keycloak_openid_client.paperless.id
-  default_scopes = local.default_client_scopes
-}
-
-resource "keycloak_openid_client_default_scopes" "gotify" {
-  realm_id       = keycloak_realm.homelab.id
-  client_id      = keycloak_openid_client.gotify.id
-  default_scopes = local.default_client_scopes
-}
-
-resource "keycloak_openid_client_default_scopes" "opencloud" {
-  for_each       = local.opencloud_clients
+resource "keycloak_openid_client_default_scopes" "clients" {
+  for_each       = merge(local.clients, local.opencloud_clients)
   realm_id       = keycloak_realm.homelab.id
   client_id      = each.value
   default_scopes = local.default_client_scopes
+}
+
+moved {
+  from = keycloak_openid_client_default_scopes.opencloud
+  to   = keycloak_openid_client_default_scopes.clients
+}
+
+moved {
+  from = keycloak_openid_client_default_scopes.argocd
+  to   = keycloak_openid_client_default_scopes.clients["argocd"]
+}
+
+moved {
+  from = keycloak_openid_client_default_scopes.argocd_cli
+  to   = keycloak_openid_client_default_scopes.clients["argocd_cli"]
+}
+
+moved {
+  from = keycloak_openid_client_default_scopes.grafana
+  to   = keycloak_openid_client_default_scopes.clients["grafana"]
+}
+
+moved {
+  from = keycloak_openid_client_default_scopes.immich
+  to   = keycloak_openid_client_default_scopes.clients["immich"]
+}
+
+moved {
+  from = keycloak_openid_client_default_scopes.alerta
+  to   = keycloak_openid_client_default_scopes.clients["alerta"]
+}
+
+moved {
+  from = keycloak_openid_client_default_scopes.edge
+  to   = keycloak_openid_client_default_scopes.clients["edge"]
+}
+
+moved {
+  from = keycloak_openid_client_default_scopes.kubernetes
+  to   = keycloak_openid_client_default_scopes.clients["kubernetes"]
+}
+
+moved {
+  from = keycloak_openid_client_default_scopes.argo_workflows
+  to   = keycloak_openid_client_default_scopes.clients["argo_workflows"]
+}
+
+moved {
+  from = keycloak_openid_client_default_scopes.miniflux
+  to   = keycloak_openid_client_default_scopes.clients["miniflux"]
+}
+
+moved {
+  from = keycloak_openid_client_default_scopes.paperless
+  to   = keycloak_openid_client_default_scopes.clients["paperless"]
+}
+
+moved {
+  from = keycloak_openid_client_default_scopes.gotify
+  to   = keycloak_openid_client_default_scopes.clients["gotify"]
 }
 
 resource "keycloak_realm_optional_client_scopes" "homelab" {
@@ -431,19 +438,7 @@ resource "keycloak_realm_optional_client_scopes" "homelab" {
 resource "keycloak_openid_client_optional_scopes" "no_offline_access" {
   for_each = merge(
     { for name, client in data.keycloak_openid_client.builtin : name => client.id },
-    {
-      argocd         = keycloak_openid_client.argocd.id
-      argocd_cli     = keycloak_openid_client.argocd_cli.id
-      grafana        = keycloak_openid_client.grafana.id
-      immich         = keycloak_openid_client.immich.id
-      alerta         = keycloak_openid_client.alerta.id
-      edge           = keycloak_openid_client.edge.id
-      kubernetes     = keycloak_openid_client.kubernetes.id
-      argo_workflows = keycloak_openid_client.argo_workflows.id
-      miniflux       = keycloak_openid_client.miniflux.id
-      paperless      = keycloak_openid_client.paperless.id
-      gotify         = keycloak_openid_client.gotify.id
-    },
+    local.clients,
     local.opencloud_clients,
   )
   realm_id        = keycloak_realm.homelab.id

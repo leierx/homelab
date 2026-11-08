@@ -1,6 +1,4 @@
-# PSA already refuses privileged pods and hostPath in a restricted namespace.
-# What it does not stop is a commit that relabels an app namespace to privileged,
-# or adds a new one that way. Only the namespaces below may do that.
+# PSA can't stop a commit labelling a namespace privileged; only these may
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:

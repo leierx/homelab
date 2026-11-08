@@ -1,11 +1,10 @@
 image:
   repository: quay.io/keycloak/keycloak
   tag: 26.8.1
-# public URL, per cluster
 hostname: ""
-# optional internal URL for the admin console and Admin API, per cluster
+# optional internal URL for the admin console and Admin API
 adminHostname: ""
-# the pod network, where the Envoy proxies are; per cluster
+# the pod network, where the Envoy proxies are
 proxyTrustedAddresses: ""
 database:
   storage:
