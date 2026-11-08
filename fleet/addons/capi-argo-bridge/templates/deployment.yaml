@@ -7,11 +7,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: capi-argo-bridge
+      app.kubernetes.io/name: capi-argo-bridge
   template:
     metadata:
       labels:
-        app: capi-argo-bridge
+        app.kubernetes.io/name: capi-argo-bridge
     spec:
       serviceAccountName: capi-argo-bridge
       securityContext:

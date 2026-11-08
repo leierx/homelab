@@ -5,6 +5,6 @@ metadata:
 spec:
   endpointSelector:
     matchLabels:
-      app: capi-argo-bridge
+      app.kubernetes.io/name: capi-argo-bridge
   egress:
     - toEntities: [kube-apiserver]
