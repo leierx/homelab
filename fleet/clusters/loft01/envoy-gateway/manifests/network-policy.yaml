@@ -40,57 +40,57 @@ spec:
             k8s:io.kubernetes.pod.namespace: paperless
             app.kubernetes.io/name: paperless
       toPorts:
-        - ports: [{ port: "10443", protocol: TCP}]
+        - ports: [{port: "10443", protocol: TCP}]
     # cert-manager HTTP-01 self-check for auth.skinke.net
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: cert-manager
             app.kubernetes.io/name: cert-manager
       toPorts:
-        - ports: [{ port: "10080", protocol: TCP}]
+        - ports: [{port: "10080", protocol: TCP}]
   egress:
     - toEndpoints:
         - matchLabels:
             app.kubernetes.io/name: envoy
             gateway.envoyproxy.io/owning-gateway-name: edge
       toPorts:
-        - ports: [{ port: "10443", protocol: TCP}]
+        - ports: [{port: "10443", protocol: TCP}]
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: immich
             app.kubernetes.io/name: server
       toPorts:
-        - ports: [{ port: "2283", protocol: TCP}]
+        - ports: [{port: "2283", protocol: TCP}]
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: keycloak
             app.kubernetes.io/name: keycloak
       toPorts:
-        - ports: [{ port: "8080", protocol: TCP}]
+        - ports: [{port: "8080", protocol: TCP}]
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
             app.kubernetes.io/name: grafana
       toPorts:
-        - ports: [{ port: "3000", protocol: TCP}]
+        - ports: [{port: "3000", protocol: TCP}]
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: miniflux
             app.kubernetes.io/name: miniflux
       toPorts:
-        - ports: [{ port: "8080", protocol: TCP}]
+        - ports: [{port: "8080", protocol: TCP}]
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: opencloud
             app.kubernetes.io/name: opencloud
       toPorts:
-        - ports: [{ port: "9200", protocol: TCP}]
+        - ports: [{port: "9200", protocol: TCP}]
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: gotify
             app.kubernetes.io/name: gotify
       toPorts:
-        - ports: [{ port: "8080", protocol: TCP}]
+        - ports: [{port: "8080", protocol: TCP}]
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
@@ -118,46 +118,46 @@ spec:
             app.kubernetes.io/name: alloy
             app.kubernetes.io/instance: alloy-metrics
       toPorts:
-        - ports: [{ port: "19001", protocol: TCP}]
+        - ports: [{port: "19001", protocol: TCP}]
   egress:
     - toEndpoints:
         - matchLabels:
             app.kubernetes.io/name: gateway-helm
       toPorts:
-        - ports: [{ port: "18000", protocol: TCP}]
+        - ports: [{port: "18000", protocol: TCP}]
     - toEndpoints:
         - matchLabels:
             app.kubernetes.io/name: envoy
             gateway.envoyproxy.io/owning-gateway-name: edge
       toPorts:
-        - ports: [{ port: "10443", protocol: TCP}]
+        - ports: [{port: "10443", protocol: TCP}]
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: argo
             app.kubernetes.io/name: argo-workflows-server
       toPorts:
-        - ports: [{ port: "2746", protocol: TCP}]
+        - ports: [{port: "2746", protocol: TCP}]
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: argocd
             app.kubernetes.io/name: argocd-server
       toPorts:
-        - ports: [{ port: "8080", protocol: TCP}]
+        - ports: [{port: "8080", protocol: TCP}]
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: alerta
             app.kubernetes.io/name: alerta
       toPorts:
-        - ports: [{ port: "8080", protocol: TCP}]
+        - ports: [{port: "8080", protocol: TCP}]
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: paperless
             app.kubernetes.io/name: paperless
       toPorts:
-        - ports: [{ port: "8000", protocol: TCP}]
+        - ports: [{port: "8000", protocol: TCP}]
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: keycloak
             app.kubernetes.io/name: keycloak
       toPorts:
-        - ports: [{ port: "8080", protocol: TCP}]
+        - ports: [{port: "8080", protocol: TCP}]

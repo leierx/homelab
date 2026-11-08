@@ -116,13 +116,13 @@ spec:
       rules:
         - clientSelectors:
             - path: {type: PathPrefix, value: /realms/homelab/login-actions/}
-              methods: [{ value: POST}]
+              methods: [{value: POST}]
               sourceCIDR: {type: Distinct, value: 0.0.0.0/0}
           limit: {requests: 20, unit: Minute}
         # apps and Envoy's own OIDC filter exchange and refresh tokens here, each from its pod IP
         - clientSelectors:
             - path: {type: PathPrefix, value: /realms/homelab/protocol/openid-connect/token}
-              methods: [{ value: POST}]
+              methods: [{value: POST}]
               sourceCIDR: {type: Distinct, value: 0.0.0.0/0}
           limit: {requests: 60, unit: Minute}
 ---

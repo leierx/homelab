@@ -12,17 +12,17 @@ spec:
         - matchLabels:
             app.kubernetes.io/name: envoy
       toPorts:
-        - ports: [{ port: "18000", protocol: TCP}]
+        - ports: [{port: "18000", protocol: TCP}]
     - fromEntities: [kube-apiserver]
       toPorts:
-        - ports: [{ port: "9443", protocol: TCP}]
+        - ports: [{port: "9443", protocol: TCP}]
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: telemetry
             app.kubernetes.io/name: alloy
             app.kubernetes.io/instance: alloy-metrics
       toPorts:
-        - ports: [{ port: "19001", protocol: TCP}]
+        - ports: [{port: "19001", protocol: TCP}]
   egress:
     - toEntities: [kube-apiserver]
 ---
@@ -63,17 +63,17 @@ spec:
             app.kubernetes.io/name: alloy
             app.kubernetes.io/instance: alloy-metrics
       toPorts:
-        - ports: [{ port: "19001", protocol: TCP}]
+        - ports: [{port: "19001", protocol: TCP}]
   egress:
     - toEndpoints:
         - matchLabels:
             app.kubernetes.io/name: gateway-helm
       toPorts:
-        - ports: [{ port: "18000", protocol: TCP}]
+        - ports: [{port: "18000", protocol: TCP}]
     # ACME HTTP-01 solvers (cert-manager), in whichever namespace the Certificate is
     - toEndpoints:
         - matchExpressions:
             - {key: k8s:io.kubernetes.pod.namespace, operator: Exists}
             - {key: acme.cert-manager.io/http01-solver, operator: In, values: ["true"]}
       toPorts:
-        - ports: [{ port: "8089", protocol: TCP}]
+        - ports: [{port: "8089", protocol: TCP}]

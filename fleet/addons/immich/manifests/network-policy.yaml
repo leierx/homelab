@@ -13,7 +13,7 @@ spec:
             app.kubernetes.io/name: envoy
             gateway.envoyproxy.io/owning-gateway-name: edge
       toPorts:
-        - ports: [{ port: "2283", protocol: TCP}]
+        - ports: [{port: "2283", protocol: TCP}]
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: telemetry
@@ -28,17 +28,17 @@ spec:
         - matchLabels:
             cnpg.io/cluster: immich-db
       toPorts:
-        - ports: [{ port: "5432", protocol: TCP}]
+        - ports: [{port: "5432", protocol: TCP}]
     - toEndpoints:
         - matchLabels:
             app.kubernetes.io/name: valkey
       toPorts:
-        - ports: [{ port: "6379", protocol: TCP}]
+        - ports: [{port: "6379", protocol: TCP}]
     - toEndpoints:
         - matchLabels:
             app.kubernetes.io/name: machine-learning
       toPorts:
-        - ports: [{ port: "3003", protocol: TCP}]
+        - ports: [{port: "3003", protocol: TCP}]
     # Keycloak OIDC via CoreDNS split-horizon to the edge Gateway
     - toEndpoints:
         - matchLabels:
@@ -46,7 +46,7 @@ spec:
             app.kubernetes.io/name: envoy
             gateway.envoyproxy.io/owning-gateway-name: edge
       toPorts:
-        - ports: [{ port: "10443", protocol: TCP}]
+        - ports: [{port: "10443", protocol: TCP}]
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
@@ -61,7 +61,7 @@ spec:
         - matchLabels:
             app.kubernetes.io/name: server
       toPorts:
-        - ports: [{ port: "3003", protocol: TCP}]
+        - ports: [{port: "3003", protocol: TCP}]
   egress:
     # models from Hugging Face, on first use
     - toCIDRSet:
@@ -73,7 +73,7 @@ spec:
             - 169.254.0.0/16
             - 100.64.0.0/10
       toPorts:
-        - ports: [{ port: "443", protocol: TCP}]
+        - ports: [{port: "443", protocol: TCP}]
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
@@ -88,7 +88,7 @@ spec:
         - matchLabels:
             app.kubernetes.io/name: server
       toPorts:
-        - ports: [{ port: "6379", protocol: TCP}]
+        - ports: [{port: "6379", protocol: TCP}]
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
@@ -108,21 +108,21 @@ spec:
         - matchLabels:
             cnpg.io/cluster: immich-db
       toPorts:
-        - ports: [{ port: "5432", protocol: TCP}]
+        - ports: [{port: "5432", protocol: TCP}]
     # the CloudNativePG operator checks the instance's status endpoint
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: cnpg-system
             app.kubernetes.io/name: cloudnative-pg
       toPorts:
-        - ports: [{ port: "8000", protocol: TCP}]
+        - ports: [{port: "8000", protocol: TCP}]
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: telemetry
             app.kubernetes.io/name: alloy
             app.kubernetes.io/instance: alloy-metrics
       toPorts:
-        - ports: [{ port: "9187", protocol: TCP}]
+        - ports: [{port: "9187", protocol: TCP}]
   egress:
     # the instance manager and initdb/join jobs
     - toEntities: [kube-apiserver]
@@ -130,4 +130,4 @@ spec:
         - matchLabels:
             cnpg.io/cluster: immich-db
       toPorts:
-        - ports: [{ port: "5432", protocol: TCP}]
+        - ports: [{port: "5432", protocol: TCP}]
