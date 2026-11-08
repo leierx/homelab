@@ -1,14 +1,21 @@
 alloy:
   configMap: {create: false, name: alloy-metrics}
   envFrom: [{configMapRef: {name: alloy-metrics-env}}]
+  # the image's alloy user; unlike alloy-logs, nothing here reads host files
   securityContext:
+    runAsNonRoot: true
+    runAsUser: 473
+    runAsGroup: 473
     allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
     capabilities: {drop: [ALL]}
     seccompProfile: {type: RuntimeDefault}
+  mounts:
+    extra: [{name: storage, mountPath: /tmp/alloy}]
   resources: {requests: {cpu: 100m, memory: 512Mi}, limits: {memory: 2Gi}}
   enableReporting: false
 rbac: {create: false}
-controller: {type: statefulset}
+controller: {type: statefulset, volumes: {extra: [{name: storage, emptyDir: {}}]}}
 configReloader:
   resources: {requests: {memory: 16Mi}, limits: {memory: 64Mi}}
 crds: {create: false}

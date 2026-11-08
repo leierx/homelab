@@ -1,14 +1,21 @@
 alloy:
   configMap: {create: false, name: alloy-events}
   envFrom: [{configMapRef: {name: alloy-events-env}}]
+  # the image's alloy user; unlike alloy-logs, nothing here reads host files
   securityContext:
+    runAsNonRoot: true
+    runAsUser: 473
+    runAsGroup: 473
     allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
     capabilities: {drop: [ALL]}
     seccompProfile: {type: RuntimeDefault}
+  mounts:
+    extra: [{name: storage, mountPath: /tmp/alloy}]
   resources: {requests: {cpu: 20m, memory: 64Mi}, limits: {memory: 256Mi}}
   enableReporting: false
 rbac: {create: false}
-controller: {type: deployment, replicas: 1}
+controller: {type: deployment, replicas: 1, volumes: {extra: [{name: storage, emptyDir: {}}]}}
 configReloader:
   resources: {requests: {memory: 16Mi}, limits: {memory: 64Mi}}
 crds: {create: false}

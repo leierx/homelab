@@ -12,14 +12,18 @@ server:
   volumes:
     - {name: tls, secret: {secretName: openbao-tls}}
     - {name: seal-key, secret: {secretName: openbao-seal-key}}
+    - {name: tmp, emptyDir: {}}
   volumeMounts:
     - {name: tls, mountPath: /openbao/tls, readOnly: true}
     - {name: seal-key, mountPath: /openbao/seal, readOnly: true}
+    # the chart renders the server config into /tmp at start
+    - {name: tmp, mountPath: /tmp}
   statefulSet:
     securityContext:
       container:
         allowPrivilegeEscalation: false
         capabilities: {drop: [ALL]}
+        readOnlyRootFilesystem: true
         seccompProfile: {type: RuntimeDefault}
   ha:
     enabled: true
