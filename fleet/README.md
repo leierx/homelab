@@ -233,6 +233,11 @@ Every `helm.repoURL` points at the chart's upstream, and every chart that
 upstream publishes as an OCI artifact uses that form (`quay.io/cilium/charts`,
 not `https://helm.cilium.io`), so Renovate tracks it with `datasource=docker`.
 
+A local chart that has to template resources next to an upstream chart (e.g.
+`immich`: per-cluster database and volume sizes) lists it under
+`dependencies` in its `Chart.yaml`; Argo CD builds the dependency itself, so
+run `helm dependency build` before rendering it locally.
+
 ## Rendering locally
 
 ```sh

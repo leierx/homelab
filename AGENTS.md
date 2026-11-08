@@ -50,7 +50,7 @@ Design: issue #167. Read `fleet/README.md` for the schema.
      releaseName}`, `dependencies`, `managedBy`, `sources`,
      `managedNamespaceMetadata`, `application`. Maps deep-merge, later layer
      wins; `dependencies` and `sources` concatenate.
-   - Local charts (`alerta`, `apprise`, `capi-argo-bridge`, `gotify`, `keycloak`,
+   - Local charts (`alerta`, `apprise`, `capi-argo-bridge`, `gotify`, `immich`, `keycloak`,
      `mimir`, `miniflux`, `opencloud`, `paperless`) set `helm.path: fleet/addons/<name>`.
 3. **Enabling:** `envs/<env>/env.yaml` and `clusters/<cluster>/cluster.yaml`
    map `addons: {<name>: true|false}`; the cluster wins. A name with no

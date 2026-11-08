@@ -9,10 +9,7 @@ dependencies:
   - zfs-localpv
   - keycloak
 helm:
-  repoURL: ghcr.io/immich-app/immich-charts
-  chart: immich
-  # renovate: datasource=docker depName=ghcr.io/immich-app/immich-charts/immich
-  targetRevision: 0.13.4
+  path: fleet/addons/immich
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted

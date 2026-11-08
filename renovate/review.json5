@@ -30,7 +30,7 @@
     },
     {
       description: 'Minor bumps of stateful apps get a review; their patches stay automerged',
-      matchDepNames: [
+      matchPackageNames: [
         'ghcr.io/immich-app/immich-charts/immich',
         'ghcr.io/immich-app/immich-server',
         'ghcr.io/immich-app/immich-machine-learning',

@@ -7,10 +7,12 @@ metadata:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
 spec:
   accessModes: [ReadWriteOnce]
-  storageClassName: zfs
+  {{- with .Values.persistence.library.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
   resources:
     requests:
-      storage: 770Gi
+      storage: {{ .Values.persistence.library.size }}
 ---
 # downloaded models; losing it only means downloading them again
 apiVersion: v1
@@ -19,7 +21,9 @@ metadata:
   name: model-cache
 spec:
   accessModes: [ReadWriteOnce]
-  storageClassName: zfs
+  {{- with .Values.persistence.modelCache.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
   resources:
     requests:
-      storage: 10Gi
+      storage: {{ .Values.persistence.modelCache.size }}
