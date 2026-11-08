@@ -5,10 +5,6 @@
   ...
 }:
 let
-  # enable only once /var/lib/secrets.yaml has restic/host, restic/ssh_key and restic/password:
-  # activation fails on a missing secret
-  enable = true;
-
   stateDir = "/var/lib/offsite-backup";
   # what restic reads, the same paths every run so each run only reads files changed since the last:
   # k3s/ and volumes/<namespace>/<claim>/, the latter read-only mounts of one atomic snapshot
@@ -115,13 +111,13 @@ in
     };
   };
 
-  secrets.secrets = lib.mkIf enable {
+  secrets.secrets = {
     "restic/host".mode = "0400";
     "restic/ssh_key".mode = "0400";
     "restic/password".mode = "0400";
   };
 
-  systemd.services."offsite-backup" = lib.mkIf enable {
+  systemd.services."offsite-backup" = {
     description = "Off-site restic backup of k3s state and PVC volumes";
     after = [
       "network-online.target"
@@ -143,7 +139,7 @@ in
 
   # after autoUpgrade's 02:00-04:00 reboot window, so an upgrade reboot never cuts a run off.
   # OnBootSec resumes a run cut off by any other reboot
-  systemd.timers."offsite-backup" = lib.mkIf enable {
+  systemd.timers."offsite-backup" = {
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnCalendar = "04:30";
