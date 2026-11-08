@@ -32,6 +32,7 @@ server:
     raft:
       enabled: true
       setNodeId: true
+      # the initialize blocks run once, against empty storage; a running OpenBao never sees later edits to them
       config: |
         ui = true
         disable_mlock = true

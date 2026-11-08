@@ -43,6 +43,8 @@ metadata:
     argocd.argoproj.io/sync-wave: "-1"
 spec:
   secretName: openbao-tls
+  # OpenBao rereads its certificate only on SIGHUP, so it lives as long as the CA
+  duration: 87600h
   privateKey:
     algorithm: ECDSA
   dnsNames:
