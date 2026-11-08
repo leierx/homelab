@@ -29,8 +29,7 @@ patches:
           virtualMachineInstanceProfile:
             customProfile:
               runtimeDefaultProfile: true
-  # at the default 2 virt-operator logs a no-op reconcile every ~6s (lease renewals requeue it)
-  # and virt-api logs every aggregator discovery probe; 1 keeps warnings and errors
+  # at 2, virt-operator logs a no-op reconcile every ~6s and virt-api every discovery probe
   - target:
       kind: KubeVirt
     patch: |
@@ -46,9 +45,7 @@ patches:
       - op: add
         path: /spec/uninstallStrategy
         value: BlockUninstallIfWorkloadsExist
-  # TODO(kubevirt v1.10.0): remove once kubevirt/kubevirt#18698 lands in a release;
-  # in v1.9.1 virt-operator unmounts /etc/virt-handler/clientcertificates while
-  # virt-handler still polls --client-cert-file/--client-key-file every minute
+  # TODO(kubevirt v1.10.0): drop with kubevirt#18698; v1.9.1 unmounts the client cert virt-handler still reads
   - target:
       kind: KubeVirt
     patch: |

@@ -14,9 +14,13 @@ spec:
         app: capi-argo-bridge
     spec:
       serviceAccountName: capi-argo-bridge
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: capi-argo-bridge
-          image: ghcr.io/leierx/capi-argo-bridge:0.1.44
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
           args:
             - --argocd-namespace={{ .Release.Namespace }}
             - --cluster-namespace={{ .Values.clusterNamespace }}
@@ -38,10 +42,7 @@ spec:
             limits:
               memory: 256Mi
           securityContext:
-            runAsNonRoot: true
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
-            seccompProfile:
-              type: RuntimeDefault

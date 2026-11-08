@@ -7,8 +7,7 @@ resource "keycloak_user" "leier" {
   email          = "larssmitheier@protonmail.com"
   email_verified = true
 
-  # first password only: the value is written when the account is created, and
-  # bumping value_wo_version is the only thing that would write it again
+  # written once at creation; bump value_wo_version to reset it
   initial_password {
     value_wo         = var.leier_password
     value_wo_version = "1"
@@ -16,8 +15,7 @@ resource "keycloak_user" "leier" {
   }
 
   lifecycle {
-    # the temporary password sets UPDATE_PASSWORD, and Keycloak clears it at the
-    # first password change; declaring it would put it back on every run
+    # Keycloak drops UPDATE_PASSWORD after the first change; declaring it would add it back
     ignore_changes = [required_actions]
   }
 }

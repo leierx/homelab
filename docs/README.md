@@ -46,7 +46,8 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   Keycloak credentials) are generated once via ESO `Password` generators and
   pushed with `PushSecret` (`updatePolicy: IfNotExists`).
 - **Renovate GitHub App credentials** (`app_id`, `installation_id`,
-  `private_key`) are the only human-supplied secret in OpenBao:
+  `private_key`) are set by hand, like Gotify's `alertmanager_token`
+  ([monitoring.md](monitoring.md)):
 
   ```sh
   printf %s "$APP_ID" | just bao kv put kv/loft01/renovate app_id=-
@@ -60,8 +61,9 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 ## Access & Identity
 
 - **Keycloak** (`https://auth.skinke.net`, realm `homelab`) is the SSO provider.
-  The `keycloak-realm` CronWorkflow reconciles the realm hourly (and on sync)
-  from `tofu/keycloak/`.
+  The realm is reconciled from `tofu/keycloak/` on every sync (a PostSync
+  Workflow) and hourly (`CronWorkflow/keycloak-realm`), which reverts changes
+  made by hand.
 - **Groups:** `homelab-admins`, `homelab-operators`, and `homelab-viewers`.
   Every login requires WebAuthn/passkey or TOTP.
 - **Gateways:**
@@ -98,7 +100,7 @@ volume plus the k3s state to rsync.net nightly at 04:30 (restic: 7 daily,
 Example: Immich originals live in claim `immich/library` under `library/`.
 Run everything as root on `loft01` (`doas -s`).
 
-**From a local snapshot** (last 14 days, instant):
+**From a local snapshot** (last 3 months, instant):
 
 ```sh
 pv=$(kubectl -n immich get pvc library -o jsonpath='{.spec.volumeName}')
@@ -142,12 +144,16 @@ rm -rf /var/tmp/restore                                # on loft01
   kubectl config set-context --current --namespace=argocd
   argocd login --core
   ```
-- **Keycloak admin CLI (`kcadm.sh`):**
+- **Keycloak admin CLI (`kcadm.sh`):** with a temporary master-realm admin, so
+  its use alerts (`KeycloakMasterRealmLogin`, `KeycloakAdminEvent`); delete it
+  when done.
   ```sh
   kubectl -n keycloak exec -it keycloak-0 -- bash
+  /opt/keycloak/bin/kc.sh bootstrap-admin user --username break-glass --http-management-port 9001
   kcadm() { /opt/keycloak/bin/kcadm.sh "$@" --config /tmp/kcadm.config; }
-  kcadm config credentials --server http://localhost:8080 --realm master \
-    --client "$KC_BOOTSTRAP_ADMIN_CLIENT_ID" --secret "$KC_BOOTSTRAP_ADMIN_CLIENT_SECRET"
+  kcadm config credentials --server http://localhost:8080 --realm master --user break-glass
+  # ...
+  kcadm delete users/$(kcadm get users -r master -q exact=true -q username=break-glass --fields id --format csv --noquotes) -r master
   ```
 - **Paperless-ngx:** `manage.py` in the pod needs no login. For the API as
   `admin`, enable it (the next restart disables it again) and use the password

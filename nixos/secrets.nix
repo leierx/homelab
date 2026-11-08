@@ -1,6 +1,4 @@
-# Installs host secrets from a single 0400 root:root plaintext YAML file kept
-# only on the host (/var/lib/secrets.yaml) into ramfs at /run/secrets and
-# /run/secrets-for-users.
+# plaintext and host-only, so secrets never enter git or the Nix store
 {
   config,
   lib,
@@ -310,46 +308,6 @@ in
           supportsDryActivation = true;
         }
       );
-    };
-
-    secrets = {
-      secrets = {
-        "wireguard/private_key" = {
-          owner = "systemd-network";
-          mode = "0400";
-        };
-        "wireguard/psk" = {
-          owner = "systemd-network";
-          mode = "0400";
-        };
-        "ssh/host_ed25519_key" = {
-          mode = "0600";
-          path = "/etc/ssh/ssh_host_ed25519_key";
-        };
-        "openbao/seal_key" = { };
-        # for doas; neededForUsers: users are updated before other secrets are installed
-        "leier/password_hash" = {
-          neededForUsers = true;
-        };
-      };
-      # OpenBao's static auto-unseal key, handed to the cluster through k3s's auto-deploy manifests
-      templates."openbao-seal-key.yaml" = {
-        path = "/var/lib/rancher/k3s/server/manifests/openbao-seal-key.yaml";
-        content = ''
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: openbao
-          ---
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: openbao-seal-key
-            namespace: openbao
-          stringData:
-            key: ${config.secrets.placeholder."openbao/seal_key"}
-        '';
-      };
     };
   };
 }

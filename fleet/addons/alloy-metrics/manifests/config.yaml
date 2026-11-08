@@ -4,7 +4,7 @@ metadata:
   name: alloy-metrics
 data:
   config.alloy: |
-    // every ServiceMonitor and PodMonitor in the cluster; the CRDs come from the prometheus-operator-crds addon
+    // the CRDs come from the prometheus-operator-crds addon
     prometheus.operator.servicemonitors "service_monitors" {
       kubernetes_role = "endpointslice"
 

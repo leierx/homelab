@@ -61,7 +61,6 @@ jobs:
           : > pull-request/preinstall/crds.yaml
           for addon in prometheus-operator-crds cert-manager envoy-gateway; do
             dir="pull-request/fleet/addons/$addon"
-            [ -f "$dir/addon.yaml" ] || continue
             chart=$(yq -r '.helm.chart' "$dir/addon.yaml")
             repo=$(yq -r '.helm.repoURL' "$dir/addon.yaml")
             version=$(yq -r '.helm.targetRevision' "$dir/addon.yaml")

@@ -1,3 +1,5 @@
+# the cluster's path under kv/
+kvPrefix: ""
 global: {tlsDisable: false}
 serverTelemetry: {serviceMonitor: {enabled: true}}
 injector: {enabled: false}
@@ -91,7 +93,7 @@ server:
             operation = "update"
             path = "sys/policies/acl/external-secrets"
             data = {
-              policy = "path \"kv/data/{{ .Values.kvPrefix }}/*\" { capabilities = [\"read\"] }\npath \"kv/metadata/{{ .Values.kvPrefix }}/*\" { capabilities = [\"read\", \"list\"] }"
+              policy = "path \"kv/data/{{ required "kvPrefix is per cluster" .Values.kvPrefix }}/*\" { capabilities = [\"read\"] }\npath \"kv/metadata/{{ .Values.kvPrefix }}/*\" { capabilities = [\"read\", \"list\"] }"
             }
           }
           request "role" {
@@ -111,7 +113,7 @@ server:
             operation = "update"
             path = "sys/policies/acl/external-secrets-push"
             data = {
-              policy = "path \"kv/data/{{ .Values.kvPrefix }}/*\" { capabilities = [\"create\", \"read\", \"update\"] }\npath \"kv/metadata/{{ .Values.kvPrefix }}/*\" { capabilities = [\"create\", \"read\", \"update\"] }"
+              policy = "path \"kv/data/{{ required "kvPrefix is per cluster" .Values.kvPrefix }}/*\" { capabilities = [\"create\", \"read\", \"update\"] }\npath \"kv/metadata/{{ .Values.kvPrefix }}/*\" { capabilities = [\"create\", \"read\", \"update\"] }"
             }
           }
           request "role" {

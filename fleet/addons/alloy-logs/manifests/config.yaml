@@ -48,7 +48,6 @@ data:
       forward_to    = [loki.write.loki.receiver]
     }
 
-    // the pods on this node; containerd writes their logs under /var/log/pods
     discovery.kubernetes "pods" {
       role = "pod"
 

@@ -1,6 +1,7 @@
 image:
   repository: docker.io/grafana/mimir
   tag: 3.2.4
-storage:
-  className: ""
-  size: 10Gi
+persistence:
+  data:
+    storageClass: ""
+    size: 10Gi

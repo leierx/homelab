@@ -9,8 +9,8 @@ spec:
       envoyDeployment:
         container:
           resources:
-            requests: { cpu: 50m, memory: 128Mi }
-            limits: { memory: 512Mi }
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 512Mi}
         patch:
           type: StrategicMerge
           value:
@@ -20,7 +20,7 @@ spec:
                   containers:
                     - name: shutdown-manager
                       resources:
-                        limits: { memory: 64Mi }
+                        limits: {memory: 64Mi}
       envoyService:
         type: ClusterIP
         patch:

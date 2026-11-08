@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alerta-config
+data:
+  alertad.conf: |
+    DEBUG = False
+    USE_PROXYFIX = True
+
+    AUTH_PROVIDER = 'openid'
+    SIGNUP_ENABLED = False
+    OIDC_ISSUER_URL = {{ required "oidc.issuer is per cluster" .Values.oidc.issuer | quote }}
+    OIDC_AUTH_URL = {{ printf "%s/protocol/openid-connect/auth" (required "oidc.issuer is per cluster" .Values.oidc.issuer) | quote }}
+    OAUTH2_CLIENT_ID = 'alerta'
+
+    OIDC_ROLE_CLAIM = 'groups'
+    ALLOWED_OIDC_ROLES = ['homelab-admins', 'homelab-operators', 'homelab-viewers']
+    ADMIN_ROLES = ['homelab-admins']
+    USER_ROLES = ['homelab-operators']
+    GUEST_ROLES = ['homelab-viewers']
+
+    ALLOWED_ENVIRONMENTS = ['Production']
+    DEFAULT_ENVIRONMENT = 'Production'
+    DEFAULT_FILTER = {'status': None}
+    SORT_LIST_BY = ['status', 'severity', 'lastReceiveTime']
+
+    PLUGINS = ['remote_ip', 'reject', 'heartbeat', 'blackout', 'acked_by']

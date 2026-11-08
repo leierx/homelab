@@ -2,10 +2,9 @@ apiVersion: cdi.kubevirt.io/v1beta1
 kind: DataVolume
 metadata:
   name: fedora-root
-  namespace: dodde
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false,SkipDryRunOnMissingResource=true
-    # import without waiting for the VM, whose CRD comes from another app; otherwise a failed VM leaves the sync waiting on this forever
+    # import without waiting for the VM, or a failed VM stalls the sync forever
     cdi.kubevirt.io/storage.bind.immediate.requested: "true"
 spec:
   source:

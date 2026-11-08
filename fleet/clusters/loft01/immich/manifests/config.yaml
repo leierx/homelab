@@ -1,5 +1,4 @@
-# Immich's config file. Locked: with a config file the admin UI can't change settings.
-# The file can't read the environment, so ESO renders it with the client secret (OpenBao loft01/immich).
+# a config file locks the admin UI; ESO renders it, since the file can't read the environment
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
@@ -40,4 +39,4 @@ spec:
             enabled: false
   data:
     - secretKey: oidc_client_secret
-      remoteRef: { key: loft01/immich, property: oidc_client_secret }
+      remoteRef: {key: loft01/immich, property: oidc_client_secret}

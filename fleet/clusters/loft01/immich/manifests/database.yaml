@@ -26,8 +26,8 @@ spec:
     storageClass: zfs
     size: 20Gi
   resources:
-    requests: { cpu: 100m, memory: 512Mi }
-    limits: { memory: 2Gi }
+    requests: {cpu: 100m, memory: 512Mi}
+    limits: {memory: 2Gi}
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Database

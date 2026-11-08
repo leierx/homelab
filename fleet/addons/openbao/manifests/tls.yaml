@@ -1,5 +1,4 @@
 # a CA of its own: only External Secrets and the bao CLI need to trust it
-# waves -2/-1: the CA exists before the CA Issuer reads it, and openbao-tls before the StatefulSet mounts it
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:

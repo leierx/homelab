@@ -4,6 +4,7 @@ metadata:
   name: alerta-db
   annotations:
     argocd.argoproj.io/sync-options: Delete=false,Prune=false
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   instances: 1
   # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/postgresql
@@ -18,8 +19,8 @@ spec:
       # 5 uWSGI workers; the server keeps headroom for the operator and pg_dump
       max_connections: "60"
   resources:
-    requests: { cpu: 50m, memory: 256Mi }
-    limits: { memory: 1Gi }
+    requests: {cpu: 50m, memory: 256Mi}
+    limits: {memory: 1Gi}
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor

@@ -2,6 +2,8 @@ image:
   repository: ghcr.io/miniflux/miniflux
   tag: 2.3.5
 url: ""
+# the pod network, where Alloy scrapes from
+metricsAllowedNetworks: ""
 oidc:
   issuer: ""
 database:

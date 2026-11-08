@@ -1,6 +1,4 @@
 namespace: keycloak
-helm:
-  path: fleet/addons/keycloak
 dependencies:
   - cilium
   - cloudnative-pg
@@ -9,6 +7,8 @@ dependencies:
   - cert-manager
   - envoy-gateway
   - zfs-localpv
+helm:
+  path: fleet/addons/keycloak
 sources:
   - path: tofu/keycloak
 managedNamespaceMetadata:

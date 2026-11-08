@@ -34,7 +34,7 @@ spec:
               value: "true"
             # the Gateway's Envoy pods, so client IPs come from X-Forwarded-For
             - name: GOTIFY_SERVER_TRUSTEDPROXIES
-              value: 10.42.0.0/16
+              value: {{ required "proxyTrustedAddresses is per cluster" .Values.proxyTrustedAddresses }}
             - name: GOTIFY_DATABASE_DIALECT
               value: postgres
             - name: GOTIFY_DATABASE_CONNECTION
@@ -77,8 +77,8 @@ spec:
               path: /health
               port: http
           resources:
-            requests: { cpu: 10m, memory: 32Mi }
-            limits: { memory: 256Mi }
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 256Mi}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: apprise
 data:
-  loft01.yml: |
+  homelab.yml: |
 {{ required "config is per cluster" .Values.config | indent 4 }}
 ---
 apiVersion: apps/v1
@@ -59,8 +59,8 @@ spec:
               path: /status
               port: http
           resources:
-            requests: { cpu: 10m, memory: 128Mi }
-            limits: { memory: 512Mi }
+            requests: {cpu: 10m, memory: 128Mi}
+            limits: {memory: 512Mi}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -68,8 +68,8 @@ spec:
               drop: ["ALL"]
           volumeMounts:
             - name: config
-              mountPath: /config/loft01.yml
-              subPath: loft01.yml
+              mountPath: /config/homelab.yml
+              subPath: homelab.yml
             # nginx, gunicorn and supervisord scratch space
             - name: tmp
               mountPath: /tmp

@@ -15,7 +15,6 @@ spec:
       toPorts:
         - ports:
             - {port: "8080", protocol: TCP}
-    # Alertmanager pushes alert notifications
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
@@ -44,6 +43,9 @@ apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: postgres
+  annotations:
+    # with the database Cluster, whose initdb job needs the API server
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   endpointSelector:
     matchLabels:

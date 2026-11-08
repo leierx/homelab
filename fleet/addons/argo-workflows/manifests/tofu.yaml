@@ -35,8 +35,8 @@ spec:
         image: ghcr.io/opentofu/opentofu:1.13.8
         workingDir: /work
         volumeMounts:
-          - { name: tofu, mountPath: /tofu, readOnly: true }
-          - { name: work, mountPath: /work }
+          - {name: tofu, mountPath: /tofu, readOnly: true}
+          - {name: work, mountPath: /work}
         command: [sh, -c]
         args:
           - |
@@ -52,10 +52,11 @@ spec:
             # tofu init writes .terraform/ next to the root, so it runs on a copy
             cp /tofu/*.tf /tofu/.terraform.lock.hcl .
             tofu init -input=false
-            tofu plan -out=plan
-            tofu apply plan
+            # a sync's run and a scheduled one can overlap
+            tofu plan -lock-timeout=10m -out=plan
+            tofu apply -lock-timeout=10m plan
         env:
-          - { name: HOME, value: /tmp }
+          - {name: HOME, value: /tmp}
         envFrom:
           - secretRef:
               name: "{{inputs.parameters.secret}}"
@@ -64,5 +65,5 @@ spec:
           capabilities:
             drop: ["ALL"]
         resources:
-          requests: { cpu: 50m, memory: 256Mi }
-          limits: { memory: 1Gi }
+          requests: {cpu: 50m, memory: 256Mi}
+          limits: {memory: 1Gi}

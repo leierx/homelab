@@ -1,12 +1,12 @@
 image:
   repository: ghcr.io/paperless-ngx/paperless-ngx
   tag: 3.4.2
-# the Celery broker, a sidecar on loopback only
+# the Celery broker
 valkey:
   image:
     repository: docker.io/valkey/valkey
     tag: 9.1.3-alpine
-# Office documents and emails: Tika extracts the text, Gotenberg renders the PDF; sidecars on loopback only
+# Office documents and emails
 tika:
   image:
     repository: docker.io/apache/tika
@@ -15,23 +15,20 @@ gotenberg:
   image:
     repository: docker.io/gotenberg/gotenberg
     tag: 9.1.0
-# tesseract's eng, nor and osd data, mounted over the image's (packages/tessdata)
+# packages/tessdata, mounted over the image's
 tessdata:
   image:
     repository: ghcr.io/leierx/tessdata
     tag: 0.1.1
-# URL, per cluster
 url: ""
 timeZone: UTC
-# tesseract languages, main one first
+# main language first
 ocrLanguage: nor+eng
 database:
   storage:
     size: 1Gi
 persistence:
-  # search index, classifier model, logs and the migration lock
   data:
     size: 5Gi
-  # originals, archived PDFs and thumbnails
   media:
     size: 20Gi

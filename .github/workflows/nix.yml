@@ -20,5 +20,5 @@ jobs:
       - run: nix fmt -- --ci
       - run: nix flake check
       - run: nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
-      # the ISO needs the age key; its system doesn't
+      # the ISO needs SECRETS_FILE and --impure; its system doesn't
       - run: nix eval --raw .#nixosConfigurations.offlineInstaller-loft01.config.system.build.toplevel.drvPath

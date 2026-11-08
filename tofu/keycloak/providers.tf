@@ -1,4 +1,4 @@
-# the master realm's service client created by KC_BOOTSTRAP_ADMIN_CLIENT_ID / KC_BOOTSTRAP_ADMIN_CLIENT_SECRET
+# created by Keycloak from KC_BOOTSTRAP_ADMIN_CLIENT_ID/SECRET
 provider "keycloak" {
   url           = "http://keycloak-service:8080"
   client_id     = "bootstrap-admin"

@@ -46,12 +46,12 @@ own.
 
 ```yaml
 namespace: kube-system          # default: addon name
+dependencies: []                # addon names
 helm:                           # optional; maps onto an Argo CD source
   repoURL: quay.io/cilium/charts  # default: the fleet repo (for a local chart, with path:)
   chart: cilium                 # or path: fleet/addons/<name> for a local chart
   targetRevision: 1.20.4
   releaseName: cilium           # default: addon name
-dependencies: []                # addon names
 managedBy: ""                   # Argo instance name; default comes from cluster.yaml
 sources: []                     # extra raw Argo CD sources; repoURL defaults to the fleet repo
 managedNamespaceMetadata: {}    # e.g. pod-security labels; maps to syncPolicy.managedNamespaceMetadata
@@ -173,7 +173,7 @@ kubectl label ns kube-system \
   pod-security.kubernetes.io/warn=privileged \
   pod-security.kubernetes.io/audit=privileged --overwrite
 
-helm template cilium oci://quay.io/cilium/charts/cilium --version 1.20.4 \
+helm template cilium oci://quay.io/cilium/charts/cilium --version "$(sed -n 's/^  targetRevision: //p' fleet/addons/cilium/addon.yaml)" \
   -n kube-system --include-crds \
   -f fleet/addons/cilium/values.yaml \
   -f fleet/clusters/loft01/cilium/values.yaml \
@@ -197,7 +197,7 @@ kubectl create namespace argocd
 kubectl apply -n argocd --server-side --field-manager=argocd-controller \
   -f fleet/addons/argocd/manifests/network-policy.yaml
 
-helm template argocd oci://ghcr.io/argoproj/argo-helm/argo-cd --version 10.11.6 \
+helm template argocd oci://ghcr.io/argoproj/argo-helm/argo-cd --version "$(sed -n 's/^  targetRevision: //p' fleet/addons/argocd/addon.yaml)" \
   -n argocd --include-crds \
   -f fleet/addons/argocd/values.yaml \
   -f fleet/clusters/loft01/argocd/values.yaml \
@@ -205,7 +205,7 @@ helm template argocd oci://ghcr.io/argoproj/argo-helm/argo-cd --version 10.11.6 
 
 kubectl wait --for=condition=Established crd/appprojects.argoproj.io crd/applicationsets.argoproj.io --timeout=60s
 
-helm template argocd oci://ghcr.io/argoproj/argo-helm/argo-cd --version 10.11.6 \
+helm template argocd oci://ghcr.io/argoproj/argo-helm/argo-cd --version "$(sed -n 's/^  targetRevision: //p' fleet/addons/argocd/addon.yaml)" \
   -n argocd \
   -f fleet/addons/argocd/values.yaml \
   -f fleet/clusters/loft01/argocd/values.yaml \

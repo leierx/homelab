@@ -64,7 +64,6 @@ dashboardProviders:
       - {name: kubernetes, folder: Kubernetes, type: file, options: {path: /var/lib/grafana/dashboards/kubernetes}}
       - {name: platform, folder: Platform, type: file, options: {path: /var/lib/grafana/dashboards/platform}}
       - {name: host, folder: Host, type: file, options: {path: /var/lib/grafana/dashboards/host}}
-# pinned grafana.com dashboards, downloaded at startup
 dashboards:
   kubernetes:
     k8s-views-global: {gnetId: 15757, revision: 43, datasource: [{name: DS_PROMETHEUS, value: mimir}]}

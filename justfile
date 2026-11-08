@@ -9,7 +9,7 @@ kubeconfig:
     trap 'rm -f "$new" "$merged" "$ca"' EXIT
     # loft01's kubectl wrapper goes through doas, which needs a tty for its password prompt
     remote=$(ssh -o ClearAllForwardings=yes loft01 mktemp)
-    ssh -t -o ClearAllForwardings=yes loft01 "kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml config view --raw \
+    ssh -t -o ClearAllForwardings=yes loft01 "kubectl config view --raw \
       -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' > $remote"
     ssh -o ClearAllForwardings=yes loft01 "cat $remote; rm -f $remote" | base64 -d > "$ca"
     export KUBECONFIG="$new"

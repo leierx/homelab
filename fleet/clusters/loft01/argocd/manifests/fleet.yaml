@@ -17,7 +17,6 @@ spec:
   syncPolicy:
     applicationsSync: create-update
     preserveResourcesOnDeletion: true
-  # manual auto-sync pauses on fleet-<cluster> and its children persist until re-enabled
   ignoreApplicationDifferences:
     - jsonPointers: [/spec/syncPolicy/automated/enabled]
   template:
@@ -44,6 +43,6 @@ spec:
           kind: Application
           jsonPointers: [/spec/syncPolicy/automated/enabled]
       syncPolicy:
-        automated: { prune: true, selfHeal: true }
+        automated: {prune: true, selfHeal: true}
         syncOptions: [RespectIgnoreDifferences=true]
         retry: {limit: 10, refresh: true, backoff: {duration: 10s, factor: 2, maxDuration: 3m}}

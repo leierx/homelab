@@ -1,10 +1,8 @@
 image:
   repository: docker.io/opencloudeu/opencloud-rolling
   tag: 9.0.0
-# public URL, per cluster
 url: ""
 oidc:
-  # Keycloak realm URL, per cluster
   issuer: ""
 # what `opencloud init` would generate; stored data refers to them, so they never change once set
 ids:
@@ -13,11 +11,9 @@ ids:
   graphApplication: ""
   storageUsersMount: ""
 persistence:
-  # everything but user files: user directory, NATS, search index, shares and settings, thumbnails
   data:
     size: 10Gi
-  # the posix tree of user and project spaces, with their versions, trash and uploads
   files:
     size: 100Gi
-# web extensions by name: the opencloudeu/web-extensions tag, per cluster
+# web extensions by name: the opencloudeu/web-extensions tag
 apps: {}

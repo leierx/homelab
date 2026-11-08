@@ -6,11 +6,9 @@
 }:
 let
   stateDir = "/var/lib/offsite-backup";
-  # what restic reads, the same paths every run so each run only reads files changed since the last:
-  # k3s/ and volumes/<namespace>/<claim>/, the latter read-only mounts of one atomic snapshot
+  # the same paths every run, so restic only rereads files changed since the last
   root = "/run/offsite-backup";
-  # claims not worth the upload: metrics and logs expire anyway (mimir is most of the nightly churn),
-  # caches refill on their own
+  # metrics and logs expire anyway (mimir is most of the nightly churn); caches refill
   excluded = [
     "monitoring/data-mimir-0"
     "monitoring/storage-loki-0"
@@ -44,22 +42,21 @@ let
         restic -o "sftp.command=ssh -i $key -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${stateDir}/known_hosts $target -s sftp" "$@"
       }
 
-      # every volume must be a dataset directly under tank, which is what zfs-localpv's zfs class makes;
-      # anything else (a zvol from zfs-block, a nested dataset) isn't backed up here, so stop
+      # a zvol or nested dataset would be silently left out below
       zfs list -H -o name,type -r tank | while read -r name type; do
         [ "$name" = tank ] && continue
         [ "$type" = filesystem ] || { echo "$name is a $type, not a dataset" >&2; exit 1; }
         [ "''${name%/*}" = tank ] || { echo "$name is nested below tank/<pv>" >&2; exit 1; }
       done
 
-      # 10 is restic's "repository does not exist"; any other failure stops the run
+      # 10: the repository doesn't exist yet
       rc=0
       r cat config >/dev/null || rc=$?
       if [ "$rc" = 10 ]; then r init; elif [ "$rc" != 0 ]; then exit "$rc"; fi
       # this unit is the repo's only writer, so any lock left behind is stale
       r unlock
 
-      # one point in time for every volume; kept until the next run
+      # one point in time for every volume
       if zfs list tank@restic >/dev/null 2>&1; then zfs destroy -r tank@restic; fi
       zfs snapshot -r tank@restic
       time=$(date -d "@$(zfs get -Hp -o value creation tank@restic)" '+%F %T')
@@ -95,7 +92,6 @@ let
   };
 in
 {
-  # local snapshots of every volume, hourly; independent of the off-site backup, which takes its own
   services.zrepl = {
     enable = true;
     settings = {
@@ -138,9 +134,9 @@ in
   };
 
   secrets.secrets = {
-    "restic/host".mode = "0400";
-    "restic/ssh_key".mode = "0400";
-    "restic/password".mode = "0400";
+    "restic/host" = { };
+    "restic/ssh_key" = { };
+    "restic/password" = { };
   };
 
   systemd.services."offsite-backup" = {
@@ -163,8 +159,7 @@ in
     };
   };
 
-  # after autoUpgrade's 02:00-04:00 reboot window, so an upgrade reboot never cuts a run off.
-  # OnBootSec resumes a run cut off by any other reboot
+  # after autoUpgrade's 02:00-04:00 reboot window; OnBootSec reruns one cut off by any other reboot
   systemd.timers."offsite-backup" = {
     wantedBy = [ "timers.target" ];
     timerConfig = {

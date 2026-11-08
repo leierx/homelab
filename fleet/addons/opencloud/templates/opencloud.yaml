@@ -38,7 +38,7 @@ spec:
               value: {{ $url | quote }}
             - name: OC_OIDC_ISSUER
               value: {{ $issuer | quote }}
-            # Keycloak replaces idp; ocm serves unauthenticated endpoints (opencloud#3780); auth-basic and auth-app are the password and app-token logins, which would bypass Keycloak's second factor
+            # Keycloak replaces idp; ocm is unauthenticated (opencloud#3780); auth-basic and auth-app would bypass Keycloak's 2FA
             - name: OC_EXCLUDE_RUN_SERVICES
               value: idp,ocm,auth-basic,auth-app
             # JSON audit events on stdout, for Loki
@@ -122,7 +122,6 @@ spec:
             # Keycloak owns these; the oidc role driver and group sync would revert any edit
             - name: FRONTEND_READONLY_USER_ATTRIBUTES
               value: user.onPremisesSamAccountName,user.displayName,user.mail,user.passwordProfile,user.memberOf,user.appRoleAssignments
-            # no update check, app store or feedback link; only the admin's browser fetches the app compatibility list from GitHub
             - name: FRONTEND_CHECK_FOR_UPDATES
               value: "false"
             - name: WEB_UI_CORE_APPS
@@ -131,12 +130,11 @@ spec:
               value: "true"
             - name: WEB_OPTION_DISABLE_SPONSOR_LINK
               value: "true"
-            # no cap on "download as zip": archives are streamed uncompressed, so size costs only bandwidth (default 1 GiB / 10000 files)
+            # no cap on "download as zip": archives are streamed uncompressed, so size costs only bandwidth
             - name: FRONTEND_ARCHIVER_MAX_SIZE
               value: "9223372036854775807"
             - name: FRONTEND_ARCHIVER_MAX_NUM_FILES
               value: "9223372036854775807"
-            # no Radicale here, so clients aren't offered CalDAV/CardDAV
             - name: FRONTEND_DISABLE_RADICALE
               value: "true"
             # in-app notifications are the only ones without SMTP; the default store is memory, emptied on every restart
@@ -158,7 +156,6 @@ spec:
               value: 0.0.0.0:9124
             - name: GOMEMLIMIT
               value: 3600MiB
-            # web extensions, each mounted read-only from its upstream image
             - name: WEB_ASSET_APPS_PATH
               value: /var/lib/opencloud-apps
           ports:
@@ -183,8 +180,8 @@ spec:
               path: /healthz
               port: debug
           resources:
-            requests: { cpu: 100m, memory: 512Mi }
-            limits: { memory: 4Gi }
+            requests: {cpu: 100m, memory: 512Mi}
+            limits: {memory: 4Gi}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

@@ -1,6 +1,4 @@
 namespace: gotify
-helm:
-  path: fleet/addons/gotify
 dependencies:
   - cilium
   - cloudnative-pg
@@ -10,6 +8,8 @@ dependencies:
   - cert-manager
   - envoy-gateway
   - keycloak
+helm:
+  path: fleet/addons/gotify
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted

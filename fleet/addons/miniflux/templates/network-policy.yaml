@@ -39,7 +39,7 @@ spec:
       toPorts:
         - ports:
             - {port: "10443", protocol: TCP}
-    # public RSS/Atom feeds only, excluding private/RFC1918/CGNAT/link-local ranges
+    # feeds
     - toCIDRSet:
         - cidr: 0.0.0.0/0
           except:

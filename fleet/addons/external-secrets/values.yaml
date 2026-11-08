@@ -1,5 +1,5 @@
 serviceMonitor: {enabled: true}
-# Token creation is granted to the two store ServiceAccounts in manifests/token-rbac.yaml.
+# manifests/token-rbac.yaml grants it to the two store ServiceAccounts only
 rbac: {serviceAccountTokenCreate: false}
 resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}
 webhook:

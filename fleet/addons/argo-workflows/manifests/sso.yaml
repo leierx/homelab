@@ -1,16 +1,3 @@
-# the UI's OIDC client secret: generated once, kept in OpenBao, read by the server
-apiVersion: generators.external-secrets.io/v1alpha1
-kind: Password
-metadata:
-  name: argo-workflows-sso
-  annotations:
-    argocd.argoproj.io/sync-wave: "-1"
-spec:
-  length: 64
-  symbols: 0
-  allowRepeat: true
-  secretKeys: [oidc_client_secret]
----
 # SSO RBAC: a user in homelab-admins maps to this ServiceAccount (argo-server-sso.md, "SSO RBAC")
 apiVersion: v1
 kind: ServiceAccount

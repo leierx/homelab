@@ -22,7 +22,7 @@ spec:
             severity: warning
             instance: '{{ $labels.name }}'
           annotations:
-            summary: An Argo CD application has had auto-sync off for 7 days, so git changes don't reach it. Resume it, or take the addon out of the cluster's values.yaml.
+            summary: An Argo CD application has had auto-sync off for 7 days, so git changes don't reach it. Resume it, or set the addon false in the cluster's cluster.yaml.
         - alert: ArgoCDAppSyncStuck
           expr: max by (name) (argocd_app_info{sync_status="OutOfSync", autosync_enabled="true"})
           for: 1h

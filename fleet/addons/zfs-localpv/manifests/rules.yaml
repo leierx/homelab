@@ -16,4 +16,4 @@ spec:
             severity: critical
             instance: '{{ $labels.instance }}/{{ $labels.zpool }}'
           annotations:
-            summary: "A ZFS pool is degraded, faulted, offline or not reporting: mirror redundancy is lost, so replace the failing disk before its pair goes."
+            summary: "A ZFS pool is degraded, faulted, offline or not reporting; `zpool status` on the host says which disk to replace."

@@ -43,7 +43,6 @@ spec:
               value: "8080"
             - name: KC_PROXY_HEADERS
               value: xforwarded
-            # the Envoy proxies, on the pod network
             - name: KC_PROXY_TRUSTED_ADDRESSES
               value: {{ required "proxyTrustedAddresses is per cluster" .Values.proxyTrustedAddresses }}
             - name: KC_DB
@@ -65,8 +64,7 @@ spec:
             # the database's max_connections is 60; Keycloak's default pool of 100 never fits
             - name: KC_DB_POOL_MAX_SIZE
               value: "20"
-            # the master realm's service client OpenTofu logs in with, created only when the master realm is
-            # first created. No standing admin user: break-glass is `kc.sh bootstrap-admin` in the Keycloak pod
+            # OpenTofu's master-realm client, created only with the master realm; break-glass is `kc.sh bootstrap-admin user`
             - name: KC_BOOTSTRAP_ADMIN_CLIENT_ID
               valueFrom:
                 secretKeyRef:
@@ -120,8 +118,9 @@ spec:
             periodSeconds: 10
             failureThreshold: 3
           resources:
-            requests: { cpu: 200m, memory: 1Gi }
-            limits: { memory: 2Gi }
+            requests: {cpu: 200m, memory: 1Gi}
+            limits: {memory: 2Gi}
+          # not readOnlyRootFilesystem: `start` without --optimized rebuilds into /opt/keycloak
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
