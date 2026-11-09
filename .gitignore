@@ -1,5 +1,7 @@
 result
 result-*
+# AI session handovers stay local: the repo is public
+docs/handover/
 .terraform/
 # helm dependency build output; Argo CD builds dependencies itself
 fleet/**/charts/
