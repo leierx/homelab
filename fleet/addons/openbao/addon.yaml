@@ -8,7 +8,7 @@ helm:
   repoURL: ghcr.io/openbao/charts
   chart: openbao
   # renovate: datasource=docker depName=ghcr.io/openbao/charts/openbao
-  targetRevision: 0.30.6
+  targetRevision: 0.30.7
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted
