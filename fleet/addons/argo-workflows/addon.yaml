@@ -9,7 +9,7 @@ helm:
   repoURL: ghcr.io/argoproj/argo-helm
   chart: argo-workflows
   # renovate: datasource=docker depName=ghcr.io/argoproj/argo-helm/argo-workflows
-  targetRevision: 2.0.16
+  targetRevision: 2.0.18
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted
