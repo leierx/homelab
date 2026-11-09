@@ -13,7 +13,7 @@ core:
     # lets Clusters be built from a ClusterClass
     manager: {featureGates: {ClusterTopology: true}}
     # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-api
-    version: v1.14.3
+    version: v1.14.4
     deployment:
       containers: [{name: manager, resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 512Mi}}}]
 bootstrap:
@@ -21,7 +21,7 @@ bootstrap:
     createNamespace: false
     manager: {featureGates: {ClusterTopology: true}}
     # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-api
-    version: v1.14.3
+    version: v1.14.4
     deployment:
       containers: [{name: manager, resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}}]
 controlPlane:
@@ -29,7 +29,7 @@ controlPlane:
     createNamespace: false
     manager: {featureGates: {ClusterTopology: true}}
     # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-api
-    version: v1.14.3
+    version: v1.14.4
     deployment:
       containers: [{name: manager, resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 512Mi}}}]
 infrastructure:
