@@ -64,7 +64,7 @@ spec:
             kind: Secret
             name: keycloak-admin-tls
 ---
-# Public: only the endpoints a login needs (Keycloak's reverse-proxy guide), for the realms in each regex's (homelab) group; admin is wg-only, the master realm and the account console are closed
+# Public: only the endpoints a login needs (Keycloak's reverse-proxy guide), for every realm but master (SecurityPolicy keycloak-edge); admin is wg-only and the account console closed
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -78,18 +78,19 @@ spec:
     - auth.skinke.net
   rules:
     - matches:
+        # realm names without %, so an encoded "master" can't slip past the deny
         - path:
             type: RegularExpression
-            value: '/realms/(homelab)/(protocol/openid-connect/(auth|token|certs|userinfo|revoke|logout(/logout-confirm)?)|login-actions/[^/]+|\.well-known/openid-configuration)'
+            value: '/realms/[\w-]+/(protocol/openid-connect/(auth|token|certs|userinfo|revoke|logout(/logout-confirm)?)|login-actions/[^/]+|\.well-known/openid-configuration)'
         # RFC 8414 discovery
-        - path: {type: RegularExpression, value: '/\.well-known/openid-configuration/realms/(homelab)'}
+        - path: {type: RegularExpression, value: '/\.well-known/openid-configuration/realms/[\w-]+'}
         - path: {type: PathPrefix, value: /resources/}
       backendRefs:
         - name: keycloak-service
           port: 8080
     # the admin console on keycloak.skinke.net frames these; frame-ancestors overrides the Gateway's X-Frame-Options
     - matches:
-        - path: {type: RegularExpression, value: '/realms/(homelab)/protocol/openid-connect/(3p-cookies/step[12]\.html|login-status-iframe\.html(/init)?)'}
+        - path: {type: RegularExpression, value: '/realms/[\w-]+/protocol/openid-connect/(3p-cookies/step[12]\.html|login-status-iframe\.html(/init)?)'}
       filters:
         - type: ResponseHeaderModifier
           responseHeaderModifier:
@@ -144,7 +145,7 @@ spec:
         - name: keycloak-service
           port: 8080
 ---
-# Keycloak is the OIDC provider itself, so its listeners opt out of the Gateway-wide OIDC policy
+# Keycloak is the OIDC provider itself, so its wg listener opts out of the Gateway-wide OIDC policy
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
@@ -153,9 +154,30 @@ spec:
   targetRefs:
     - group: gateway.networking.k8s.io
       kind: ListenerSet
-      name: keycloak-edge
-    - group: gateway.networking.k8s.io
-      kind: ListenerSet
       name: keycloak-wg
   authorization:
     defaultAction: Allow
+---
+# the same for the public listener, which also keeps the master realm internal
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: keycloak-edge
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: keycloak-edge
+  authorization:
+    defaultAction: Allow
+    rules:
+      - action: Deny
+        operation:
+          path: {type: PathPrefix, value: /realms/master}
+        principal:
+          clientCIDRs: [0.0.0.0/0, "::/0"]
+      - action: Deny
+        operation:
+          path: {type: PathPrefix, value: /.well-known/openid-configuration/realms/master}
+        principal:
+          clientCIDRs: [0.0.0.0/0, "::/0"]

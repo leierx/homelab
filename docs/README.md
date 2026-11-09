@@ -67,9 +67,9 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 - **Groups:** `homelab-admins`, `homelab-operators`, and `homelab-viewers`.
   Every login requires WebAuthn/passkey or TOTP.
 - **Public endpoints:** `auth.skinke.net` serves only what a login needs, for
-  the realms in the `(homelab)` regex groups of
-  `fleet/clusters/loft01/keycloak/manifests/listener.yaml` (add a realm there to
-  make it public). The master realm and the account console are closed, so manage
+  every realm except master
+  (`fleet/clusters/loft01/keycloak/manifests/listener.yaml`). The master realm
+  and the account console are closed, so manage
   your own credentials with an application-initiated action: open
   `https://auth.skinke.net/realms/homelab/protocol/openid-connect/auth?client_id=edge&response_type=code&scope=openid&redirect_uri=https://metrics.skinke.net/_envoy/callback&kc_action=<action>`
   with `UPDATE_PASSWORD`, `webauthn-register`, `CONFIGURE_TOTP`, or
