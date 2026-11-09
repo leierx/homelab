@@ -155,7 +155,8 @@ rm -rf /var/tmp/restore                                # on loft01
   ```
 - **Keycloak admin CLI (`kcadm.sh`):** with a temporary master-realm admin, so
   its use alerts (`KeycloakMasterRealmLogin`, `KeycloakAdminEvent`); delete it
-  when done.
+  when done. The master admin console can't sign in (its login goes to
+  `auth.skinke.net/realms/master`, which the Gateway denies), so use `kcadm.sh`.
   ```sh
   kubectl -n keycloak exec -it keycloak-0 -- bash
   /opt/keycloak/bin/kc.sh bootstrap-admin user --username break-glass --http-management-port 9001
