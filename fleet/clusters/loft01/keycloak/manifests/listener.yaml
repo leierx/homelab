@@ -64,7 +64,7 @@ spec:
             kind: Secret
             name: keycloak-admin-tls
 ---
-# Public: what a login to realm homelab needs (Keycloak's reverse-proxy guide); admin and the master realm are wg-only
+# Public: only the endpoints a login needs (Keycloak's reverse-proxy guide), for the realms in each regex's (homelab) group; admin is wg-only, the master realm and the account console are closed
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -78,17 +78,18 @@ spec:
     - auth.skinke.net
   rules:
     - matches:
-        - path: {type: PathPrefix, value: /realms/homelab/}
+        - path:
+            type: RegularExpression
+            value: '/realms/(homelab)/(protocol/openid-connect/(auth|token|certs|userinfo|revoke|logout(/logout-confirm)?)|login-actions/[^/]+|\.well-known/openid-configuration)'
+        # RFC 8414 discovery
+        - path: {type: RegularExpression, value: '/\.well-known/openid-configuration/realms/(homelab)'}
         - path: {type: PathPrefix, value: /resources/}
-        # RFC 8414 metadata, for realm homelab only (the master realm stays internal)
-        - path: {type: RegularExpression, value: "/\\.well-known/[^/]+/realms/homelab"}
       backendRefs:
         - name: keycloak-service
           port: 8080
     # the admin console on keycloak.skinke.net frames these; frame-ancestors overrides the Gateway's X-Frame-Options
     - matches:
-        - path: {type: PathPrefix, value: /realms/homelab/protocol/openid-connect/3p-cookies/}
-        - path: {type: PathPrefix, value: /realms/homelab/protocol/openid-connect/login-status-iframe.html}
+        - path: {type: RegularExpression, value: '/realms/(homelab)/protocol/openid-connect/(3p-cookies/step[12]\.html|login-status-iframe\.html(/init)?)'}
       filters:
         - type: ResponseHeaderModifier
           responseHeaderModifier:
@@ -115,13 +116,14 @@ spec:
     local:
       rules:
         - clientSelectors:
-            - path: {type: PathPrefix, value: /realms/homelab/login-actions/}
+            # :path with its query string
+            - path: {type: RegularExpression, value: '/realms/[^/]+/login-actions/.*'}
               methods: [{value: POST}]
               sourceCIDR: {type: Distinct, value: 0.0.0.0/0}
           limit: {requests: 20, unit: Minute}
         # apps and Envoy's own OIDC filter exchange and refresh tokens here, each from its pod IP
         - clientSelectors:
-            - path: {type: PathPrefix, value: /realms/homelab/protocol/openid-connect/token}
+            - path: {type: RegularExpression, value: '/realms/[^/]+/protocol/openid-connect/token(\?.*)?'}
               methods: [{value: POST}]
               sourceCIDR: {type: Distinct, value: 0.0.0.0/0}
           limit: {requests: 60, unit: Minute}

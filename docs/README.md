@@ -66,6 +66,15 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   made by hand.
 - **Groups:** `homelab-admins`, `homelab-operators`, and `homelab-viewers`.
   Every login requires WebAuthn/passkey or TOTP.
+- **Public endpoints:** `auth.skinke.net` serves only what a login needs, for
+  the realms in the `(homelab)` regex groups of
+  `fleet/clusters/loft01/keycloak/manifests/listener.yaml` (add a realm there to
+  make it public). The master realm and the account console are closed, so manage
+  your own credentials with an application-initiated action: open
+  `https://auth.skinke.net/realms/homelab/protocol/openid-connect/auth?client_id=edge&response_type=code&scope=openid&redirect_uri=https://metrics.skinke.net/_envoy/callback&kc_action=<action>`
+  with `UPDATE_PASSWORD`, `webauthn-register`, `CONFIGURE_TOTP`, or
+  `delete_credential:<id>` (the ID is under the user's Credentials in the admin
+  console). The action is saved before the final redirect, which Envoy rejects.
 - **Gateways:**
   - `edge` (public via NodePort 30080/30443): Keycloak login endpoints, Immich
     (`immich.skinke.net`), Miniflux (`rss.skinke.net`), OpenCloud
@@ -87,8 +96,8 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 - **First login after a fresh cluster build:**
   1. Fetch `leier`'s initial password:
      `just bao kv get -field=leier_password kv/loft01/keycloak`
-  2. Sign in at `https://auth.skinke.net/realms/homelab/account/`, register a
-     passkey, and set a permanent password.
+  2. Sign in to any app (e.g. `https://metrics.skinke.net`); Keycloak makes you
+     set a permanent password and register a passkey.
   3. Refresh workstation kubeconfig: `just kubeconfig`.
 
 ## Backup & Restore

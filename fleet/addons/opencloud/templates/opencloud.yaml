@@ -117,8 +117,6 @@ spec:
               value: openid,profile,email
             - name: WEBFINGER_IOS_OIDC_CLIENT_SCOPES
               value: openid,profile,email
-            - name: WEB_OPTION_ACCOUNT_EDIT_LINK_HREF
-              value: {{ printf "%s/account" $issuer | quote }}
             # Keycloak owns these; the oidc role driver and group sync would revert any edit
             - name: FRONTEND_READONLY_USER_ATTRIBUTES
               value: user.onPremisesSamAccountName,user.displayName,user.mail,user.passwordProfile,user.memberOf,user.appRoleAssignments
