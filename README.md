@@ -21,8 +21,8 @@ no helper scripts or CI in the rendering path. Design principles are in
   `main` on Fridays. zrepl snapshots every volume hourly, and
   `nixos/backup.nix` backs up the k3s state and every PVC except metrics, logs
   and caches to rsync.net nightly with restic.
-- **GitOps (`fleet/`).** A catalog of addons, enabled and layered by envs and
-  clusters (`addon < env < cluster`). Each Argo CD instance runs a Cluster
+- **GitOps (`fleet/`).** A catalog of addons, enabled and layered per
+  cluster (`addon < cluster`). Each Argo CD instance runs a Cluster
   Generator `ApplicationSet` (`fleet`) that renders the `/fleet` Helm chart per
   cluster: one Multi-Source `Application` per addon, with dependencies turned
   into sync waves. Bootstrap is 3 manual commands: apply `cilium`, apply
@@ -47,7 +47,6 @@ nixos/          NixOS host configuration (disks, k3s, secrets, backup)
 fleet/          GitOps fleet controller, shared addons, and cluster configs (see fleet/README.md)
   templates/    Helm templates computing dependency sync-waves and Multi-Source Applications
   addons/       Addon catalog (helm, kustomize, manifests)
-  envs/         Per-env config (env.yaml, <addon>/{addon.yaml,values.yaml,manifests/})
   clusters/     Per-cluster config (cluster.yaml, <addon>/{addon.yaml,values.yaml,manifests/})
 tofu/           OpenTofu roots (Keycloak realm)
 packages/       First-party packages built with Nix (capi-argo-bridge, tessdata image)

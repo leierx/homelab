@@ -22,12 +22,7 @@
 {{- end -}}
 
 {{- define "fleet.layers" -}}
-{{- $layers := list (printf "addons/%s" .name) -}}
-{{- if .env -}}
-  {{- $layers = append $layers (printf "envs/%s/%s" .env .name) -}}
-{{- end -}}
-{{- $layers = append $layers (printf "clusters/%s/%s" .cluster .name) -}}
-{{- toYaml $layers -}}
+{{- toYaml (list (printf "addons/%s" .name) (printf "clusters/%s/%s" .cluster .name)) -}}
 {{- end -}}
 
 {{- define "fleet.addons" -}}
@@ -38,23 +33,13 @@
   {{- fail (printf "%s does not exist" $clusterPath) -}}
 {{- end -}}
 {{- $clusterCfg := fromYaml (include "fleet.readYaml" (dict "files" $files "path" $clusterPath)) -}}
-{{- $env := default "" $clusterCfg.env -}}
-{{- $enabled := dict -}}
-{{- if $env -}}
-  {{- $envPath := printf "envs/%s/env.yaml" $env -}}
-  {{- if not ($files.Get $envPath) -}}
-    {{- fail (printf "%s sets env %q, but %s does not exist" $clusterPath $env $envPath) -}}
-  {{- end -}}
-  {{- $envCfg := fromYaml (include "fleet.readYaml" (dict "files" $files "path" $envPath)) -}}
-  {{- $enabled = deepCopy (default dict $envCfg.addons) -}}
-{{- end -}}
-{{- include "fleet.deepMerge" (dict "dst" $enabled "src" (default dict $clusterCfg.addons)) -}}
+{{- $enabled := default dict $clusterCfg.addons -}}
 {{- $defaultManager := default "self" $clusterCfg.managedBy -}}
 
 {{- $addons := dict -}}
 {{- range $name, $on := $enabled -}}
   {{- if eq (toString $on) "true" -}}
-    {{- $layers := fromYamlArray (include "fleet.layers" (dict "name" $name "env" $env "cluster" $cluster)) -}}
+    {{- $layers := fromYamlArray (include "fleet.layers" (dict "name" $name "cluster" $cluster)) -}}
     {{- $merged := dict -}}
     {{- $deps := list -}}
     {{- $sources := list -}}

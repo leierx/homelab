@@ -6,10 +6,9 @@ Kustomize/directory sources. Design: [#167](https://github.com/leierx/homelab/is
 
 - **Addons** (`addons/<name>/`) are the catalog: a base install of one piece of
   software with sensible defaults.
-- **Envs** (`envs/<env>/`) and **clusters** (`clusters/<cluster>/`) enable
-  addons, override values, attach extra manifests or sources, and can define
-  addons scoped to themselves.
-- Every addon layer merges as `addon < env < cluster`. Any layer can be absent.
+- **Clusters** (`clusters/<cluster>/`) enable addons, override values, attach
+  extra manifests or sources, and can define addons scoped to themselves.
+- Every addon layer merges as `addon < cluster`. Either layer can be absent.
 - Dependencies become sync waves. Later waves only wait for an addon that
   something depends on.
 - A cluster's addons are managed by its own Argo CD (`self`), by another
@@ -28,9 +27,6 @@ fleet/
 │   ├── addon.yaml
 │   ├── values.yaml             # optional
 │   └── manifests/              # optional: plain YAML | kustomization.yaml | Chart.yaml
-├── envs/<env>/
-│   ├── env.yaml                # which addons this env enables
-│   └── <addon>/                # optional: addon.yaml, values.yaml, manifests/
 └── clusters/<cluster>/
     ├── cluster.yaml
     ├── argocd/manifests/       # self-managed: in-cluster Secret + root ApplicationSet
@@ -58,34 +54,23 @@ managedNamespaceMetadata: {}    # e.g. pod-security labels; maps to syncPolicy.m
 application: {}                 # deep-merged into the rendered Application
 ```
 
-Layers merge as `addons/<n>/addon.yaml < envs/<e>/<n>/addon.yaml < clusters/<c>/<n>/addon.yaml`:
+Layers merge as `addons/<n>/addon.yaml < clusters/<c>/<n>/addon.yaml`:
 
 - maps merge deeply, and the later layer wins for scalars and lists,
-- `dependencies` and `sources` are concatenated, so an env or cluster can add
-  to them,
-- a name with no catalog entry is a **scoped addon**: its env or cluster
+- `dependencies` and `sources` are concatenated, so a cluster can add to them,
+- a name with no catalog entry is a **scoped addon**: its cluster
   `addon.yaml` is the whole definition (e.g. `clusters/loft01/dodde`).
-
-### `env.yaml`
-
-```yaml
-addons:
-  cilium: true
-  cert-manager: true
-```
 
 ### `cluster.yaml`
 
 ```yaml
-env: prod                       # optional
 managedBy: self                 # default manager for this cluster's addons: self | <argo instance>
 addons:
+  cilium: true
   dodde: true                   # cluster-scoped addon
-  grafana: false                # drop an env-enabled addon
 ```
 
-The enabled set is `env.addons` merged with `cluster.addons` (the cluster
-wins), keeping entries that are `true`.
+The enabled set is the entries of `addons` that are `true`.
 
 ## Rendering one addon
 
@@ -116,7 +101,7 @@ on:
 - a dependency on an addon managed by a different Argo instance,
 - a cycle,
 - an enabled addon with no `addon.yaml` in any layer,
-- a missing `cluster.yaml`, or an `env` without `env.yaml`.
+- a missing `cluster.yaml`.
 
 `addons/argocd/values.yaml` adds the `Application` health check that makes
 waves wait on child health. It reports a child annotated

@@ -42,19 +42,18 @@ Design: issue #167. Read `fleet/README.md` for the schema.
      at `fleet/` with `argo`, `cluster`, `server`, `repoURL`, `targetRevision`.
    - `fleet/addons/argocd/values.yaml` holds the `argoproj.io/Application`
      health check that gates waves (`fleet.io/non-blocking` aware).
-2. **Layers:** `addons/<name>/` (catalog) < `envs/<env>/<name>/` <
-   `clusters/<cluster>/<name>/`. Each may hold `addon.yaml`, `values.yaml`
-   (Helm `valueFiles`, in layer order) and `manifests/` (plain YAML,
-   `kustomization.yaml`, or a chart).
+2. **Layers:** `addons/<name>/` (catalog) < `clusters/<cluster>/<name>/`. Each
+   may hold `addon.yaml`, `values.yaml` (Helm `valueFiles`, in layer order) and
+   `manifests/` (plain YAML, `kustomization.yaml`, or a chart).
    - `addon.yaml`: `namespace`, `helm: {repoURL, chart | path, targetRevision,
      releaseName}`, `dependencies`, `managedBy`, `sources`,
      `managedNamespaceMetadata`, `application`. Maps deep-merge, later layer
      wins; `dependencies` and `sources` concatenate.
    - Local charts (`alerta`, `apprise`, `capi-argo-bridge`, `gotify`, `immich`, `keycloak`,
      `mimir`, `miniflux`, `opencloud`, `paperless`) set `helm.path: fleet/addons/<name>`.
-3. **Enabling:** `envs/<env>/env.yaml` and `clusters/<cluster>/cluster.yaml`
-   map `addons: {<name>: true|false}`; the cluster wins. A name with no
-   catalog entry is a scoped addon (e.g. `dodde` on `loft01`).
+3. **Enabling:** `clusters/<cluster>/cluster.yaml` maps
+   `addons: {<name>: true|false}`. A name with no catalog entry is a scoped
+   addon (e.g. `dodde` on `loft01`).
 
 ## Verification
 
@@ -91,9 +90,8 @@ nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
   render purely via Argo CD's Helm and Kustomize/directory sources; CI only
   previews diffs and builds artifacts. Never use Kustomize's Helm chart
   inflation generator.
-- **Enabling addons:** only through `env.yaml` / `cluster.yaml`. Per-cluster
-  values and manifests go in `clusters/<cluster>/<addon>/{values.yaml,manifests/}`,
-  shared per-env ones in `envs/<env>/<addon>/`.
+- **Enabling addons:** only through `cluster.yaml`. Per-cluster values and
+  manifests go in `clusters/<cluster>/<addon>/{values.yaml,manifests/}`.
 - **Dependencies:** Declare cross-addon ordering with `dependencies: []` in
   `addon.yaml` (any layer). `_helpers.tpl` computes the
   `argocd.argoproj.io/sync-wave` and fails on missing deps, cycles and deps
