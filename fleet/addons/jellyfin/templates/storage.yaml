@@ -1,0 +1,34 @@
+# the database, metadata and trickplay images
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: config
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+    # with the pod: WaitForFirstConsumer leaves it Pending until then
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.persistence.config.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.config.size }}
+---
+# movies/ and shows/, one library each; Jellyfin only reads it
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false,Prune=false
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.persistence.media.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.media.size }}

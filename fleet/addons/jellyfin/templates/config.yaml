@@ -1,0 +1,102 @@
+{{- if not .Values.oidc.groups }}{{ fail "oidc.groups is per cluster: with none, any Keycloak user could log in" }}{{ end -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jellyfin
+data:
+  # every start: the files below replace what the UI saved, and the plugin is verified against its pinned checksum
+  init.sh: |
+    set -eu
+    plugin=/config/plugins/SSO-Auth_${SSO_PLUGIN_VERSION#v}
+    if [ "$(cat "$plugin/.sha256" 2>/dev/null)" != "$SSO_PLUGIN_SHA256" ]; then
+      wget -qO /tmp/sso-auth.zip "https://github.com/MaxRink/jellyfin-plugin-sso/releases/download/$SSO_PLUGIN_VERSION/sso-auth_${SSO_PLUGIN_VERSION#v}.zip"
+      echo "$SSO_PLUGIN_SHA256  /tmp/sso-auth.zip" | sha256sum -c
+      rm -rf /config/plugins/SSO-Auth_*
+      mkdir -p "$plugin"
+      unzip -q /tmp/sso-auth.zip -d "$plugin"
+      echo "$SSO_PLUGIN_SHA256" > "$plugin/.sha256"
+    fi
+    mkdir -p /config/config /config/plugins/configurations /media/movies /media/shows
+    cp /etc/jellyfin-seed/network.xml /etc/jellyfin-seed/branding.xml /config/config/
+    sed "s/@OIDC_CLIENT_SECRET@/$OIDC_CLIENT_SECRET/" /etc/jellyfin-seed/SSO-Auth.xml > /config/plugins/configurations/SSO-Auth.xml
+  # the first-start wizard, run by the setup Job: a break-glass admin and the two libraries
+  setup.sh: |
+    set -eu
+    api=http://jellyfin-0.jellyfin-headless:8096
+    info=$(curl -fsS --retry 60 --retry-delay 5 --retry-all-errors "$api/System/Info/Public")
+    case $info in *'"StartupWizardCompleted":true'*) exit 0 ;; esac
+    post() { curl -fsS -H 'Content-Type: application/json' -d "$1" "$2"; }
+    curl -fsS "$api/Startup/User" > /dev/null
+    # 403 once the password is set, by an earlier run that stopped before the end
+    status=$(curl -sS -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \
+      -d "{\"Name\":\"break-glass\",\"Password\":\"$ADMIN_PASSWORD\"}" "$api/Startup/User")
+    case $status in 204 | 403) ;; *) echo "POST /Startup/User: $status" >&2; exit 1 ;; esac
+    post '{"ServerName":{{ .Values.serverName | toJson }},"UICulture":"en-US","MetadataCountryCode":"US","PreferredMetadataLanguage":"en"}' "$api/Startup/Configuration"
+    # a second library of the same name would become "Movies1"
+    folders=$(curl -fsS "$api/Library/VirtualFolders")
+    case $folders in *'"Name":"Movies"'*) ;; *) post '{}' "$api/Library/VirtualFolders?name=Movies&collectionType=movies&paths=/media/movies" ;; esac
+    case $folders in *'"Name":"Shows"'*) ;; *) post '{}' "$api/Library/VirtualFolders?name=Shows&collectionType=tvshows&paths=/media/shows" ;; esac
+    post '{}' "$api/Startup/Complete"
+  # the Gateway's address range, so client IPs come from X-Forwarded-For
+  network.xml: |
+    <?xml version="1.0" encoding="utf-8"?>
+    <NetworkConfiguration>
+      <KnownProxies>
+        <string>{{ required "proxyTrustedAddresses is per cluster" .Values.proxyTrustedAddresses }}</string>
+      </KnownProxies>
+      <AutoDiscovery>false</AutoDiscovery>
+    </NetworkConfiguration>
+  # the plugin has no login button of its own; password logins only work from inside the cluster
+  branding.xml: |
+    <?xml version="1.0" encoding="utf-8"?>
+    <BrandingOptions>
+      <LoginDisclaimer><![CDATA[<form action="/sso/OID/start/keycloak"><button class="raised block emby-button button-submit">Sign in with Keycloak</button></form>]]></LoginDisclaimer>
+      <CustomCss>.manualLoginForm, .btnManual, .btnForgotPassword { display: none !important; }</CustomCss>
+    </BrandingOptions>
+  # replaces the links the plugin saved, so each user is re-linked by username at the next login;
+  # PAR is off since Keycloak's public route doesn't serve it, and a linked account can't use a password
+  SSO-Auth.xml: |
+    <?xml version="1.0" encoding="utf-8"?>
+    <PluginConfiguration>
+      <OidConfigs>
+        <item>
+          <key>
+            <string>keycloak</string>
+          </key>
+          <value>
+            <PluginConfiguration>
+              <OidEndpoint>{{ required "oidc.issuer is per cluster" .Values.oidc.issuer }}</OidEndpoint>
+              <OidClientId>jellyfin</OidClientId>
+              <OidSecret>@OIDC_CLIENT_SECRET@</OidSecret>
+              <Enabled>true</Enabled>
+              <EnableAuthorization>true</EnableAuthorization>
+              <EnableAllFolders>true</EnableAllFolders>
+              <EnabledFolders />
+              <AdminRoles>
+                {{- range required "oidc.adminGroups is per cluster" .Values.oidc.adminGroups }}
+                <string>{{ . }}</string>
+                {{- end }}
+              </AdminRoles>
+              <Roles>
+                {{- range required "oidc.groups is per cluster" .Values.oidc.groups }}
+                <string>{{ . }}</string>
+                {{- end }}
+              </Roles>
+              <EnableFolderRoles>false</EnableFolderRoles>
+              <EnableLiveTvRoles>false</EnableLiveTvRoles>
+              <EnableLiveTv>false</EnableLiveTv>
+              <EnableLiveTvManagement>false</EnableLiveTvManagement>
+              <LiveTvRoles />
+              <LiveTvManagementRoles />
+              <FolderRoleMappings />
+              <RoleClaim>groups</RoleClaim>
+              <OidScopes />
+              <DefaultUsernameClaim>preferred_username</DefaultUsernameClaim>
+              <NewPath>true</NewPath>
+              <DisablePushedAuthorization>true</DisablePushedAuthorization>
+            </PluginConfiguration>
+          </value>
+        </item>
+      </OidConfigs>
+      <EnforceSsoOnly>true</EnforceSsoOnly>
+    </PluginConfiguration>

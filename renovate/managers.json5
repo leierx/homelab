@@ -28,6 +28,17 @@
       ],
       datasourceTemplate: 'github-releases',
     },
+    {
+      customType: 'regex',
+      description: "Jellyfin's SSO plugin, a release zip pinned by checksum: Renovate bumps the tag and recomputes the checksum",
+      managerFilePatterns: ['/^fleet/addons/jellyfin/values\\.yaml$/'],
+      matchStrings: [
+        'ssoPlugin:\\n\\s+version:\\s*(?<currentValue>\\S+)\\n\\s+sha256:\\s*(?<currentDigest>[0-9a-f]{64})',
+      ],
+      datasourceTemplate: 'github-release-attachments',
+      depNameTemplate: 'MaxRink/jellyfin-plugin-sso',
+      versioningTemplate: 'regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\.(?<build>\\d+)$',
+    },
   ],
   kubernetes: {
     managerFilePatterns: ['/^fleet/.+\\.ya?ml$/'],

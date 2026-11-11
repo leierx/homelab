@@ -1,0 +1,73 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: jellyfin
+spec:
+  secretName: jellyfin-tls
+  issuerRef:
+    group: cert-manager.io
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  dnsNames:
+    - jellyfin.skinke.net
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: jellyfin-edge
+spec:
+  parentRef:
+    name: edge
+    namespace: envoy-gateway-system
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: jellyfin.skinke.net
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: jellyfin-tls
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: jellyfin-edge
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: jellyfin-edge
+  hostnames:
+    - jellyfin.skinke.net
+  rules:
+    - backendRefs:
+        - name: jellyfin
+          port: 8096
+      # no 300 s gateway cap on a direct-play stream or the live-update socket
+      timeouts:
+        request: 0s
+---
+# TV and phone apps can't get through Envoy's OIDC login, so the SSO plugin's Keycloak login guards it;
+# passwords are refused here (ASP.NET routes ignore case), leaving them to break-glass inside the cluster
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: jellyfin-edge
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: jellyfin-edge
+  authorization:
+    defaultAction: Allow
+    rules:
+      - action: Deny
+        operation:
+          path:
+            type: RegularExpression
+            value: '(?i)/(startup|users/authenticatebyname|users/[^/]+/authenticate|users/forgotpassword)([/?;].*)?'
+        principal:
+          clientCIDRs: [0.0.0.0/0, "::/0"]

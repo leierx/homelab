@@ -29,6 +29,7 @@ locals {
     miniflux       = keycloak_openid_client.miniflux.id
     paperless      = keycloak_openid_client.paperless.id
     gotify         = keycloak_openid_client.gotify.id
+    jellyfin       = keycloak_openid_client.jellyfin.id
   }
 
   opencloud_clients = merge(
@@ -302,6 +303,27 @@ resource "keycloak_openid_client" "gotify" {
     "https://gotify.skinke.net/auth/oidc/callback",
     "gotify://oidc/callback",
   ]
+}
+
+# the web app's login, through the SSO plugin; TVs and phone apps sign in with Quick Connect, approved from a browser
+resource "keycloak_openid_client" "jellyfin" {
+  realm_id  = keycloak_realm.homelab.id
+  client_id = "jellyfin"
+  name      = "jellyfin"
+  enabled   = true
+  base_url  = "https://jellyfin.skinke.net"
+
+  access_type                  = "CONFIDENTIAL"
+  client_secret_wo             = var.jellyfin_client_secret
+  client_secret_wo_version     = "1"
+  standard_flow_enabled        = true
+  direct_access_grants_enabled = false
+  implicit_flow_enabled        = false
+  service_accounts_enabled     = false
+  full_scope_allowed           = false
+  pkce_code_challenge_method   = "S256"
+
+  valid_redirect_uris = ["https://jellyfin.skinke.net/sso/OID/redirect/keycloak"]
 }
 
 # OpenCloud's web app

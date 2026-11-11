@@ -101,8 +101,8 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 - **Gateways:**
   - `edge` (public via NodePort 30080/30443): Keycloak login endpoints, Immich
     (`immich.skinke.net`), Miniflux (`rss.skinke.net`), OpenCloud
-    (`opencloud.skinke.net`), Grafana (`metrics.skinke.net`), and Gotify
-    (`gotify.skinke.net`).
+    (`opencloud.skinke.net`), Grafana (`metrics.skinke.net`), Gotify
+    (`gotify.skinke.net`), and Jellyfin (`jellyfin.skinke.net`).
   - `wg` (WireGuard `10.0.0.1` only): Alerta (`alerta.skinke.net`), Argo CD
     (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), Paperless-ngx
     (`paperless.skinke.net`), and the Keycloak
@@ -112,10 +112,21 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
     for a Local Network Access permission when they are).
   - Both `edge` and `wg` attach `SecurityPolicy/oidc` and
     `ClientTrafficPolicy/default` at the `Gateway` level, so every HTTPS route
-    (other than Keycloak, Immich, OpenCloud, Alerta, and Gotify) is gated by Envoy's OIDC login (`/_envoy/callback`)
+    (other than Keycloak, Immich, OpenCloud, Alerta, Gotify, and Jellyfin) is gated by Envoy's OIDC login (`/_envoy/callback`)
     and receives standard security headers automatically. New web apps only need
     their `Certificate`, `ListenerSet`, `HTTPRoute`, and `https://<host>/_envoy/callback`
     in `keycloak_openid_client.edge.valid_redirect_uris` (`tofu/keycloak/clients.tf`).
+- **Jellyfin** has no OIDC of its own: the SSO plugin
+  ([MaxRink/jellyfin-plugin-sso](https://github.com/MaxRink/jellyfin-plugin-sso))
+  adds a Keycloak button to the web login, and the Gateway refuses password
+  logins. TVs and phone apps sign in with Quick Connect: the app shows a code,
+  approve it at `https://jellyfin.skinke.net/sso/OID/start/keycloak?qc=<code>`.
+  `homelab-admins` are Jellyfin admins, the other tiers users. Removing someone
+  from Keycloak stops new logins only: disable or delete their Jellyfin user too.
+  Media goes in the claim `jellyfin/media` under `movies/` and `shows/`, copied
+  as root on `loft01` to where the pod has it mounted
+  (`findmnt -no TARGET -S tank/<pv>`); Jellyfin only reads it, so world-readable
+  is enough.
 - **First login after a fresh cluster build:**
   1. Fetch `leier`'s initial password:
      `just bao kv get -field=leier_password kv/loft01/keycloak`
@@ -128,7 +139,7 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 Each PVC is a dataset `tank/<pv>`. zrepl keeps local snapshots (24 hourly,
 14 daily, 3 monthly); `offsite-backup.service` copies a snapshot of every
 volume plus the k3s state to rsync.net nightly at 04:30 (restic: 7 daily,
-4 weekly, 6 monthly), except the claims in `excluded` (Mimir, Loki, caches).
+4 weekly, 6 monthly), except the claims in `excluded` (Mimir, Loki, caches, Jellyfin's media).
 Example: Immich originals live in claim `immich/library` under `library/`.
 Run everything as root on `loft01` (`doas -s`).
 
@@ -199,6 +210,18 @@ rm -rf /var/tmp/restore                                # on loft01
   read -rs BAO_TOKEN && export BAO_TOKEN
   # ...
   bao token revoke -self
+  ```
+- **Jellyfin:** `break-glass` is a local admin whose password works only from
+  inside the cluster, and every use alerts (`JellyfinPasswordLogin`). Open
+  `http://localhost:8096` through a port-forward, choose Quick Connect, and
+  approve its code as `break-glass`:
+  ```sh
+  kubectl -n jellyfin port-forward jellyfin-0 8096
+  pw=$(just bao kv get -field=admin_password kv/loft01/jellyfin)
+  token=$(curl -fsS http://localhost:8096/Users/AuthenticateByName \
+    -H "Authorization: MediaBrowser Client=\"cli\", Device=\"cli\", DeviceId=\"break-glass\", Version=\"1\"" \
+    -H "Content-Type: application/json" -d "{\"Username\":\"break-glass\",\"Pw\":\"$pw\"}" | jq -r .AccessToken)
+  curl -fsS -X POST -H "Authorization: MediaBrowser Token=\"$token\"" "http://localhost:8096/QuickConnect/Authorize?code=<code>"
   ```
 - **Paperless-ngx:** `manage.py` in the pod needs no login. For the API as
   `admin`, enable it (the next restart disables it again) and use the password

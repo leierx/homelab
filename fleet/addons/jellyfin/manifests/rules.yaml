@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: jellyfin
+  labels:
+    fleet.io/ruler: loki
+spec:
+  groups:
+    - name: jellyfin
+      rules:
+        # SSO and Quick Connect logins don't log this line
+        - alert: JellyfinPasswordLogin
+          expr: sum by (username) (count_over_time({namespace="jellyfin", container="jellyfin"} |= "Authentication request for " | regexp "Authentication request for (?P<username>.+?) (has|is|forbidden)" [5m])) > 0
+          labels:
+            severity: warning
+            instance: '{{ $labels.username }}'
+          annotations:
+            summary: "Someone tried a password on Jellyfin, which the Gateway refuses from outside: break-glass, or a way around the Gateway."

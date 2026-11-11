@@ -36,4 +36,4 @@ spec:
       matchExpressions:
         - key: kubernetes.io/metadata.name
           operator: In
-          values: [alerta, apprise, argo, argocd, capi-operator-system, capi-system, cert-manager, cnpg-system, envoy-gateway-system, external-secrets, gotify, immich, keycloak, kubeadm-bootstrap-system, kubeadm-control-plane-system, kubevirt-infrastructure-system, miniflux, monitoring, openbao, opencloud, paperless, renovate]
+          values: [alerta, apprise, argo, argocd, capi-operator-system, capi-system, cert-manager, cnpg-system, envoy-gateway-system, external-secrets, gotify, immich, jellyfin, keycloak, kubeadm-bootstrap-system, kubeadm-control-plane-system, kubevirt-infrastructure-system, miniflux, monitoring, openbao, opencloud, paperless, renovate]

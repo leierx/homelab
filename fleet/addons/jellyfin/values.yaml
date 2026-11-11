@@ -1,0 +1,25 @@
+image:
+  repository: docker.io/jellyfin/jellyfin
+  tag: "12.4"
+# installs the SSO plugin and writes the config files Jellyfin would otherwise take from its UI
+initImage:
+  repository: docker.io/library/alpine
+  tag: 3.24.4
+# Keycloak login: Jellyfin has no OIDC of its own (github.com/MaxRink/jellyfin-plugin-sso)
+ssoPlugin:
+  version: v6.1.0.0
+  sha256: 6311d6b16e89a91e44ce9b5a32c09d28eda292a11b75cd6b942d7bc62664cd00
+serverName: Jellyfin
+timeZone: UTC
+# the pod network, where the Envoy proxies are
+proxyTrustedAddresses: ""
+oidc:
+  issuer: ""
+  # groups that may log in, and those that are Jellyfin admins
+  groups: []
+  adminGroups: []
+persistence:
+  config:
+    size: 20Gi
+  media:
+    size: 2Ti
