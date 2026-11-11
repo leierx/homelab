@@ -2,6 +2,7 @@ namespace: openbao
 dependencies:
   - cilium
   - cert-manager
+  - cloudnative-pg
   - zfs-localpv
   - prometheus-operator-crds
 helm:
