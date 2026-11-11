@@ -31,7 +31,8 @@ no helper scripts or CI in the rendering path. Design principles are in
 - **Edge.** Envoy Gateway terminates TLS on two Gateways: `edge` (NodePort
   30080/30443) and `wg` (`10.0.0.1` on WireGuard).
 - **Storage.** OpenEBS `zfs-localpv` provisions a thin ZFS dataset per PVC
-  (`zfs`) on the `tank` pool, and raw zvols (`zfs-block`) for block volumes only.
+  (`zfs`) on the `tank` pool, with 1M records (`zfs-bulk`) for large media and
+  document files, and raw zvols (`zfs-block`) for block volumes only.
 - **Virtualization & Clusters.** KubeVirt, CDI, and Cluster API run on `loft01`,
   along with the cluster-specific `dodde` Fedora VM addon.
 - **Observability.** `alloy-metrics` scrapes every ServiceMonitor and PodMonitor into
