@@ -33,9 +33,10 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 
 ## Secrets (OpenBao & External Secrets)
 
-- **OpenBao** runs in `openbao` on a `zfs` PVC and auto-unseals using the
-  static key in `Secret/openbao-seal-key` (provisioned by `nixos/secrets.nix` from
-  the host-only `/var/lib/secrets.yaml`).
+- **OpenBao** runs in `openbao`, stores its data in the CloudNativePG cluster
+  `openbao-db`, and auto-unseals using the static key in
+  `Secret/openbao-seal-key` (provisioned by `nixos/secrets.nix` from the
+  host-only `/var/lib/secrets.yaml`).
 - On first startup against empty storage, OpenBao initializes the `kv` v2
   mount, Kubernetes auth, and the `external-secrets`, `external-secrets-push`,
   and `admin` roles from `fleet/addons/openbao/values.yaml`.

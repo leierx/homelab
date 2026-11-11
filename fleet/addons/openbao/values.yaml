@@ -5,7 +5,13 @@ serverTelemetry: {serviceMonitor: {enabled: true, port: metrics}}
 injector: {enabled: false}
 server:
   resources: {requests: {cpu: 50m, memory: 128Mi}, limits: {memory: 512Mi}}
-  extraEnvironmentVars: {BAO_CACERT: /openbao/tls/ca.crt}
+  extraEnvironmentVars: {BAO_CACERT: /openbao/tls/ca.crt, PGSSLMODE: verify-full, PGSSLROOTCERT: /openbao/db-ca/ca.crt}
+  # the storage stanza reads the standard PG* variables, which keeps the password out of the ConfigMap
+  extraSecretEnvironmentVars:
+    - {envName: PGHOST, secretName: openbao-db-app, secretKey: host}
+    - {envName: PGDATABASE, secretName: openbao-db-app, secretKey: dbname}
+    - {envName: PGUSER, secretName: openbao-db-app, secretKey: username}
+    - {envName: PGPASSWORD, secretName: openbao-db-app, secretKey: password}
   extraPorts: [{containerPort: 9101, name: metrics}]
   service: {extraPorts: [{name: metrics, port: 9101, targetPort: 9101}]}
   # single replica with static auto-unseal: roll on image and config changes instead of waiting for a manual delete
@@ -14,12 +20,15 @@ server:
   volumes:
     - {name: tls, secret: {secretName: openbao-tls}}
     - {name: seal-key, secret: {secretName: openbao-seal-key}}
+    - {name: db-ca, secret: {secretName: openbao-db-ca, items: [{key: ca.crt, path: ca.crt}]}}
     - {name: tmp, emptyDir: {}}
   volumeMounts:
     - {name: tls, mountPath: /openbao/tls, readOnly: true}
     - {name: seal-key, mountPath: /openbao/seal, readOnly: true}
+    - {name: db-ca, mountPath: /openbao/db-ca, readOnly: true}
     # the chart renders the server config into /tmp at start
     - {name: tmp, mountPath: /tmp}
+  dataStorage: {enabled: false}
   statefulSet:
     securityContext:
       container:
@@ -29,140 +38,140 @@ server:
         seccompProfile: {type: RuntimeDefault}
   ha:
     enabled: true
-    replicas: 0
+    replicas: 1
     disruptionBudget: {enabled: false}
-    raft:
-      enabled: true
-      setNodeId: true
-      # the initialize blocks run once, against empty storage; a running OpenBao never sees later edits to them
-      config: |
-        ui = true
-        disable_mlock = true
+    # the initialize blocks run once, against empty storage; a running OpenBao never sees later edits to them
+    config: |
+      ui = true
+      disable_mlock = true
 
-        listener "tcp" {
-          address = "[::]:8200"
-          cluster_address = "[::]:8201"
-          tls_cert_file = "/openbao/tls/tls.crt"
-          tls_key_file = "/openbao/tls/tls.key"
-          tls_auto_reload = true
-          telemetry {
-            disallow_metrics = true
-          }
-        }
-
-        listener "tcp" {
-          address = "[::]:9101"
-          tls_cert_file = "/openbao/tls/tls.crt"
-          tls_key_file = "/openbao/tls/tls.key"
-          tls_auto_reload = true
-          telemetry {
-            metrics_only = true
-            unauthenticated_metrics_access = true
-          }
-        }
-
-        storage "raft" {
-          path = "/openbao/data"
-        }
-
-        service_registration "kubernetes" {}
-
+      listener "tcp" {
+        address = "[::]:8200"
+        cluster_address = "[::]:8201"
+        tls_cert_file = "/openbao/tls/tls.crt"
+        tls_key_file = "/openbao/tls/tls.key"
+        tls_auto_reload = true
         telemetry {
-          prometheus_retention_time = "24h"
-          disable_hostname = true
+          disallow_metrics = true
         }
+      }
 
-        seal "static" {
-          current_key_id = "20261017"
-          current_key = "file:///openbao/seal/key"
+      listener "tcp" {
+        address = "[::]:9101"
+        tls_cert_file = "/openbao/tls/tls.crt"
+        tls_key_file = "/openbao/tls/tls.key"
+        tls_auto_reload = true
+        telemetry {
+          metrics_only = true
+          unauthenticated_metrics_access = true
         }
+      }
 
-        audit "file" "stdout" {
-          options {
-            file_path = "stdout"
-          }
-        }
+      storage "postgresql" {
+        ha_enabled = "true"
+        max_parallel = "10"
+        # wait for the database instead of crash-looping
+        max_connect_retries = 0
+      }
 
-        initialize "kv" {
-          request "mount" {
-            operation = "update"
-            path = "sys/mounts/kv"
-            data = {
-              type = "kv"
-              options = { version = "2" }
-            }
-          }
-        }
+      service_registration "kubernetes" {}
 
-        initialize "kubernetes-auth" {
-          request "enable" {
-            operation = "update"
-            path = "sys/auth/kubernetes"
-            data = { type = "kubernetes" }
-          }
-          request "config" {
-            operation = "update"
-            path = "auth/kubernetes/config"
-            data = { kubernetes_host = "https://kubernetes.default.svc" }
-          }
-        }
+      telemetry {
+        prometheus_retention_time = "24h"
+        disable_hostname = true
+      }
 
-        initialize "external-secrets" {
-          request "policy" {
-            operation = "update"
-            path = "sys/policies/acl/external-secrets"
-            data = {
-              policy = "path \"kv/data/{{ required "kvPrefix is per cluster" .Values.kvPrefix }}/*\" { capabilities = [\"read\"] }\npath \"kv/metadata/{{ .Values.kvPrefix }}/*\" { capabilities = [\"read\", \"list\"] }"
-            }
-          }
-          request "role" {
-            operation = "update"
-            path = "auth/kubernetes/role/external-secrets"
-            data = {
-              bound_service_account_names = ["external-secrets"]
-              bound_service_account_namespaces = ["external-secrets"]
-              token_policies = ["external-secrets"]
-              token_ttl = "1h"
-            }
-          }
-        }
+      seal "static" {
+        current_key_id = "20261017"
+        current_key = "file:///openbao/seal/key"
+      }
 
-        initialize "external-secrets-push" {
-          request "policy" {
-            operation = "update"
-            path = "sys/policies/acl/external-secrets-push"
-            data = {
-              policy = "path \"kv/data/{{ required "kvPrefix is per cluster" .Values.kvPrefix }}/*\" { capabilities = [\"create\", \"read\", \"update\"] }\npath \"kv/metadata/{{ .Values.kvPrefix }}/*\" { capabilities = [\"create\", \"read\", \"update\"] }"
-            }
-          }
-          request "role" {
-            operation = "update"
-            path = "auth/kubernetes/role/external-secrets-push"
-            data = {
-              bound_service_account_names = ["external-secrets-push"]
-              bound_service_account_namespaces = ["external-secrets"]
-              token_policies = ["external-secrets-push"]
-              token_ttl = "1h"
-            }
-          }
+      audit "file" "stdout" {
+        options {
+          file_path = "stdout"
         }
+      }
 
-        initialize "admin" {
-          request "policy" {
-            operation = "update"
-            path = "sys/policies/acl/admin"
-            data = {
-              policy = "path \"*\" { capabilities = [\"create\", \"read\", \"update\", \"patch\", \"delete\", \"list\", \"sudo\"] }"
-            }
-          }
-          request "role" {
-            operation = "update"
-            path = "auth/kubernetes/role/admin"
-            data = {
-              bound_service_account_names = ["openbao-admin"]
-              bound_service_account_namespaces = ["openbao"]
-              token_policies = ["admin"]
-              token_ttl = "15m"
-            }
+      initialize "kv" {
+        request "mount" {
+          operation = "update"
+          path = "sys/mounts/kv"
+          data = {
+            type = "kv"
+            options = { version = "2" }
           }
         }
+      }
+
+      initialize "kubernetes-auth" {
+        request "enable" {
+          operation = "update"
+          path = "sys/auth/kubernetes"
+          data = { type = "kubernetes" }
+        }
+        request "config" {
+          operation = "update"
+          path = "auth/kubernetes/config"
+          data = { kubernetes_host = "https://kubernetes.default.svc" }
+        }
+      }
+
+      initialize "external-secrets" {
+        request "policy" {
+          operation = "update"
+          path = "sys/policies/acl/external-secrets"
+          data = {
+            policy = "path \"kv/data/{{ required "kvPrefix is per cluster" .Values.kvPrefix }}/*\" { capabilities = [\"read\"] }\npath \"kv/metadata/{{ .Values.kvPrefix }}/*\" { capabilities = [\"read\", \"list\"] }"
+          }
+        }
+        request "role" {
+          operation = "update"
+          path = "auth/kubernetes/role/external-secrets"
+          data = {
+            bound_service_account_names = ["external-secrets"]
+            bound_service_account_namespaces = ["external-secrets"]
+            token_policies = ["external-secrets"]
+            token_ttl = "1h"
+          }
+        }
+      }
+
+      initialize "external-secrets-push" {
+        request "policy" {
+          operation = "update"
+          path = "sys/policies/acl/external-secrets-push"
+          data = {
+            policy = "path \"kv/data/{{ required "kvPrefix is per cluster" .Values.kvPrefix }}/*\" { capabilities = [\"create\", \"read\", \"update\"] }\npath \"kv/metadata/{{ .Values.kvPrefix }}/*\" { capabilities = [\"create\", \"read\", \"update\"] }"
+          }
+        }
+        request "role" {
+          operation = "update"
+          path = "auth/kubernetes/role/external-secrets-push"
+          data = {
+            bound_service_account_names = ["external-secrets-push"]
+            bound_service_account_namespaces = ["external-secrets"]
+            token_policies = ["external-secrets-push"]
+            token_ttl = "1h"
+          }
+        }
+      }
+
+      initialize "admin" {
+        request "policy" {
+          operation = "update"
+          path = "sys/policies/acl/admin"
+          data = {
+            policy = "path \"*\" { capabilities = [\"create\", \"read\", \"update\", \"patch\", \"delete\", \"list\", \"sudo\"] }"
+          }
+        }
+        request "role" {
+          operation = "update"
+          path = "auth/kubernetes/role/admin"
+          data = {
+            bound_service_account_names = ["openbao-admin"]
+            bound_service_account_namespaces = ["openbao"]
+            token_policies = ["admin"]
+            token_ttl = "15m"
+          }
+        }
+      }
