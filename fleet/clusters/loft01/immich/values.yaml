@@ -4,7 +4,7 @@ database:
     size: 20Gi
 persistence:
   library:
-    storageClass: zfs
+    storageClass: zfs-bulk
     size: 770Gi
   modelCache:
     storageClass: zfs
