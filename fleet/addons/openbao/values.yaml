@@ -29,7 +29,7 @@ server:
         seccompProfile: {type: RuntimeDefault}
   ha:
     enabled: true
-    replicas: 1
+    replicas: 0
     disruptionBudget: {enabled: false}
     raft:
       enabled: true
