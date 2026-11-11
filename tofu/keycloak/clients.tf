@@ -30,7 +30,6 @@ locals {
     paperless      = keycloak_openid_client.paperless.id
     gotify         = keycloak_openid_client.gotify.id
     jellyfin       = keycloak_openid_client.jellyfin.id
-    jellyfin_sync  = keycloak_openid_client.jellyfin_sync.id
   }
 
   opencloud_clients = merge(
@@ -341,16 +340,43 @@ resource "keycloak_openid_client" "jellyfin_sync" {
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
   service_accounts_enabled     = true
-  # so its token carries the realm-management roles below; nobody can sign in to it
-  full_scope_allowed = true
+  full_scope_allowed           = false
+}
+
+data "keycloak_role" "jellyfin_sync" {
+  for_each  = toset(["query-groups", "view-users"])
+  realm_id  = keycloak_realm.homelab.id
+  client_id = data.keycloak_openid_client.realm_management.id
+  name      = each.key
 }
 
 resource "keycloak_openid_client_service_account_role" "jellyfin_sync" {
-  for_each                = toset(["query-groups", "view-users"])
+  for_each                = data.keycloak_role.jellyfin_sync
   realm_id                = keycloak_realm.homelab.id
   service_account_user_id = keycloak_openid_client.jellyfin_sync.service_account_user_id
   client_id               = data.keycloak_openid_client.realm_management.id
-  role                    = each.key
+  role                    = each.value.name
+}
+
+# the same roles in its token
+resource "keycloak_generic_role_mapper" "jellyfin_sync" {
+  for_each  = data.keycloak_role.jellyfin_sync
+  realm_id  = keycloak_realm.homelab.id
+  client_id = keycloak_openid_client.jellyfin_sync.id
+  role_id   = each.value.id
+}
+
+# kc-admin-api adds the audience the admin API requires
+resource "keycloak_openid_client_default_scopes" "jellyfin_sync" {
+  realm_id       = keycloak_realm.homelab.id
+  client_id      = keycloak_openid_client.jellyfin_sync.id
+  default_scopes = ["basic", "roles", "kc-admin-api"]
+}
+
+resource "keycloak_openid_client_optional_scopes" "jellyfin_sync" {
+  realm_id        = keycloak_realm.homelab.id
+  client_id       = keycloak_openid_client.jellyfin_sync.id
+  optional_scopes = []
 }
 
 # OpenCloud's web app
