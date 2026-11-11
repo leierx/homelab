@@ -34,3 +34,10 @@ spec:
             instance: openbao
           annotations:
             summary: Something logged in to OpenBao with the admin role (the bao CLI through kubectl exec, or a minted openbao-admin token).
+        - alert: OpenBaoRootToken
+          expr: sum(count_over_time({namespace="openbao", container="openbao"} |= "\"type\":\"response\"" |~ "\"display_name\":\"root\"|\"path\":\"sys/generate-root" [5m])) > 0
+          labels:
+            severity: warning
+            instance: openbao
+          annotations:
+            summary: 'Break-glass in OpenBao: a root token was generated or used (just bao-root, or self-initialization on a fresh cluster).'

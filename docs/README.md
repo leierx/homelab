@@ -57,6 +57,28 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 
 - Use `just bao <args>` to run the `bao` CLI as admin via a short-lived
   `openbao-admin` token.
+- **Recovery keys:** self-initialization creates none, and they are the only
+  way in when Kubernetes auth fails (Break-Glass). Generate them once per
+  cluster and keep the 3 shares offline, apart from each other (any 2 recover):
+
+  ```sh
+  just bao write -format=json sys/rotate/recovery/init secret_shares=3 secret_threshold=2
+  ```
+
+- **Seal key:** the nightly backup holds OpenBao's storage and, in the k3s
+  state, `Secret/openbao-seal-key` with the k3s key that decrypts it, so
+  off-site the restic password alone protects OpenBao's data. To rotate the key:
+  1. In `/var/lib/secrets.yaml`, copy `openbao/seal_key` to
+     `openbao/seal_key_previous` and give `openbao/seal_key` a new value in the
+     same format. Add `previous: ${config.secrets.placeholder."openbao/seal_key_previous"}`
+     to the Secret in `nixos/k3s.nix` and the new secret to
+     `secrets.secrets`, then rebuild.
+  2. In `fleet/addons/openbao/values.yaml`, set the old `current_key_id` as
+     `previous_key_id` with `previous_key = "file:///openbao/seal/previous"`,
+     and a new `current_key_id` (today's date). OpenBao restarts and rewraps
+     its keys with the new one.
+  3. Once it is unsealed, remove the `previous` key from both places. Keep the
+     old key until the last backup made with it has expired.
 
 ## Access & Identity
 
@@ -164,6 +186,18 @@ rm -rf /var/tmp/restore                                # on loft01
   kcadm config credentials --server http://localhost:8080 --realm master --user break-glass
   # ...
   kcadm delete users/$(kcadm get users -r master -q exact=true -q username=break-glass --fields id --format csv --noquotes) -r master
+  ```
+- **OpenBao root token,** when `just bao` fails (e.g. Kubernetes auth is
+  broken): add `disable_unauthed_generate_root_endpoints = false` to the
+  `[::]:8200` listener in `fleet/addons/openbao/values.yaml` and push. Then
+  `just bao-root` asks for 2 recovery key shares and prints a root token
+  (`OpenBaoRootToken` alerts). Use it in the pod, revoke it, and revert the
+  listener change:
+  ```sh
+  kubectl -n openbao exec -it openbao-0 -c openbao -- sh
+  read -rs BAO_TOKEN && export BAO_TOKEN
+  # ...
+  bao token revoke -self
   ```
 - **Paperless-ngx:** `manage.py` in the pod needs no login. For the API as
   `admin`, enable it (the next restart disables it again) and use the password

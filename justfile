@@ -36,3 +36,19 @@ bao *args:
     kubectl -n openbao exec -i openbao-0 -c openbao -- sh -c \
       'export BAO_TOKEN=$(bao write -field=token auth/kubernetes/login role=admin jwt="$0") && exec bao "$@"' \
       "$jwt" "$@"
+
+# break-glass root token from the recovery key shares; needs disable_unauthed_generate_root_endpoints = false on the API listener
+bao-root:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    x() { kubectl -n openbao exec -i openbao-0 -c openbao -- bao "$@"; }
+    attempt=$(x write -format=json -f sys/generate-root/attempt </dev/null)
+    nonce=$(jq -r .data.nonce <<<"$attempt") otp=$(jq -r .data.otp <<<"$attempt")
+    for ((i = 1; i <= $(jq -r .data.required <<<"$attempt"); i++)); do
+      read -rsp "Recovery key share $i: " share; echo >&2
+      enc=$(printf %s "$share" | x write -field=encoded_token sys/generate-root/update nonce="$nonce" key=-)
+    done
+    # `bao operator generate-root -decode` needs a token, so undo the OTP's XOR here
+    while (( ${#enc} % 4 )); do enc+="="; done
+    mapfile -t e < <(base64 -d <<<"$enc" | od -An -v -tu1 | xargs -n1)
+    for ((i = 0; i < ${#e[@]}; i++)); do printf "\\$(printf %03o $(( e[i] ^ $(printf %d "'${otp:i:1}") )))"; done; echo
