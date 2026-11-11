@@ -12,13 +12,17 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: external-secrets
             app.kubernetes.io/name: external-secrets
+      toPorts:
+        - ports:
+            - {port: "8200", protocol: TCP}
+    - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: telemetry
             app.kubernetes.io/name: alloy
             app.kubernetes.io/instance: alloy-metrics
       toPorts:
         - ports:
-            - {port: "8200", protocol: TCP}
+            - {port: "9101", protocol: TCP}
   egress:
     # Kubernetes auth (TokenReview) and service registration
     - toEntities: [kube-apiserver]

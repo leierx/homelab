@@ -1,11 +1,13 @@
 # the cluster's path under kv/
 kvPrefix: ""
 global: {tlsDisable: false}
-serverTelemetry: {serviceMonitor: {enabled: true}}
+serverTelemetry: {serviceMonitor: {enabled: true, port: metrics}}
 injector: {enabled: false}
 server:
   resources: {requests: {cpu: 50m, memory: 128Mi}, limits: {memory: 512Mi}}
   extraEnvironmentVars: {BAO_CACERT: /openbao/tls/ca.crt}
+  extraPorts: [{containerPort: 9101, name: metrics}]
+  service: {extraPorts: [{name: metrics, port: 9101, targetPort: 9101}]}
   # single replica with static auto-unseal: roll on image and config changes instead of waiting for a manual delete
   updateStrategyType: RollingUpdate
   configAnnotation: true
@@ -42,7 +44,19 @@ server:
           cluster_address = "[::]:8201"
           tls_cert_file = "/openbao/tls/tls.crt"
           tls_key_file = "/openbao/tls/tls.key"
+          tls_auto_reload = true
           telemetry {
+            disallow_metrics = true
+          }
+        }
+
+        listener "tcp" {
+          address = "[::]:9101"
+          tls_cert_file = "/openbao/tls/tls.crt"
+          tls_key_file = "/openbao/tls/tls.key"
+          tls_auto_reload = true
+          telemetry {
+            metrics_only = true
             unauthenticated_metrics_access = true
           }
         }
