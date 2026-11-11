@@ -8,11 +8,33 @@ spec:
   groups:
     - name: jellyfin
       rules:
-        # SSO and Quick Connect logins don't log this line
+        # SSO and Quick Connect logins don't log this line; the setup Job's one login on a new Jellyfin does
         - alert: JellyfinPasswordLogin
           expr: sum by (username) (count_over_time({namespace="jellyfin", container="jellyfin"} |= "Authentication request for " | regexp "Authentication request for (?P<username>.+?) (has|is|forbidden)" [5m])) > 0
           labels:
             severity: warning
             instance: '{{ $labels.username }}'
           annotations:
-            summary: "Someone tried a password on Jellyfin, which the Gateway refuses from outside: break-glass, or a way around the Gateway."
+            summary: "Someone tried a password on Jellyfin, where only Keycloak logins work: someone inside the cluster, or a way around the Gateway."
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: jellyfin-sync
+  labels:
+    fleet.io/ruler: mimir
+spec:
+  groups:
+    - name: jellyfin-sync
+      rules:
+        - alert: JellyfinSyncFailing
+          expr: |
+            time() - max by (namespace, cronjob) (kube_cronjob_status_last_successful_time{namespace="jellyfin", cronjob="jellyfin-sync"}) > 900
+            or max by (namespace, cronjob) (kube_cronjob_info{namespace="jellyfin", cronjob="jellyfin-sync"})
+              unless max by (namespace, cronjob) (kube_cronjob_status_last_successful_time{namespace="jellyfin", cronjob="jellyfin-sync"})
+          for: 15m
+          labels:
+            severity: warning
+            instance: '{{ $labels.namespace }}/{{ $labels.cronjob }}'
+          annotations:
+            summary: "The Jellyfin account sync hasn't succeeded in 30 minutes, so people removed from Keycloak may still be signed in."

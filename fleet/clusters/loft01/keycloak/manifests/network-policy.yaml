@@ -1,0 +1,17 @@
+# in-cluster readers of the admin API; their tokens come from the same Service
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: keycloak-admin-api
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: jellyfin
+            app.kubernetes.io/name: jellyfin-sync
+      toPorts:
+        - ports:
+            - {port: "8080", protocol: TCP}

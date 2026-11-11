@@ -5,6 +5,10 @@ image:
 initImage:
   repository: docker.io/library/alpine
   tag: 3.24.4
+# runs the Keycloak account sync
+syncImage:
+  repository: docker.io/library/python
+  tag: 3.15.2-alpine
 # Keycloak login: Jellyfin has no OIDC of its own (github.com/MaxRink/jellyfin-plugin-sso)
 ssoPlugin:
   version: v6.1.0.0
@@ -15,6 +19,8 @@ timeZone: UTC
 proxyTrustedAddresses: ""
 oidc:
   issuer: ""
+  # Keycloak in-cluster, for the account sync: its admin API isn't on the public route
+  internalUrl: ""
   # groups that may log in, and those that are Jellyfin admins
   groups: []
   adminGroups: []
@@ -22,4 +28,4 @@ persistence:
   config:
     size: 20Gi
   media:
-    size: 2Ti
+    size: 200Gi

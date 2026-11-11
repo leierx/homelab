@@ -30,6 +30,7 @@ locals {
     paperless      = keycloak_openid_client.paperless.id
     gotify         = keycloak_openid_client.gotify.id
     jellyfin       = keycloak_openid_client.jellyfin.id
+    jellyfin_sync  = keycloak_openid_client.jellyfin_sync.id
   }
 
   opencloud_clients = merge(
@@ -324,6 +325,32 @@ resource "keycloak_openid_client" "jellyfin" {
   pkce_code_challenge_method   = "S256"
 
   valid_redirect_uris = ["https://jellyfin.skinke.net/sso/OID/redirect/keycloak"]
+}
+
+# the Jellyfin account sync (fleet/addons/jellyfin/templates/sync.yaml): reads who may use Jellyfin, nothing else
+resource "keycloak_openid_client" "jellyfin_sync" {
+  realm_id  = keycloak_realm.homelab.id
+  client_id = "jellyfin-sync"
+  name      = "jellyfin-sync"
+  enabled   = true
+
+  access_type                  = "CONFIDENTIAL"
+  client_secret_wo             = var.jellyfin_sync_client_secret
+  client_secret_wo_version     = "1"
+  standard_flow_enabled        = false
+  direct_access_grants_enabled = false
+  implicit_flow_enabled        = false
+  service_accounts_enabled     = true
+  # so its token carries the realm-management roles below; nobody can sign in to it
+  full_scope_allowed = true
+}
+
+resource "keycloak_openid_client_service_account_role" "jellyfin_sync" {
+  for_each                = toset(["query-groups", "view-users"])
+  realm_id                = keycloak_realm.homelab.id
+  service_account_user_id = keycloak_openid_client.jellyfin_sync.service_account_user_id
+  client_id               = data.keycloak_openid_client.realm_management.id
+  role                    = each.key
 }
 
 # OpenCloud's web app

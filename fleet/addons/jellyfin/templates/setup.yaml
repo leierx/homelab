@@ -1,3 +1,31 @@
+# the setup Job stores the account sync's API key, which Jellyfin generates, in Secret/jellyfin-api-key
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jellyfin-setup
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jellyfin-setup
+rules:
+  - apiGroups: [""]
+    resources: [secrets]
+    resourceNames: [jellyfin-api-key]
+    verbs: [get, create, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jellyfin-setup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: jellyfin-setup
+subjects:
+  - kind: ServiceAccount
+    name: jellyfin-setup
+---
 # every sync, alongside the pod; it exits at once once the wizard is complete
 apiVersion: batch/v1
 kind: Job
@@ -9,13 +37,14 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 spec:
   backoffLimit: 3
+  activeDeadlineSeconds: 1200
   template:
     metadata:
       labels:
         app.kubernetes.io/name: jellyfin-setup
     spec:
       restartPolicy: Never
-      automountServiceAccountToken: false
+      serviceAccountName: jellyfin-setup
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

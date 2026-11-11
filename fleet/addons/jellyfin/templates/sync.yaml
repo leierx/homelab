@@ -1,0 +1,137 @@
+# Jellyfin keeps sessions until revoked: this disables, and so signs out, everyone Keycloak no longer lets in, local accounts included
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jellyfin-sync
+data:
+  sync.py: |
+    import json
+    import os
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+
+    def call(method, url, headers, body=None):
+        request = urllib.request.Request(url, body, headers, method=method)
+        with urllib.request.urlopen(request, timeout=30) as response:
+            data = response.read()
+        return json.loads(data) if data else None
+
+
+    keycloak = os.environ["KEYCLOAK_URL"] + "/admin/realms/" + os.environ["KEYCLOAK_REALM"]
+    form = urllib.parse.urlencode({
+        "grant_type": "client_credentials",
+        "client_id": "jellyfin-sync",
+        "client_secret": os.environ["KEYCLOAK_CLIENT_SECRET"],
+    }).encode()
+    token = call(
+        "POST",
+        os.environ["KEYCLOAK_URL"] + "/realms/" + os.environ["KEYCLOAK_REALM"] + "/protocol/openid-connect/token",
+        {"Content-Type": "application/x-www-form-urlencoded"},
+        form,
+    )["access_token"]
+    kc = {"Authorization": "Bearer " + token}
+
+
+    def members(groups):
+        names = set()
+        for group in filter(None, groups.split(",")):
+            group_id = call("GET", f"{keycloak}/group-by-path/{urllib.parse.quote(group)}", kc)["id"]
+            first = 0
+            while True:
+                page = call("GET", f"{keycloak}/groups/{group_id}/members?briefRepresentation=true&first={first}&max=100", kc)
+                names |= {user["username"].lower() for user in page if user["enabled"]}
+                if len(page) < 100:
+                    break
+                first += 100
+        return names
+
+
+    allowed = members(os.environ["GROUPS"])
+    admins = members(os.environ["ADMIN_GROUPS"]) & allowed
+    if not allowed:
+        raise SystemExit("Keycloak lets nobody in: refusing to disable every Jellyfin user")
+
+    jellyfin = os.environ["JELLYFIN_URL"]
+    jf = {"Authorization": f'MediaBrowser Token="{os.environ["JELLYFIN_API_KEY"]}"', "Content-Type": "application/json"}
+    # admins first, so the bootstrap admin is never the last one when its turn comes
+    for user in sorted(call("GET", f"{jellyfin}/Users", jf), key=lambda user: user["Name"].lower() not in admins):
+        name, policy = user["Name"], user["Policy"]
+        disabled = name.lower() not in allowed
+        admin = name.lower() in admins
+        if (policy["IsDisabled"], policy["IsAdministrator"]) == (disabled, admin):
+            continue
+        url = f"{jellyfin}/Users/{user['Id']}/Policy"
+        try:
+            # Jellyfin refuses to disable an admin
+            if policy["IsAdministrator"] and not admin:
+                call("POST", url, jf, json.dumps(policy | {"IsAdministrator": False}).encode())
+            call("POST", url, jf, json.dumps(policy | {"IsAdministrator": admin, "IsDisabled": disabled}).encode())
+        except urllib.error.HTTPError as error:
+            # the bootstrap admin is the last one until a Keycloak admin has signed in
+            if error.code != 403:
+                raise
+            print(f"{name}: kept, {error.read().decode()}")
+            continue
+        print(f"{name}: {'disabled' if disabled else 'enabled'}{', admin' if admin else ''}")
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: jellyfin-sync
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 240
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: jellyfin-sync
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: sync
+              image: {{ .Values.syncImage.repository }}:{{ .Values.syncImage.tag }}
+              command: [python3, /etc/jellyfin-sync/sync.py]
+              env:
+                - name: KEYCLOAK_URL
+                  value: {{ required "oidc.internalUrl is per cluster" .Values.oidc.internalUrl | quote }}
+                - name: KEYCLOAK_REALM
+                  value: {{ base (urlParse .Values.oidc.issuer).path | quote }}
+                - name: KEYCLOAK_CLIENT_SECRET
+                  valueFrom: {secretKeyRef: {name: jellyfin, key: sync-client-secret}}
+                - name: GROUPS
+                  value: {{ join "," .Values.oidc.groups | quote }}
+                - name: ADMIN_GROUPS
+                  value: {{ join "," .Values.oidc.adminGroups | quote }}
+                - name: JELLYFIN_URL
+                  value: http://jellyfin:8096
+                - name: JELLYFIN_API_KEY
+                  valueFrom: {secretKeyRef: {name: jellyfin-api-key, key: api-key}}
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {memory: 128Mi}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: script
+                  mountPath: /etc/jellyfin-sync
+                  readOnly: true
+          volumes:
+            - name: script
+              configMap:
+                name: jellyfin-sync

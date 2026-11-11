@@ -121,8 +121,10 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   adds a Keycloak button to the web login, and the Gateway refuses password
   logins. TVs and phone apps sign in with Quick Connect: the app shows a code,
   approve it at `https://jellyfin.skinke.net/sso/OID/start/keycloak?qc=<code>`.
-  `homelab-admins` are Jellyfin admins, the other tiers users. Removing someone
-  from Keycloak stops new logins only: disable or delete their Jellyfin user too.
+  `homelab-admins` are Jellyfin admins, the other tiers users. Jellyfin keeps
+  sessions until they are revoked, so `CronJob/jellyfin-sync` matches every
+  Jellyfin user to Keycloak every 5 minutes: whoever Keycloak no longer lets in
+  is disabled, which signs out all their devices, and local accounts with them.
   Media goes in the claim `jellyfin/media` under `movies/` and `shows/`, copied
   as root on `loft01` to where the pod has it mounted
   (`findmnt -no TARGET -S tank/<pv>`); Jellyfin only reads it, so world-readable
@@ -211,18 +213,20 @@ rm -rf /var/tmp/restore                                # on loft01
   # ...
   bao token revoke -self
   ```
-- **Jellyfin:** `break-glass` is a local admin whose password works only from
-  inside the cluster, and every use alerts (`JellyfinPasswordLogin`). Open
-  `http://localhost:8096` through a port-forward, choose Quick Connect, and
-  approve its code as `break-glass`:
+- **Jellyfin:** no local account works: the setup Job's `bootstrap` admin is
+  disabled as soon as a Keycloak admin has signed in. Break-glass is the account
+  sync's API key, which is admin-equivalent and whose use Jellyfin doesn't log.
+  To sign in a browser with it, open `http://localhost:8096` through a
+  port-forward, choose Quick Connect, and approve its code for your user:
   ```sh
   kubectl -n jellyfin port-forward jellyfin-0 8096
-  pw=$(just bao kv get -field=admin_password kv/loft01/jellyfin)
-  token=$(curl -fsS http://localhost:8096/Users/AuthenticateByName \
-    -H "Authorization: MediaBrowser Client=\"cli\", Device=\"cli\", DeviceId=\"break-glass\", Version=\"1\"" \
-    -H "Content-Type: application/json" -d "{\"Username\":\"break-glass\",\"Pw\":\"$pw\"}" | jq -r .AccessToken)
-  curl -fsS -X POST -H "Authorization: MediaBrowser Token=\"$token\"" "http://localhost:8096/QuickConnect/Authorize?code=<code>"
+  key=$(kubectl -n jellyfin get secret jellyfin-api-key -o jsonpath='{.data.api-key}' | base64 -d)
+  auth="Authorization: MediaBrowser Token=\"$key\""
+  id=$(curl -fsS -H "$auth" http://localhost:8096/Users | jq -r '.[] | select(.Name == "<user>") | .Id')
+  curl -fsS -X POST -H "$auth" "http://localhost:8096/QuickConnect/Authorize?code=<code>&userId=$id"
   ```
+  The account sync reverts a change to who is enabled or admin within 5 minutes;
+  suspend `CronJob/jellyfin-sync` first if that is what is broken.
 - **Paperless-ngx:** `manage.py` in the pod needs no login. For the API as
   `admin`, enable it (the next restart disables it again) and use the password
   from `just bao kv get -field=admin_password kv/loft01/paperless`:

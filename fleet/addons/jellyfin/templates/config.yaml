@@ -19,24 +19,38 @@ data:
     mkdir -p /config/config /config/plugins/configurations /media/movies /media/shows
     cp /etc/jellyfin-seed/network.xml /etc/jellyfin-seed/branding.xml /config/config/
     sed "s/@OIDC_CLIENT_SECRET@/$OIDC_CLIENT_SECRET/" /etc/jellyfin-seed/SSO-Auth.xml > /config/plugins/configurations/SSO-Auth.xml
-  # the first-start wizard, run by the setup Job: a break-glass admin and the two libraries
+  # the first-start wizard, run by the setup Job: a bootstrap admin, the two libraries, and the account sync's API key
   setup.sh: |
     set -eu
     api=http://jellyfin-0.jellyfin-headless:8096
-    info=$(curl -fsS --retry 60 --retry-delay 5 --retry-all-errors "$api/System/Info/Public")
-    case $info in *'"StartupWizardCompleted":true'*) exit 0 ;; esac
-    post() { curl -fsS -H 'Content-Type: application/json' -d "$1" "$2"; }
+    # a placeholder answers while Jellyfin starts, and its /health says Degraded
+    until [ "$(curl -sS "$api/health" 2>/dev/null)" = Healthy ]; do sleep 5; done
+    case $(curl -fsS "$api/System/Info/Public") in *'"StartupWizardCompleted":true'*) exit 0 ;; esac
+    auth='Authorization: MediaBrowser Client="jellyfin-setup", Device="jellyfin-setup", DeviceId="jellyfin-setup", Version="1"'
+    post() { curl -fsS -H 'Content-Type: application/json' -H "$auth" -d "$1" "$2"; }
     curl -fsS "$api/Startup/User" > /dev/null
     # 403 once the password is set, by an earlier run that stopped before the end
     status=$(curl -sS -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \
-      -d "{\"Name\":\"break-glass\",\"Password\":\"$ADMIN_PASSWORD\"}" "$api/Startup/User")
+      -d "{\"Name\":\"bootstrap\",\"Password\":\"$ADMIN_PASSWORD\"}" "$api/Startup/User")
     case $status in 204 | 403) ;; *) echo "POST /Startup/User: $status" >&2; exit 1 ;; esac
     post '{"ServerName":{{ .Values.serverName | toJson }},"UICulture":"en-US","MetadataCountryCode":"US","PreferredMetadataLanguage":"en"}' "$api/Startup/Configuration"
     # a second library of the same name would become "Movies1"
     folders=$(curl -fsS "$api/Library/VirtualFolders")
     case $folders in *'"Name":"Movies"'*) ;; *) post '{}' "$api/Library/VirtualFolders?name=Movies&collectionType=movies&paths=/media/movies" ;; esac
     case $folders in *'"Name":"Shows"'*) ;; *) post '{}' "$api/Library/VirtualFolders?name=Shows&collectionType=tvshows&paths=/media/shows" ;; esac
+    # only a signed-in admin can create an API key; this is the one password login JellyfinPasswordLogin expects
+    token=$(post "{\"Username\":\"bootstrap\",\"Pw\":\"$ADMIN_PASSWORD\"}" "$api/Users/AuthenticateByName" | sed -n 's/.*"AccessToken":"\([^"]*\)".*/\1/p')
+    auth="Authorization: MediaBrowser Token=\"$token\""
+    post '' "$api/Auth/Keys?app=jellyfin-sync"
+    key=$(curl -fsS -H "$auth" "$api/Auth/Keys" | sed -n 's/.*"AccessToken":"\([^"]*\)","DeviceId":"[^"]*","AppName":"jellyfin-sync".*/\1/p')
+    [ -n "$key" ]
+    sa=/var/run/secrets/kubernetes.io/serviceaccount
+    curl -fsS -o /dev/null --cacert $sa/ca.crt -H "Authorization: Bearer $(cat $sa/token)" -X PATCH \
+      -H 'Content-Type: application/apply-patch+yaml' \
+      -d "{\"apiVersion\":\"v1\",\"kind\":\"Secret\",\"metadata\":{\"name\":\"jellyfin-api-key\"},\"data\":{\"api-key\":\"$(printf %s "$key" | base64 -w0)\"}}" \
+      "https://kubernetes.default.svc/api/v1/namespaces/$(cat $sa/namespace)/secrets/jellyfin-api-key?fieldManager=jellyfin-setup&force=true"
     post '{}' "$api/Startup/Complete"
+    post '' "$api/Sessions/Logout"
   # the Gateway's address range, so client IPs come from X-Forwarded-For
   network.xml: |
     <?xml version="1.0" encoding="utf-8"?>
@@ -46,7 +60,7 @@ data:
       </KnownProxies>
       <AutoDiscovery>false</AutoDiscovery>
     </NetworkConfiguration>
-  # the plugin has no login button of its own; password logins only work from inside the cluster
+  # the plugin has no login button of its own, and the Gateway refuses passwords
   branding.xml: |
     <?xml version="1.0" encoding="utf-8"?>
     <BrandingOptions>

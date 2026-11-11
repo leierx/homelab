@@ -57,3 +57,8 @@ variable "jellyfin_client_secret" {
   type      = string
   sensitive = true
 }
+
+variable "jellyfin_sync_client_secret" {
+  type      = string
+  sensitive = true
+}

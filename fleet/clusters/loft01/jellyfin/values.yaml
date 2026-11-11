@@ -2,6 +2,7 @@ timeZone: Europe/Oslo
 proxyTrustedAddresses: 10.42.0.0/16
 oidc:
   issuer: https://auth.skinke.net/realms/homelab
+  internalUrl: http://keycloak-service.keycloak.svc:8080
   groups: [homelab-admins, homelab-operators, homelab-viewers]
   adminGroups: [homelab-admins]
 persistence:
@@ -9,4 +10,4 @@ persistence:
     storageClass: zfs
   # a ZFS dataset: files keep their names on disk, filled as root on loft01
   media:
-    storageClass: zfs
+    storageClass: zfs-bulk
