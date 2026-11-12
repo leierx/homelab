@@ -6,7 +6,7 @@ helm:
   repoURL: docker.io/envoyproxy
   chart: gateway-helm
   # renovate: datasource=docker depName=docker.io/envoyproxy/gateway-helm
-  targetRevision: 1.9.3
+  targetRevision: 1.10.0
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted
