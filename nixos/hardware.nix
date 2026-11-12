@@ -15,6 +15,9 @@
     "kernel.dmesg_restrict" = 1;
     "kernel.perf_event_paranoid" = 3;
     "kernel.unprivileged_bpf_disabled" = 1;
+    # the usual primitives behind a kernel privilege escalation, and nothing here uses either
+    "kernel.io_uring_disabled" = 2;
+    "vm.unprivileged_userfaultfd" = 0;
     "kernel.yama.ptrace_scope" = 1;
     "net.core.bpf_jit_harden" = 1;
   };
