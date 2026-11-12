@@ -10,7 +10,7 @@ helm:
   repoURL: ghcr.io/argoproj/argo-helm
   chart: argo-cd
   # renovate: datasource=docker depName=ghcr.io/argoproj/argo-helm/argo-cd
-  targetRevision: 10.17.0
+  targetRevision: 10.18.0
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted
