@@ -29,6 +29,21 @@ spec:
             instance: '{{ $labels.user_username }}: {{ $labels.objectRef_namespace }}/{{ $labels.objectRef_name }}'
           annotations:
             summary: Someone logged in through Keycloak read a Secret.
+        # Argo CD syncs these on every change and ESO rewrites ExternalSecret status; anything else is a ServiceAccount reaching past its own app
+        - alert: PolicyOrSecretStoreChangedByServiceAccount
+          expr: sum by (user_username, objectRef_apiGroup, objectRef_namespace, objectRef_name) (count_over_time({job="kube-audit"} | json | objectRef_apiGroup=~"cilium.io|external-secrets.io" | verb=~"create|update|patch|delete" | user_username=~"system:serviceaccount:.*" | user_username!~"system:serviceaccount:(argocd|external-secrets):.*" [5m])) > 0
+          labels:
+            severity: warning
+            instance: '{{ $labels.user_username }}: {{ $labels.objectRef_namespace }}/{{ $labels.objectRef_name }}'
+          annotations:
+            summary: A ServiceAccount other than Argo CD or ESO wrote a Cilium policy, ExternalSecret or ClusterSecretStore; check which TokenReview gave it that identity.
+        - alert: EphemeralContainerAdded
+          expr: sum by (user_username, objectRef_namespace, objectRef_name) (count_over_time({job="kube-audit"} | json | objectRef_subresource="ephemeralcontainers" [5m])) > 0
+          labels:
+            severity: warning
+            instance: '{{ $labels.user_username }}: {{ $labels.objectRef_namespace }}/{{ $labels.objectRef_name }}'
+          annotations:
+            summary: A debug container was added to a running pod (kubectl debug); its image runs as that pod's identity.
         - alert: PodEnteredByPerson
           expr: sum by (user_username, objectRef_namespace, objectRef_name, objectRef_subresource) (count_over_time({job="kube-audit"} | json | user_username=~"oidc:.*" | objectRef_subresource=~"exec|attach|portforward" [5m])) > 0
           labels:

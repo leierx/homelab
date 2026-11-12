@@ -137,6 +137,41 @@ let
         ];
         verbs = [ "create" ];
       }
+      # what a stolen ServiceAccount token changes to widen its reach: the network, other secrets' paths, or a pod's identity
+      {
+        level = "Metadata";
+        resources = [
+          {
+            group = "cilium.io";
+            resources = [
+              "ciliumnetworkpolicies"
+              "ciliumclusterwidenetworkpolicies"
+            ];
+          }
+          {
+            group = "external-secrets.io";
+            resources = [
+              "externalsecrets"
+              "clustersecretstores"
+            ];
+          }
+          {
+            group = "";
+            resources = [ "serviceaccounts" ];
+          }
+        ];
+        verbs = [
+          "create"
+          "update"
+          "patch"
+          "delete"
+        ];
+      }
+      # a debug container in a pod the caller doesn't own; the image is the evidence
+      {
+        level = "Request";
+        resources = [ { group = ""; resources = [ "pods/ephemeralcontainers" ]; } ];
+      }
       # the full object, so the log shows what a role or binding grants
       {
         level = "Request";
