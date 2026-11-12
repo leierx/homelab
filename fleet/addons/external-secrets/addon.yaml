@@ -7,7 +7,7 @@ helm:
   repoURL: ghcr.io/external-secrets/charts
   chart: external-secrets
   # renovate: datasource=docker depName=ghcr.io/external-secrets/charts/external-secrets
-  targetRevision: 2.14.0
+  targetRevision: 2.15.0
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted
