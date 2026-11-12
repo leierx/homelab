@@ -14,7 +14,7 @@ tika:
 gotenberg:
   image:
     repository: docker.io/gotenberg/gotenberg
-    tag: 9.1.0
+    tag: 9.2.0
 # packages/tessdata, mounted over the image's
 tessdata:
   image:
