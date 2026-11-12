@@ -44,6 +44,14 @@ spec:
             instance: '{{ $labels.user_username }}: {{ $labels.objectRef_namespace }}/{{ $labels.objectRef_name }}'
           annotations:
             summary: A debug container was added to a running pod (kubectl debug); its image runs as that pod's identity.
+        # the kubelet API reaches every container on the node, past admission and network policy
+        - alert: NodeProxyUsed
+          expr: sum by (user_username, objectRef_name) (count_over_time({job="kube-audit"} | json | objectRef_resource="nodes" | objectRef_subresource="proxy" [5m])) > 0
+          labels:
+            severity: warning
+            instance: '{{ $labels.user_username }}: {{ $labels.objectRef_name }}'
+          annotations:
+            summary: The kubelet API was reached through the apiserver; check whether the caller can already exec into anything on that node.
         - alert: PodEnteredByPerson
           expr: sum by (user_username, objectRef_namespace, objectRef_name, objectRef_subresource) (count_over_time({job="kube-audit"} | json | user_username=~"oidc:.*" | objectRef_subresource=~"exec|attach|portforward" [5m])) > 0
           labels:
