@@ -1,4 +1,5 @@
 - [ ] Rotate Secrets.
+- [ ] Look into Tetragon (ships with Cilium, disabled) for runtime detection: process exec and privilege changes inside pods.
 - [ ] https://github.com/leierx/homelab/issues/166
 - [ ] Alerting: push critical alerts by email.
 - [ ] Backups: manual restore drill of one volume plus a short runbook in docs/.
