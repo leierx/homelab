@@ -69,6 +69,8 @@ let
       cp -a /var/lib/rancher/k3s/server/{token,cred,tls} ${root}/k3s/
       # state.db holds its hash; without it a reinstalled node is rejected
       cp -a /etc/rancher/node/password ${root}/k3s/node-password
+      # the audit log is evidence, and Loki's copy lives on the PVC the attacker would own
+      cp -a /var/log/kubernetes ${root}/k3s/audit
 
       # named by claim, so a volume recreated by a cluster rebuild continues its history
       bound=$(kubectl get pv -o json \
