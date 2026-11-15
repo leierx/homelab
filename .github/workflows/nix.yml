@@ -1,6 +1,9 @@
 name: nix
 
 on:
+  push:
+    branches: [main]
+    paths: ["flake.lock", "**/*.nix", ".github/workflows/nix.yml"]
   pull_request:
     paths: ["flake.lock", "**/*.nix", ".github/workflows/nix.yml"]
 
