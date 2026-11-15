@@ -36,6 +36,34 @@ locals {
     { opencloud = keycloak_openid_client.opencloud.id },
     { for name, client in keycloak_openid_client.opencloud_apps : name => client.id },
   )
+
+  # the app whose access each client requires
+  client_apps = merge(
+    {
+      argocd         = "argocd"
+      argocd_cli     = "argocd"
+      grafana        = "grafana"
+      immich         = "immich"
+      alerta         = "alerta"
+      edge           = "edge"
+      kubernetes     = "kubernetes"
+      argo_workflows = "argo-workflows"
+      miniflux       = "miniflux"
+      paperless      = "paperless"
+      gotify         = "gotify"
+      jellyfin       = "jellyfin"
+    },
+    { for name in keys(local.opencloud_clients) : name => "opencloud" },
+  )
+}
+
+# a client requires its app's access (flows.tf) by having this scope; it adds nothing to tokens
+resource "keycloak_openid_client_scope" "access" {
+  for_each               = local.access_roles
+  realm_id               = keycloak_realm.homelab.id
+  name                   = "${each.key}-access"
+  description            = "Requires the realm role ${each.value}"
+  include_in_token_scope = false
 }
 
 resource "keycloak_openid_client" "argocd" {
@@ -442,7 +470,23 @@ resource "keycloak_openid_client_default_scopes" "clients" {
   for_each       = merge(local.clients, local.opencloud_clients)
   realm_id       = keycloak_realm.homelab.id
   client_id      = each.value
-  default_scopes = local.default_client_scopes
+  default_scopes = concat(local.default_client_scopes, [keycloak_openid_client_scope.access[local.client_apps[each.key]].name])
+}
+
+# Keycloak's defaults for its admin console, plus its access scope
+resource "keycloak_openid_client_default_scopes" "admin_console" {
+  realm_id  = keycloak_realm.homelab.id
+  client_id = data.keycloak_openid_client.builtin["security-admin-console"].id
+  default_scopes = [
+    "web-origins",
+    "acr",
+    "kc-admin-api",
+    "roles",
+    "profile",
+    "basic",
+    "email",
+    keycloak_openid_client_scope.access["keycloak"].name,
+  ]
 }
 
 moved {

@@ -146,6 +146,65 @@ resource "keycloak_authentication_execution_config" "no_tier" {
   }
 }
 
+# then refused without access to the app of the client asking
+resource "keycloak_authentication_subflow" "app" {
+  for_each          = local.access_roles
+  realm_id          = keycloak_realm.homelab.id
+  parent_flow_alias = keycloak_authentication_flow.browser.alias
+  alias             = "homelab-browser ${each.key}"
+  requirement       = "CONDITIONAL"
+  priority          = 30 + index(sort(keys(local.access_roles)), each.key)
+}
+
+resource "keycloak_authentication_execution" "app_client" {
+  for_each          = local.access_roles
+  realm_id          = keycloak_realm.homelab.id
+  parent_flow_alias = keycloak_authentication_subflow.app[each.key].alias
+  authenticator     = "conditional-client-scope"
+  requirement       = "REQUIRED"
+  priority          = 10
+}
+
+resource "keycloak_authentication_execution" "app_no_access" {
+  for_each          = local.access_roles
+  realm_id          = keycloak_realm.homelab.id
+  parent_flow_alias = keycloak_authentication_subflow.app[each.key].alias
+  authenticator     = "conditional-user-role"
+  requirement       = "REQUIRED"
+  priority          = 20
+}
+
+resource "keycloak_authentication_execution" "app_deny" {
+  for_each          = local.access_roles
+  realm_id          = keycloak_realm.homelab.id
+  parent_flow_alias = keycloak_authentication_subflow.app[each.key].alias
+  authenticator     = "deny-access-authenticator"
+  requirement       = "REQUIRED"
+  priority          = 30
+}
+
+resource "keycloak_authentication_execution_config" "app_client" {
+  for_each     = local.access_roles
+  realm_id     = keycloak_realm.homelab.id
+  execution_id = keycloak_authentication_execution.app_client[each.key].id
+  alias        = "homelab-${each.key}-client"
+  config = {
+    client_scope = keycloak_openid_client_scope.access[each.key].name
+    negate       = "false"
+  }
+}
+
+resource "keycloak_authentication_execution_config" "app_no_access" {
+  for_each     = local.access_roles
+  realm_id     = keycloak_realm.homelab.id
+  execution_id = keycloak_authentication_execution.app_no_access[each.key].id
+  alias        = "homelab-no-${each.key}-access"
+  config = {
+    condUserRole = each.value
+    negate       = "true"
+  }
+}
+
 # password grants would skip the second factor and the tier check, and no client uses them
 resource "keycloak_authentication_flow" "direct_grant" {
   realm_id = keycloak_realm.homelab.id

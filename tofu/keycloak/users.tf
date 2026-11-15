@@ -21,7 +21,22 @@ resource "keycloak_user" "leier" {
 }
 
 resource "keycloak_user_groups" "leier" {
-  realm_id  = keycloak_realm.homelab.id
-  user_id   = keycloak_user.leier.id
-  group_ids = [keycloak_group.admins.id]
+  realm_id = keycloak_realm.homelab.id
+  user_id  = keycloak_user.leier.id
+  group_ids = concat([keycloak_group.admins.id], [
+    for group in [
+      "alerta-admin",
+      "argocd-admin",
+      "argo-workflows-admin",
+      "gotify-admin",
+      "grafana-admin",
+      "immich-admin",
+      "jellyfin-admin",
+      "keycloak-viewer",
+      "kubernetes-admin",
+      "miniflux-admin",
+      "opencloud-admin",
+      "paperless-admin",
+    ] : keycloak_group.apps[group].id
+  ])
 }
