@@ -1,8 +1,8 @@
-# every tier grants this realm role; the browser flow's tier check looks for it
+# every app's access role includes this; the browser flow refuses anyone without it
 resource "keycloak_role" "homelab_access" {
   realm_id    = keycloak_realm.homelab.id
   name        = "homelab-access"
-  description = "Member of a homelab tier"
+  description = "Access to some app"
 }
 
 locals {
@@ -67,51 +67,6 @@ resource "keycloak_group_roles" "apps" {
   realm_id = keycloak_realm.homelab.id
   group_id = keycloak_group.apps[each.key].id
   role_ids = concat([keycloak_role.access[each.value.app].id], each.value.role_ids)
-}
-
-resource "keycloak_group" "admins" {
-  realm_id = keycloak_realm.homelab.id
-  name     = "homelab-admins"
-}
-
-resource "keycloak_group" "operators" {
-  realm_id = keycloak_realm.homelab.id
-  name     = "homelab-operators"
-}
-
-resource "keycloak_group" "viewers" {
-  realm_id = keycloak_realm.homelab.id
-  name     = "homelab-viewers"
-}
-
-resource "keycloak_group_roles" "admins" {
-  realm_id = keycloak_realm.homelab.id
-  group_id = keycloak_group.admins.id
-
-  role_ids = concat(
-    [keycloak_role.homelab_access.id, keycloak_role.immich_admin.id],
-    [for role in data.keycloak_role.realm_management_view : role.id],
-  )
-}
-
-resource "keycloak_group_roles" "operators" {
-  realm_id = keycloak_realm.homelab.id
-  group_id = keycloak_group.operators.id
-
-  role_ids = [
-    keycloak_role.homelab_access.id,
-    keycloak_role.immich_user.id,
-  ]
-}
-
-resource "keycloak_group_roles" "viewers" {
-  realm_id = keycloak_realm.homelab.id
-  group_id = keycloak_group.viewers.id
-
-  role_ids = [
-    keycloak_role.homelab_access.id,
-    keycloak_role.immich_user.id,
-  ]
 }
 
 # direct memberships by name, the shape Argo CD, Grafana, Envoy and the API server read

@@ -23,7 +23,7 @@ resource "keycloak_user" "leier" {
 resource "keycloak_user_groups" "leier" {
   realm_id = keycloak_realm.homelab.id
   user_id  = keycloak_user.leier.id
-  group_ids = concat([keycloak_group.admins.id], [
+  group_ids = [
     for group in [
       "alerta-admin",
       "argocd-admin",
@@ -38,5 +38,5 @@ resource "keycloak_user_groups" "leier" {
       "opencloud-admin",
       "paperless-admin",
     ] : keycloak_group.apps[group].id
-  ])
+  ]
 }

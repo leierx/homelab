@@ -1,4 +1,4 @@
-# the realm's browser flow: signed in, then refused without a tier
+# the realm's browser flow: signed in, then refused without access to the client's app
 resource "keycloak_authentication_flow" "browser" {
   realm_id = keycloak_realm.homelab.id
   alias    = "homelab-browser"
@@ -12,10 +12,11 @@ resource "keycloak_authentication_subflow" "sign_in" {
   priority          = 10
 }
 
-resource "keycloak_authentication_subflow" "tier" {
+# a backstop for clients without an access scope, like Keycloak's account console
+resource "keycloak_authentication_subflow" "any_app" {
   realm_id          = keycloak_realm.homelab.id
   parent_flow_alias = keycloak_authentication_flow.browser.alias
-  alias             = "homelab-browser tier"
+  alias             = "homelab-browser any app"
   requirement       = "CONDITIONAL"
   priority          = 20
 }
@@ -110,17 +111,17 @@ resource "keycloak_authentication_execution" "enrol_webauthn" {
   priority          = 20
 }
 
-resource "keycloak_authentication_execution" "no_tier" {
+resource "keycloak_authentication_execution" "no_app" {
   realm_id          = keycloak_realm.homelab.id
-  parent_flow_alias = keycloak_authentication_subflow.tier.alias
+  parent_flow_alias = keycloak_authentication_subflow.any_app.alias
   authenticator     = "conditional-user-role"
   requirement       = "REQUIRED"
   priority          = 10
 }
 
-resource "keycloak_authentication_execution" "deny_without_tier" {
+resource "keycloak_authentication_execution" "deny_without_app" {
   realm_id          = keycloak_realm.homelab.id
-  parent_flow_alias = keycloak_authentication_subflow.tier.alias
+  parent_flow_alias = keycloak_authentication_subflow.any_app.alias
   authenticator     = "deny-access-authenticator"
   requirement       = "REQUIRED"
   priority          = 20
@@ -136,17 +137,16 @@ resource "keycloak_authentication_execution_config" "no_second_factor" {
   }
 }
 
-resource "keycloak_authentication_execution_config" "no_tier" {
+resource "keycloak_authentication_execution_config" "no_app" {
   realm_id     = keycloak_realm.homelab.id
-  execution_id = keycloak_authentication_execution.no_tier.id
-  alias        = "homelab-no-tier"
+  execution_id = keycloak_authentication_execution.no_app.id
+  alias        = "homelab-no-app"
   config = {
     condUserRole = keycloak_role.homelab_access.name
     negate       = "true"
   }
 }
 
-# then refused without access to the app of the client asking
 resource "keycloak_authentication_subflow" "app" {
   for_each          = local.access_roles
   realm_id          = keycloak_realm.homelab.id
@@ -205,7 +205,7 @@ resource "keycloak_authentication_execution_config" "app_no_access" {
   }
 }
 
-# password grants would skip the second factor and the tier check, and no client uses them
+# password grants would skip the second factor and the access checks, and no client uses them
 resource "keycloak_authentication_flow" "direct_grant" {
   realm_id = keycloak_realm.homelab.id
   alias    = "homelab-direct-grant"
@@ -223,4 +223,24 @@ resource "keycloak_authentication_bindings" "homelab" {
   realm_id          = keycloak_realm.homelab.id
   browser_flow      = keycloak_authentication_flow.browser.alias
   direct_grant_flow = keycloak_authentication_flow.direct_grant.alias
+}
+
+moved {
+  from = keycloak_authentication_subflow.tier
+  to   = keycloak_authentication_subflow.any_app
+}
+
+moved {
+  from = keycloak_authentication_execution.no_tier
+  to   = keycloak_authentication_execution.no_app
+}
+
+moved {
+  from = keycloak_authentication_execution.deny_without_tier
+  to   = keycloak_authentication_execution.deny_without_app
+}
+
+moved {
+  from = keycloak_authentication_execution_config.no_tier
+  to   = keycloak_authentication_execution_config.no_app
 }
