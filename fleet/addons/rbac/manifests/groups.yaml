@@ -1,8 +1,8 @@
-# the Keycloak tiers, as the API server sees them through OIDC (`oidc:` prefix, set in the k3s API server flags)
+# the Keycloak groups for kubectl, as the API server sees them through OIDC (`oidc:` prefix, set in the k3s API server flags)
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: homelab-admins
+  name: kubernetes-admin
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -10,7 +10,7 @@ roleRef:
 subjects:
   - apiGroup: rbac.authorization.k8s.io
     kind: Group
-    name: oidc:homelab-admins
+    name: oidc:kubernetes-admin
 ---
 # read all but Secrets, delete pods; creating workloads could mount any ServiceAccount's Secrets, so that stays in Argo
 apiVersion: rbac.authorization.k8s.io/v1
@@ -42,7 +42,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: homelab-operators
+  name: kubernetes-operator
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -50,12 +50,12 @@ roleRef:
 subjects:
   - apiGroup: rbac.authorization.k8s.io
     kind: Group
-    name: oidc:homelab-operators
+    name: oidc:kubernetes-operator
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: homelab-viewers
+  name: kubernetes-viewer
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -63,4 +63,4 @@ roleRef:
 subjects:
   - apiGroup: rbac.authorization.k8s.io
     kind: Group
-    name: oidc:homelab-viewers
+    name: oidc:kubernetes-viewer

@@ -3,8 +3,8 @@ proxyTrustedAddresses: 10.42.0.0/16
 oidc:
   issuer: https://auth.skinke.net/realms/homelab
   internalUrl: http://keycloak-service.keycloak.svc:8080
-  groups: [homelab-admins, homelab-operators, homelab-viewers]
-  adminGroups: [homelab-admins]
+  groups: [jellyfin-admin, jellyfin-user]
+  adminGroups: [jellyfin-admin]
 persistence:
   config:
     storageClass: zfs

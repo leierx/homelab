@@ -4,7 +4,7 @@ kind: ConfigMap
 metadata:
   name: opencloud-config
 data:
-  # first match wins; with no local admin, homelab-admins is the only path to the admin role
+  # first match wins; with no local admin, opencloud-admin is the only path to the admin role
   proxy.yaml: |
     role_assignment:
       driver: oidc
@@ -12,11 +12,11 @@ data:
         role_claim: groups
         role_mapping:
           - role_name: admin
-            claim_value: homelab-admins
+            claim_value: opencloud-admin
           - role_name: user
-            claim_value: homelab-operators
+            claim_value: opencloud-user
           - role_name: user-light
-            claim_value: homelab-viewers
+            claim_value: opencloud-user-light
   # upstream's CSP minus third-party origins, plus Keycloak and the app compatibility list
   csp.yaml: |
     directives:

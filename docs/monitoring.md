@@ -160,7 +160,7 @@ parses as a list or map as such, so a body must never be one: its lines start
 with `* `, which YAML can't parse that way.
 
 Gotify and its Android app log in through Keycloak (client `gotify`):
-`homelab-admins` are Gotify admins, `homelab-operators` users. Local logins are
+Members of `gotify-admin` are Gotify admins, of `gotify-user` users. Local logins are
 off; the first-start `admin` has a random password in `kv/loft01/gotify` as
 break-glass (`GOTIFY_LOCALAUTH_ENABLED=true` to use it). The app keeps its own
 connection to the server, so no push service is involved.

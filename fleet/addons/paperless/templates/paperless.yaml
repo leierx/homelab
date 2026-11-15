@@ -155,7 +155,7 @@ spec:
             - name: PAPERLESS_SOCIAL_ACCOUNT_SYNC_GROUPS
               value: "true"
             - name: PAPERLESS_SOCIAL_ACCOUNT_SYNC_SUPERUSER_GROUP
-              value: homelab-admins
+              value: paperless-admin
             # roles only sync at login, so a session lasts no longer than the realm's SSO session
             - name: PAPERLESS_SESSION_COOKIE_AGE
               value: "43200"

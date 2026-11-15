@@ -87,7 +87,13 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   The realm is reconciled from `tofu/keycloak/` on every sync (a PostSync
   Workflow) and hourly (`CronWorkflow/keycloak-realm`), which reverts changes
   made by hand.
-- **Groups:** `homelab-admins`, `homelab-operators`, and `homelab-viewers`.
+- **Groups:** one per app and role, named after the app's own roles
+  (`immich-admin`, `immich-user`, `opencloud-user-light`, ...; the list is
+  `app_groups` in `tofu/keycloak/groups.tf`). Each grants its app's
+  `<app>-access` realm role, which the browser flow requires for that app's
+  clients, so a user reaches only the apps they have a group in. Envoy's login
+  (client `edge`) lets in members of the apps behind it. To give someone an app,
+  add the group to their `keycloak_user_groups` in `tofu/keycloak/users.tf`.
   Every login requires WebAuthn/passkey or TOTP.
 - **Public endpoints:** `auth.skinke.net` serves only what a login needs, for
   every realm except master
@@ -121,7 +127,7 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   adds a Keycloak button to the web login, and the Gateway refuses password
   logins. TVs and phone apps sign in with Quick Connect: the app shows a code,
   approve it at `https://jellyfin.skinke.net/sso/OID/start/keycloak?qc=<code>`.
-  `homelab-admins` are Jellyfin admins, the other tiers users. Jellyfin keeps
+  Members of `jellyfin-admin` are Jellyfin admins, of `jellyfin-user` users. Jellyfin keeps
   sessions until they are revoked, so `CronJob/jellyfin-sync` matches every
   Jellyfin user to Keycloak every 5 minutes: whoever Keycloak no longer lets in
   is disabled, which signs out all their devices, and local accounts with them.

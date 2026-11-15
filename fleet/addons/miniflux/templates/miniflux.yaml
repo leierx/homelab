@@ -60,7 +60,7 @@ spec:
             - name: OAUTH2_GROUP_CLAIM
               value: groups
             - name: OAUTH2_ADMIN_GROUP
-              value: homelab-admins
+              value: miniflux-admin
             - name: METRICS_COLLECTOR
               value: "1"
             - name: METRICS_ALLOWED_NETWORKS

@@ -24,9 +24,9 @@ configs:
       p, role:operator, applications, sync, */*, allow
       p, role:operator, applications, action/*, */*, allow
       g, role:operator, role:readonly
-      g, homelab-admins, role:admin
-      g, homelab-operators, role:operator
-      g, homelab-viewers, role:readonly
+      g, argocd-admin, role:admin
+      g, argocd-operator, role:operator
+      g, argocd-readonly, role:readonly
 
 global:
   networkPolicy: {create: false}

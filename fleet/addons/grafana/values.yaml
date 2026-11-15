@@ -20,7 +20,7 @@ grafana.ini:
     allow_sign_up: true
     allow_assign_grafana_admin: true
     login_attribute_path: preferred_username
-    role_attribute_path: contains(groups, 'homelab-admins') && 'GrafanaAdmin' || contains(groups, 'homelab-operators') && 'Editor' || contains(groups, 'homelab-viewers') && 'Viewer' || ''
+    role_attribute_path: contains(groups, 'grafana-admin') && 'GrafanaAdmin' || contains(groups, 'grafana-editor') && 'Editor' || contains(groups, 'grafana-viewer') && 'Viewer' || ''
     role_attribute_strict: true
 deploymentStrategy: {type: Recreate}
 persistence:
