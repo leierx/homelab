@@ -170,7 +170,12 @@ let
       # a debug container in a pod the caller doesn't own; the image is the evidence
       {
         level = "Request";
-        resources = [ { group = ""; resources = [ "pods/ephemeralcontainers" ]; } ];
+        resources = [
+          {
+            group = "";
+            resources = [ "pods/ephemeralcontainers" ];
+          }
+        ];
       }
       # the full object, so the log shows what a role or binding grants
       {
