@@ -25,6 +25,7 @@ let
       config.services.k3s.package
       pkgs.restic
       pkgs.sqlite
+      pkgs.openssl
       pkgs.openssh
       pkgs.coreutils
       pkgs.util-linux
@@ -37,7 +38,6 @@ let
       export RESTIC_REPOSITORY="sftp:$target:homelab-restic"
       export RESTIC_PASSWORD_COMMAND="cat ${config.secrets.secrets."restic/password".path}"
       export RESTIC_CACHE_DIR=${stateDir}/cache
-      export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
       # rsync.net only speaks sftp, and restic has to be told which key to use
       r() {
@@ -72,8 +72,17 @@ let
       # the audit log is evidence, and Loki's copy lives on the PVC the attacker would own
       cp -a /var/log/kubernetes ${root}/k3s/audit
 
+      # an hour-long identity of its own, so system:admin in the audit log (AdminKubeconfigUsed) is only ever a person
+      tls=/var/lib/rancher/k3s/server/tls
+      kube=$(mktemp -d)
+      openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -subj /CN=offsite-backup -keyout "$kube/key.pem" \
+        | openssl x509 -req -CA $tls/client-ca.crt -CAkey $tls/client-ca.key -extfile <(echo extendedKeyUsage=clientAuth) \
+          -not_after "$(date -u -d +1hour +%Y%m%d%H%M%SZ)" -out "$kube/cert.pem"
+
       # named by claim, so a volume recreated by a cluster rebuild continues its history
-      bound=$(kubectl get pv -o json \
+      # --kubeconfig: k3s's kubectl otherwise falls back to k3s.yaml
+      bound=$(kubectl --kubeconfig=/dev/null --server=https://127.0.0.1:6443 --certificate-authority=$tls/server-ca.crt \
+          --client-certificate="$kube/cert.pem" --client-key="$kube/key.pem" get pv -o json \
         | jq -r '.items[] | select(.status.phase == "Bound") | "\(.metadata.name) \(.spec.claimRef.namespace)/\(.spec.claimRef.name)"')
       declare -A claims excluded=(${lib.concatMapStringsSep " " (c: "[${c}]=1") excluded})
       while read -r pv claim; do claims[$pv]=$claim; done <<<"$bound"
@@ -158,10 +167,45 @@ in
       # a fresh, empty root each run; the snapshot mounts live in the unit's own namespace and go with it
       RuntimeDirectory = "offsite-backup";
       PrivateMounts = true;
+      # the client key from mktemp never outlives the run
+      PrivateTmp = true;
       Nice = 10;
       IOSchedulingClass = "idle";
     };
   };
+
+  # all the backup may do in the API: name volumes by claim
+  services.k3s.manifests.offsite-backup-rbac.content = [
+    {
+      apiVersion = "rbac.authorization.k8s.io/v1";
+      kind = "ClusterRole";
+      metadata.name = "offsite-backup";
+      rules = [
+        {
+          apiGroups = [ "" ];
+          resources = [ "persistentvolumes" ];
+          verbs = [ "list" ];
+        }
+      ];
+    }
+    {
+      apiVersion = "rbac.authorization.k8s.io/v1";
+      kind = "ClusterRoleBinding";
+      metadata.name = "offsite-backup";
+      roleRef = {
+        apiGroup = "rbac.authorization.k8s.io";
+        kind = "ClusterRole";
+        name = "offsite-backup";
+      };
+      subjects = [
+        {
+          apiGroup = "rbac.authorization.k8s.io";
+          kind = "User";
+          name = "offsite-backup";
+        }
+      ];
+    }
+  ];
 
   # after autoUpgrade's 02:00-04:00 reboot window; OnBootSec reruns one cut off by any other reboot
   systemd.timers."offsite-backup" = {
