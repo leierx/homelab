@@ -7,7 +7,7 @@ helm:
   repoURL: ghcr.io/grafana-community/helm-charts
   chart: loki
   # renovate: datasource=docker depName=ghcr.io/grafana-community/helm-charts/loki
-  targetRevision: 21.2.1
+  targetRevision: 21.2.3
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted
