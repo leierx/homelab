@@ -39,9 +39,9 @@ let
       export RESTIC_PASSWORD_COMMAND="cat ${config.secrets.secrets."restic/password".path}"
       export RESTIC_CACHE_DIR=${stateDir}/cache
 
-      # rsync.net only speaks sftp, and restic has to be told which key to use
+      # rsync.net only speaks sftp, and restic has to be told which key to use; keepalives turn a dead link into an error, not a hang
       r() {
-        restic -o "sftp.command=ssh -i $key -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${stateDir}/known_hosts $target -s sftp" "$@"
+        restic -o "sftp.command=ssh -i $key -o HostKeyAlias=rsync.net -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/dev/null -o ServerAliveInterval=60 -o ServerAliveCountMax=5 $target -s sftp" "$@"
       }
 
       # a zvol or nested dataset would be silently left out below
@@ -98,7 +98,8 @@ let
 
       added=$(r backup --host loft01 --time "$time" --json ${root} | jq -r 'select(.message_type == "summary") | .data_added')
       r forget --host loft01 --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
-      r check
+      # reads back a different 1/28 of the stored data each night, so all of it every 4 weeks
+      r check --read-data-subset="$(($(date +%s) / 86400 % 28 + 1))/28"
       total=$(r stats --mode raw-data --json | jq -r .total_size)
       echo "this backup: $(numfmt --to=iec-i --suffix=B "$added") added, total in cloud: $(numfmt --to=iec-i --suffix=B "$total")"
     '';
@@ -169,10 +170,16 @@ in
       PrivateMounts = true;
       # the client key from mktemp never outlives the run
       PrivateTmp = true;
+      # a normal run takes minutes and a big upload hours; 12h still frees the next night's run
+      TimeoutStartSec = "12h";
       Nice = 10;
       IOSchedulingClass = "idle";
     };
   };
+
+  # under an alias: the host is <user>.rsync.net, and the account name stays out of the store
+  programs.ssh.knownHosts."rsync.net".publicKey =
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJtclizeBy1Uo3D86HpgD3LONGVH0CJ0NT+YfZlldAJd";
 
   # all the backup may do in the API: name volumes by claim
   services.k3s.manifests.offsite-backup-rbac.content = [

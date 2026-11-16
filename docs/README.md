@@ -167,7 +167,7 @@ umount /mnt/snap
 nix shell nixpkgs#restic
 target=$(cat /run/secrets/restic/host)
 export RESTIC_REPOSITORY="sftp:$target:homelab-restic" RESTIC_PASSWORD_COMMAND="cat /run/secrets/restic/password"
-r() { restic -o "sftp.command=ssh -i /run/secrets/restic/ssh_key -o UserKnownHostsFile=/var/lib/offsite-backup/known_hosts $target -s sftp" "$@"; }
+r() { restic -o "sftp.command=ssh -i /run/secrets/restic/ssh_key -o HostKeyAlias=rsync.net $target -s sftp" "$@"; }
 r snapshots
 r find 'IMG_1234*'                     # locate a file across snapshots
 r restore latest:/run/offsite-backup/volumes/immich/library/library --target /var/tmp/restore
