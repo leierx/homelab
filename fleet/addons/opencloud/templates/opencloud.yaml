@@ -117,7 +117,7 @@ spec:
               value: openid,profile,email
             - name: WEBFINGER_IOS_OIDC_CLIENT_SCOPES
               value: openid,profile,email
-            # Keycloak owns these; the oidc role driver and group sync would revert any edit
+            # Keycloak owns these; the oidc role driver would revert any role edit
             - name: FRONTEND_READONLY_USER_ATTRIBUTES
               value: user.onPremisesSamAccountName,user.displayName,user.mail,user.passwordProfile,user.memberOf,user.appRoleAssignments
             - name: FRONTEND_CHECK_FOR_UPDATES

@@ -20,5 +20,5 @@ executor:
 server:
   authModes: [sso]
   podSecurityContext: {seccompProfile: {type: RuntimeDefault}}
-  sso: {enabled: true, scopes: [groups]}
+  sso: {enabled: true}
   resources: {requests: {cpu: 20m, memory: 128Mi}, limits: {memory: 512Mi}}

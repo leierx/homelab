@@ -4,19 +4,19 @@ kind: ConfigMap
 metadata:
   name: opencloud-config
 data:
-  # first match wins; with no local admin, opencloud-admin is the only path to the admin role
+  # first match wins; not the groups claim, which OpenCloud copies into groups every user sees; opencloud-admin is the only path to admin
   proxy.yaml: |
     role_assignment:
       driver: oidc
       oidc_role_mapper:
-        role_claim: groups
+        role_claim: opencloud_role
         role_mapping:
           - role_name: admin
-            claim_value: opencloud-admin
+            claim_value: admin
           - role_name: user
-            claim_value: opencloud-user
+            claim_value: user
           - role_name: user-light
-            claim_value: opencloud-user-light
+            claim_value: user-light
   # upstream's CSP minus third-party origins, plus Keycloak and the app compatibility list
   csp.yaml: |
     directives:

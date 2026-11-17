@@ -6,7 +6,6 @@ locals {
     "email",
     "roles",
     "web-origins",
-    keycloak_openid_client_scope.groups.name,
   ]
 
   # Keycloak's optional scopes without offline_access: no client gets offline tokens
@@ -18,24 +17,53 @@ locals {
   ]
 
   clients = {
-    argocd         = keycloak_openid_client.argocd.id
-    argocd_cli     = keycloak_openid_client.argocd_cli.id
-    grafana        = keycloak_openid_client.grafana.id
-    immich         = keycloak_openid_client.immich.id
-    alerta         = keycloak_openid_client.alerta.id
-    edge           = keycloak_openid_client.edge.id
-    kubernetes     = keycloak_openid_client.kubernetes.id
-    argo_workflows = keycloak_openid_client.argo_workflows.id
-    miniflux       = keycloak_openid_client.miniflux.id
-    paperless      = keycloak_openid_client.paperless.id
-    gotify         = keycloak_openid_client.gotify.id
-    jellyfin       = keycloak_openid_client.jellyfin.id
+    argocd         = keycloak_openid_client.argocd
+    argocd_cli     = keycloak_openid_client.argocd_cli
+    grafana        = keycloak_openid_client.grafana
+    immich         = keycloak_openid_client.immich
+    alerta         = keycloak_openid_client.alerta
+    edge           = keycloak_openid_client.edge
+    kubernetes     = keycloak_openid_client.kubernetes
+    argo_workflows = keycloak_openid_client.argo_workflows
+    miniflux       = keycloak_openid_client.miniflux
+    paperless      = keycloak_openid_client.paperless
+    gotify         = keycloak_openid_client.gotify
+    jellyfin       = keycloak_openid_client.jellyfin
   }
 
   opencloud_clients = merge(
-    { opencloud = keycloak_openid_client.opencloud.id },
-    { for name, client in keycloak_openid_client.opencloud_apps : name => client.id },
+    { opencloud = keycloak_openid_client.opencloud },
+    keycloak_openid_client.opencloud_apps,
   )
+
+  all_clients = merge(local.clients, local.opencloud_clients)
+
+  # the client that holds each app's roles (groups.tf); the app's other clients read them from it
+  role_clients = {
+    alerta           = "alerta"
+    argocd           = "argocd"
+    "argo-workflows" = "argo_workflows"
+    gotify           = "gotify"
+    grafana          = "grafana"
+    immich           = "immich"
+    jellyfin         = "jellyfin"
+    kubernetes       = "kubernetes"
+    miniflux         = "miniflux"
+    opencloud        = "opencloud"
+    paperless        = "paperless"
+  }
+
+  # where each app reads its roles; the rest read groups, named <app>-<role> like the Keycloak groups
+  role_claims = {
+    immich    = "immich_role"
+    opencloud = "opencloud_role"
+  }
+
+  # every client of an app with roles, which carry only that app's roles
+  role_claim_clients = {
+    for name in keys(local.all_clients) : name => local.client_apps[name]
+    if contains(keys(local.role_clients), local.client_apps[name])
+  }
 
   # the app whose access each client requires
   client_apps = merge(
@@ -146,38 +174,6 @@ resource "keycloak_openid_client" "immich" {
     "https://immich.skinke.net/user-settings",
     "app.immich:///oauth-callback",
   ]
-}
-
-resource "keycloak_role" "immich_admin" {
-  realm_id  = keycloak_realm.homelab.id
-  client_id = keycloak_openid_client.immich.id
-  name      = "admin"
-}
-
-resource "keycloak_role" "immich_user" {
-  realm_id  = keycloak_realm.homelab.id
-  client_id = keycloak_openid_client.immich.id
-  name      = "user"
-}
-
-# Immich reads its role from claim immich_role
-resource "keycloak_generic_protocol_mapper" "immich_role" {
-  realm_id        = keycloak_realm.homelab.id
-  client_id       = keycloak_openid_client.immich.id
-  name            = "immich_role"
-  protocol        = "openid-connect"
-  protocol_mapper = "oidc-usermodel-client-role-mapper"
-
-  config = {
-    "claim.name"                           = "immich_role"
-    "usermodel.clientRoleMapping.clientId" = keycloak_openid_client.immich.client_id
-    "multivalued"                          = "true"
-    "jsonType.label"                       = "String"
-    "id.token.claim"                       = "true"
-    "access.token.claim"                   = "true"
-    "userinfo.token.claim"                 = "true"
-    "introspection.token.claim"            = "true"
-  }
 }
 
 resource "keycloak_openid_client" "alerta" {
@@ -460,16 +456,58 @@ resource "keycloak_openid_client" "opencloud_apps" {
 resource "keycloak_openid_audience_protocol_mapper" "opencloud" {
   for_each                 = local.opencloud_clients
   realm_id                 = keycloak_realm.homelab.id
-  client_id                = each.value
+  client_id                = each.value.id
   name                     = "opencloud-audience"
   included_client_audience = keycloak_openid_client.opencloud.client_id
   add_to_id_token          = false
 }
 
+# a token carries its own app's roles only: the realm's other apps, and who may use them, stay unseen
+resource "keycloak_generic_protocol_mapper" "roles" {
+  for_each        = local.role_claim_clients
+  realm_id        = keycloak_realm.homelab.id
+  client_id       = local.all_clients[each.key].id
+  name            = lookup(local.role_claims, each.value, "groups")
+  protocol        = "openid-connect"
+  protocol_mapper = "oidc-usermodel-client-role-mapper"
+
+  config = merge(
+    {
+      "claim.name"                           = lookup(local.role_claims, each.value, "groups")
+      "usermodel.clientRoleMapping.clientId" = local.all_clients[local.role_clients[each.value]].client_id
+      "multivalued"                          = "true"
+      "jsonType.label"                       = "String"
+      "id.token.claim"                       = "true"
+      "access.token.claim"                   = "true"
+      "userinfo.token.claim"                 = "true"
+      "introspection.token.claim"            = "true"
+    },
+    contains(keys(local.role_claims), each.value) ? {} : { "usermodel.clientRoleMapping.rolePrefix" = "${each.value}-" },
+  )
+}
+
+# full_scope_allowed is off, so a client reading another's roles needs them in its scope
+resource "keycloak_generic_role_mapper" "roles" {
+  for_each = merge([
+    for name, app in local.role_claim_clients : {
+      for group, role in keycloak_role.app : "${name}/${group}" => { client = name, role = role.id }
+      if local.groups[group].app == app
+    } if name != local.role_clients[app]
+  ]...)
+  realm_id  = keycloak_realm.homelab.id
+  client_id = local.all_clients[each.value.client].id
+  role_id   = each.value.role
+}
+
+moved {
+  from = keycloak_generic_protocol_mapper.immich_role
+  to   = keycloak_generic_protocol_mapper.roles["immich"]
+}
+
 resource "keycloak_openid_client_default_scopes" "clients" {
-  for_each       = merge(local.clients, local.opencloud_clients)
+  for_each       = local.all_clients
   realm_id       = keycloak_realm.homelab.id
-  client_id      = each.value
+  client_id      = each.value.id
   default_scopes = concat(local.default_client_scopes, [keycloak_openid_client_scope.access[local.client_apps[each.key]].name])
 }
 
@@ -557,8 +595,7 @@ resource "keycloak_realm_optional_client_scopes" "homelab" {
 resource "keycloak_openid_client_optional_scopes" "no_offline_access" {
   for_each = merge(
     { for name, client in data.keycloak_openid_client.builtin : name => client.id },
-    local.clients,
-    local.opencloud_clients,
+    { for name, client in local.all_clients : name => client.id },
   )
   realm_id        = keycloak_realm.homelab.id
   client_id       = each.value

@@ -91,7 +91,9 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   (`immich-admin`, `immich-user`, `opencloud-user-light`, ...; the list is
   `app_groups` in `tofu/keycloak/groups.tf`). Each grants its app's
   `<app>-access` realm role, which the browser flow requires for that app's
-  clients, so a user reaches only the apps they have a group in. Envoy's login
+  clients, so a user reaches only the apps they have a group in, and a client
+  role on the app's client, so its tokens carry that app's groups only (in
+  `groups`, or Immich's `immich_role` and OpenCloud's `opencloud_role`). Envoy's login
   (client `edge`) lets in members of the apps behind it. To give someone an app,
   add the group to their `keycloak_user_groups` in `tofu/keycloak/users.tf`.
   Every login requires WebAuthn/passkey or TOTP.

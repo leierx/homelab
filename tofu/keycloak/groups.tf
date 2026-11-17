@@ -6,20 +6,20 @@ resource "keycloak_role" "homelab_access" {
 }
 
 locals {
-  # each app's groups, named <app>-<role> after the app's own roles, with the client roles they add
+  # each app's groups, named <app>-<role> after the app's own roles
   app_groups = {
-    alerta           = { admin = [], user = [], guest = [] }
-    argocd           = { admin = [], operator = [], readonly = [] }
-    "argo-workflows" = { admin = [] }
-    gotify           = { admin = [], user = [] }
-    grafana          = { admin = [], editor = [], viewer = [] }
-    immich           = { admin = [keycloak_role.immich_admin.id], user = [keycloak_role.immich_user.id] }
-    jellyfin         = { admin = [], user = [] }
-    keycloak         = { viewer = [for role in data.keycloak_role.realm_management_view : role.id] }
-    kubernetes       = { admin = [], operator = [], viewer = [] }
-    miniflux         = { admin = [], user = [] }
-    opencloud        = { admin = [], user = [], "user-light" = [] }
-    paperless        = { admin = [], user = [] }
+    alerta           = ["admin", "user", "guest"]
+    argocd           = ["admin", "operator", "readonly"]
+    "argo-workflows" = ["admin"]
+    gotify           = ["admin", "user"]
+    grafana          = ["admin", "editor", "viewer"]
+    immich           = ["admin", "user"]
+    jellyfin         = ["admin", "user"]
+    keycloak         = ["viewer"]
+    kubernetes       = ["admin", "operator", "viewer"]
+    miniflux         = ["admin", "user"]
+    opencloud        = ["admin", "user", "user-light"]
+    paperless        = ["admin", "user"]
   }
 
   # the apps behind Envoy's login (client edge): their users pass it
@@ -27,7 +27,7 @@ locals {
 
   groups = merge([
     for app, roles in local.app_groups : {
-      for role, role_ids in roles : "${app}-${role}" => { app = app, role_ids = role_ids }
+      for role in roles : "${app}-${role}" => { app = app, role = role }
     }
   ]...)
 
@@ -62,30 +62,33 @@ resource "keycloak_group" "apps" {
   name     = each.key
 }
 
+# the app's role, on its client (clients.tf), which puts it in that client's tokens only
+resource "keycloak_role" "app" {
+  for_each  = { for name, group in local.groups : name => group if contains(keys(local.role_clients), group.app) }
+  realm_id  = keycloak_realm.homelab.id
+  client_id = local.all_clients[local.role_clients[each.value.app]].id
+  name      = each.value.role
+}
+
+moved {
+  from = keycloak_role.immich_admin
+  to   = keycloak_role.app["immich-admin"]
+}
+
+moved {
+  from = keycloak_role.immich_user
+  to   = keycloak_role.app["immich-user"]
+}
+
 resource "keycloak_group_roles" "apps" {
   for_each = local.groups
   realm_id = keycloak_realm.homelab.id
   group_id = keycloak_group.apps[each.key].id
-  role_ids = concat([keycloak_role.access[each.value.app].id], each.value.role_ids)
-}
-
-# direct memberships by name, the shape Argo CD, Grafana, Envoy and the API server read
-resource "keycloak_openid_client_scope" "groups" {
-  realm_id               = keycloak_realm.homelab.id
-  name                   = "groups"
-  include_in_token_scope = true
-}
-
-resource "keycloak_openid_group_membership_protocol_mapper" "groups" {
-  realm_id                   = keycloak_realm.homelab.id
-  client_scope_id            = keycloak_openid_client_scope.groups.id
-  name                       = "groups"
-  claim_name                 = "groups"
-  full_path                  = false
-  add_to_id_token            = true
-  add_to_access_token        = true
-  add_to_userinfo            = true
-  add_to_token_introspection = true
+  role_ids = concat(
+    [keycloak_role.access[each.value.app].id],
+    contains(keys(keycloak_role.app), each.key) ? [keycloak_role.app[each.key].id] : [],
+    each.key == "keycloak-viewer" ? [for role in data.keycloak_role.realm_management_view : role.id] : [],
+  )
 }
 
 data "keycloak_openid_client" "realm_management" {
