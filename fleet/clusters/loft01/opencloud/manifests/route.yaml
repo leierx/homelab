@@ -46,11 +46,6 @@ spec:
     - backendRefs:
         - name: opencloud
           port: 9200
-      filters:
-        # TODO(opencloud 9.0.1): drop; 9.0.0 takes the client IP from these over the Gateway's X-Forwarded-For
-        - type: RequestHeaderModifier
-          requestHeaderModifier:
-            remove: [True-Client-IP, X-Real-IP]
       # no cap on large downloads, zip archives or the live-update stream
       timeouts:
         request: 0s
