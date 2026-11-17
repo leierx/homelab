@@ -123,3 +123,5 @@ nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
   `prometheus-smartctl-exporter` held below 0.18.0 until a chart bundles an
   exporter release containing `prometheus-community/smartctl_exporter#397`).
 - **Commits:** Use Conventional Commits with a DCO sign-off (`git commit -s`).
+  Never credit Claude or any AI tool: no `Co-Authored-By` trailers or
+  "Generated with" lines in commits or PRs.

@@ -4,3 +4,4 @@
 - [ ] Alerting: push critical alerts by email.
 - [ ] Backups: manual restore drill of one volume plus a short runbook in docs/.
 - [ ] Paperless-ngx AI: try its optional AI features (suggestions, document chat) with a small local model; slow is fine, heavy is not.
+- [ ] OpenCloud: delete the groups it synced from the old Keycloak groups claim (Admin settings → Groups); tokens no longer recreate them.
