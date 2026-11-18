@@ -92,6 +92,9 @@ spec:
             # impersonation bypasses passkey/TOTP; keep the feature off
             - name: KC_FEATURES_DISABLED
               value: impersonation
+            # CVE-2026-114938: the JVM's AVX-512 Base64 decoder corrupts memory on malformed pre-auth input; keep until a fixed runtime ships
+            - name: JAVA_OPTS_APPEND
+              value: -XX:-UseBASE64Intrinsics
           ports:
             - name: http
               containerPort: 8080
