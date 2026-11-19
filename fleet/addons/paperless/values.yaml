@@ -1,6 +1,6 @@
 image:
   repository: ghcr.io/paperless-ngx/paperless-ngx
-  tag: 3.4.2
+  tag: 3.5.1
 # the Celery broker
 valkey:
   image:
