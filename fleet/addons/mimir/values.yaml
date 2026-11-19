@@ -1,6 +1,6 @@
 image:
   repository: docker.io/grafana/mimir
-  tag: 3.2.4
+  tag: 3.2.5
 persistence:
   data:
     storageClass: ""
