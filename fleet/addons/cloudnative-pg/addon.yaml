@@ -6,7 +6,7 @@ helm:
   repoURL: ghcr.io/cloudnative-pg/charts
   chart: cloudnative-pg
   # renovate: datasource=docker depName=ghcr.io/cloudnative-pg/charts/cloudnative-pg
-  targetRevision: 0.29.1
+  targetRevision: 0.29.2
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted
