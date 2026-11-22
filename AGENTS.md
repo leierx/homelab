@@ -121,7 +121,9 @@ nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
 - **Renovate holds:** Remove temporary `allowedVersions` holds in
   `renovate/holds.json5` once upstream ships the fix (currently
   `prometheus-smartctl-exporter` held below 0.18.0 until a chart bundles an
-  exporter release containing `prometheus-community/smartctl_exporter#397`).
+  exporter release containing `prometheus-community/smartctl_exporter#397`,
+  and the immich PostgreSQL major held below 19 until vchord ships a
+  PostgreSQL 19 build).
 - **Commits:** Use Conventional Commits with a DCO sign-off (`git commit -s`).
   Never credit Claude or any AI tool: no `Co-Authored-By` trailers or
   "Generated with" lines in commits or PRs.

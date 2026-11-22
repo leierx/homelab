@@ -7,5 +7,11 @@
       matchDepNames: ['ghcr.io/prometheus-community/charts/prometheus-smartctl-exporter'],
       allowedVersions: '<0.18.0',
     },
+    {
+      description: 'Immich needs vchord, which has no PostgreSQL 19 build yet; CNPG reuses the same extension image as the major-upgrade target',
+      matchFileNames: ['fleet/addons/immich/**'],
+      matchDepNames: ['ghcr.io/cloudnative-pg/postgresql'],
+      allowedVersions: '<19',
+    },
   ],
 }
