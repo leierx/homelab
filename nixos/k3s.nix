@@ -227,6 +227,8 @@ in
       "--kube-apiserver-arg=audit-log-maxage=30"
       "--kube-apiserver-arg=audit-log-maxbackup=10"
       "--kube-apiserver-arg=audit-log-maxsize=100"
+      # graceful shutdown leaves every pod terminated and the default 12500 never collects them; 15 is just above the CronJob/CronWorkflow histories (docs/postmortem/2026-11-22-loft01-dead-pods-pile-up.md)
+      "--kube-controller-manager-arg=terminated-pod-gc-threshold=15"
     ];
     # lowest priority first: VM pods stop while virt-handler (1e9), which sends the guest its ACPI power-off, still runs
     extraKubeletConfig.shutdownGracePeriodByPodPriority = [
