@@ -7,7 +7,7 @@ helm:
   repoURL: https://kubernetes-sigs.github.io/cluster-api-operator
   chart: cluster-api-operator
   # renovate: datasource=helm depName=cluster-api-operator registryUrl=https://kubernetes-sigs.github.io/cluster-api-operator
-  targetRevision: 0.30.0
+  targetRevision: 0.30.1
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted
