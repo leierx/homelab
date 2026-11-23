@@ -4,7 +4,7 @@ kind: Password
 metadata:
   name: paperless-db-password
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   length: 64
   symbols: 0
@@ -15,7 +15,7 @@ kind: ExternalSecret
 metadata:
   name: paperless-db-rotation
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   refreshInterval: 720h
   target:
