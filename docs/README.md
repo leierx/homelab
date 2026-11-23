@@ -46,6 +46,11 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 - Random application secrets (OIDC client secrets, Grafana admin password, initial
   Keycloak credentials) are generated once via ESO `Password` generators and
   pushed with `PushSecret` (`updatePolicy: IfNotExists`).
+- **CNPG application passwords** (`<cluster>-app`) are rewritten every 30 days by
+  an ESO `Password` generator. The `cnpg.io/reload` label makes CNPG apply the
+  new password, and Reloader rolls the workload that consumes it. OpenBao's own
+  database password uses the same pattern from the scoped
+  `clusters/loft01/openbao-db-rotation` addon.
 - **Renovate GitHub App credentials** (`app_id`, `installation_id`,
   `private_key`) are set by hand:
 

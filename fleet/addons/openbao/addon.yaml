@@ -5,11 +5,19 @@ dependencies:
   - cloudnative-pg
   - zfs-localpv
   - prometheus-operator-crds
+  - reloader
 helm:
   repoURL: ghcr.io/openbao/charts
   chart: openbao
   # renovate: datasource=docker depName=ghcr.io/openbao/charts/openbao
   targetRevision: 0.30.8
+application:
+  spec:
+    ignoreDifferences:
+      - group: apps
+        kind: StatefulSet
+        jsonPointers:
+          - /spec/template/metadata/annotations/reloader.stakater.com~1last-reloaded-from
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted

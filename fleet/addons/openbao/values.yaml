@@ -30,6 +30,8 @@ server:
     - {name: tmp, mountPath: /tmp}
   dataStorage: {enabled: false}
   statefulSet:
+    annotations:
+      secret.reloader.stakater.com/reload: openbao-db-app
     securityContext:
       container:
         allowPrivilegeEscalation: false

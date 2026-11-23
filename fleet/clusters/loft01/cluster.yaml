@@ -27,6 +27,7 @@ addons:
   miniflux: true
   node-exporter: true
   openbao: true
+  openbao-db-rotation: true
   opencloud: true
   paperless: true
   prometheus-operator-crds: true
