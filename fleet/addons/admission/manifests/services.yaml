@@ -63,7 +63,7 @@ spec:
   matchResources:
     namespaceSelector:
       matchExpressions:
-        - {key: kubernetes.io/metadata.name, operator: NotIn, values: [alerta, envoy-gateway-system, immich, jellyfin, keycloak, opencloud]}
+        - {key: kubernetes.io/metadata.name, operator: NotIn, values: [alerta, envoy-gateway-system, immich, keycloak, opencloud]}
 ---
 # the Gateways accept routes and listeners from All namespaces; this narrows who may create them
 apiVersion: admissionregistration.k8s.io/v1
@@ -87,7 +87,6 @@ spec:
           'cert-manager',
           'envoy-gateway-system',
           'immich',
-          'jellyfin',
           'keycloak',
           'miniflux',
           'monitoring',
