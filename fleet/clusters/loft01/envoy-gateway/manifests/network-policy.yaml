@@ -122,6 +122,17 @@ spec:
             gateway.envoyproxy.io/owning-gateway-name: edge
       toPorts:
         - ports: [{port: "10443", protocol: TCP}]
+    # private addons opt in with the gateway-backend namespace label
+    - toEndpoints:
+        - matchLabels:
+            io.cilium.k8s.namespace.labels.gateway-backend: "true"
+      toPorts:
+        - ports:
+            - {port: "7878", protocol: TCP}
+            - {port: "8080", protocol: TCP}
+            - {port: "8096", protocol: TCP}
+            - {port: "8989", protocol: TCP}
+            - {port: "9696", protocol: TCP}
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: argo
