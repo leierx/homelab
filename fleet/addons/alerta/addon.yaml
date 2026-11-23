@@ -11,6 +11,13 @@ dependencies:
   - reloader
 helm:
   path: fleet/addons/alerta
+application:
+  spec:
+    ignoreDifferences:
+      - group: apps
+        kind: StatefulSet
+        jsonPointers:
+          - /spec/template/metadata/annotations/reloader.stakater.com~1last-reloaded-from
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted

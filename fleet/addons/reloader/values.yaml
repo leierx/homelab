@@ -1,5 +1,7 @@
 reloader:
   readOnlyRootFileSystem: true
+  # pod-template annotations, so Argo CD can ignore them instead of reverting env changes
+  reloadStrategy: annotations
   deployment:
     containerSecurityContext:
       allowPrivilegeEscalation: false
