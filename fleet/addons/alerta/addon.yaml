@@ -8,6 +8,7 @@ dependencies:
   - cert-manager
   - envoy-gateway
   - keycloak
+  - reloader
 helm:
   path: fleet/addons/alerta
 managedNamespaceMetadata:

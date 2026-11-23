@@ -31,6 +31,7 @@ addons:
   paperless: true
   prometheus-operator-crds: true
   rbac: true
+  reloader: true
   renovate: true
   smartctl-exporter: true
   zfs-localpv: true
