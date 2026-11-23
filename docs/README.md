@@ -47,8 +47,7 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   Keycloak credentials) are generated once via ESO `Password` generators and
   pushed with `PushSecret` (`updatePolicy: IfNotExists`).
 - **Renovate GitHub App credentials** (`app_id`, `installation_id`,
-  `private_key`) are set by hand, like Gotify's `apprise_token`
-  ([monitoring.md](monitoring.md)):
+  `private_key`) are set by hand:
 
   ```sh
   printf %s "$APP_ID" | just bao kv put kv/loft01/renovate app_id=-
@@ -109,8 +108,8 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 - **Gateways:**
   - `edge` (public via NodePort 30080/30443): Keycloak login endpoints, Immich
     (`immich.skinke.net`), Miniflux (`rss.skinke.net`), OpenCloud
-    (`opencloud.skinke.net`), Grafana (`metrics.skinke.net`), Gotify
-    (`gotify.skinke.net`), and Jellyfin (`jellyfin.skinke.net`).
+    (`opencloud.skinke.net`), Grafana (`metrics.skinke.net`), and Jellyfin
+    (`jellyfin.skinke.net`).
   - `wg` (WireGuard `10.0.0.1` only): Alerta (`alerta.skinke.net`), Argo CD
     (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), Paperless-ngx
     (`paperless.skinke.net`), and the Keycloak
@@ -120,7 +119,7 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
     for a Local Network Access permission when they are).
   - Both `edge` and `wg` attach `SecurityPolicy/oidc` and
     `ClientTrafficPolicy/default` at the `Gateway` level, so every HTTPS route
-    (other than Keycloak, Immich, OpenCloud, Alerta, Gotify, and Jellyfin) is gated by Envoy's OIDC login (`/_envoy/callback`)
+    (other than Keycloak, Immich, OpenCloud, Alerta, and Jellyfin) is gated by Envoy's OIDC login (`/_envoy/callback`)
     and receives standard security headers automatically. New web apps only need
     their `Certificate`, `ListenerSet`, `HTTPRoute`, and `https://<host>/_envoy/callback`
     in `keycloak_openid_client.edge.valid_redirect_uris` (`tofu/keycloak/clients.tf`).

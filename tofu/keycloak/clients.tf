@@ -27,7 +27,6 @@ locals {
     argo_workflows = keycloak_openid_client.argo_workflows
     miniflux       = keycloak_openid_client.miniflux
     paperless      = keycloak_openid_client.paperless
-    gotify         = keycloak_openid_client.gotify
     jellyfin       = keycloak_openid_client.jellyfin
   }
 
@@ -43,7 +42,6 @@ locals {
     alerta           = "alerta"
     argocd           = "argocd"
     "argo-workflows" = "argo_workflows"
-    gotify           = "gotify"
     grafana          = "grafana"
     immich           = "immich"
     jellyfin         = "jellyfin"
@@ -78,7 +76,6 @@ locals {
       argo_workflows = "argo-workflows"
       miniflux       = "miniflux"
       paperless      = "paperless"
-      gotify         = "gotify"
       jellyfin       = "jellyfin"
     },
     { for name in keys(local.opencloud_clients) : name => "opencloud" },
@@ -303,30 +300,6 @@ resource "keycloak_openid_client" "paperless" {
   pkce_code_challenge_method   = "S256"
 
   valid_redirect_uris = ["https://paperless.skinke.net/accounts/oidc/keycloak/login/callback/"]
-}
-
-resource "keycloak_openid_client" "gotify" {
-  realm_id  = keycloak_realm.homelab.id
-  client_id = "gotify"
-  name      = "gotify"
-  enabled   = true
-  base_url  = "https://gotify.skinke.net"
-
-  access_type                  = "CONFIDENTIAL"
-  client_secret_wo             = var.gotify_client_secret
-  client_secret_wo_version     = "1"
-  standard_flow_enabled        = true
-  direct_access_grants_enabled = false
-  implicit_flow_enabled        = false
-  service_accounts_enabled     = false
-  full_scope_allowed           = false
-  pkce_code_challenge_method   = "S256"
-
-  # the Android app's login returns to the app; the server still does the code exchange
-  valid_redirect_uris = [
-    "https://gotify.skinke.net/auth/oidc/callback",
-    "gotify://oidc/callback",
-  ]
 }
 
 # the web app's login, through the SSO plugin; TVs and phone apps sign in with Quick Connect, approved from a browser
@@ -580,11 +553,6 @@ moved {
 moved {
   from = keycloak_openid_client_default_scopes.paperless
   to   = keycloak_openid_client_default_scopes.clients["paperless"]
-}
-
-moved {
-  from = keycloak_openid_client_default_scopes.gotify
-  to   = keycloak_openid_client_default_scopes.clients["gotify"]
 }
 
 resource "keycloak_realm_optional_client_scopes" "homelab" {

@@ -6,7 +6,6 @@ addons:
   alloy-events: true
   alloy-logs: true
   alloy-metrics: true
-  apprise: true
   argo-workflows: true
   argocd: true
   capi-argo-bridge: true
@@ -18,7 +17,6 @@ addons:
   dodde: true
   envoy-gateway: true
   external-secrets: true
-  gotify: true
   grafana: true
   immich: true
   jellyfin: true

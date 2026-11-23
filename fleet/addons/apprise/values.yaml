@@ -1,5 +1,0 @@
-image:
-  repository: docker.io/caronc/apprise
-  tag: 2.1.0
-# Apprise YAML for config ID homelab (POST /notify/homelab); ${NAME}s come from APPRISE_TEMPLATE_<NAME>
-config: ""

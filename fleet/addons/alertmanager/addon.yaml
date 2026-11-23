@@ -2,7 +2,6 @@ namespace: monitoring
 dependencies:
   - alerta
   - cilium
-  - apprise
   - external-secrets
   - zfs-localpv
   - prometheus-operator-crds

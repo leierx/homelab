@@ -20,9 +20,6 @@ spec:
             k8s:io.kubernetes.pod.namespace: argocd
             app.kubernetes.io/name: argocd-server
         - matchLabels:
-            k8s:io.kubernetes.pod.namespace: gotify
-            app.kubernetes.io/name: gotify
-        - matchLabels:
             app.kubernetes.io/name: envoy
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: immich
@@ -88,12 +85,6 @@ spec:
             app.kubernetes.io/name: opencloud
       toPorts:
         - ports: [{port: "9200", protocol: TCP}]
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: gotify
-            app.kubernetes.io/name: gotify
-      toPorts:
-        - ports: [{port: "8080", protocol: TCP}]
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: jellyfin

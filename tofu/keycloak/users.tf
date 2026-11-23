@@ -28,7 +28,6 @@ resource "keycloak_user_groups" "leier" {
       "alerta-admin",
       "argocd-admin",
       "argo-workflows-admin",
-      "gotify-admin",
       "grafana-admin",
       "immich-admin",
       "jellyfin-admin",

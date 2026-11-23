@@ -1,9 +1,0 @@
-url: https://gotify.skinke.net
-proxyTrustedAddresses: 10.42.0.0/16
-oidc:
-  issuer: https://auth.skinke.net/realms/homelab
-  adminGroups: gotify-admin
-  userGroups: gotify-user
-database:
-  storage:
-    storageClass: zfs

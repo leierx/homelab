@@ -11,7 +11,6 @@ locals {
     alerta           = ["admin", "user", "guest"]
     argocd           = ["admin", "operator", "readonly"]
     "argo-workflows" = ["admin"]
-    gotify           = ["admin", "user"]
     grafana          = ["admin", "editor", "viewer"]
     immich           = ["admin", "user"]
     jellyfin         = ["admin", "user"]

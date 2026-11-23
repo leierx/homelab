@@ -13,7 +13,7 @@ How metrics, logs and alerts work on `loft01`. Everything here is an addon in
                                      │                           │ ruler
                        syncs PrometheusRules                     ▼
                        (fleet.io/ruler: mimir)             alertmanager ──webhook──▶ alerta
-                                                                 ▲    └──critical: webhook──▶ apprise ──▶ gotify ──▶ phone
+                                                                 ▲
  pod logs, audit log, host journal ─▶ alloy-logs ──┐             │
  Kubernetes events ─▶ alloy-events ────────────────┴─▶ loki ─────┘ ruler
                        syncs PrometheusRules (fleet.io/ruler: loki)
@@ -23,10 +23,8 @@ How metrics, logs and alerts work on `loft01`. Everything here is an addon in
 |---|---|---|
 | `mimir` | `monitoring` | Metrics TSDB and rule evaluation. One StatefulSet running `-target=all` (upstream's monolithic mode) on a filesystem volume, 90 days of retention. |
 | `loki` | `monitoring` | Logs and log-based rules, single binary, 30 days. |
-| `alertmanager` | `monitoring` | Routes every alert to Alerta, and pushes the critical ones through Apprise. |
+| `alertmanager` | `monitoring` | Routes every alert to Alerta. |
 | `alerta` | `alerta` | Keeps alert history, acknowledgements and notes (180 days, CloudNativePG). |
-| `apprise` | `apprise` | Notification hub: senders post to `/notify/homelab` with a tag, Apprise routes it on (Apprise API). |
-| `gotify` | `gotify` | Push notifications to the phone at `gotify.skinke.net` (CloudNativePG). |
 | `grafana` | `monitoring` | Dashboards only. Holds no alert rules and nothing that can't be rebuilt from git. |
 | `alloy-metrics` | `telemetry` | Scrapes everything into Mimir and syncs the Mimir rules. |
 | `alloy-logs` | `telemetry` | DaemonSet: pod logs, the API server audit log, the host journal. |
@@ -139,46 +137,18 @@ as a webhook (`/api/webhooks/prometheus`) with the API key from
 with notes and acknowledgements. Mimir's ruler also writes `ALERTS` and
 `ALERTS_FOR_STATE` series back, so Grafana can chart and count past alerts.
 
-Alerts with `severity: critical` are also pushed to the phone, every 4 hours
-while they fire and once when they resolve; everything else waits in Alerta.
-Alertmanager formats them itself, with its webhook `payload` templates
-(`fleet/addons/alertmanager/values.yaml`), and posts them to Apprise API in the
-`apprise` namespace, which sends them on to Gotify.
-
-Apprise is the hub for anything that wants to notify: post `title`, `body`,
-`format` and a `tag` to `http://apprise.apprise.svc:8000/notify/homelab` and open
-the sender's egress and Apprise's ingress for it. The tag sets how loud it is:
-`urgent` (Gotify priority 8: pop-up and sound), `normal` (5: sound) or `quiet`
-(3: silent). Alertmanager uses `urgent` while an alert fires and `quiet` once it
-resolves. Apprise's config is `config` in `fleet/clusters/loft01/apprise/values.yaml`,
-mounted read-only and locked, with the Gotify token filled in from OpenBao
-through `${GOTIFY_TOKEN}`. To also send somewhere else, add an Apprise URL with
-the same tags.
-
-Alertmanager re-reads each rendered `payload` value as YAML and sends what
-parses as a list or map as such, so a body must never be one: its lines start
-with `* `, which YAML can't parse that way.
-
-Gotify and its Android app log in through Keycloak (client `gotify`):
-Members of `gotify-admin` are Gotify admins, of `gotify-user` users. Local logins are
-off; the first-start `admin` has a random password in `kv/loft01/gotify` as
-break-glass (`GOTIFY_LOCALAUTH_ENABLED=true` to use it). The app keeps its own
-connection to the server, so no push service is involved.
-
-Gotify generates application tokens itself, so Apprise's is set by hand, once
-per cluster: log in, create an application (its messages reach only its
-owner), and store its token with
-`read -rs T && printf %s "$T" | just bao kv patch kv/loft01/gotify apprise_token=- && unset T`.
+There is no push notification channel: everything lands in Alerta, which is
+reached through the WireGuard `wg` Gateway. The repeat interval is 4 hours
+while an alert fires, and Alertmanager posts once more when it resolves.
 
 To stop the repeats, silence the alert in Grafana (Alerting, Silences, with
 the `Alertmanager` datasource). Acknowledging it in Alerta doesn't: the
 `prometheus` plugin in the `alerta-web` image still calls Alertmanager's v1
 API, which Alertmanager has removed.
 
-The two channels watch each other: `AlertmanagerAppriseFailing` (warning) shows a
-failed push in Alerta, and `AlertmanagerAlertaFailing` (critical) pushes when
-Alerta can't be reached. Both read `receiver_name`, which Alertmanager only adds
-with `--enable-feature=receiver-name-in-metrics`.
+`AlertmanagerAlertaFailing` (critical) fires when Alerta can't be reached, so
+alerts don't disappear silently. It reads `receiver_name`, which Alertmanager
+only adds with `--enable-feature=receiver-name-in-metrics`.
 
 Nothing alerts if the whole stack is down.
 
