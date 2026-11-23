@@ -141,6 +141,12 @@ appends to `/etc/hosts`.
     and receives standard security headers automatically. New web apps only need
     their `Certificate`, `ListenerSet`, `HTTPRoute`, and `https://<host>/_envoy/callback`
     in `keycloak_openid_client.edge.valid_redirect_uris` (`tofu/keycloak/clients.tf`).
+  - `edge` drops clients listed in Spamhaus DROP and EmergingThreats:
+    `edge-blocklist.timer` (`nixos/k3s.nix`) refreshes them every 6 h into
+    `CiliumClusterwideNetworkPolicy/edge-blocklist` through k3s's auto-deploy
+    manifests. A failed refresh keeps the last list and trips `SystemdUnitFailed`.
+    Cilium's NodePort program runs before netfilter, so nftables on the host
+    can't block edge traffic.
 - **First login after a fresh cluster build:**
   1. Fetch `leier`'s initial password:
      `just bao kv get -field=leier_password kv/loft01/keycloak`
