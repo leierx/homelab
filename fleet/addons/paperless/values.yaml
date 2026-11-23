@@ -19,7 +19,7 @@ gotenberg:
 tessdata:
   image:
     repository: ghcr.io/leierx/tessdata
-    tag: 0.1.5
+    tag: 0.1.7
 url: ""
 timeZone: UTC
 # main language first
