@@ -295,8 +295,25 @@ in
       };
 
   # Argo CD's repository credential for the private app-of-apps repo, through k3s's auto-deploy manifests
-  secrets.secrets."argocd/private_repo".path =
-    "/var/lib/rancher/k3s/server/manifests/argocd-private-repo.yaml";
+  secrets.secrets."argocd/private_repo_pat" = { };
+  secrets.templates."argocd-private-repo.yaml" = {
+    path = "/var/lib/rancher/k3s/server/manifests/argocd-private-repo.yaml";
+    content = ''
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: homelab-private
+        namespace: argocd
+        labels:
+          argocd.argoproj.io/secret-type: repository
+      type: Opaque
+      stringData:
+        type: git
+        url: https://github.com/leierx/homelab-private.git
+        username: leierx
+        password: ${config.secrets.placeholder."argocd/private_repo_pat"}
+    '';
+  };
 
   secrets.secrets."openbao/seal_key" = { };
   # OpenBao's static auto-unseal key, through k3s's auto-deploy manifests

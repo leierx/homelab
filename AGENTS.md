@@ -124,7 +124,7 @@ nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
   `fleet-secrets-push` (OpenBao `kv/<cluster>/<app>`). Host-only bootstrap
   secrets live in `/var/lib/secrets.yaml` on the host, never in git
   (`nixos/secrets.nix`). Argo CD's private repo credential is the host-only
-  `argocd/private_repo` secret (`nixos/k3s.nix`), not OpenBao.
+  `argocd/private_repo_pat` secret (`nixos/k3s.nix`), not OpenBao.
 - **Renovate holds:** Remove temporary `allowedVersions` holds in
   `renovate/holds.json5` once upstream ships the fix (currently
   `prometheus-smartctl-exporter` held below 0.18.0 until a chart bundles an

@@ -91,13 +91,11 @@ Addons that should not be public live in `leierx/homelab-private`, rendered by
 `Application/loft01-private`. Its Applications live in `fleet/apps`; only its
 repository credential belongs in this repository.
 
-Argo CD's repository credential is the host-only `argocd/private_repo` string
-in `/var/lib/secrets.yaml`: a `Secret` labeled
-`argocd.argoproj.io/secret-type: repository` with `type: git`, the repo URL,
-username and a fine-grained PAT (`Contents: Read`). `nixos/k3s.nix` symlinks it
-into `/var/lib/rancher/k3s/server/manifests/argocd-private-repo.yaml`; k3s
-applies it and picks up a rotation within 15 s. No OpenBao seed, no manual
-apply.
+Argo CD's repository credential is the host-only `argocd/private_repo_pat`
+string in `/var/lib/secrets.yaml` (a fine-grained PAT with `Contents: Read`).
+`nixos/k3s.nix` templates it into the repository `Secret` at
+`/var/lib/rancher/k3s/server/manifests/argocd-private-repo.yaml`; k3s applies
+it and picks up a rotation within 15 s. No OpenBao seed, no manual apply.
 
 ## Access & Identity
 
