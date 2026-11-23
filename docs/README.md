@@ -95,7 +95,9 @@ Argo CD's repository credential is the host-only `argocd/private_repo_pat`
 string in `/var/lib/secrets.yaml` (a fine-grained PAT with `Contents: Read`).
 `nixos/k3s.nix` templates it into the repository `Secret` at
 `/var/lib/rancher/k3s/server/manifests/argocd-private-repo.yaml`; k3s applies
-it and picks up a rotation within 15 s. No OpenBao seed, no manual apply.
+it and picks up a rotation within 15 s. Private `wg` Gateway hostnames go in
+`network/extra_hosts` in `/var/lib/secrets.yaml`, which `nixos/network.nix`
+appends to `/etc/hosts`.
 
 ## Access & Identity
 

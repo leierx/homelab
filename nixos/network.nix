@@ -1,4 +1,9 @@
-{ config, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 {
   networking = {
     hostName = "loft01";
@@ -14,13 +19,8 @@
     extraHosts = ''
       10.0.0.1 alerta.skinke.net
       10.0.0.1 argocd.skinke.net
-      10.0.0.1 jellyfin.skinke.net
       10.0.0.1 keycloak.skinke.net
       10.0.0.1 paperless.skinke.net
-      10.0.0.1 prowlarr.skinke.net
-      10.0.0.1 qbt.skinke.net
-      10.0.0.1 radarr.skinke.net
-      10.0.0.1 sonarr.skinke.net
       10.0.0.1 workflows.skinke.net
     '';
 
@@ -106,7 +106,16 @@
   };
 
   secrets.secrets = {
+    "network/extra_hosts" = { };
     "wireguard/private_key".owner = "systemd-network";
     "wireguard/psk".owner = "systemd-network";
   };
+  secrets.templates."hosts" = {
+    mode = "0644";
+    content = ''
+      ${builtins.readFile (pkgs.concatText "hosts" config.networking.hostFiles)}
+      ${config.secrets.placeholder."network/extra_hosts"}
+    '';
+  };
+  environment.etc.hosts.source = lib.mkForce config.secrets.templates."hosts".path;
 }

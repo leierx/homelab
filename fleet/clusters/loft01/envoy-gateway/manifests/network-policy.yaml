@@ -126,13 +126,6 @@ spec:
     - toEndpoints:
         - matchLabels:
             io.cilium.k8s.namespace.labels.gateway-backend: "true"
-      toPorts:
-        - ports:
-            - {port: "7878", protocol: TCP}
-            - {port: "8080", protocol: TCP}
-            - {port: "8096", protocol: TCP}
-            - {port: "8989", protocol: TCP}
-            - {port: "9696", protocol: TCP}
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: argo
