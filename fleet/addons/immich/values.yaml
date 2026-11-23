@@ -16,6 +16,8 @@ immich:
   server:
     controllers:
       main:
+        annotations:
+          secret.reloader.stakater.com/reload: immich-db-app
         # RWO zfs-localpv volumes can't be mounted by two pods at once.
         strategy: Recreate
         containers:

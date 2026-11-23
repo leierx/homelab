@@ -8,8 +8,16 @@ dependencies:
   - envoy-gateway
   - zfs-localpv
   - keycloak
+  - reloader
 helm:
   path: fleet/addons/immich
+application:
+  spec:
+    ignoreDifferences:
+      - group: apps
+        kind: Deployment
+        jsonPointers:
+          - /spec/template/metadata/annotations/reloader.stakater.com~1last-reloaded-from
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted

@@ -8,8 +8,16 @@ dependencies:
   - cert-manager
   - envoy-gateway
   - keycloak
+  - reloader
 helm:
   path: fleet/addons/miniflux
+application:
+  spec:
+    ignoreDifferences:
+      - group: apps
+        kind: StatefulSet
+        jsonPointers:
+          - /spec/template/metadata/annotations/reloader.stakater.com~1last-reloaded-from
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted

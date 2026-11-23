@@ -7,10 +7,18 @@ dependencies:
   - cert-manager
   - envoy-gateway
   - zfs-localpv
+  - reloader
 helm:
   path: fleet/addons/keycloak
 sources:
   - path: tofu/keycloak
+application:
+  spec:
+    ignoreDifferences:
+      - group: apps
+        kind: StatefulSet
+        jsonPointers:
+          - /spec/template/metadata/annotations/reloader.stakater.com~1last-reloaded-from
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted

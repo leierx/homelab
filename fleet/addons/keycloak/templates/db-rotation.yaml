@@ -1,0 +1,41 @@
+# ESO regenerates the password on each refresh; CNPG applies it because the Secret carries cnpg.io/reload
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: keycloak-db-password
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  length: 64
+  symbols: 0
+  allowRepeat: true
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: keycloak-db-rotation
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  refreshInterval: 720h
+  target:
+    name: keycloak-db-app
+    creationPolicy: Merge
+    template:
+      type: kubernetes.io/basic-auth
+      metadata:
+        labels:
+          cnpg.io/reload: "true"
+      data:
+        password: '{{ "{{ .password }}" }}'
+        pgpass: 'keycloak-db-rw:5432:keycloak:keycloak:{{ "{{ .password }}" }}'
+        uri: 'postgresql://keycloak:{{ "{{ .password }}" }}@keycloak-db-rw.{{ .Release.Namespace }}:5432/keycloak'
+        fqdn-uri: 'postgresql://keycloak:{{ "{{ .password }}" }}@keycloak-db-rw.{{ .Release.Namespace }}.svc.cluster.local:5432/keycloak'
+        jdbc-uri: 'jdbc:postgresql://keycloak-db-rw.{{ .Release.Namespace }}:5432/keycloak?password={{ "{{ .password }}" }}&user=keycloak'
+        fqdn-jdbc-uri: 'jdbc:postgresql://keycloak-db-rw.{{ .Release.Namespace }}.svc.cluster.local:5432/keycloak?password={{ "{{ .password }}" }}&user=keycloak'
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: keycloak-db-password

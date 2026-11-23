@@ -5,6 +5,7 @@ metadata:
   annotations:
     # after its database and secrets are Healthy
     argocd.argoproj.io/sync-wave: "1"
+    secret.reloader.stakater.com/reload: keycloak-db-app
 spec:
   replicas: 1
   serviceName: keycloak-service
