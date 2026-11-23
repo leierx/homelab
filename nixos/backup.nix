@@ -14,8 +14,6 @@ let
     "monitoring/storage-loki-0"
     "renovate/renovate-cache"
     "immich/model-cache"
-    # too big for the rsync.net quota; zrepl's local snapshots still cover it
-    "jellyfin/media"
   ];
 
   backup = pkgs.writeShellApplication {

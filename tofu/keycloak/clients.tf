@@ -27,7 +27,6 @@ locals {
     argo_workflows = keycloak_openid_client.argo_workflows
     miniflux       = keycloak_openid_client.miniflux
     paperless      = keycloak_openid_client.paperless
-    jellyfin       = keycloak_openid_client.jellyfin
   }
 
   opencloud_clients = merge(
@@ -44,7 +43,6 @@ locals {
     "argo-workflows" = "argo_workflows"
     grafana          = "grafana"
     immich           = "immich"
-    jellyfin         = "jellyfin"
     kubernetes       = "kubernetes"
     miniflux         = "miniflux"
     opencloud        = "opencloud"
@@ -76,7 +74,6 @@ locals {
       argo_workflows = "argo-workflows"
       miniflux       = "miniflux"
       paperless      = "paperless"
-      jellyfin       = "jellyfin"
     },
     { for name in keys(local.opencloud_clients) : name => "opencloud" },
   )
@@ -300,80 +297,6 @@ resource "keycloak_openid_client" "paperless" {
   pkce_code_challenge_method   = "S256"
 
   valid_redirect_uris = ["https://paperless.skinke.net/accounts/oidc/keycloak/login/callback/"]
-}
-
-# the web app's login, through the SSO plugin; TVs and phone apps sign in with Quick Connect, approved from a browser
-resource "keycloak_openid_client" "jellyfin" {
-  realm_id  = keycloak_realm.homelab.id
-  client_id = "jellyfin"
-  name      = "jellyfin"
-  enabled   = true
-  base_url  = "https://jellyfin.skinke.net"
-
-  access_type                  = "CONFIDENTIAL"
-  client_secret_wo             = var.jellyfin_client_secret
-  client_secret_wo_version     = "1"
-  standard_flow_enabled        = true
-  direct_access_grants_enabled = false
-  implicit_flow_enabled        = false
-  service_accounts_enabled     = false
-  full_scope_allowed           = false
-  pkce_code_challenge_method   = "S256"
-
-  valid_redirect_uris = ["https://jellyfin.skinke.net/sso/OID/redirect/keycloak"]
-}
-
-# the Jellyfin account sync (fleet/addons/jellyfin/templates/sync.yaml): reads who may use Jellyfin, nothing else
-resource "keycloak_openid_client" "jellyfin_sync" {
-  realm_id  = keycloak_realm.homelab.id
-  client_id = "jellyfin-sync"
-  name      = "jellyfin-sync"
-  enabled   = true
-
-  access_type                  = "CONFIDENTIAL"
-  client_secret_wo             = var.jellyfin_sync_client_secret
-  client_secret_wo_version     = "1"
-  standard_flow_enabled        = false
-  direct_access_grants_enabled = false
-  implicit_flow_enabled        = false
-  service_accounts_enabled     = true
-  full_scope_allowed           = false
-}
-
-data "keycloak_role" "jellyfin_sync" {
-  for_each  = toset(["query-groups", "view-users"])
-  realm_id  = keycloak_realm.homelab.id
-  client_id = data.keycloak_openid_client.realm_management.id
-  name      = each.key
-}
-
-resource "keycloak_openid_client_service_account_role" "jellyfin_sync" {
-  for_each                = data.keycloak_role.jellyfin_sync
-  realm_id                = keycloak_realm.homelab.id
-  service_account_user_id = keycloak_openid_client.jellyfin_sync.service_account_user_id
-  client_id               = data.keycloak_openid_client.realm_management.id
-  role                    = each.value.name
-}
-
-# the same roles in its token
-resource "keycloak_generic_role_mapper" "jellyfin_sync" {
-  for_each  = data.keycloak_role.jellyfin_sync
-  realm_id  = keycloak_realm.homelab.id
-  client_id = keycloak_openid_client.jellyfin_sync.id
-  role_id   = each.value.id
-}
-
-# kc-admin-api adds the audience the admin API requires
-resource "keycloak_openid_client_default_scopes" "jellyfin_sync" {
-  realm_id       = keycloak_realm.homelab.id
-  client_id      = keycloak_openid_client.jellyfin_sync.id
-  default_scopes = ["basic", "roles", "kc-admin-api"]
-}
-
-resource "keycloak_openid_client_optional_scopes" "jellyfin_sync" {
-  realm_id        = keycloak_realm.homelab.id
-  client_id       = keycloak_openid_client.jellyfin_sync.id
-  optional_scopes = []
 }
 
 # OpenCloud's web app

@@ -108,8 +108,7 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 - **Gateways:**
   - `edge` (public via NodePort 30080/30443): Keycloak login endpoints, Immich
     (`immich.skinke.net`), Miniflux (`rss.skinke.net`), OpenCloud
-    (`opencloud.skinke.net`), Grafana (`metrics.skinke.net`), and Jellyfin
-    (`jellyfin.skinke.net`).
+    (`opencloud.skinke.net`), and Grafana (`metrics.skinke.net`).
   - `wg` (WireGuard `10.0.0.1` only): Alerta (`alerta.skinke.net`), Argo CD
     (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), Paperless-ngx
     (`paperless.skinke.net`), and the Keycloak
@@ -119,23 +118,10 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
     for a Local Network Access permission when they are).
   - Both `edge` and `wg` attach `SecurityPolicy/oidc` and
     `ClientTrafficPolicy/default` at the `Gateway` level, so every HTTPS route
-    (other than Keycloak, Immich, OpenCloud, Alerta, and Jellyfin) is gated by Envoy's OIDC login (`/_envoy/callback`)
+    (other than Keycloak, Immich, OpenCloud, and Alerta) is gated by Envoy's OIDC login (`/_envoy/callback`)
     and receives standard security headers automatically. New web apps only need
     their `Certificate`, `ListenerSet`, `HTTPRoute`, and `https://<host>/_envoy/callback`
     in `keycloak_openid_client.edge.valid_redirect_uris` (`tofu/keycloak/clients.tf`).
-- **Jellyfin** has no OIDC of its own: the SSO plugin
-  ([MaxRink/jellyfin-plugin-sso](https://github.com/MaxRink/jellyfin-plugin-sso))
-  adds a Keycloak button to the web login, and the Gateway refuses password
-  logins. TVs and phone apps sign in with Quick Connect: the app shows a code,
-  approve it at `https://jellyfin.skinke.net/sso/OID/start/keycloak?qc=<code>`.
-  Members of `jellyfin-admin` are Jellyfin admins, of `jellyfin-user` users. Jellyfin keeps
-  sessions until they are revoked, so `CronJob/jellyfin-sync` matches every
-  Jellyfin user to Keycloak every 5 minutes: whoever Keycloak no longer lets in
-  is disabled, which signs out all their devices, and local accounts with them.
-  Media goes in the claim `jellyfin/media` under `movies/` and `shows/`, copied
-  as root on `loft01` to where the pod has it mounted
-  (`findmnt -no TARGET -S tank/<pv>`); Jellyfin only reads it, so world-readable
-  is enough.
 - **First login after a fresh cluster build:**
   1. Fetch `leier`'s initial password:
      `just bao kv get -field=leier_password kv/loft01/keycloak`
@@ -148,7 +134,7 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 Each PVC is a dataset `tank/<pv>`. zrepl keeps local snapshots (24 hourly,
 14 daily, 3 monthly); `offsite-backup.service` copies a snapshot of every
 volume plus the k3s state to rsync.net nightly at 04:30 (restic: 7 daily,
-4 weekly, 6 monthly), except the claims in `excluded` (Mimir, Loki, caches, Jellyfin's media).
+4 weekly, 6 monthly), except the claims in `excluded` (Mimir, Loki, caches).
 Example: Immich originals live in claim `immich/library` under `library/`.
 Run everything as root on `loft01` (`doas -s`).
 
@@ -220,20 +206,6 @@ rm -rf /var/tmp/restore                                # on loft01
   # ...
   bao token revoke -self
   ```
-- **Jellyfin:** no local account works: the setup Job's `bootstrap` admin is
-  disabled as soon as a Keycloak admin has signed in. Break-glass is the account
-  sync's API key, which is admin-equivalent and whose use Jellyfin doesn't log.
-  To sign in a browser with it, open `http://localhost:8096` through a
-  port-forward, choose Quick Connect, and approve its code for your user:
-  ```sh
-  kubectl -n jellyfin port-forward jellyfin-0 8096
-  key=$(kubectl -n jellyfin get secret jellyfin-api-key -o jsonpath='{.data.api-key}' | base64 -d)
-  auth="Authorization: MediaBrowser Token=\"$key\""
-  id=$(curl -fsS -H "$auth" http://localhost:8096/Users | jq -r '.[] | select(.Name == "<user>") | .Id')
-  curl -fsS -X POST -H "$auth" "http://localhost:8096/QuickConnect/Authorize?code=<code>&userId=$id"
-  ```
-  The account sync reverts a change to who is enabled or admin within 5 minutes;
-  suspend `CronJob/jellyfin-sync` first if that is what is broken.
 - **Paperless-ngx:** `manage.py` in the pod needs no login. For the API as
   `admin`, enable it (the next restart disables it again) and use the password
   from `just bao kv get -field=admin_password kv/loft01/paperless`:

@@ -19,7 +19,6 @@ addons:
   external-secrets: true
   grafana: true
   immich: true
-  jellyfin: true
   keycloak: true
   kube-state-metrics: true
   kubevirt: true

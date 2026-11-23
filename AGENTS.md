@@ -49,7 +49,7 @@ Design: issue #167. Read `fleet/README.md` for the schema.
      releaseName}`, `dependencies`, `managedBy`, `sources`,
      `managedNamespaceMetadata`, `application`. Maps deep-merge, later layer
      wins; `dependencies` and `sources` concatenate.
-   - Local charts (`alerta`, `capi-argo-bridge`, `immich`, `jellyfin`,
+   - Local charts (`alerta`, `capi-argo-bridge`, `immich`,
      `keycloak`, `mimir`, `miniflux`, `opencloud`, `paperless`) set `helm.path: fleet/addons/<name>`.
 3. **Enabling:** `clusters/<cluster>/cluster.yaml` maps
    `addons: {<name>: true|false}`. A name with no catalog entry is a scoped

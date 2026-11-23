@@ -13,7 +13,6 @@ locals {
     "argo-workflows" = ["admin"]
     grafana          = ["admin", "editor", "viewer"]
     immich           = ["admin", "user"]
-    jellyfin         = ["admin", "user"]
     keycloak         = ["viewer"]
     kubernetes       = ["admin", "operator", "viewer"]
     miniflux         = ["admin", "user"]

@@ -49,11 +49,5 @@
       automerge: false,
       labels: ['dependencies', 'needs-review'],
     },
-    {
-      description: "Jellyfin's SSO plugin is third-party code in the login path, so every bump gets a review",
-      matchDepNames: ['MaxRink/jellyfin-plugin-sso'],
-      automerge: false,
-      labels: ['dependencies', 'needs-review'],
-    },
   ],
 }

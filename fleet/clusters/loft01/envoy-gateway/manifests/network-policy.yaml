@@ -25,9 +25,6 @@ spec:
             k8s:io.kubernetes.pod.namespace: immich
             app.kubernetes.io/name: server
         - matchLabels:
-            k8s:io.kubernetes.pod.namespace: jellyfin
-            app.kubernetes.io/name: jellyfin
-        - matchLabels:
             k8s:io.kubernetes.pod.namespace: miniflux
             app.kubernetes.io/name: miniflux
         - matchLabels:
@@ -85,12 +82,6 @@ spec:
             app.kubernetes.io/name: opencloud
       toPorts:
         - ports: [{port: "9200", protocol: TCP}]
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: jellyfin
-            app.kubernetes.io/name: jellyfin
-      toPorts:
-        - ports: [{port: "8096", protocol: TCP}]
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
