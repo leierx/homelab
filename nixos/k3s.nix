@@ -1,8 +1,78 @@
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   yaml = pkgs.formats.yaml { };
 
   k3s = pkgs.k3s_1_36;
+
+  manifests = "/var/lib/rancher/k3s/server/manifests";
+
+  # Cilium's NodePort program redirects edge traffic before netfilter sees it, so the blocklist is a Cilium policy
+  edgeBlocklist = pkgs.writeShellApplication {
+    name = "edge-blocklist";
+    runtimeInputs = [
+      pkgs.curl
+      pkgs.gnugrep
+      pkgs.gawk
+      pkgs.coreutils
+    ];
+    text = ''
+      fetch() { curl -fsSL --max-time 60 --retry 3 --retry-all-errors "$1"; }
+      # both or neither: a partial list would silently unblock, so a failed fetch keeps the last policy
+      drop=$(fetch https://www.spamhaus.org/drop/drop.txt)
+      et=$(fetch https://rules.emergingthreats.net/fwrules/emerging-Block-IPs.txt)
+
+      mapfile -t cidrs < <(
+        printf '%s\n%s\n' "$drop" "$et" \
+          | grep -oE '^[0-9]{1,3}(\.[0-9]{1,3}){3}(/[0-9]{1,2})?' \
+          | awk -F'[./]' '{
+              for (i = 1; i <= 4; i++) if ($i > 255) next
+              p = (NF == 5) ? $5 : 32
+              if (p < 8 || p > 32) next
+              if ($1 == 0 || $1 == 10 || $1 == 127 || $1 >= 224) next
+              if ($1 == 100 && $2 >= 64 && $2 < 128) next
+              if ($1 == 169 && $2 == 254) next
+              if ($1 == 172 && $2 >= 16 && $2 < 32) next
+              if ($1 == 192 && $2 == 168) next
+              print $1 "." $2 "." $3 "." $4 "/" p
+            }' \
+          | sort -u
+      )
+      # an error page parses to nothing
+      [ "''${#cidrs[@]}" -ge 100 ] || { echo "only ''${#cidrs[@]} blocklist entries" >&2; exit 1; }
+
+      tmp=$(mktemp -p ${manifests} .edge-blocklist.XXXXXX)
+      trap 'rm -f "$tmp"' EXIT
+      {
+        cat <<'EOF'
+      apiVersion: cilium.io/v2
+      kind: CiliumClusterwideNetworkPolicy
+      metadata:
+        name: edge-blocklist
+      spec:
+        endpointSelector:
+          matchLabels:
+            k8s:io.kubernetes.pod.namespace: envoy-gateway-system
+            app.kubernetes.io/name: envoy
+            gateway.envoyproxy.io/owning-gateway-name: edge
+        # only ever removes traffic; the proxies' own policies decide what is allowed
+        enableDefaultDeny:
+          ingress: false
+          egress: false
+        ingressDeny:
+          - fromCIDRSet:
+      EOF
+        printf '          - cidr: %s\n' "''${cidrs[@]}"
+      } > "$tmp"
+      # k3s applies files by extension, so the dotted temp file is never half-read
+      mv "$tmp" ${manifests}/edge-blocklist.yaml
+      echo "edge blocklist: ''${#cidrs[@]} prefixes"
+    '';
+  };
 
   # kubectl logs in through Keycloak (realm homelab, client kubernetes); groups map to RBAC in fleet/addons/rbac
   authentication = yaml.generate "k3s-authentication.yaml" {
@@ -333,5 +403,50 @@ in
       stringData:
         key: ${config.secrets.placeholder."openbao/seal_key"}
     '';
+  };
+
+  # the last good list stays on disk, so k3s reapplies it on boot without the feeds
+  systemd.services.edge-blocklist = {
+    description = "Refresh the edge Gateway's Spamhaus DROP and EmergingThreats blocklist";
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = lib.getExe edgeBlocklist;
+      CapabilityBoundingSet = "";
+      LockPersonality = true;
+      MemoryDenyWriteExecute = true;
+      NoNewPrivileges = true;
+      PrivateDevices = true;
+      PrivateTmp = true;
+      ProtectClock = true;
+      ProtectControlGroups = true;
+      ProtectHome = true;
+      ProtectHostname = true;
+      ProtectKernelLogs = true;
+      ProtectKernelModules = true;
+      ProtectKernelTunables = true;
+      ProtectSystem = "strict";
+      ReadWritePaths = [ manifests ];
+      RestrictAddressFamilies = [
+        "AF_INET"
+        "AF_INET6"
+        "AF_UNIX"
+      ];
+      RestrictNamespaces = true;
+      RestrictRealtime = true;
+      RestrictSUIDSGID = true;
+      SystemCallArchitectures = "native";
+    };
+  };
+
+  # Spamhaus asks for at most hourly; a failed run trips SystemdUnitFailed until the next one succeeds
+  systemd.timers.edge-blocklist = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "5min";
+      OnUnitActiveSec = "6h";
+      RandomizedDelaySec = "15min";
+    };
   };
 }
