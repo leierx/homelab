@@ -27,8 +27,24 @@ let
       count=$(printf '%s\n' "$entries" | grep -c .)
       [ "$count" -ge 100 ] || { echo "too few blocklist entries: $count" >&2; exit 1; }
       {
-        printf 'flush set netdev blocklist ipv4\n'
-        printf 'add element netdev blocklist ipv4 { %s }\n' "$(printf '%s\n' "$entries" | paste -sd, -)"
+        cat <<EOF
+      table netdev blocklist
+      flush table netdev blocklist
+      table netdev blocklist {
+        set ipv4 {
+          type ipv4_addr
+          flags interval
+          auto-merge
+          elements = { $(printf '%s\n' "$entries" | paste -sd, -) }
+        }
+
+        chain ingress {
+          type filter hook ingress device "eno1" priority filter; policy accept;
+          ip saddr { 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16 } accept
+          ip saddr @ipv4 drop
+        }
+      }
+      EOF
       } | nft -f -
       echo "loaded $count blocklist entries"
     '';
@@ -55,26 +71,7 @@ in
     '';
 
     # only WireGuard in from the LAN until Cilium's hostFirewall loads after k3s
-    nftables = {
-      enable = true;
-      tables.blocklist = {
-        family = "netdev";
-        content = ''
-          set ipv4 {
-            type ipv4_addr
-            flags interval
-            auto-merge
-          }
-
-          chain ingress {
-            # netdev ingress runs before Cilium's tc eBPF NodePort redirect on eno1
-            type filter hook ingress device "eno1" priority filter; policy accept;
-            ip saddr { 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16 } accept
-            ip saddr @ipv4 drop
-          }
-        '';
-      };
-    };
+    nftables.enable = true;
     firewall = {
       allowPing = false;
       # strict drops pod->host packets: they arrive on lxc* but the pod CIDR routes via cilium_host
