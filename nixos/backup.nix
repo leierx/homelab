@@ -8,13 +8,6 @@ let
   stateDir = "/var/lib/offsite-backup";
   # the same paths every run, so restic only rereads files changed since the last
   root = "/run/offsite-backup";
-  # metrics and logs expire anyway (mimir is most of the nightly churn); caches refill
-  excluded = [
-    "monitoring/data-mimir-0"
-    "monitoring/storage-loki-0"
-    "renovate/renovate-cache"
-    "immich/model-cache"
-  ];
 
   backup = pkgs.writeShellApplication {
     name = "offsite-backup";
@@ -79,16 +72,36 @@ let
 
       # named by claim, so a volume recreated by a cluster rebuild continues its history
       # --kubeconfig: k3s's kubectl otherwise falls back to k3s.yaml
-      bound=$(kubectl --kubeconfig=/dev/null --server=https://127.0.0.1:6443 --certificate-authority=$tls/server-ca.crt \
-          --client-certificate="$kube/cert.pem" --client-key="$kube/key.pem" get pv -o json \
+      k() {
+        kubectl --kubeconfig=/dev/null --server=https://127.0.0.1:6443 \
+          --certificate-authority=$tls/server-ca.crt \
+          --client-certificate="$kube/cert.pem" --client-key="$kube/key.pem" "$@"
+      }
+      bound=$(k get pv -o json \
         | jq -r '.items[] | select(.status.phase == "Bound") | "\(.metadata.name) \(.spec.claimRef.namespace)/\(.spec.claimRef.name)"')
-      declare -A claims excluded=(${lib.concatMapStringsSep " " (c: "[${c}]=1") excluded})
+
+      # loft/backup: "false" on a PVC or namespace opts out; the PVC label wins
+      declare -A claims=() claimOptOut=() namespaceOptOut=()
       while read -r pv claim; do claims[$pv]=$claim; done <<<"$bound"
+      while read -r claim value; do claimOptOut[$claim]=$value; done < <(
+        k get pvc -A -o json | jq -r '.items[]
+          | select(.metadata.labels["loft/backup"] != null)
+          | "\(.metadata.namespace)/\(.metadata.name) \(.metadata.labels["loft/backup"])"'
+      )
+      while read -r namespace value; do namespaceOptOut[$namespace]=$value; done < <(
+        k get ns -o json | jq -r '.items[]
+          | select(.metadata.labels["loft/backup"] != null)
+          | "\(.metadata.name) \(.metadata.labels["loft/backup"])"'
+      )
+
       for dataset in $(zfs list -H -o name -d 1 tank); do
         [ "$dataset" = tank ] && continue
         pv=''${dataset#tank/}
         claim=''${claims[$pv]:-unbound/$pv}
-        [[ -v excluded[$claim] ]] && continue
+        namespace=''${claim%%/*}
+        skip=''${claimOptOut[$claim]:-}
+        if [ -z "$skip" ]; then skip=''${namespaceOptOut[$namespace]:-}; fi
+        [ "$skip" = "false" ] && continue
         dir=${root}/volumes/$claim
         mkdir -p "$dir"
         mount -t zfs -o ro "$dataset@restic" "$dir"
@@ -179,7 +192,7 @@ in
   programs.ssh.knownHosts."rsync.net".publicKey =
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJtclizeBy1Uo3D86HpgD3LONGVH0CJ0NT+YfZlldAJd";
 
-  # all the backup may do in the API: name volumes by claim
+  # all the backup may do in the API: name volumes by claim and read the opt-out labels
   services.k3s.manifests.offsite-backup-rbac.content = [
     {
       apiVersion = "rbac.authorization.k8s.io/v1";
@@ -188,7 +201,11 @@ in
       rules = [
         {
           apiGroups = [ "" ];
-          resources = [ "persistentvolumes" ];
+          resources = [
+            "persistentvolumes"
+            "persistentvolumeclaims"
+            "namespaces"
+          ];
           verbs = [ "list" ];
         }
       ];

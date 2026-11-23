@@ -294,6 +294,10 @@ in
         cilium = pkgs.cilium-cli;
       };
 
+  # Argo CD's repository credential for the private app-of-apps repo, through k3s's auto-deploy manifests
+  secrets.secrets."argocd/private_repo".path =
+    "/var/lib/rancher/k3s/server/manifests/argocd-private-repo.yaml";
+
   secrets.secrets."openbao/seal_key" = { };
   # OpenBao's static auto-unseal key, through k3s's auto-deploy manifests
   secrets.templates."openbao-seal-key.yaml" = {

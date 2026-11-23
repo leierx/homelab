@@ -85,6 +85,20 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   3. Once it is unsealed, remove the `previous` key from both places. Keep the
      old key until the last backup made with it has expired.
 
+### Private app-of-apps repo
+
+Addons that should not be public live in `leierx/homelab-private`, rendered by
+`Application/loft01-private`. Its Applications live in `fleet/apps`; only its
+repository credential belongs in this repository.
+
+Argo CD's repository credential is the host-only `argocd/private_repo` string
+in `/var/lib/secrets.yaml`: a `Secret` labeled
+`argocd.argoproj.io/secret-type: repository` with `type: git`, the repo URL,
+username and a fine-grained PAT (`Contents: Read`). `nixos/k3s.nix` symlinks it
+into `/var/lib/rancher/k3s/server/manifests/argocd-private-repo.yaml`; k3s
+applies it and picks up a rotation within 15 s. No OpenBao seed, no manual
+apply.
+
 ## Access & Identity
 
 - **Keycloak** (`https://auth.skinke.net`, realm `homelab`) is the SSO provider.
@@ -139,9 +153,13 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 Each PVC is a dataset `tank/<pv>`. zrepl keeps local snapshots (24 hourly,
 14 daily, 3 monthly); `offsite-backup.service` copies a snapshot of every
 volume plus the k3s state to rsync.net nightly at 04:30 (restic: 7 daily,
-4 weekly, 6 monthly), except the claims in `excluded` (Mimir, Loki, caches).
-Example: Immich originals live in claim `immich/library` under `library/`.
-Run everything as root on `loft01` (`doas -s`).
+4 weekly, 6 monthly), except claims labeled `loft/backup: "false"` (today
+Mimir, Loki, Alertmanager, the Renovate cache and Immich's model cache).
+Set the label on a PVC or Namespace; a PVC label (`"false"` or `"true"`) wins,
+so `monitoring` opts out by default and Grafana's PVC opts back in. zrepl still
+snapshots every dataset; this only controls the offsite copy. Example: Immich
+originals live in claim `immich/library` under `library/`. Run everything as
+root on `loft01` (`doas -s`).
 
 **From a local snapshot** (last 3 months, instant):
 

@@ -30,6 +30,7 @@ addons:
   openbao-db-rotation: true
   opencloud: true
   paperless: true
+  private: true
   prometheus-operator-crds: true
   rbac: true
   reloader: true

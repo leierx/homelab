@@ -19,6 +19,8 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: model-cache
+  labels:
+    loft/backup: "false"
 spec:
   accessModes: [ReadWriteOnce]
   {{- with .Values.persistence.modelCache.storageClass }}

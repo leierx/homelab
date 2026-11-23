@@ -1,0 +1,20 @@
+namespace: argocd
+dependencies:
+  - argocd
+sources:
+  - repoURL: https://github.com/leierx/homelab-private.git
+    targetRevision: main
+    path: fleet/apps
+    directory: {recurse: true}
+application:
+  metadata:
+    finalizers: []
+    annotations:
+      fleet.io/diff-preview: skip
+  spec:
+    ignoreDifferences:
+      - group: argoproj.io
+        kind: Application
+        jsonPointers: [/spec/syncPolicy/automated/enabled]
+    syncPolicy:
+      syncOptions: [CreateNamespace=true, ServerSideApply=true, RespectIgnoreDifferences=true]

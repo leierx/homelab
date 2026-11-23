@@ -91,7 +91,9 @@ nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
   previews diffs and builds artifacts. Never use Kustomize's Helm chart
   inflation generator.
 - **Enabling addons:** only through `cluster.yaml`. Per-cluster values and
-  manifests go in `clusters/<cluster>/<addon>/{values.yaml,manifests/}`.
+  manifests go in `clusters/<cluster>/<addon>/{values.yaml,manifests/}`. The
+  `private` scoped addon points at the private app-of-apps repo; its
+  Applications live outside this repository.
 - **Dependencies:** Declare cross-addon ordering with `dependencies: []` in
   `addon.yaml` (any layer). `_helpers.tpl` computes the
   `argocd.argoproj.io/sync-wave` and fails on missing deps, cycles and deps
@@ -113,11 +115,16 @@ nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
   its labels come from the manifests and Argo CD ignores these.
 - **Stateful resources:** Keep `argocd.argoproj.io/sync-options: Delete=false,Prune=false`
   on PVCs, CNPG `Cluster`/`Database` CRs, and persistent namespaces.
+- **Backup exclusions:** Label the PVC or its Namespace
+  `loft/backup: "false"`; a PVC label wins over the namespace.
+  Never add claim names to `nixos/backup.nix`. zrepl still snapshots every
+  dataset.
 - **Secrets:** Never commit plaintext or encrypted Kubernetes Secrets to git.
   Use `ExternalSecret` and `PushSecret` against `fleet-secrets` and
   `fleet-secrets-push` (OpenBao `kv/<cluster>/<app>`). Host-only bootstrap
   secrets live in `/var/lib/secrets.yaml` on the host, never in git
-  (`nixos/secrets.nix`).
+  (`nixos/secrets.nix`). Argo CD's private repo credential is the host-only
+  `argocd/private_repo` secret (`nixos/k3s.nix`), not OpenBao.
 - **Renovate holds:** Remove temporary `allowedVersions` holds in
   `renovate/holds.json5` once upstream ships the fix (currently
   `prometheus-smartctl-exporter` held below 0.18.0 until a chart bundles an
