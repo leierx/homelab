@@ -21,6 +21,7 @@ locals {
     argocd_cli     = keycloak_openid_client.argocd_cli
     grafana        = keycloak_openid_client.grafana
     immich         = keycloak_openid_client.immich
+    jellyfin       = keycloak_openid_client.jellyfin
     alerta         = keycloak_openid_client.alerta
     edge           = keycloak_openid_client.edge
     kubernetes     = keycloak_openid_client.kubernetes
@@ -43,6 +44,7 @@ locals {
     "argo-workflows" = "argo_workflows"
     grafana          = "grafana"
     immich           = "immich"
+    jellyfin         = "jellyfin"
     kubernetes       = "kubernetes"
     miniflux         = "miniflux"
     opencloud        = "opencloud"
@@ -68,6 +70,7 @@ locals {
       argocd_cli     = "argocd"
       grafana        = "grafana"
       immich         = "immich"
+      jellyfin       = "jellyfin"
       alerta         = "alerta"
       edge           = "edge"
       kubernetes     = "kubernetes"
@@ -297,6 +300,27 @@ resource "keycloak_openid_client" "paperless" {
   pkce_code_challenge_method   = "S256"
 
   valid_redirect_uris = ["https://paperless.skinke.net/accounts/oidc/keycloak/login/callback/"]
+}
+
+resource "keycloak_openid_client" "jellyfin" {
+  realm_id  = keycloak_realm.homelab.id
+  client_id = "jellyfin"
+  name      = "jellyfin"
+  enabled   = true
+  base_url  = "https://jellyfin.skinke.net"
+
+  access_type                  = "CONFIDENTIAL"
+  client_secret_wo             = var.jellyfin_client_secret
+  client_secret_wo_version     = "1"
+  standard_flow_enabled        = true
+  direct_access_grants_enabled = false
+  implicit_flow_enabled        = false
+  service_accounts_enabled     = false
+  full_scope_allowed           = false
+  pkce_code_challenge_method   = "S256"
+
+  valid_redirect_uris = ["https://jellyfin.skinke.net/sso/OID/redirect/keycloak"]
+  web_origins         = ["https://jellyfin.skinke.net"]
 }
 
 # OpenCloud's web app

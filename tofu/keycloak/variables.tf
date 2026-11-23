@@ -47,3 +47,8 @@ variable "paperless_client_secret" {
   type      = string
   sensitive = true
 }
+
+variable "jellyfin_client_secret" {
+  type      = string
+  sensitive = true
+}

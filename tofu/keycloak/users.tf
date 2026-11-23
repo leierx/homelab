@@ -30,6 +30,7 @@ resource "keycloak_user_groups" "leier" {
       "argo-workflows-admin",
       "grafana-admin",
       "immich-admin",
+      "jellyfin-admin",
       "keycloak-viewer",
       "kubernetes-admin",
       "miniflux-admin",

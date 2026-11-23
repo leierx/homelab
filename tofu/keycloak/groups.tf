@@ -13,6 +13,7 @@ locals {
     "argo-workflows" = ["admin"]
     grafana          = ["admin", "editor", "viewer"]
     immich           = ["admin", "user"]
+    jellyfin         = ["admin", "user"]
     keycloak         = ["viewer"]
     kubernetes       = ["admin", "operator", "viewer"]
     miniflux         = ["admin", "user"]
@@ -21,7 +22,7 @@ locals {
   }
 
   # the apps behind Envoy's login (client edge): their users pass it
-  edge_apps = ["argocd", "argo-workflows", "grafana", "miniflux", "paperless"]
+  edge_apps = ["argocd", "argo-workflows", "grafana", "jellyfin", "miniflux", "paperless"]
 
   groups = merge([
     for app, roles in local.app_groups : {

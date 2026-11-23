@@ -4,6 +4,36 @@
   pkgs,
   ...
 }:
+let
+  blocklist = pkgs.writeShellApplication {
+    name = "nftables-blocklist";
+    runtimeInputs = [
+      pkgs.curl
+      pkgs.gnugrep
+      pkgs.gawk
+      pkgs.coreutils
+      pkgs.nftables
+    ];
+    text = ''
+      entries=$(
+        {
+          curl -fsSL --max-time 30 --retry 3 https://www.spamhaus.org/drop/drop.txt
+          printf '\n'
+          curl -fsSL --max-time 30 --retry 3 https://rules.emergingthreats.net/fwrules/emerging-Block-IPs.txt
+        } | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(/[0-9]+)?' \
+          | awk -F'[./]' '$1 <= 255 && $2 <= 255 && $3 <= 255 && $4 <= 255 && (NF == 4 || ($5 >= 8 && $5 <= 32))' \
+          | sort -u
+      )
+      count=$(printf '%s\n' "$entries" | grep -c .)
+      [ "$count" -ge 100 ] || { echo "too few blocklist entries: $count" >&2; exit 1; }
+      {
+        printf 'flush set netdev blocklist ipv4\n'
+        printf 'add element netdev blocklist ipv4 { %s }\n' "$(printf '%s\n' "$entries" | paste -sd, -)"
+      } | nft -f -
+      echo "loaded $count blocklist entries"
+    '';
+  };
+in
 {
   networking = {
     hostName = "loft01";
@@ -25,7 +55,26 @@
     '';
 
     # only WireGuard in from the LAN until Cilium's hostFirewall loads after k3s
-    nftables.enable = true;
+    nftables = {
+      enable = true;
+      tables.blocklist = {
+        family = "netdev";
+        content = ''
+          set ipv4 {
+            type ipv4_addr
+            flags interval
+            auto-merge
+          }
+
+          chain ingress {
+            # netdev ingress runs before Cilium's tc eBPF NodePort redirect on eno1
+            type filter hook ingress device "eno1" priority filter; policy accept;
+            ip saddr { 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16 } accept
+            ip saddr @ipv4 drop
+          }
+        '';
+      };
+    };
     firewall = {
       allowPing = false;
       # strict drops pod->host packets: they arrive on lxc* but the pod CIDR routes via cilium_host
@@ -118,4 +167,52 @@
     '';
   };
   environment.etc.hosts.source = lib.mkForce config.secrets.templates."hosts".path;
+
+  systemd.services.nftables-blocklist = {
+    description = "Load Spamhaus DROP and EmergingThreats IPv4 blocklists into nftables";
+    after = [
+      "network-online.target"
+      "nftables.service"
+    ];
+    wants = [ "network-online.target" ];
+    partOf = [ "nftables.service" ];
+    wantedBy = [ "nftables.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = lib.getExe blocklist;
+      DynamicUser = true;
+      AmbientCapabilities = [ "CAP_NET_ADMIN" ];
+      CapabilityBoundingSet = [ "CAP_NET_ADMIN" ];
+      LockPersonality = true;
+      MemoryDenyWriteExecute = true;
+      NoNewPrivileges = true;
+      PrivateDevices = true;
+      PrivateTmp = true;
+      ProtectClock = true;
+      ProtectControlGroups = true;
+      ProtectHome = true;
+      ProtectHostname = true;
+      ProtectKernelLogs = true;
+      ProtectKernelModules = true;
+      ProtectKernelTunables = true;
+      ProtectSystem = "strict";
+      RestrictAddressFamilies = [
+        "AF_INET"
+        "AF_INET6"
+        "AF_NETLINK"
+      ];
+      RestrictNamespaces = true;
+      RestrictRealtime = true;
+      RestrictSUIDSGID = true;
+    };
+  };
+
+  systemd.timers.nftables-blocklist = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "daily";
+      RandomizedDelaySec = "30min";
+      Persistent = true;
+    };
+  };
 }

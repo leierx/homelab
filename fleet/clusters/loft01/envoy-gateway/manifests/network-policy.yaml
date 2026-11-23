@@ -36,6 +36,8 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: paperless
             app.kubernetes.io/name: paperless
+        - matchLabels:
+            io.cilium.k8s.namespace.labels.gateway-backend: "true"
       toPorts:
         - ports: [{port: "10443", protocol: TCP}]
     # cert-manager HTTP-01 self-check for auth.skinke.net
@@ -52,6 +54,10 @@ spec:
             gateway.envoyproxy.io/owning-gateway-name: edge
       toPorts:
         - ports: [{port: "10443", protocol: TCP}]
+    # private addons opt in with the gateway-backend namespace label
+    - toEndpoints:
+        - matchLabels:
+            io.cilium.k8s.namespace.labels.gateway-backend: "true"
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: immich
