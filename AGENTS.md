@@ -128,9 +128,9 @@ nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
 - **Renovate automerge:** Non-major updates automerge by design to keep
   maintenance low (`renovate/review.json5`). Only Argo CD (all updates) and
   minor bumps of core platform infrastructure (`cilium`, `envoy-gateway`,
-  `cert-manager`, `external-secrets`, `cloudnative-pg`) and stateful apps wait
-  for review. GHCR/Quay omit release timestamps, so `timestamp-optional`
-  soaking is intentional.
+  `cert-manager`, `external-secrets`, `cloudnative-pg`), `keycloak`, and
+  `openbao` wait for review. GHCR/Quay omit release timestamps, so
+  `timestamp-optional` soaking is intentional.
 - **Renovate holds:** Remove temporary `allowedVersions` holds in
   `renovate/holds.json5` once upstream ships the fix (currently
   `prometheus-smartctl-exporter` held below 0.18.0 until a chart bundles an
