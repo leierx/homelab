@@ -41,7 +41,7 @@ jobs:
           sed -i "s|vendorHash = \".*\";|vendorHash = \"$hash\";|" packages/capi-argo-bridge/default.nix
           git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit -m "fix(capi-argo-bridge): update vendorHash" -- packages/capi-argo-bridge/default.nix
+            commit -s -m "fix(capi-argo-bridge): update vendorHash" -- packages/capi-argo-bridge/default.nix
           git push
           echo "pushed=true" >> "$GITHUB_OUTPUT"
 

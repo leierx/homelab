@@ -29,6 +29,8 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: mimir
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -85,6 +87,8 @@ spec:
   volumeClaimTemplates:
     - metadata:
         name: data
+        annotations:
+          argocd.argoproj.io/sync-options: Delete=false,Prune=false
       spec:
         accessModes: ["ReadWriteOnce"]
         {{- with .Values.persistence.data.storageClass }}

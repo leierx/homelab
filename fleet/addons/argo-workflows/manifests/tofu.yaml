@@ -20,6 +20,8 @@ spec:
         name: "{{workflow.parameters.configMap}}"
     - name: work
       emptyDir: {}
+    - name: tmp
+      emptyDir: {}
   templates:
     - name: reconcile
       inputs:
@@ -37,15 +39,16 @@ spec:
         volumeMounts:
           - {name: tofu, mountPath: /tofu, readOnly: true}
           - {name: work, mountPath: /work}
+          - {name: tmp, mountPath: /tmp}
         command: [sh, -c]
         args:
           - |
             set -eu
-            if [ -n "{{inputs.parameters.waitUrl}}" ]; then
+            if [ -n "$WAIT_URL" ]; then
               tries=50
-              until wget -q -O /dev/null "{{inputs.parameters.waitUrl}}"; do
+              until wget -q -O /dev/null "$WAIT_URL"; do
                 tries=$((tries - 1))
-                [ "$tries" -gt 0 ] || { echo "{{inputs.parameters.waitUrl}} did not answer"; exit 1; }
+                [ "$tries" -gt 0 ] || { echo "$WAIT_URL did not answer"; exit 1; }
                 sleep 10
               done
             fi
@@ -57,11 +60,13 @@ spec:
             tofu apply -lock-timeout=10m plan
         env:
           - {name: HOME, value: /tmp}
+          - {name: WAIT_URL, value: "{{inputs.parameters.waitUrl}}"}
         envFrom:
           - secretRef:
               name: "{{inputs.parameters.secret}}"
         securityContext:
           allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           capabilities:
             drop: ["ALL"]
         resources:

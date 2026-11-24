@@ -1,5 +1,6 @@
 namespace: keycloak
 dependencies:
+  - argo-workflows
   - cilium
   - cloudnative-pg
   - external-secrets

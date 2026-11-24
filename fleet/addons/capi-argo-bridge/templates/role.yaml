@@ -6,7 +6,7 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
-    # no list/watch: the bridge gets by name, and this namespace holds cluster-admin tokens and repo credentials
+    # admission (capi-argo-bridge-secrets) limits this SA to cluster-* Secrets it owns
     verbs: ["create", "update", "delete", "get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -22,3 +22,46 @@ roleRef:
   kind: Role
   name: capi-argo-bridge
   apiGroup: rbac.authorization.k8s.io
+---
+# RBAC can't match a Secret prefix or ownership label, so admission enforces the boundary
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: capi-argo-bridge-secrets
+spec:
+  failurePolicy: Fail
+  matchConditions:
+    - name: is-capi-argo-bridge
+      expression: >-
+        request.userInfo.username == 'system:serviceaccount:{{ .Release.Namespace }}:capi-argo-bridge'
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE, DELETE]
+        resources: [secrets]
+  validations:
+    - expression: >-
+        request.operation == 'DELETE'
+        ? (oldObject.metadata.name.startsWith('cluster-')
+           && has(oldObject.metadata.labels)
+           && oldObject.metadata.labels['app.kubernetes.io/managed-by'] == 'capi-argo-bridge')
+        : (object.metadata.name.startsWith('cluster-')
+           && has(object.metadata.labels)
+           && object.metadata.labels['app.kubernetes.io/managed-by'] == 'capi-argo-bridge'
+           && (request.operation == 'CREATE'
+               || (has(oldObject.metadata.labels)
+                   && oldObject.metadata.labels['app.kubernetes.io/managed-by'] == 'capi-argo-bridge')))
+      message: capi-argo-bridge may only create, update or delete cluster-* Secrets labelled app.kubernetes.io/managed-by=capi-argo-bridge
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: capi-argo-bridge-secrets
+spec:
+  policyName: capi-argo-bridge-secrets
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: {{ .Release.Namespace }}

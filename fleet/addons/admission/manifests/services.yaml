@@ -48,12 +48,14 @@ spec:
         resources: [securitypolicies]
   validations:
     - expression: >-
-        has(object.spec.oidc) || has(object.spec.mergeType)
-        || (has(object.metadata.labels) && 'loft/gateway' in object.metadata.labels
-        && object.metadata.labels['loft/gateway'] == 'true')
+        has(object.spec.oidc)
+        || (has(object.spec.mergeType) && object.spec.mergeType == 'StrategicMerge')
+        || (has(namespaceObject.metadata.labels) && 'gateway-backend' in namespaceObject.metadata.labels
+        && namespaceObject.metadata.labels['gateway-backend'] == 'true')
       message: >-
         a SecurityPolicy on a route or ListenerSet replaces the Gateway's OIDC
-        login; keep spec.oidc, set spec.mergeType, or label it loft/gateway=true
+        login; keep spec.oidc, set spec.mergeType=StrategicMerge, or opt the
+        namespace in with gateway-backend=true
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding
@@ -95,13 +97,15 @@ spec:
           'opencloud',
           'paperless'
         ]
-        || (has(object.metadata.labels) && 'loft/gateway' in object.metadata.labels
-        && object.metadata.labels['loft/gateway'] == 'true')
-        || (has(object.metadata.labels) && 'acme.cert-manager.io/http01-solver' in object.metadata.labels
+        || (has(namespaceObject.metadata.labels) && 'gateway-backend' in namespaceObject.metadata.labels
+        && namespaceObject.metadata.labels['gateway-backend'] == 'true')
+        || (request.resource.resource == 'httproutes'
+        && has(object.metadata.labels) && 'acme.cert-manager.io/http01-solver' in object.metadata.labels
         && object.metadata.labels['acme.cert-manager.io/http01-solver'] == 'true')
       message: >-
-        only approved web-facing namespaces, or resources labelled loft/gateway=true,
-        may attach HTTPRoute or ListenerSet resources to the Gateways
+        only approved web-facing namespaces, or namespaces labelled
+        gateway-backend=true, may attach HTTPRoute or ListenerSet resources to
+        the Gateways
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

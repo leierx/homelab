@@ -36,7 +36,7 @@ func main() {
 	// watch only --cluster-namespace: argocd holds cluster-admin tokens, so RBAC there has no list or watch
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		Metrics:                server.Options{BindAddress: "0"},
+		Metrics:                server.Options{BindAddress: ":8080"},
 		HealthProbeBindAddress: ":8081",
 		LeaderElection:         false,
 		Cache: cache.Options{

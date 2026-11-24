@@ -25,6 +25,8 @@ spec:
             - --argocd-namespace={{ .Release.Namespace }}
             - --cluster-namespace={{ .Values.clusterNamespace }}
           ports:
+            - name: metrics
+              containerPort: 8080
             - name: health
               containerPort: 8081
           livenessProbe:
@@ -46,3 +48,15 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: capi-argo-bridge
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: capi-argo-bridge
+  podMetricsEndpoints:
+    - port: metrics

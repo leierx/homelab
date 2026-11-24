@@ -2,6 +2,7 @@ namespace: argocd
 dependencies:
   - cilium
   - cluster-api
+  - prometheus-operator-crds
 helm:
   path: fleet/addons/capi-argo-bridge
 managedNamespaceMetadata:

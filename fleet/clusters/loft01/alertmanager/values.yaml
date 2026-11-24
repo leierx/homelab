@@ -1,1 +1,9 @@
 persistence: {storageClass: zfs}
+# free SMTP relay on port 587 (ISP blocks port 25); credentials live in OpenBao kv/loft01/alertmanager
+config:
+  global:
+    smtp_smarthost: smtp.resend.com:587
+    smtp_from: loft01 <alertmanager@skinke.net>
+    smtp_auth_username: resend
+    smtp_auth_password_file: /etc/alertmanager-secrets/smtp-password
+    smtp_require_tls: true

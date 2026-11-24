@@ -28,20 +28,22 @@ compactor:
   data_dir: /data/compactor
   sharding_ring:
     kvstore:
-      store: memberlist
+      store: inmemory
 distributor:
   ring:
     instance_addr: 127.0.0.1
     kvstore:
-      store: memberlist
+      store: inmemory
 ingester:
   ring:
     instance_addr: 127.0.0.1
     kvstore:
-      store: memberlist
+      store: inmemory
     replication_factor: 1
 store_gateway:
   sharding_ring:
+    kvstore:
+      store: inmemory
     replication_factor: 1
 limits:
   compactor_blocks_retention_period: 90d

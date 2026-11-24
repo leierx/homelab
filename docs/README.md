@@ -51,6 +51,13 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   new password, and Reloader rolls the workload that consumes it. OpenBao's own
   database password uses the same pattern from the scoped
   `clusters/loft01/openbao-db-rotation` addon.
+- **Alertmanager SMTP password** (`smtp_password`, e.g. a Resend API key for
+  `smtp.resend.com:587`) is set by hand:
+
+  ```sh
+  printf %s "$SMTP_PASSWORD" | just bao kv put kv/loft01/alertmanager smtp_password=-
+  ```
+
 - **Renovate GitHub App credentials** (`app_id`, `installation_id`,
   `private_key`) are set by hand:
 

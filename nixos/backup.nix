@@ -36,11 +36,11 @@ let
       }
 
       # a zvol or nested dataset would be silently left out below
-      zfs list -H -o name,type -r tank | while read -r name type; do
+      while read -r name type; do
         [ "$name" = tank ] && continue
         [ "$type" = filesystem ] || { echo "$name is a $type, not a dataset" >&2; exit 1; }
         [ "''${name%/*}" = tank ] || { echo "$name is nested below tank/<pv>" >&2; exit 1; }
-      done
+      done < <(zfs list -H -o name,type -r tank)
 
       # 10: the repository doesn't exist yet
       rc=0
@@ -49,7 +49,8 @@ let
       # this unit is the repo's only writer, so any lock left behind is stale
       r unlock
 
-      # one point in time for every volume
+      # one point in time for every volume; always unmount and destroy even if the run fails
+      trap 'umount -R ${root}/volumes >/dev/null 2>&1 || true; zfs destroy -r tank@restic >/dev/null 2>&1 || true' EXIT
       if zfs list tank@restic >/dev/null 2>&1; then zfs destroy -r tank@restic; fi
       zfs snapshot -r tank@restic
       time=$(date -d "@$(zfs get -Hp -o value creation tank@restic)" '+%F %T')
@@ -82,13 +83,19 @@ let
 
       # loft/backup: "false" on a PVC or namespace opts out; the PVC label wins
       declare -A claims=() claimOptOut=() namespaceOptOut=()
-      while read -r pv claim; do claims[$pv]=$claim; done <<<"$bound"
-      while read -r claim value; do claimOptOut[$claim]=$value; done < <(
+      while read -r pv claim; do
+        [ -n "$pv" ] && claims[$pv]=$claim
+      done <<<"$bound"
+      while read -r claim value; do
+        [ -n "$claim" ] && claimOptOut[$claim]=$value
+      done < <(
         k get pvc -A -o json | jq -r '.items[]
           | select(.metadata.labels["loft/backup"] != null)
           | "\(.metadata.namespace)/\(.metadata.name) \(.metadata.labels["loft/backup"])"'
       )
-      while read -r namespace value; do namespaceOptOut[$namespace]=$value; done < <(
+      while read -r namespace value; do
+        [ -n "$namespace" ] && namespaceOptOut[$namespace]=$value
+      done < <(
         k get ns -o json | jq -r '.items[]
           | select(.metadata.labels["loft/backup"] != null)
           | "\(.metadata.name) \(.metadata.labels["loft/backup"])"'
@@ -108,6 +115,8 @@ let
       done
 
       added=$(r backup --host loft01 --time "$time" --json ${root} | jq -r 'select(.message_type == "summary") | .data_added')
+      # unmount before destroying @restic in the EXIT trap
+      umount -R ${root}/volumes 2>/dev/null || true
       r forget --host loft01 --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
       # reads back a different 1/28 of the stored data each night, so all of it every 4 weeks
       r check --read-data-subset="$(($(date +%s) / 86400 % 28 + 1))/28"

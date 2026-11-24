@@ -133,22 +133,25 @@ Conventions:
 
 `mimir` and `loki` post to `alertmanager`, which sends every alert to Alerta
 as a webhook (`/api/webhooks/prometheus`) with the API key from
-`ExternalSecret/alertmanager`. Alerta is the history: it shows what fired when,
-with notes and acknowledgements. Mimir's ruler also writes `ALERTS` and
-`ALERTS_FOR_STATE` series back, so Grafana can chart and count past alerts.
+`ExternalSecret/alertmanager`, and emails `severity="critical"` alerts over
+SMTP submission (`587`) via a free relay configured in
+`fleet/clusters/loft01/alertmanager/values.yaml` (ISP blocks outbound port 25).
+Alerta is the history: it shows what fired when, with notes and
+acknowledgements. Mimir's ruler also writes `ALERTS` and `ALERTS_FOR_STATE`
+series back, so Grafana can chart and count past alerts.
 
-There is no push notification channel: everything lands in Alerta, which is
-reached through the WireGuard `wg` Gateway. The repeat interval is 4 hours
-while an alert fires, and Alertmanager posts once more when it resolves.
+The repeat interval is 4 hours while an alert fires, and Alertmanager posts and
+mails once more when it resolves.
 
 To stop the repeats, silence the alert in Grafana (Alerting, Silences, with
 the `Alertmanager` datasource). Acknowledging it in Alerta doesn't: the
 `prometheus` plugin in the `alerta-web` image still calls Alertmanager's v1
 API, which Alertmanager has removed.
 
-`AlertmanagerAlertaFailing` (critical) fires when Alerta can't be reached, so
-alerts don't disappear silently. It reads `receiver_name`, which Alertmanager
-only adds with `--enable-feature=receiver-name-in-metrics`.
+`AlertmanagerAlertaFailing` (critical) fires when Alerta can't be reached (and
+lands by email), and `AlertmanagerEmailFailing` (warning) fires when SMTP
+delivery fails (and lands in Alerta). Both read `receiver_name`, which
+Alertmanager only adds with `--enable-feature=receiver-name-in-metrics`.
 
 Nothing alerts if the whole stack is down.
 

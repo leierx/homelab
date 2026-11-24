@@ -6,7 +6,16 @@ config:
     group_wait: 10s
     group_interval: 1m
     repeat_interval: 4h
+    routes:
+      - receiver: email
+        matchers: ['severity="critical"']
+        continue: true
+      - receiver: alerta
   receivers:
+    - name: email
+      email_configs:
+        - to: larssmitheier@protonmail.com
+          send_resolved: true
     - name: alerta
       webhook_configs:
         - url: http://alerta.alerta.svc:8080/api/webhooks/prometheus

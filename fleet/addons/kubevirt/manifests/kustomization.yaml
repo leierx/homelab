@@ -45,17 +45,12 @@ patches:
       - op: add
         path: /spec/uninstallStrategy
         value: BlockUninstallIfWorkloadsExist
-  # TODO(kubevirt v1.10.0): drop with kubevirt#18698; v1.9.1 unmounts the client cert virt-handler still reads
   - target:
       kind: KubeVirt
     patch: |
       - op: add
         path: /spec/customizeComponents
         value:
-          flags:
-            handler:
-              client-cert-file: /etc/virt-handler/migrationservercertificates/tls.crt
-              client-key-file: /etc/virt-handler/migrationservercertificates/tls.key
           # the admission policy wants a memory limit and no CPU limit on every container
           patches:
             # json, not strategic: virt-operator decodes every virt-api patch as a JSON patch and warns on each reconcile

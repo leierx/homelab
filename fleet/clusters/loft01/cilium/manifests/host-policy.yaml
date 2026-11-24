@@ -18,12 +18,11 @@ spec:
             - {port: "22", protocol: TCP}
             - {port: "53", protocol: UDP}
             - {port: "53", protocol: TCP}
-            - {port: "6443", protocol: TCP}
   egress:
     - toCIDR:
         - 10.0.0.0/24
-    # WireGuard outer UDP packets to peers behind dynamic NAT ports
+    # WireGuard outer UDP packets to peers behind dynamic NAT ports (excludes low privileged ports like UDP/53)
     - toEntities: [world]
       toPorts:
         - ports:
-            - {port: "1", endPort: 65535, protocol: UDP}
+            - {port: "1024", endPort: 65535, protocol: UDP}

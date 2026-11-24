@@ -4,7 +4,7 @@ kind: Password
 metadata:
   name: miniflux-db-password
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   length: 64
   symbols: 0
@@ -15,7 +15,7 @@ kind: ExternalSecret
 metadata:
   name: miniflux-db-rotation
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   refreshInterval: 720h
   target:

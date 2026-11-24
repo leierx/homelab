@@ -23,6 +23,7 @@ spec:
                         limits: {memory: 64Mi}
       envoyService:
         type: NodePort
+        externalTrafficPolicy: Local
         patch:
           type: StrategicMerge
           value:

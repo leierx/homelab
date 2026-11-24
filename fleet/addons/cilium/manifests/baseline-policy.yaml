@@ -10,8 +10,6 @@ spec:
   enableDefaultDeny:
     ingress: true
     egress: true
-  ingress:
-    - {}
   egress:
     - toEndpoints:
         - matchLabels:

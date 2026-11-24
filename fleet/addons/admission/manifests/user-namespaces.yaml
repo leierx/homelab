@@ -20,6 +20,11 @@ spec:
         !(has(object.spec.hostNetwork) && object.spec.hostNetwork)
         && !(has(object.spec.hostPID) && object.spec.hostPID)
         && !(has(object.spec.hostIPC) && object.spec.hostIPC)
+    # virt-launcher opens /dev/kvm and host devices
+    - name: not-virt-launcher
+      expression: >-
+        !has(object.metadata.labels) || !('kubevirt.io' in object.metadata.labels)
+        || object.metadata.labels['kubevirt.io'] != 'virt-launcher'
   mutations:
     - patchType: ApplyConfiguration
       applyConfiguration:
@@ -35,5 +40,5 @@ spec:
     namespaceSelector:
       matchExpressions:
         - key: kubernetes.io/metadata.name
-          operator: In
-          values: [alerta, argo, argocd, capi-operator-system, capi-system, cert-manager, cnpg-system, envoy-gateway-system, external-secrets, immich, keycloak, kubeadm-bootstrap-system, kubeadm-control-plane-system, kubevirt-infrastructure-system, miniflux, monitoring, openbao, opencloud, paperless, renovate]
+          operator: NotIn
+          values: [kube-system, kubevirt, openebs, telemetry]
