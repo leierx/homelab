@@ -29,6 +29,19 @@ the k3s state and every PVC except metrics, logs and caches to rsync.net, but
 a restore is manual and loses up to a day. Do not tear it down, and delete
 nothing stateful without explicit instruction.
 
+## Private Repository
+
+`leierx/homelab-private` (checked out at `../homelab-private`) holds the
+apps behind the `private` scoped addon and is part of this repository for
+every task: reviews, audits and changes always cover both. When a change here
+affects it (Gateways, network policies, Keycloak clients, OpenBao paths,
+Renovate, conventions), update it in the same task; commit in each repo
+separately. If the checkout is missing, say so instead of skipping it.
+
+This repository is public. Never name or describe the private apps here
+(names, hostnames, namespaces, images, OpenBao paths, commit messages, PRs);
+call them "private apps". Jellyfin is the exception: it is public.
+
 ## How `/fleet` Works
 
 Design: issue #167. Read `fleet/README.md` for the schema.
