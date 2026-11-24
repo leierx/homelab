@@ -22,7 +22,7 @@ locals {
   }
 
   # the apps behind Envoy's login (client edge): their users pass it
-  edge_apps = ["argocd", "argo-workflows", "grafana", "jellyfin", "miniflux", "paperless"]
+  edge_apps = ["argocd", "argo-workflows", "grafana", "miniflux", "paperless"]
 
   groups = merge([
     for app, roles in local.app_groups : {
