@@ -213,14 +213,14 @@ it into Nix, where it was generated and broke.
 - **20:18** 247811a drops CoreDNS's egress to host:53 and the host's ingress
   rule for it, and bootstrap step 1 applies `coredns-custom` again
   (`fleet/README.md`).
-
-Now resolved only serves WireGuard peers (`10.0.0.1`) and the host itself.
-Pods use CoreDNS, which talks DoT to Quad9 directly, and Quad9 validates
-DNSSEC.
 - **20:52** 2778e6c and 21bd669 move `coredns-custom` back into
   `nixos/k3s.nix`, as a literal YAML string, so k3s applies it at boot and
   nothing generates it. `Prune=false` kept Argo CD from deleting it on the way
   out.
+
+Now resolved only serves WireGuard peers (`10.0.0.1`) and the host itself.
+Pods use CoreDNS, which talks DoT to Quad9 directly, and Quad9 validates
+DNSSEC.
 
 ## Action items
 

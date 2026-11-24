@@ -19,7 +19,7 @@ patches:
       - op: add
         path: /metadata/labels/pod-security.kubernetes.io~1audit
         value: privileged
-  # the seccomp profile is the one thing keeping virt-launcher (uid 107) out of Pod Security restricted in v1.9.1
+  # the seccomp profile is the one thing keeping virt-launcher (uid 107) out of Pod Security restricted
   - target:
       kind: KubeVirt
     patch: |
