@@ -9,9 +9,8 @@ spec:
     - {name: policy-mode, value: monitor}
   podSelector:
     matchExpressions:
-      - {key: "k8s:io.kubernetes.pod.namespace", operator: NotIn, values: [kube-system, kubevirt, openebs, telemetry]}
+      - {key: "k8s:io.kubernetes.pod.namespace", operator: NotIn, values: [kube-system, kubevirt, openebs, paperless, telemetry]}
       - {key: kubevirt.io, operator: NotIn, values: [virt-launcher]}
-      - {key: app.kubernetes.io/name, operator: NotIn, values: [paperless]}
   lsmhooks:
     - hook: bprm_check_security
       message: Exec of a file that isn't in the image
@@ -47,8 +46,8 @@ spec:
             - {action: Override, argError: -1}
             - {action: Post, imaHash: true}
 ---
-# tripwire-exec for paperless-ngx, whose s6-overlay runs the scripts it compiles into /run; its own policy because any s6
-# chainloader passes a planted file, and Tetragon 1.8 can't load matchWorkloads next to imaHash
+# tripwire-exec for the paperless namespace, whose s6-overlay runs the scripts it compiles into /run; its own policy because any
+# s6 chainloader passes a planted file, and Tetragon 1.8 can't load matchWorkloads next to imaHash
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -58,7 +57,7 @@ spec:
     - {name: policy-mode, value: monitor}
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: paperless
+      "k8s:io.kubernetes.pod.namespace": paperless
   lsmhooks:
     - hook: bprm_check_security
       message: Exec of a file that isn't in the image
@@ -79,14 +78,12 @@ spec:
             - {args: [0], operator: Equal, values: [/run/s6/basedir/bin/init]}
           matchActions:
             - {action: NoPost}
-        # the image is overlayfs; a volume, tmpfs or memfd is not. CNPG and Argo Workflows run a binary they copied into an emptyDir,
-        # and the tofu workflow the providers it downloads
+        # the image is overlayfs; a volume, tmpfs or memfd is not. CNPG (paperless-db) runs a binary it copied into an emptyDir
         - matchBinaries:
             - {operator: NotPrefix, values: [/nix/store/]}
           matchArgs:
             - {args: [1], operator: NotEqual, values: ["2035054128"]}
-            - {args: [0], operator: NotEqual, values: [/controller/manager, /var/run/argo/argoexec]}
-            - {args: [0], operator: NotPrefix, values: [/work/.terraform/providers/]}
+            - {args: [0], operator: NotEqual, values: [/controller/manager]}
           matchActions:
             - {action: Override, argError: -1}
             - {action: Post, imaHash: true}
