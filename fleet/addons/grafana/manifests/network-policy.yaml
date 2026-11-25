@@ -44,18 +44,6 @@ spec:
             - {port: "9093", protocol: TCP}
     # the sidecar watches ConfigMaps
     - toEntities: [kube-apiserver]
-    # grafana.com dashboards
-    - toCIDRSet:
-        - cidr: 0.0.0.0/0
-          except:
-            - 10.0.0.0/8
-            - 172.16.0.0/12
-            - 192.168.0.0/16
-            - 169.254.0.0/16
-            - 100.64.0.0/10
-      toPorts:
-        - ports:
-            - {port: "443", protocol: TCP}
     # Keycloak OIDC via CoreDNS split-horizon to the edge Gateway
     - toEndpoints:
         - matchLabels:

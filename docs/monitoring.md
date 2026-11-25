@@ -190,17 +190,48 @@ To read another host unit, add it to `JOURNAL_UNITS` and restart `alloy-logs`.
 Grafana loads two kinds, both in `fleet/addons/grafana/` or the chart that
 ships them:
 
-- **grafana.com dashboards**, pinned by id and revision in
-  `fleet/addons/grafana/values.yaml` (Kubernetes views, node exporter, Argo CD,
-  cert-manager, Envoy Gateway, CloudNativePG, SMART, systemd, ZFS), downloaded
-  at start. Dashboards that ask for `DS_PROMETHEUS` are mapped to the `mimir`
-  datasource there.
+- **grafana.com dashboards**, vendored as JSON under
+  `fleet/addons/grafana/manifests/dashboards/<folder>/` and generated into one
+  labelled ConfigMap per folder (Kubernetes views, node exporter, Argo CD,
+  cert-manager, Envoy Gateway, CloudNativePG, SMART, systemd, ZFS), so Grafana
+  starts without internet. A ConfigMap holds at most 1 MiB; split a folder
+  before it gets there (`host` is about 800 KB).
 - **Chart-shipped dashboards**, as labelled ConfigMaps found by Grafana's
   sidecar in every namespace (Cilium and Hubble).
 
-Prefer, in this order: a dashboard the chart ships, one from grafana.com at a
-pinned revision, then one of our own. Datasources are `Mimir`, `Loki` and
-`Alertmanager`, provisioned in the same file. Login is Keycloak only; the local
+Prefer, in this order: a dashboard the chart ships, one vendored from
+grafana.com at a pinned revision, then one of our own. To add or bump one, edit
+the list and rerun this from the repo root (`DS_PROMETHEUS` becomes the `mimir`
+datasource, `DS_EXPRESSION` `__expr__`), and list a new file in its folder's
+`configMapGenerator` in `kustomization.yaml`:
+
+```sh
+d=fleet/addons/grafana/manifests/dashboards
+while read -r name id rev; do
+  mkdir -p "$d/${name%/*}"
+  curl -fsS --max-time 60 "https://grafana.com/api/dashboards/$id/revisions/$rev/download" \
+    | sed -E '/-- .* --/! s/\$\{?DS_PROMETHEUS\}?/mimir/g; /-- .* --/! s/\$\{?DS_EXPRESSION\}?/__expr__/g' \
+    > "$d/$name.json"
+done <<'EOF'
+kubernetes/k8s-views-global 15757 43
+kubernetes/k8s-views-namespaces 15758 46
+kubernetes/k8s-views-nodes 15759 40
+kubernetes/k8s-views-pods 15760 41
+kubernetes/k8s-system-api-server 15761 21
+platform/argocd-operational 19993 9
+platform/argocd-application 19974 8
+platform/cert-manager 20842 3
+platform/envoy-gateway 24460 1
+platform/cloudnative-pg 20417 4
+host/node-exporter-full 1860 46
+host/smartctl-exporter 22604 4
+host/systemd 25304 2
+host/zfs-overview 24987 12
+EOF
+```
+
+Datasources are `Mimir`, `Loki` and `Alertmanager`, provisioned in
+`fleet/addons/grafana/values.yaml`. Login is Keycloak only; the local
 admin is break-glass and logging in with it raises an alert.
 
 ## Operating
@@ -248,7 +279,7 @@ not applicable to this cluster, not broken:
   keeps CPU limits off), expiring certificates, paused applications.
 - **Upstream dashboard bugs:** CloudNativePG's TPS panels rate over `$__interval`,
   which is as short as the scrape interval on a short time range. Rating over
-  `$__rate_interval` fixes them, but the grafana.com download can't be patched.
+  `$__rate_interval` fixes them, but the vendored files are upstream's JSON; patching one makes it a fork.
 - **Off by default upstream:** `node_interrupts_total` (one series per CPU and IRQ,
   so too many here) and Argo CD's gRPC latency histograms.
 

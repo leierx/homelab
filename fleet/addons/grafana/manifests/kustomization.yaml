@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - network-policy.yaml
+  - rbac.yaml
+  - rules.yaml
+  - secrets.yaml
+# grafana.com dashboards, vendored so Grafana starts without internet; refresh them with the command in docs/monitoring.md
+generatorOptions:
+  disableNameSuffixHash: true
+  labels: {grafana_dashboard: "1"}
+configMapGenerator:
+  - name: grafana-dashboards-kubernetes
+    options: {annotations: {grafana_folder: Kubernetes}}
+    files:
+      - dashboards/kubernetes/k8s-views-global.json
+      - dashboards/kubernetes/k8s-views-namespaces.json
+      - dashboards/kubernetes/k8s-views-nodes.json
+      - dashboards/kubernetes/k8s-views-pods.json
+      - dashboards/kubernetes/k8s-system-api-server.json
+  - name: grafana-dashboards-platform
+    options: {annotations: {grafana_folder: Platform}}
+    files:
+      - dashboards/platform/argocd-operational.json
+      - dashboards/platform/argocd-application.json
+      - dashboards/platform/cert-manager.json
+      - dashboards/platform/envoy-gateway.json
+      - dashboards/platform/cloudnative-pg.json
+  - name: grafana-dashboards-host
+    options: {annotations: {grafana_folder: Host}}
+    files:
+      - dashboards/host/node-exporter-full.json
+      - dashboards/host/smartctl-exporter.json
+      - dashboards/host/systemd.json
+      - dashboards/host/zfs-overview.json

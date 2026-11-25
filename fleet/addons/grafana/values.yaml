@@ -32,8 +32,6 @@ initChownData: {enabled: false}
 securityContext:
   fsGroupChangePolicy: OnRootMismatch
 resources: {requests: {cpu: 50m, memory: 256Mi}, limits: {memory: 1Gi}}
-downloadDashboards:
-  resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {memory: 64Mi}}
 serviceMonitor: {enabled: true}
 sidecar:
   resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}
@@ -60,31 +58,3 @@ datasources:
         type: alertmanager
         url: http://alertmanager:9093
         jsonData: {implementation: prometheus}
-dashboardProviders:
-  dashboardproviders.yaml:
-    apiVersion: 1
-    providers:
-      - {name: kubernetes, folder: Kubernetes, type: file, options: {path: /var/lib/grafana/dashboards/kubernetes}}
-      - {name: platform, folder: Platform, type: file, options: {path: /var/lib/grafana/dashboards/platform}}
-      - {name: host, folder: Host, type: file, options: {path: /var/lib/grafana/dashboards/host}}
-dashboards:
-  kubernetes:
-    k8s-views-global: {gnetId: 15757, revision: 43, datasource: [{name: DS_PROMETHEUS, value: mimir}]}
-    k8s-views-namespaces: {gnetId: 15758, revision: 46, datasource: [{name: DS_PROMETHEUS, value: mimir}]}
-    k8s-views-nodes: {gnetId: 15759, revision: 40, datasource: [{name: DS_PROMETHEUS, value: mimir}]}
-    k8s-views-pods: {gnetId: 15760, revision: 41, datasource: [{name: DS_PROMETHEUS, value: mimir}]}
-    k8s-system-api-server: {gnetId: 15761, revision: 21, datasource: [{name: DS_PROMETHEUS, value: mimir}]}
-  platform:
-    argocd-operational: {gnetId: 19993, revision: 9}
-    argocd-application: {gnetId: 19974, revision: 8}
-    cert-manager: {gnetId: 20842, revision: 3}
-    envoy-gateway: {gnetId: 24460, revision: 1}
-    cloudnative-pg:
-      gnetId: 20417
-      revision: 4
-      datasource: [{name: DS_PROMETHEUS, value: mimir}, {name: DS_EXPRESSION, value: __expr__}]
-  host:
-    node-exporter-full: {gnetId: 1860, revision: 46}
-    smartctl-exporter: {gnetId: 22604, revision: 4, datasource: [{name: DS_PROMETHEUS, value: mimir}]}
-    systemd: {gnetId: 25304, revision: 2, datasource: [{name: DS_PROMETHEUS, value: mimir}]}
-    zfs-overview: {gnetId: 24987, revision: 12, datasource: [{name: DS_PROMETHEUS, value: mimir}]}
