@@ -208,6 +208,13 @@ spec:
               values: [/sh, /bash, /dash, /ash, /zsh, /nc, /ncat, /netcat, /nc.openbsd, /nc.traditional, /socat, /telnet]
           matchActions:
             - {action: Sigkill}
+        # busybox's sh and nc are one binary with its wget, which the tofu workflow uses to wait on in-cluster services
+        - matchBinaries:
+            - {operator: Postfix, values: [/busybox]}
+          matchArgs:
+            - {index: 0, operator: NotDAddr, values: [10.42.0.0/16, 10.43.0.0/16, 127.0.0.0/8]}
+          matchActions:
+            - {action: Sigkill}
 ---
 # OpenBao's auto-unseal key: only bao reads it
 apiVersion: cilium.io/v1alpha1
