@@ -1,6 +1,6 @@
 # Tripwires: nothing in a restricted pod does these, so a hit is an attack. policy-mode monitor only posts;
 # set it to enforce once a policy has stayed quiet. The privileged namespaces are out of scope.
-# runc sets up every container from inside it, so its mounts, namespaces and exec are not a hit.
+# runc sets up every container from inside the container's cgroup, so its own calls are not a hit.
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -18,7 +18,7 @@ spec:
         - {index: 0, type: linux_binprm}
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc]}
+            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
           matchArgs:
             - index: 0
               operator: Prefix
@@ -44,7 +44,7 @@ spec:
         - {index: 1, type: path}
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc]}
+            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
           matchActions:
             - {action: Override, argError: -1}
     - hook: ptrace_access_check
@@ -57,13 +57,24 @@ spec:
       selectors:
         - matchActions:
             - {action: Override, argError: -1}
+---
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: tripwire-namespaces
+spec:
+  options:
+    - {name: policy-mode, value: monitor}
+  podSelector:
+    matchExpressions:
+      - {key: "k8s:io.kubernetes.pod.namespace", operator: NotIn, values: [kube-system, kubevirt, openebs, telemetry]}
   kprobes:
     - call: sys_setns
       syscall: true
       message: setns from inside a container
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc]}
+            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
           matchActions:
             - {action: Sigkill}
     - call: sys_unshare
@@ -71,7 +82,7 @@ spec:
       message: unshare from inside a container
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc]}
+            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
           matchActions:
             - {action: Sigkill}
     - call: create_user_ns
@@ -79,7 +90,7 @@ spec:
       message: User namespace created from inside a container
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc]}
+            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
           matchActions:
             - {action: Sigkill}
     - call: sys_finit_module
@@ -112,7 +123,9 @@ spec:
       args:
         - {index: 0, type: int}
       selectors:
-        - matchArgs:
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+          matchArgs:
             - {index: 0, operator: Equal, values: ["0"]}
           matchActions:
             - {action: Sigkill}
@@ -123,11 +136,15 @@ spec:
         - {index: 0, type: int}
         - {index: 1, type: int}
       selectors:
-        - matchArgs:
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+          matchArgs:
             - {index: 0, operator: Equal, values: ["0"]}
           matchActions:
             - {action: Sigkill}
-        - matchArgs:
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+          matchArgs:
             - {index: 1, operator: Equal, values: ["0"]}
           matchActions:
             - {action: Sigkill}
@@ -139,15 +156,21 @@ spec:
         - {index: 1, type: int}
         - {index: 2, type: int}
       selectors:
-        - matchArgs:
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+          matchArgs:
             - {index: 0, operator: Equal, values: ["0"]}
           matchActions:
             - {action: Sigkill}
-        - matchArgs:
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+          matchArgs:
             - {index: 1, operator: Equal, values: ["0"]}
           matchActions:
             - {action: Sigkill}
-        - matchArgs:
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+          matchArgs:
             - {index: 2, operator: Equal, values: ["0"]}
           matchActions:
             - {action: Sigkill}

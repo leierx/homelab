@@ -7,11 +7,13 @@ tetragon:
   # policy events, and the execs a policy can't see: injected (kubectl exec, exec probes), fileless, deleted or from a scratch path
   exportAllowList: |-
     {"event_set": ["PROCESS_KPROBE", "PROCESS_TRACEPOINT", "PROCESS_LSM", "PROCESS_UPROBE"]}
-    {"event_set": ["PROCESS_EXEC"], "in_init_tree": false}
+    {"event_set": ["PROCESS_EXEC"], "namespace_regex": [".+"], "in_init_tree": false}
     {"event_set": ["PROCESS_EXEC"], "namespace_regex": [".+"], "binary_regex": ["^/(tmp|var/tmp|dev/shm|run|proc)/", "^/memfd:"]}
     {"event_set": ["PROCESS_EXEC"], "cel_expression": ["has(process_exec.process.binary_properties.file)"]}
+  # runc re-executes itself from a file descriptor for every container start and exec
   exportDenyList: |-
     {"health_check": true}
+    {"event_set": ["PROCESS_EXEC"], "binary_regex": ["^/proc/self/fd/[0-9]+$"], "parent_binary_regex": ["/(runc|\\.runc-wrapped)$"]}
   redactionFilters: |-
     {"redact": ["(?i)(?:pass(?:word|wd)?|secret|token|jwt|api[-_]?key)(?:\\s+|=)(\\S+)"]}
     {"redact": ["(?i)[a-z][a-z0-9+.-]*://[^\\s:/@]*:([^\\s@/]+)@"]}
