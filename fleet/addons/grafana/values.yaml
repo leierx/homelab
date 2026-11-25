@@ -1,4 +1,6 @@
 testFramework: {enabled: false}
+# the chart's own ClusterRole adds Secrets cluster-wide, which the ConfigMap-only dashboard sidecar never reads
+rbac: {useExistingClusterRole: grafana-dashboards}
 admin: {existingSecret: grafana}
 envValueFrom:
   GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: {secretKeyRef: {name: grafana, key: oidc-client-secret}}
@@ -38,6 +40,7 @@ sidecar:
   dashboards:
     enabled: true
     searchNamespace: ALL
+    resource: configmap
     folderAnnotation: grafana_folder
     skipReload: true
     provider: {foldersFromFilesStructure: true}
