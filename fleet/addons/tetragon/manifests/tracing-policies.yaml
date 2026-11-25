@@ -184,7 +184,7 @@ spec:
           matchActions:
             - {action: Sigkill}
 ---
-# a shell or netcat opening a TCP connection is a reverse shell
+# a shell or netcat opening a TCP connection is a reverse shell; busybox counts when called by its own name (`busybox nc`)
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -205,14 +205,7 @@ spec:
       selectors:
         - matchBinaries:
             - operator: Postfix
-              values: [/sh, /bash, /dash, /ash, /zsh, /nc, /ncat, /netcat, /nc.openbsd, /nc.traditional, /socat, /telnet]
-          matchActions:
-            - {action: Sigkill}
-        # busybox's sh and nc are one binary with its wget, which the tofu workflow uses to wait on in-cluster services
-        - matchBinaries:
-            - {operator: Postfix, values: [/busybox]}
-          matchArgs:
-            - {index: 0, operator: NotDAddr, values: [10.42.0.0/16, 10.43.0.0/16, 127.0.0.0/8]}
+              values: [/sh, /bash, /dash, /ash, /zsh, /nc, /ncat, /netcat, /nc.openbsd, /nc.traditional, /socat, /telnet, /busybox]
           matchActions:
             - {action: Sigkill}
 ---
