@@ -1,0 +1,34 @@
+tetragon:
+  resources: {requests: {cpu: 100m, memory: 256Mi}, limits: {memory: 2Gi}}
+  enableProcessCred: true
+  enableProcessNs: true
+  # enforcing policies stay loaded while the agent restarts
+  enableKeepSensorsOnExit: true
+  # policy events, and the execs a policy can't see: injected (kubectl exec, exec probes), fileless, deleted or from a scratch path
+  exportAllowList: |-
+    {"event_set": ["PROCESS_KPROBE", "PROCESS_TRACEPOINT", "PROCESS_LSM", "PROCESS_UPROBE"]}
+    {"event_set": ["PROCESS_EXEC"], "in_init_tree": false}
+    {"event_set": ["PROCESS_EXEC"], "namespace_regex": [".+"], "binary_regex": ["^/(tmp|var/tmp|dev/shm|run|proc)/", "^/memfd:"]}
+    {"event_set": ["PROCESS_EXEC"], "cel_expression": ["has(process_exec.process.binary_properties.file)"]}
+  exportDenyList: |-
+    {"health_check": true}
+  redactionFilters: |-
+    {"redact": ["(?i)(?:pass(?:word|wd)?|secret|token|jwt|api[-_]?key)(?:\\s+|=)(\\S+)"]}
+    {"redact": ["(?i)[a-z][a-z0-9+.-]*://[^\\s:/@]*:([^\\s@/]+)@"]}
+  prometheus:
+    # no pod label: it changes on every rollout
+    metricsLabelFilter: namespace,workload,binary
+    serviceMonitor: {enabled: true}
+export:
+  resources: {requests: {cpu: 10m, memory: 32Mi}, limits: {memory: 256Mi}}
+# CRDs through Argo CD, so the operator has nothing left to do
+crds: {installMethod: helm}
+tetragonOperator: {enabled: false}
+rthooks:
+  enabled: true
+  interface: nri-hook
+  # pod identity before the first instruction when the agent is up; never block a container when it isn't
+  failAllowNamespacesRegex: [".*"]
+  resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {memory: 128Mi}}
+  exportLogs:
+    resources: {requests: {cpu: 5m, memory: 8Mi}, limits: {memory: 32Mi}}

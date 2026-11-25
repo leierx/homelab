@@ -1,0 +1,227 @@
+# Tripwires: nothing in a restricted pod does these, so a hit is an attack. policy-mode monitor only posts;
+# set it to enforce once a policy has stayed quiet. The privileged namespaces are out of scope.
+# runc sets up every container from inside it, so its mounts, namespaces and exec are not a hit.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: tripwire-exec
+spec:
+  options:
+    - {name: policy-mode, value: monitor}
+  podSelector:
+    matchExpressions:
+      - {key: "k8s:io.kubernetes.pod.namespace", operator: NotIn, values: [kube-system, kubevirt, openebs, telemetry]}
+  lsmhooks:
+    - hook: bprm_check_security
+      message: Exec from a writable scratch path or memory
+      args:
+        - {index: 0, type: linux_binprm}
+      selectors:
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/runc]}
+          matchArgs:
+            - index: 0
+              operator: Prefix
+              values: [/tmp/, /var/tmp/, /dev/shm/, /run/, /proc/, "/memfd:"]
+          matchActions:
+            - {action: Override, argError: -1}
+            - {action: Post, imaHash: true}
+---
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: tripwire-escape
+spec:
+  options:
+    - {name: policy-mode, value: monitor}
+  podSelector:
+    matchExpressions:
+      - {key: "k8s:io.kubernetes.pod.namespace", operator: NotIn, values: [kube-system, kubevirt, openebs, telemetry]}
+  lsmhooks:
+    - hook: sb_mount
+      message: Mount from inside a container
+      args:
+        - {index: 1, type: path}
+      selectors:
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/runc]}
+          matchActions:
+            - {action: Override, argError: -1}
+    - hook: ptrace_access_check
+      message: ptrace from inside a container
+      selectors:
+        - matchActions:
+            - {action: Override, argError: -1}
+    - hook: bpf
+      message: bpf() from inside a container
+      selectors:
+        - matchActions:
+            - {action: Override, argError: -1}
+  kprobes:
+    - call: sys_setns
+      syscall: true
+      message: setns from inside a container
+      selectors:
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/runc]}
+          matchActions:
+            - {action: Sigkill}
+    - call: sys_unshare
+      syscall: true
+      message: unshare from inside a container
+      selectors:
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/runc]}
+          matchActions:
+            - {action: Sigkill}
+    - call: create_user_ns
+      syscall: false
+      message: User namespace created from inside a container
+      selectors:
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/runc]}
+          matchActions:
+            - {action: Sigkill}
+    - call: sys_finit_module
+      syscall: true
+      message: Kernel module load from inside a container
+      selectors:
+        - matchActions:
+            - {action: Sigkill}
+    - call: sys_init_module
+      syscall: true
+      message: Kernel module load from inside a container
+      selectors:
+        - matchActions:
+            - {action: Sigkill}
+---
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: tripwire-privileges
+spec:
+  options:
+    - {name: policy-mode, value: monitor}
+  podSelector:
+    matchExpressions:
+      - {key: "k8s:io.kubernetes.pod.namespace", operator: NotIn, values: [kube-system, kubevirt, openebs, telemetry]}
+  kprobes:
+    - call: __sys_setuid
+      syscall: false
+      message: setuid to root from inside a container
+      args:
+        - {index: 0, type: int}
+      selectors:
+        - matchArgs:
+            - {index: 0, operator: Equal, values: ["0"]}
+          matchActions:
+            - {action: Sigkill}
+    - call: __sys_setreuid
+      syscall: false
+      message: setreuid to root from inside a container
+      args:
+        - {index: 0, type: int}
+        - {index: 1, type: int}
+      selectors:
+        - matchArgs:
+            - {index: 0, operator: Equal, values: ["0"]}
+          matchActions:
+            - {action: Sigkill}
+        - matchArgs:
+            - {index: 1, operator: Equal, values: ["0"]}
+          matchActions:
+            - {action: Sigkill}
+    - call: __sys_setresuid
+      syscall: false
+      message: setresuid to root from inside a container
+      args:
+        - {index: 0, type: int}
+        - {index: 1, type: int}
+        - {index: 2, type: int}
+      selectors:
+        - matchArgs:
+            - {index: 0, operator: Equal, values: ["0"]}
+          matchActions:
+            - {action: Sigkill}
+        - matchArgs:
+            - {index: 1, operator: Equal, values: ["0"]}
+          matchActions:
+            - {action: Sigkill}
+        - matchArgs:
+            - {index: 2, operator: Equal, values: ["0"]}
+          matchActions:
+            - {action: Sigkill}
+---
+# a shell or netcat opening a TCP connection is a reverse shell
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: tripwire-reverse-shell
+spec:
+  options:
+    - {name: policy-mode, value: monitor}
+  podSelector:
+    matchExpressions:
+      - {key: "k8s:io.kubernetes.pod.namespace", operator: NotIn, values: [kube-system, kubevirt, openebs, telemetry]}
+  kprobes:
+    - call: tcp_connect
+      syscall: false
+      message: Shell or netcat opened a TCP connection
+      args:
+        - {index: 0, type: sock}
+      selectors:
+        - matchBinaries:
+            - operator: Postfix
+              values: [/sh, /bash, /dash, /ash, /zsh, /nc, /ncat, /netcat, /nc.openbsd, /nc.traditional, /socat, /telnet]
+          matchActions:
+            - {action: Sigkill}
+---
+# OpenBao's auto-unseal key: only bao reads it
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: fim-openbao-seal-key
+spec:
+  options:
+    - {name: policy-mode, value: monitor}
+  podSelector:
+    matchExpressions:
+      - {key: "k8s:io.kubernetes.pod.namespace", operator: In, values: [openbao]}
+  lsmhooks:
+    - hook: file_open
+      message: Something other than bao opened the OpenBao seal key
+      args:
+        - {index: 0, type: file}
+      selectors:
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/bao]}
+          matchArgs:
+            - {index: 0, operator: Prefix, values: [/openbao/seal/]}
+          matchActions:
+            - {action: Override, argError: -1}
+---
+# the ways to own the host; post only, never enforce on the host
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: fim-host
+spec:
+  hostSelector: {}
+  lsmhooks:
+    - hook: file_open
+      message: Something other than k3s opened a host secret
+      args:
+        - {index: 0, type: file}
+      selectors:
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/k3s]}
+          matchArgs:
+            - index: 0
+              operator: Prefix
+              values:
+                - /var/lib/secrets.yaml
+                - /var/lib/rancher/k3s/server/token
+                - /var/lib/rancher/k3s/server/cred/
+                - /var/lib/rancher/k3s/server/tls/
+                - /etc/rancher/k3s/k3s.yaml
+                - /etc/rancher/node/password

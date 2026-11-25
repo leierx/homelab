@@ -29,7 +29,7 @@
       labels: ['dependencies'],
     },
     {
-      description: 'Minor bumps of core platform infrastructure, Keycloak, and OpenBao get a review; their patches stay automerged',
+      description: 'Minor bumps of core platform infrastructure, Keycloak, OpenBao, and Tetragon get a review; their patches stay automerged',
       matchPackageNames: [
         'quay.io/cilium/charts/cilium',
         'docker.io/envoyproxy/gateway-helm',
@@ -38,6 +38,7 @@
         'ghcr.io/cloudnative-pg/charts/cloudnative-pg',
         'quay.io/keycloak/keycloak',
         'ghcr.io/openbao/charts/openbao',
+        'tetragon',
       ],
       matchUpdateTypes: ['minor'],
       automerge: false,

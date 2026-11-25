@@ -1,0 +1,14 @@
+namespace: kube-system
+dependencies:
+  - cilium
+  - prometheus-operator-crds
+helm:
+  repoURL: https://helm.cilium.io
+  chart: tetragon
+  # renovate: datasource=helm depName=tetragon registryUrl=https://helm.cilium.io
+  targetRevision: 1.8.0
+managedNamespaceMetadata:
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: privileged
+    pod-security.kubernetes.io/audit: privileged

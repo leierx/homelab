@@ -21,6 +21,7 @@ spec:
         - remote-node
       toPorts:
         - ports:
+            - {port: "2112", protocol: TCP}
             - {port: "6443", protocol: TCP}
             - {port: "9100", protocol: TCP}
             - {port: "9962", protocol: TCP}

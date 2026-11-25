@@ -36,4 +36,5 @@ addons:
   reloader: true
   renovate: true
   smartctl-exporter: true
+  tetragon: true
   zfs-localpv: true
