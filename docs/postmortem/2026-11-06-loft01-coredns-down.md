@@ -230,7 +230,7 @@ DNSSEC.
 | Check the other generated k3s configs (`authentication`, `admission`, `audit`) for the same fold: no generated YAML in the closure has a line ending in a backslash | done |
 | `CoreDNSConfigRejected` alert on `coredns_reload_failed_total > 0` (critical, so it mails). It would have fired from 04 Nov 21:05 on | done (3abdc29) |
 | An out-of-cluster dead man's switch, e.g. on a Raspberry Pi: an always-firing `Watchdog` alert it expects, and a notification when it stops. Today a total outage is silent because alert delivery needs cluster DNS and Alerta | open, later |
-| Email alerts without a new account: delist 81.167.247.184 from the Spamhaus PBL, then relay through `smtp.altibox.no:25` if it accepts customers without a login; otherwise ask Altibox to open port 25, or use Proton SMTP submission if the plan is paid | open |
+| Email alerts without a new account: delist 81.167.247.184 from the Spamhaus PBL, then relay through `smtp.altibox.no:25` if it accepts customers without a login; otherwise ask Altibox to open port 25, or use Proton SMTP submission if the plan is paid | done differently: Resend SMTP submission on 587 (da155b7); delivery waits on verifying the domain in Resend |
 | Validate the generated CoreDNS config at build time | superseded: `coredns-custom` is a literal string in `nixos/k3s.nix`, nothing generates it, and `CoreDNSConfigRejected` catches a bad one (21bd669) |
 | Delete the `Failed` pods left by the shutdowns, and explain the `cilium-operator` pile-up | done (Recovery, 18:40) |
 | Remove `bind eth0`, which crashed every new CoreDNS pod once (IPv6 link-local not yet bindable) | done (8548612) |

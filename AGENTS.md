@@ -20,12 +20,14 @@ Instructions for coding agents working in this repository. Follow
 - `renovate.json5` and `renovate/` — Renovate config, one preset per concern;
   Renovate also bumps `flake.lock` and the Go modules in `packages/`.
 - `docs/README.md` — Operational runbook for `loft01` (OpenBao secrets, SSO,
-  break-glass). `docs/postmortem/` holds incident write-ups; read them before
-  changing what they cover.
+  break-glass); `docs/monitoring.md` covers the monitoring stack.
+  `docs/postmortem/` holds incident write-ups; read them before changing what
+  they cover. `docs/handover/` holds handover notes.
 
 `loft01` is production: it holds real data (Immich photo library, Mimir
 metrics, OpenBao secrets). `nixos/backup.nix` runs a nightly restic backup of
-the k3s state and every PVC except metrics, logs and caches to rsync.net, but
+the k3s state and every PVC except metrics, logs, caches and the private apps'
+to rsync.net, but
 a restore is manual and loses up to a day. Do not tear it down, and delete
 nothing stateful without explicit instruction.
 
@@ -47,8 +49,9 @@ call them "private apps". Jellyfin is the exception: it is public.
 Design: issue #167. Read `fleet/README.md` for the schema.
 
 1. **Bootstrap & root ApplicationSet:**
-   - Cilium (`fleet/addons/cilium`) and Argo CD (`fleet/addons/argocd`) are
-     installed manually during the 3-step bootstrap, then adopted by Argo CD.
+   - The admission policies, Cilium (`fleet/addons/cilium`) and Argo CD
+     (`fleet/addons/argocd`) are installed manually during the 3-step
+     bootstrap, then adopted by Argo CD.
    - `fleet/clusters/<cluster>/argocd/manifests/` holds the in-cluster Secret
      (`fleet.io/enabled: "true"`) and `ApplicationSet/fleet`, whose Cluster
      generator creates `Application/fleet-<cluster>` rendering the Helm chart
@@ -125,7 +128,9 @@ nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
   labels under `managedNamespaceMetadata.labels` in `addon.yaml`. Addons
   sharing a namespace (e.g. `telemetry`, `monitoring`, `argocd`,
   `kube-system`) must set the same level. When upstream ships the Namespace,
-  its labels come from the manifests and Argo CD ignores these.
+  its labels come from the manifests and Argo CD ignores these. The scoped
+  `private` addon deploys only Applications into `argocd`; its apps set their
+  own levels.
 - **Stateful resources:** Keep `argocd.argoproj.io/sync-options: Delete=false,Prune=false`
   on PVCs, CNPG `Cluster`/`Database` CRs, and persistent namespaces.
 - **Backup exclusions:** Label the PVC or its Namespace
@@ -142,7 +147,8 @@ nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
   maintenance low (`renovate/review.json5`). Only Argo CD (all updates) and
   minor bumps of core platform infrastructure (`cilium`, `envoy-gateway`,
   `cert-manager`, `external-secrets`, `cloudnative-pg`), `keycloak`,
-  `openbao`, and `tetragon` wait for review. GHCR/Quay omit release
+  `openbao`, and `tetragon` wait for review, as do `controller-runtime` minors
+  (`renovate/go.json5`) and NixOS release bumps (`renovate/nix.json5`). GHCR/Quay omit release
   timestamps, so `timestamp-optional` soaking is intentional.
 - **Renovate holds:** Remove temporary `allowedVersions` holds in
   `renovate/holds.json5` once upstream ships the fix (currently

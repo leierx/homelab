@@ -35,8 +35,9 @@ How metrics, logs and alerts work on `loft01`. Everything here is an addon in
 Alloy is the only agent. Nothing depends on a vendor chart: each component is
 installed on its own from its upstream chart. The exceptions are `mimir`, a
 local chart around upstream's single-binary mode (the official
-`mimir-distributed` chart is microservices-only and needs object storage), and
-the exporters' ServiceMonitors, which come from their charts.
+`mimir-distributed` chart is microservices-only and needs object storage),
+`alerta`, a local chart around its upstream image, and the exporters'
+ServiceMonitors, which come from their charts.
 
 ## Metrics
 
@@ -195,7 +196,7 @@ ships them:
   at start. Dashboards that ask for `DS_PROMETHEUS` are mapped to the `mimir`
   datasource there.
 - **Chart-shipped dashboards**, as labelled ConfigMaps found by Grafana's
-  sidecar in every namespace (Cilium, Hubble and the Cilium operator).
+  sidecar in every namespace (Cilium and Hubble).
 
 Prefer, in this order: a dashboard the chart ships, one from grafana.com at a
 pinned revision, then one of our own. Datasources are `Mimir`, `Loki` and
@@ -217,11 +218,14 @@ If a rule doesn't show up there, the sync is in the Alloy log
 (`kubectl -n telemetry logs alloy-metrics-0 -c alloy`, or the `alloy-events`
 Deployment for Loki).
 
-**Data.** Mimir, Loki, Grafana and Alertmanager each have a `zfs` PVC marked
-`Delete=false,Prune=false`; Alerta's database is a CloudNativePG volume. The
-metrics and logs can be rebuilt, so losing them costs history only, and the
-nightly restic backup skips Mimir's and Loki's volumes (zrepl still snapshots
-them locally).
+**Data.** Mimir, Loki, Grafana and Alertmanager each have a `zfs` PVC.
+Grafana's and Alertmanager's are marked `Delete=false,Prune=false`; Mimir's and
+Loki's come from StatefulSet volume claim templates, which Argo CD doesn't own
+and so never prunes. Alerta's database is a CloudNativePG volume. The metrics
+and logs can be rebuilt, so losing them costs history only, and the nightly
+restic backup skips Mimir's, Loki's and Alertmanager's volumes: `monitoring`
+opts out and only Grafana's PVC opts back in (zrepl still snapshots them
+locally).
 
 **Wiping a volume.** Delete the PVC and the pod, then the old `ZFSVolume` and
 PV: the storage class retains, so the dataset survives until then.
@@ -233,11 +237,11 @@ prometheus-community/smartctl_exporter#397 fixed.
 
 ## Dashboard status
 
-Audited through Grafana's own datasource API: every panel query of the 20
+Audited through Grafana's own datasource API: every panel query of the 19
 dashboards, with the variables resolved. Panels that stay empty here are mostly
 not applicable to this cluster, not broken:
 
-- **Not applicable:** Windows panels, AWS/ENI and IPAM (Cilium operator), kvstore,
+- **Not applicable:** Windows panels, kvstore,
   Hubble DNS/HTTP/L7 (needs L7 visibility on the policies), L2ARC, hardware fans
   and PSUs, and SATA SMART attributes (the disks are SAS and NVMe).
 - **Nothing to show:** failures, OOMs, restarts, throttling (the admission policy

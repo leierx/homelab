@@ -10,7 +10,8 @@ and alerts, see [monitoring.md](monitoring.md).
 `loft01` is a single-node NixOS + k3s cluster and
 the **production** cluster: it holds real data (Immich photo library, Mimir
 metrics, OpenBao secrets). `nixos/backup.nix` backs up the k3s state and every
-PVC except metrics, logs and caches to rsync.net nightly with restic, but
+PVC except metrics, logs, caches and the private apps' to rsync.net nightly
+with restic, but
 restoring is manual and loses up to a day. Treat deleting PVCs or stateful CRs
 as data loss; they carry
 `argocd.argoproj.io/sync-options: Delete=false,Prune=false` for that reason.
@@ -20,8 +21,8 @@ Git (`main`) is the single source of truth:
 - `nixos/` defines the host OS, disk layout (`disko`), k3s, and host-level
   secrets (`nixos/secrets.nix`, from the host-only `/var/lib/secrets.yaml`).
 - `fleet/` is the GitOps fleet controller. `loft01` runs its own Argo CD,
-  bootstrapped in 3 manual steps (`cilium`, `argocd`, and the in-cluster
-  Secret plus root `ApplicationSet`), after which Argo CD deploys and updates
+  bootstrapped in 3 manual steps (the `admission` policies and `cilium`,
+  `argocd`, and the in-cluster Secret plus root `ApplicationSet`), after which Argo CD deploys and updates
   all enabled addons in dependency wave order.
 
 To trigger an immediate git refresh without waiting for Argo CD's 3-minute poll:
@@ -35,8 +36,8 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
 
 - **OpenBao** runs in `openbao`, stores its data in the CloudNativePG cluster
   `openbao-db`, and auto-unseals using the static key in
-  `Secret/openbao-seal-key` (provisioned by `nixos/secrets.nix` from the
-  host-only `/var/lib/secrets.yaml`).
+  `Secret/openbao-seal-key` (provisioned by `nixos/k3s.nix` through k3s's
+  auto-deploy manifests, from the host-only `/var/lib/secrets.yaml`).
 - On first startup against empty storage, OpenBao initializes the `kv` v2
   mount, Kubernetes auth, and the `external-secrets`, `external-secrets-push`,
   and `admin` roles from `fleet/addons/openbao/values.yaml`.
@@ -134,7 +135,8 @@ appends to `/etc/hosts`.
 - **Gateways:**
   - `edge` (public via NodePort 30080/30443): Keycloak login endpoints, Immich
     (`immich.skinke.net`), Miniflux (`rss.skinke.net`), OpenCloud
-    (`opencloud.skinke.net`), and Grafana (`metrics.skinke.net`).
+    (`opencloud.skinke.net`), Grafana (`metrics.skinke.net`), and Jellyfin
+    (`jellyfin.skinke.net`, from the private repo).
   - `wg` (WireGuard `10.0.0.1` only): Alerta (`alerta.skinke.net`), Argo CD
     (`argocd.skinke.net`), Argo Workflows (`workflows.skinke.net`), Paperless-ngx
     (`paperless.skinke.net`), and the Keycloak
@@ -144,7 +146,8 @@ appends to `/etc/hosts`.
     for a Local Network Access permission when they are).
   - Both `edge` and `wg` attach `SecurityPolicy/oidc` and
     `ClientTrafficPolicy/default` at the `Gateway` level, so every HTTPS route
-    (other than Keycloak, Immich, OpenCloud, and Alerta) is gated by Envoy's OIDC login (`/_envoy/callback`)
+    (other than Keycloak, Immich, OpenCloud, Alerta, and routes with their own
+    `SecurityPolicy`, such as Jellyfin's) is gated by Envoy's OIDC login (`/_envoy/callback`)
     and receives standard security headers automatically. New web apps only need
     their `Certificate`, `ListenerSet`, `HTTPRoute`, and `https://<host>/_envoy/callback`
     in `keycloak_openid_client.edge.valid_redirect_uris` (`tofu/keycloak/clients.tf`).
@@ -167,7 +170,8 @@ Each PVC is a dataset `tank/<pv>`. zrepl keeps local snapshots (24 hourly,
 14 daily, 3 monthly); `offsite-backup.service` copies a snapshot of every
 volume plus the k3s state to rsync.net nightly at 04:30 (restic: 7 daily,
 4 weekly, 6 monthly), except claims labeled `loft/backup: "false"` (today
-Mimir, Loki, Alertmanager, the Renovate cache and Immich's model cache).
+Mimir, Loki, Alertmanager, the Renovate cache, Immich's model cache and the
+private apps' volumes).
 Set the label on a PVC or Namespace; a PVC label (`"false"` or `"true"`) wins,
 so `monitoring` opts out by default and Grafana's PVC opts back in. zrepl still
 snapshots every dataset; this only controls the offsite copy. Example: Immich
