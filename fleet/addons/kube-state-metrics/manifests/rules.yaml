@@ -15,6 +15,20 @@ spec:
             instance: '{{ $labels.namespace }}/{{ $labels.pod }}'
           annotations:
             summary: A container restarted more than three times in 15 minutes.
+        # names the workload when a controller can't create its pods (e.g. refused by admission), which PodRestarting can't see
+        - alert: WorkloadReplicasUnavailable
+          expr: >-
+            max by (namespace, workload) (
+              label_replace(kube_deployment_status_replicas_unavailable > 0, "workload", "deployment/$1", "deployment", "(.+)")
+              or label_replace(kube_statefulset_replicas - kube_statefulset_status_replicas_ready > 0, "workload", "statefulset/$1", "statefulset", "(.+)")
+              or label_replace(kube_daemonset_status_number_unavailable > 0, "workload", "daemonset/$1", "daemonset", "(.+)")
+            )
+          for: 15m
+          labels:
+            severity: warning
+            instance: '{{ $labels.namespace }}/{{ $labels.workload }}'
+          annotations:
+            summary: A Deployment, StatefulSet or DaemonSet has been missing ready replicas for 15 minutes.
         - alert: NodeNotReady
           expr: max by (node) (kube_node_status_condition{condition="Ready", status="true"}) == 0
           for: 5m
