@@ -1,6 +1,6 @@
 - [ ] Rotate Secrets.
 - [ ] Database passwords: replace the ESO/Reloader rotation with CNPG `DatabaseRole.password` once 1.31 ships; use dedicated roles, not the bootstrap owner.
-- [ ] Look into Tetragon (ships with Cilium, disabled) for runtime detection: process exec and privilege changes inside pods.
+- [ ] Tetragon: once a tripwire policy has stayed quiet for a couple of weeks, set its `policy-mode` to `enforce` (fleet/addons/tetragon/manifests/tracing-policies.yaml).
 - [ ] https://github.com/leierx/homelab/issues/166
 - [ ] Alerting: push critical alerts by email; Gotify and Apprise are gone, so Alerta is the only channel.
 - [ ] Backups: manual restore drill of one volume plus a short runbook in docs/.
