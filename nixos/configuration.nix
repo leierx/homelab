@@ -71,6 +71,8 @@
   # makes the pod AppArmorProfile annotations in fleet/ actually enforce
   security.apparmor.enable = true;
   security.auditd.enable = true;
+  # the kernel queues events until auditd starts, and 1024 overflowed at boot (audit_lost)
+  security.audit.backlogLimit = 8192;
   # targeted, not a blanket execve rule: a busy k8s node would drown in those
   security.audit.rules = [
     "-a always,exit -F arch=b64 -S execve -F euid=0 -F auid>=1000 -F auid!=unset -k root_exec"

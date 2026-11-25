@@ -67,4 +67,6 @@
   boot.zfs.extraPools = [ "tank" ];
   boot.zfs.forceImportRoot = false;
   services.zfs.autoScrub.enable = true;
+  # tank is all spinning disks, which can't trim; fstrim still covers the NVMe
+  services.zfs.trim.enable = false;
 }

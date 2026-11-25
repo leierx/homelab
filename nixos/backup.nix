@@ -46,8 +46,8 @@ let
       rc=0
       r cat config >/dev/null || rc=$?
       if [ "$rc" = 10 ]; then r init; elif [ "$rc" != 0 ]; then exit "$rc"; fi
-      # this unit is the repo's only writer, so any lock left behind is stale
-      r unlock
+      # this unit is the repo's only writer, so any lock left behind is stale; plain unlock keeps one younger than 30 minutes
+      r unlock --remove-all
 
       # one point in time for every volume; always unmount and destroy even if the run fails
       trap 'umount -R ${root}/volumes >/dev/null 2>&1 || true; zfs destroy -r tank@restic >/dev/null 2>&1 || true' EXIT
