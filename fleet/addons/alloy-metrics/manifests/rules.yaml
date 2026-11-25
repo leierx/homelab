@@ -49,6 +49,7 @@ spec:
             instance: '{{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }}'
           annotations:
             summary: A container has used over 90% of its memory limit for an hour.
+    # with alloy-metrics, which syncs the rules into both rulers, rather than split across mimir and loki
     - name: alerting-pipeline
       rules:
         - alert: RuleEvaluationFailing

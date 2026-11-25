@@ -11,9 +11,8 @@ and alerts, see [monitoring.md](monitoring.md).
 the **production** cluster: it holds real data (Immich photo library, Mimir
 metrics, OpenBao secrets). `nixos/backup.nix` backs up the k3s state and every
 PVC except metrics, logs, caches and the private apps' to rsync.net nightly
-with restic, but
-restoring is manual and loses up to a day. Treat deleting PVCs or stateful CRs
-as data loss; they carry
+with restic, but restoring is manual and loses up to a day. Treat deleting PVCs
+or stateful CRs as data loss; they carry
 `argocd.argoproj.io/sync-options: Delete=false,Prune=false` for that reason.
 
 Git (`main`) is the single source of truth:
@@ -22,8 +21,8 @@ Git (`main`) is the single source of truth:
   secrets (`nixos/secrets.nix`, from the host-only `/var/lib/secrets.yaml`).
 - `fleet/` is the GitOps fleet controller. `loft01` runs its own Argo CD,
   bootstrapped in 3 manual steps (the `admission` policies and `cilium`,
-  `argocd`, and the in-cluster Secret plus root `ApplicationSet`), after which Argo CD deploys and updates
-  all enabled addons in dependency wave order.
+  `argocd`, and the in-cluster Secret plus root `ApplicationSet`), after which
+  Argo CD deploys and updates all enabled addons in dependency wave order.
 
 To trigger an immediate git refresh without waiting for Argo CD's 3-minute poll:
 

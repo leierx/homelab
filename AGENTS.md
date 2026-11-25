@@ -27,9 +27,8 @@ Instructions for coding agents working in this repository. Follow
 `loft01` is production: it holds real data (Immich photo library, Mimir
 metrics, OpenBao secrets). `nixos/backup.nix` runs a nightly restic backup of
 the k3s state and every PVC except metrics, logs, caches and the private apps'
-to rsync.net, but
-a restore is manual and loses up to a day. Do not tear it down, and delete
-nothing stateful without explicit instruction.
+to rsync.net, but a restore is manual and loses up to a day. Do not tear it
+down, and delete nothing stateful without explicit instruction.
 
 ## Private Repository
 
@@ -148,8 +147,9 @@ nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
   minor bumps of core platform infrastructure (`cilium`, `envoy-gateway`,
   `cert-manager`, `external-secrets`, `cloudnative-pg`), `keycloak`,
   `openbao`, and `tetragon` wait for review, as do `controller-runtime` minors
-  (`renovate/go.json5`) and NixOS release bumps (`renovate/nix.json5`). GHCR/Quay omit release
-  timestamps, so `timestamp-optional` soaking is intentional.
+  (`renovate/go.json5`) and NixOS release bumps (`renovate/nix.json5`).
+  GHCR/Quay omit release timestamps, so `timestamp-optional` soaking is
+  intentional.
 - **Renovate holds:** Remove temporary `allowedVersions` holds in
   `renovate/holds.json5` once upstream ships the fix (currently
   `prometheus-smartctl-exporter` held below 0.18.0 until a chart bundles an
