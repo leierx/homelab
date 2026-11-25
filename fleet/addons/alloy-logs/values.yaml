@@ -1,14 +1,19 @@
 alloy:
   configMap: {create: false, name: alloy-logs}
-  mounts: {varlog: true}
   envFrom: [{configMapRef: {name: alloy-logs-env}}]
   securityContext:
     allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
     capabilities: {drop: [ALL]}
     seccompProfile: {type: RuntimeDefault}
+  # the storage path holds the read positions, which then survive a container restart too
+  mounts:
+    varlog: true
+    extra: [{name: storage, mountPath: /tmp/alloy}]
   resources: {requests: {cpu: 50m, memory: 256Mi}, limits: {memory: 1Gi}}
   enableReporting: false
 rbac: {create: false}
+controller: {volumes: {extra: [{name: storage, emptyDir: {}}]}}
 configReloader:
   resources: {requests: {memory: 16Mi}, limits: {memory: 64Mi}}
 crds: {create: false}
