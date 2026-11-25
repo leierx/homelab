@@ -49,10 +49,11 @@ spec:
           annotations:
             summary: "Someone other than the realm reconcile (client bootstrap-admin) changed Keycloak through the admin API: break-glass, or a stolen admin session."
         # a wrong passkey, TOTP or password, or an unknown or locked user; a cancelled passkey prompt is not_allowed and stale tabs expired_code or cookie_not_found, so neither pages
+        # one alert per realm, so an attack from many IPs or against many usernames doesn't flood Alerta
         - alert: KeycloakLoginFailed
-          expr: sum by (realm, client, ip, reason, username) (count_over_time({namespace="keycloak", container="keycloak"} |= `type="LOGIN_ERROR"` | regexp `realmName="(?P<realm>[^"]*)"` | regexp `clientId="(?P<client>[^"]*)"` | regexp `ipAddress="(?P<ip>[^"]*)"` | regexp `, error="(?P<reason>[^"]*)"` | regexp `username="(?P<username>[^"]*)"` | reason=~"invalid_user_credentials|user_not_found|user_disabled|user_temporarily_disabled" [10m])) > 0
+          expr: sum by (realm) (count_over_time({namespace="keycloak", container="keycloak"} |= `type="LOGIN_ERROR"` | regexp `realmName="(?P<realm>[^"]*)"` | regexp `, error="(?P<reason>[^"]*)"` | reason=~"invalid_user_credentials|user_not_found|user_disabled|user_temporarily_disabled" [10m])) > 0
           labels:
             severity: critical
-            instance: '{{ $labels.ip }}'
+            instance: '{{ $labels.realm }}'
           annotations:
-            summary: 'Failed login to Keycloak realm {{ $labels.realm }}{{ with $labels.username }} as "{{ . }}"{{ end }} through {{ $labels.client }} ({{ $labels.reason }}).'
+            summary: '{{ $value }} failed logins to Keycloak realm {{ $labels.realm }} in 10 minutes; the LOGIN_ERROR events in the Keycloak log have the IPs, usernames and clients.'
