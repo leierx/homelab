@@ -60,7 +60,10 @@ spec:
           annotations:
             summary: A Mimir or Loki rule group fails to evaluate, so its alerts can't fire.
         - alert: RulerNotificationsFailing
-          expr: sum by (job) (increase({__name__=~"(cortex|loki)_prometheus_notifications_(errors|dropped)_total"}[15m])) > 0
+          # increase() drops __name__, so errors and dropped are summed apart before they meet
+          expr: >-
+            ((sum by (job) (increase(cortex_prometheus_notifications_errors_total[15m])) + sum by (job) (increase(cortex_prometheus_notifications_dropped_total[15m])))
+            or (sum by (job) (increase(loki_prometheus_notifications_errors_total[15m])) + sum by (job) (increase(loki_prometheus_notifications_dropped_total[15m])))) > 0
           for: 15m
           labels:
             severity: warning
