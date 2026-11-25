@@ -59,13 +59,15 @@ spec:
         + (has(object.spec.ephemeralContainers) ? object.spec.ephemeralContainers : []))
         .map(c, c.image.split('/'))
         .map(p, size(p) > 1 && (p[0].contains('.') || p[0].contains(':') || p[0] == 'localhost') ? p[0] : 'docker.io')
+  # ECR Public answers on both hosts; the argo-cd chart pulls Redis from ecr-public.aws.com
   validations:
     - expression: >-
-        variables.hosts.all(h, h in ['docker.io', 'public.ecr.aws', 'ghcr.io', 'quay.io', 'registry.k8s.io'])
+        variables.hosts.all(h, h in ['docker.io', 'ecr-public.aws.com', 'public.ecr.aws', 'ghcr.io', 'quay.io',
+        'registry.k8s.io'])
       messageExpression: >-
-        'images must come from docker.io, public.ecr.aws, ghcr.io, quay.io or registry.k8s.io; not '
-        + variables.hosts.filter(h, !(h in ['docker.io', 'public.ecr.aws', 'ghcr.io', 'quay.io',
-        'registry.k8s.io'])).join(', ')
+        'images must come from docker.io, ecr-public.aws.com, public.ecr.aws, ghcr.io, quay.io or registry.k8s.io; not '
+        + variables.hosts.filter(h, !(h in ['docker.io', 'ecr-public.aws.com', 'public.ecr.aws', 'ghcr.io',
+        'quay.io', 'registry.k8s.io'])).join(', ')
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding
