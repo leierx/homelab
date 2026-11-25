@@ -1,0 +1,59 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: tetragon
+  labels:
+    fleet.io/ruler: mimir
+spec:
+  groups:
+    - name: tetragon
+      rules:
+        - alert: TetragonDown
+          expr: absent(tetragon_build_info)
+          for: 10m
+          labels:
+            severity: critical
+            instance: tetragon
+          annotations:
+            summary: "Tetragon isn't reporting: no tripwire or file monitoring runs (enforcing policies stay loaded while the agent is gone)."
+        - alert: TetragonPolicyNotLoaded
+          expr: sum(tetragon_tracingpolicy_loaded{state=~"error|load_error|partially_enabled"}) > 0
+          for: 10m
+          labels:
+            severity: warning
+            instance: tetragon
+          annotations:
+            summary: "A Tetragon tracing policy failed to load; `tetra tracingpolicy list` in the agent shows which."
+        - alert: TetragonEventsLost
+          expr: sum(increase(tetragon_observer_ringbuf_events_lost_total[10m]) + increase(tetragon_observer_ringbuf_queue_events_lost_total[10m])) > 0
+          labels:
+            severity: warning
+            instance: tetragon
+          annotations:
+            summary: "Tetragon dropped events: a tripwire hit may have gone unseen."
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: tetragon-logs
+  labels:
+    fleet.io/ruler: loki
+spec:
+  groups:
+    - name: tetragon
+      rules:
+        - alert: TetragonTripwire
+          expr: sum by (policy, hook, pod_namespace, workload, binary) (count_over_time({namespace="kube-system", container="export-stdout"} |~ `"policy_name":"(tripwire-|fim-openbao-)` | json kpolicy="process_kprobe.policy_name", lpolicy="process_lsm.policy_name", kfn="process_kprobe.function_name", lfn="process_lsm.function_name", kns="process_kprobe.process.pod.namespace", lns="process_lsm.process.pod.namespace", kwl="process_kprobe.process.pod.workload", lwl="process_lsm.process.pod.workload", kbin="process_kprobe.process.binary", lbin="process_lsm.process.binary" | label_format policy="{{ or .kpolicy .lpolicy }}", hook="{{ or .kfn .lfn }}", pod_namespace="{{ or .kns .lns }}", workload="{{ or .kwl .lwl }}", binary="{{ or .kbin .lbin }}" [10m])) > 0
+          labels:
+            severity: critical
+            instance: '{{ $labels.pod_namespace }}/{{ $labels.workload }}'
+          annotations:
+            summary: 'Tetragon {{ $labels.policy }}: {{ $labels.binary }} in {{ $labels.pod_namespace }}/{{ $labels.workload }} hit {{ $labels.hook }}. Nothing in a restricted pod does this; the event in the export-stdout log has the process tree and arguments.'
+        # the nightly backup copies k3s's state, and NixOS activation reads the secrets file
+        - alert: TetragonHostSecretRead
+          expr: sum by (binary, path) (count_over_time({namespace="kube-system", container="export-stdout"} |= `"policy_name":"fim-host"` | json binary="process_lsm.process.binary", parent="process_lsm.parent.arguments", path="process_lsm.args[0].file_arg.path" | parent !~ `.*-(setup-secrets(-for-users)?|offsite-backup/bin/offsite-backup)( .*)?` [10m])) > 0
+          labels:
+            severity: warning
+            instance: '{{ $labels.binary }}'
+          annotations:
+            summary: 'Something other than k3s on loft01 opened {{ $labels.path }}: {{ $labels.binary }}. That takes root on the host.'
