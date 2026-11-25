@@ -8,14 +8,31 @@ spec:
   groups:
     - name: kubernetes
       rules:
-        - alert: PodRestarting
-          expr: sum by (namespace, pod) (increase(kube_pod_container_status_restarts_total[15m])) > 3
+        # a steady crash loop restarts every 5 minutes, which made a restart-count threshold flap
+        - alert: PodCrashLooping
+          expr: max by (namespace, pod, container) (max_over_time(kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"}[5m])) >= 1
+          for: 15m
           labels:
             severity: warning
-            instance: '{{ $labels.namespace }}/{{ $labels.pod }}'
+            instance: '{{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }}'
           annotations:
-            summary: A container restarted more than three times in 15 minutes.
-        # names the workload when a controller can't create its pods (e.g. refused by admission), which PodRestarting can't see
+            summary: A container has been in CrashLoopBackOff for 15 minutes.
+        - alert: ContainerOOMKilled
+          expr: (max by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total[15m])) > 0) and on (namespace, pod, container) (max by (namespace, pod, container) (kube_pod_container_status_last_terminated_reason{reason="OOMKilled"}) == 1)
+          labels:
+            severity: warning
+            instance: '{{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }}'
+          annotations:
+            summary: A container was OOM-killed; raise its memory limit.
+        # a CronJob keeps its last failed Job around, so only its first day alerts
+        - alert: JobFailed
+          expr: max by (namespace, job_name) (kube_job_failed{condition="true"}) > 0 unless on (namespace, job_name) (time() - kube_job_created > 86400)
+          labels:
+            severity: warning
+            instance: '{{ $labels.namespace }}/{{ $labels.job_name }}'
+          annotations:
+            summary: A Job failed; its pod log says why.
+        # names the workload when a controller can't create its pods (e.g. refused by admission), which PodCrashLooping can't see
         - alert: WorkloadReplicasUnavailable
           expr: >-
             max by (namespace, workload) (
@@ -37,3 +54,12 @@ spec:
             instance: '{{ $labels.node }}'
           annotations:
             summary: A node has been NotReady for 5 minutes.
+        # every workload alert above reads kube-state-metrics
+        - alert: KubeStateMetricsDown
+          expr: absent(up{job="kube-state-metrics"} == 1)
+          for: 10m
+          labels:
+            severity: warning
+            instance: telemetry/kube-state-metrics
+          annotations:
+            summary: kube-state-metrics is not scraped, so no workload, Job or node alert can fire.

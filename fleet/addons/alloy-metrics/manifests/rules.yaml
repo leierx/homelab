@@ -11,7 +11,9 @@ spec:
         - alert: TargetDown
           expr: up == 0
           for: 10m
-          labels: {severity: warning}
+          labels:
+            severity: warning
+            instance: '{{ $labels.job }}: {{ or $labels.pod $labels.instance }}'
           annotations:
             summary: A scrape target has been down for 10 minutes, so its metrics and alerts are blind.
     - name: coredns
@@ -39,3 +41,37 @@ spec:
             instance: '{{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }}'
           annotations:
             summary: A PVC is over 85% full.
+        - alert: ContainerMemoryNearLimit
+          expr: max by (namespace, pod, container) (container_memory_working_set_bytes{job="kubelet", metrics_path="/metrics/cadvisor", container!=""}) / max by (namespace, pod, container) (kube_pod_container_resource_limits{resource="memory"}) > 0.9
+          for: 1h
+          labels:
+            severity: warning
+            instance: '{{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }}'
+          annotations:
+            summary: A container has used over 90% of its memory limit for an hour.
+    - name: alerting-pipeline
+      rules:
+        - alert: RuleEvaluationFailing
+          expr: sum by (job, rule_group) (increase({__name__=~"(cortex|loki)_prometheus_rule_evaluation_failures_total"}[15m])) > 0
+          for: 15m
+          labels:
+            severity: warning
+            instance: '{{ $labels.job }}: {{ $labels.rule_group }}'
+          annotations:
+            summary: A Mimir or Loki rule group fails to evaluate, so its alerts can't fire.
+        - alert: RulerNotificationsFailing
+          expr: sum by (job) (increase({__name__=~"(cortex|loki)_prometheus_notifications_(errors|dropped)_total"}[15m])) > 0
+          for: 15m
+          labels:
+            severity: warning
+            instance: '{{ $labels.job }}'
+          annotations:
+            summary: A ruler can't hand alerts to Alertmanager.
+        - alert: AlloyComponentUnhealthy
+          expr: max by (job) (alloy_component_controller_running_components{health_type!="healthy"}) > 0
+          for: 15m
+          labels:
+            severity: warning
+            instance: '{{ $labels.job }}'
+          annotations:
+            summary: An Alloy component is unhealthy (scraping, log shipping or rule sync).

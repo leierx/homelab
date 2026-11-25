@@ -16,7 +16,7 @@ spec:
           annotations:
             summary: "The host's system:masters certificate was used: break-glass, or someone who shouldn't have it."
         - alert: RBACChangedByPerson
-          expr: sum by (user_username, objectRef_resource, objectRef_name) (count_over_time({job="kube-audit"} | json | objectRef_apiGroup="rbac.authorization.k8s.io" | verb=~"create|update|patch|delete" | user_username!~"system:serviceaccount:.*" | requestURI!~".*dryRun=All.*" [5m])) > 0
+          expr: sum by (user_username, objectRef_resource, objectRef_name) (count_over_time({job="kube-audit"} | json | objectRef_apiGroup="rbac.authorization.k8s.io" | verb=~"create|update|patch|delete" | user_username!~"system:serviceaccount:.*|system:k3s-supervisor" | requestURI!~".*dryRun=All.*" [5m])) > 0
           labels:
             severity: warning
             instance: '{{ $labels.user_username }}: {{ $labels.objectRef_resource }}/{{ $labels.objectRef_name }}'
@@ -31,7 +31,7 @@ spec:
             summary: Someone logged in through Keycloak read a Secret.
         # Argo CD syncs these on every change and ESO rewrites ExternalSecret status; anything else is a ServiceAccount reaching past its own app
         - alert: PolicyOrSecretStoreChangedByServiceAccount
-          expr: sum by (user_username, objectRef_apiGroup, objectRef_namespace, objectRef_name) (count_over_time({job="kube-audit"} | json | objectRef_apiGroup=~"cilium.io|external-secrets.io" | verb=~"create|update|patch|delete" | user_username=~"system:serviceaccount:.*" | user_username!~"system:serviceaccount:(argocd|external-secrets):.*" [5m])) > 0
+          expr: sum by (user_username, objectRef_apiGroup, objectRef_namespace, objectRef_name) (count_over_time({job="kube-audit"} | json | objectRef_apiGroup=~"cilium.io|external-secrets.io" | verb=~"create|update|patch|delete" | user_username=~"system:serviceaccount:.*" | user_username!~"system:serviceaccount:(argocd|external-secrets):.*|system:serviceaccount:kube-system:generic-garbage-collector" [5m])) > 0
           labels:
             severity: warning
             instance: '{{ $labels.user_username }}: {{ $labels.objectRef_namespace }}/{{ $labels.objectRef_name }}'

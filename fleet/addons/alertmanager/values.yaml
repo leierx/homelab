@@ -11,6 +11,10 @@ config:
         matchers: ['severity="critical"']
         continue: true
       - receiver: alerta
+  # one Argo CD outage shouldn't raise an alert per Application
+  inhibit_rules:
+    - source_matchers: ['alertname="WorkloadReplicasUnavailable"', 'namespace="argocd"']
+      target_matchers: ['alertname=~"ArgoCDApp(RenderFailing|SyncStuck|Unhealthy)"']
   receivers:
     - name: email
       email_configs:
