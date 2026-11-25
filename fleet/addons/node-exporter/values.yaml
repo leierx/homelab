@@ -11,6 +11,8 @@ extraArgs:
   - --collector.systemd
   - --collector.tcpstat
   - --collector.processes
+  # written by the host's zpool-metrics timer (nixos/hardware.nix)
+  - --collector.textfile.directory=/host/root/var/lib/node-exporter
 prometheus:
   monitor:
     enabled: true

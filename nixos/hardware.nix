@@ -69,4 +69,30 @@
   services.zfs.autoScrub.enable = true;
   # tank is all spinning disks, which can't trim; fstrim still covers the NVMe
   services.zfs.trim.enable = false;
+
+  # node-exporter sees pool health but not fill: every dataset mounts under the kubelet dir it skips
+  systemd.services.zpool-metrics = {
+    description = "ZFS pool capacity for node-exporter's textfile collector";
+    path = [ config.boot.zfs.package ];
+    serviceConfig = {
+      Type = "oneshot";
+      StateDirectory = "node-exporter";
+      StateDirectoryMode = "0755";
+    };
+    script = ''
+      out=/var/lib/node-exporter/zpool.prom
+      zpool list -Hp -o name,size,allocated | while read -r name size allocated; do
+        echo "zpool_size_bytes{zpool=\"$name\"} $size"
+        echo "zpool_allocated_bytes{zpool=\"$name\"} $allocated"
+      done > "$out.tmp"
+      mv "$out.tmp" "$out"
+    '';
+  };
+  systemd.timers.zpool-metrics = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "1min";
+      OnUnitActiveSec = "5min";
+    };
+  };
 }

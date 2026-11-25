@@ -17,3 +17,12 @@ spec:
             instance: '{{ $labels.instance }}/{{ $labels.zpool }}'
           annotations:
             summary: "A ZFS pool is degraded, faulted, offline or not reporting; `zpool status` on the host says which disk to replace."
+        # snapshots and thin-provisioned quotas can fill the pool while no PVC looks full
+        - alert: ZFSPoolFillingUp
+          expr: max by (instance, zpool) (zpool_allocated_bytes / zpool_size_bytes) > 0.8 or max by (instance) (time() - node_textfile_mtime_seconds{file=~".*zpool.prom"}) > 1800
+          for: 30m
+          labels:
+            severity: warning
+            instance: '{{ $labels.instance }}/{{ $labels.zpool }}'
+          annotations:
+            summary: A ZFS pool is over 80% allocated (snapshots included), or the host's zpool-metrics timer stopped updating it.
