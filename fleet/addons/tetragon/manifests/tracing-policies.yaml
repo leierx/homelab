@@ -1,7 +1,5 @@
-# Tripwires: nothing in a restricted pod does these, so a hit is an attack. policy-mode monitor only posts;
-# set it to enforce once a policy has stayed quiet. Out of scope: the privileged namespaces, and
-# KubeVirt's virt-launcher pods, whose libvirt and QEMU do all of this.
-# runc sets up every container from inside the container's cgroup, so its own calls are not a hit.
+# Tripwires: no restricted pod does these, so a hit is an attack; policy-mode monitor only posts until a policy has stayed quiet.
+# NixOS host binaries live under /nix/store, and the one that runs in a pod's cgroup is runc setting the container up.
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -20,11 +18,11 @@ spec:
         - {index: 0, type: linux_binprm}
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+            - {operator: NotPrefix, values: [/nix/store/]}
           matchArgs:
             - index: 0
               operator: Prefix
-              values: [/tmp/, /var/tmp/, /dev/shm/, /run/, /proc/, "/memfd:"]
+              values: [/tmp/, /var/tmp/, /dev/shm/, /run/, "/memfd:"]
           matchActions:
             - {action: Override, argError: -1}
             - {action: Post, imaHash: true}
@@ -47,21 +45,35 @@ spec:
         - {index: 1, type: path}
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+            - {operator: NotPrefix, values: [/nix/store/]}
+          matchActions:
+            - {action: Override, argError: -1}
+    - hook: move_mount
+      message: Mount from inside a container
+      selectors:
+        - matchBinaries:
+            - {operator: NotPrefix, values: [/nix/store/]}
           matchActions:
             - {action: Override, argError: -1}
     - hook: ptrace_access_check
-      message: ptrace from inside a container
+      message: ptrace or another process's memory or environment from inside a container
+      args:
+        - {index: 1, type: uint32}
       selectors:
+        # PTRACE_MODE_NOAUDIT: ps and top reading /proc/<pid>/stat
+        - matchArgs:
+            - {index: 1, operator: Mask, values: ["4"]}
+          matchActions:
+            - {action: NoPost}
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+            - {operator: NotPrefix, values: [/nix/store/]}
           matchActions:
             - {action: Override, argError: -1}
     - hook: bpf
       message: bpf() from inside a container
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+            - {operator: NotPrefix, values: [/nix/store/]}
           matchActions:
             - {action: Override, argError: -1}
 ---
@@ -82,7 +94,7 @@ spec:
       message: setns from inside a container
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+            - {operator: NotPrefix, values: [/nix/store/]}
           matchActions:
             - {action: Sigkill}
     - call: sys_unshare
@@ -90,7 +102,7 @@ spec:
       message: unshare from inside a container
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+            - {operator: NotPrefix, values: [/nix/store/]}
           matchActions:
             - {action: Sigkill}
     - call: create_user_ns
@@ -98,7 +110,7 @@ spec:
       message: User namespace created from inside a container
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+            - {operator: NotPrefix, values: [/nix/store/]}
           matchActions:
             - {action: Sigkill}
     - call: sys_finit_module
@@ -133,7 +145,7 @@ spec:
         - {index: 0, type: int}
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+            - {operator: NotPrefix, values: [/nix/store/]}
           matchArgs:
             - {index: 0, operator: Equal, values: ["0"]}
           matchActions:
@@ -146,13 +158,13 @@ spec:
         - {index: 1, type: int}
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+            - {operator: NotPrefix, values: [/nix/store/]}
           matchArgs:
             - {index: 0, operator: Equal, values: ["0"]}
           matchActions:
             - {action: Sigkill}
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+            - {operator: NotPrefix, values: [/nix/store/]}
           matchArgs:
             - {index: 1, operator: Equal, values: ["0"]}
           matchActions:
@@ -166,25 +178,25 @@ spec:
         - {index: 2, type: int}
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+            - {operator: NotPrefix, values: [/nix/store/]}
           matchArgs:
             - {index: 0, operator: Equal, values: ["0"]}
           matchActions:
             - {action: Sigkill}
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+            - {operator: NotPrefix, values: [/nix/store/]}
           matchArgs:
             - {index: 1, operator: Equal, values: ["0"]}
           matchActions:
             - {action: Sigkill}
         - matchBinaries:
-            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+            - {operator: NotPrefix, values: [/nix/store/]}
           matchArgs:
             - {index: 2, operator: Equal, values: ["0"]}
           matchActions:
             - {action: Sigkill}
 ---
-# a shell or netcat opening a TCP connection is a reverse shell; busybox counts when called by its own name (`busybox nc`)
+# a shell or netcat opening a TCP connection is a reverse shell
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -205,7 +217,14 @@ spec:
       selectors:
         - matchBinaries:
             - operator: Postfix
-              values: [/sh, /bash, /dash, /ash, /zsh, /nc, /ncat, /netcat, /nc.openbsd, /nc.traditional, /socat, /telnet, /busybox]
+              values: [/sh, /bash, /dash, /ash, /zsh, /nc, /ncat, /netcat, /nc.openbsd, /nc.traditional, /socat, /telnet]
+          matchActions:
+            - {action: Sigkill}
+        # selectors see the executable, so Alpine's symlinked sh, nc and wget are all busybox; the tofu workflow's wget waits on Keycloak
+        - matchBinaries:
+            - {operator: Postfix, values: [/busybox]}
+          matchArgs:
+            - {index: 0, operator: NotDAddr, values: [10.42.0.0/16, 10.43.0.0/16, 127.0.0.0/8]}
           matchActions:
             - {action: Sigkill}
 ---
@@ -227,7 +246,7 @@ spec:
         - {index: 0, type: file}
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/bao]}
+            - {operator: NotIn, values: [/usr/bin/bao]}
           matchArgs:
             - {index: 0, operator: Prefix, values: [/openbao/seal/]}
           matchActions:
@@ -247,7 +266,7 @@ spec:
         - {index: 0, type: file}
       selectors:
         - matchBinaries:
-            - {operator: NotPostfix, values: [/k3s]}
+            - {operator: NotPostfix, values: [/k3s, /.k3s-wrapped]}
           matchArgs:
             - index: 0
               operator: Prefix
@@ -258,3 +277,14 @@ spec:
                 - /var/lib/rancher/k3s/server/tls/
                 - /etc/rancher/k3s/k3s.yaml
                 - /etc/rancher/node/password
+        # decrypted into /run/secrets.d/<generation>/
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/k3s, /.k3s-wrapped]}
+          matchArgs:
+            - index: 0
+              operator: Postfix
+              values:
+                - /openbao/seal_key
+                - /argocd/private_repo_pat
+                - /rendered/openbao-seal-key.yaml
+                - /rendered/argocd-private-repo.yaml

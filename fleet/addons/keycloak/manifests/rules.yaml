@@ -48,8 +48,7 @@ spec:
             instance: '{{ $labels.user_id }}'
           annotations:
             summary: "Someone other than the realm reconcile (client bootstrap-admin) changed Keycloak through the admin API: break-glass, or a stolen admin session."
-        # a wrong passkey, TOTP or password, or an unknown or locked user; a cancelled passkey prompt is not_allowed and stale tabs expired_code or cookie_not_found, so neither pages
-        # one alert per realm, so an attack from many IPs or against many usernames doesn't flood Alerta
+        # a wrong passkey, TOTP or password, or an unknown or locked user, one alert per realm so an attack doesn't flood Alerta; a cancelled passkey prompt is not_allowed and stale tabs expired_code or cookie_not_found, so neither pages
         - alert: KeycloakLoginFailed
           expr: sum by (realm) (count_over_time({namespace="keycloak", container="keycloak"} |= `type="LOGIN_ERROR"` | regexp `realmName="(?P<realm>[^"]*)"` | regexp `, error="(?P<reason>[^"]*)"` | reason=~"invalid_user_credentials|user_not_found|user_disabled|user_temporarily_disabled" [10m])) > 0
           labels:

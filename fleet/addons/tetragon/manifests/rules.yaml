@@ -49,9 +49,9 @@ spec:
             instance: '{{ $labels.pod_namespace }}/{{ $labels.workload }}'
           annotations:
             summary: 'Tetragon {{ $labels.policy }}: {{ $labels.binary }} in {{ $labels.pod_namespace }}/{{ $labels.workload }} hit {{ $labels.hook }}. Nothing in a restricted pod does this; the event in the export-stdout log has the process tree and arguments.'
-        # the nightly backup copies k3s's state, and NixOS activation reads the secrets file
+        # the nightly backup copies k3s's state, and NixOS activation reads the secrets file and writes them out
         - alert: TetragonHostSecretRead
-          expr: sum by (binary, path) (count_over_time({namespace="kube-system", container="export-stdout"} |= `"policy_name":"fim-host"` | json binary="process_lsm.process.binary", parent="process_lsm.parent.arguments", path="process_lsm.args[0].file_arg.path" | parent !~ `.*-(setup-secrets(-for-users)?|offsite-backup/bin/offsite-backup)( .*)?` [10m])) > 0
+          expr: sum by (binary, path) (count_over_time({namespace="kube-system", container="export-stdout"} |= `"policy_name":"fim-host"` | json binary="process_lsm.process.binary", args="process_lsm.process.arguments", parent="process_lsm.parent.arguments", path="process_lsm.args[0].file_arg.path" | args !~ `.*-(setup-secrets|offsite-backup/bin/offsite-backup)( .*)?` | parent !~ `.*-(setup-secrets|offsite-backup/bin/offsite-backup)( .*)?` [10m])) > 0
           labels:
             severity: warning
             instance: '{{ $labels.binary }}'
