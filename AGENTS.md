@@ -22,7 +22,7 @@ Instructions for coding agents working in this repository. Follow
 - `docs/README.md` — Operational runbook for `loft01` (OpenBao secrets, SSO,
   break-glass); `docs/monitoring.md` covers the monitoring stack.
   `docs/postmortem/` holds incident write-ups; read them before changing what
-  they cover. `docs/handover/` holds handover notes.
+  they cover.
 
 `loft01` is production: it holds real data (Immich photo library, Mimir
 metrics, OpenBao secrets). `nixos/backup.nix` runs a nightly restic backup of
