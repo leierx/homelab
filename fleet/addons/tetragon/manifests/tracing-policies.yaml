@@ -18,11 +18,27 @@ spec:
         - {index: 0, type: linux_binprm}
         - {index: 0, type: uint64, resolve: file.f_inode.i_sb.s_magic}
       selectors:
-        # s6-overlay (paperless-ngx) runs the service scripts it compiles into /run on every start
-        - matchBinaries:
+        # paperless-ngx's s6-overlay runs the scripts it compiles into /run; only in its pod, as any s6 chainloader passes a planted file
+        - matchWorkloads:
+            podSelector:
+              matchLabels:
+                "k8s:io.kubernetes.pod.namespace": paperless
+                app.kubernetes.io/name: paperless
+          matchBinaries:
             - {operator: Prefix, values: [/package/admin/s6]}
           matchArgs:
             - {args: [0], operator: Prefix, values: [/run/s6/, /run/s6-rc, /run/service/]}
+          matchActions:
+            - {action: NoPost}
+        - matchWorkloads:
+            podSelector:
+              matchLabels:
+                "k8s:io.kubernetes.pod.namespace": paperless
+                app.kubernetes.io/name: paperless
+          matchBinaries:
+            - {operator: In, values: [/usr/bin/dash]}
+          matchArgs:
+            - {args: [0], operator: Equal, values: [/run/s6/basedir/bin/init]}
           matchActions:
             - {action: NoPost}
         # the image is overlayfs; a volume, tmpfs or memfd is not. CNPG and Argo Workflows run a binary they copied into an emptyDir,
