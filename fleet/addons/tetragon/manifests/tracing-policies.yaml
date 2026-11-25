@@ -27,6 +27,14 @@ spec:
           matchActions:
             - {action: Override, argError: -1}
             - {action: Post, imaHash: true}
+        # a memfd has no path for the selector above to compare; tmpfs, ramfs and hugetlbfs
+        - matchBinaries:
+            - {operator: NotPrefix, values: [/nix/store/]}
+          matchArgs:
+            - {args: [1], operator: Equal, values: ["16914836", "2240043254", "2508478710"]}
+          matchActions:
+            - {action: Override, argError: -1}
+            - {action: Post, imaHash: true}
         # the image's own writable layer, where a pod without a read-only root can drop one
         - matchBinaries:
             - {operator: NotPrefix, values: [/nix/store/]}
