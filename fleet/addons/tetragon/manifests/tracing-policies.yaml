@@ -1,5 +1,6 @@
 # Tripwires: nothing in a restricted pod does these, so a hit is an attack. policy-mode monitor only posts;
-# set it to enforce once a policy has stayed quiet. The privileged namespaces are out of scope.
+# set it to enforce once a policy has stayed quiet. Out of scope: the privileged namespaces, and
+# KubeVirt's virt-launcher pods, whose libvirt and QEMU do all of this.
 # runc sets up every container from inside the container's cgroup, so its own calls are not a hit.
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
@@ -11,6 +12,7 @@ spec:
   podSelector:
     matchExpressions:
       - {key: "k8s:io.kubernetes.pod.namespace", operator: NotIn, values: [kube-system, kubevirt, openebs, telemetry]}
+      - {key: kubevirt.io, operator: NotIn, values: [virt-launcher]}
   lsmhooks:
     - hook: bprm_check_security
       message: Exec from a writable scratch path or memory
@@ -37,6 +39,7 @@ spec:
   podSelector:
     matchExpressions:
       - {key: "k8s:io.kubernetes.pod.namespace", operator: NotIn, values: [kube-system, kubevirt, openebs, telemetry]}
+      - {key: kubevirt.io, operator: NotIn, values: [virt-launcher]}
   lsmhooks:
     - hook: sb_mount
       message: Mount from inside a container
@@ -50,12 +53,16 @@ spec:
     - hook: ptrace_access_check
       message: ptrace from inside a container
       selectors:
-        - matchActions:
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+          matchActions:
             - {action: Override, argError: -1}
     - hook: bpf
       message: bpf() from inside a container
       selectors:
-        - matchActions:
+        - matchBinaries:
+            - {operator: NotPostfix, values: [/runc, /.runc-wrapped]}
+          matchActions:
             - {action: Override, argError: -1}
 ---
 apiVersion: cilium.io/v1alpha1
@@ -68,6 +75,7 @@ spec:
   podSelector:
     matchExpressions:
       - {key: "k8s:io.kubernetes.pod.namespace", operator: NotIn, values: [kube-system, kubevirt, openebs, telemetry]}
+      - {key: kubevirt.io, operator: NotIn, values: [virt-launcher]}
   kprobes:
     - call: sys_setns
       syscall: true
@@ -116,6 +124,7 @@ spec:
   podSelector:
     matchExpressions:
       - {key: "k8s:io.kubernetes.pod.namespace", operator: NotIn, values: [kube-system, kubevirt, openebs, telemetry]}
+      - {key: kubevirt.io, operator: NotIn, values: [virt-launcher]}
   kprobes:
     - call: __sys_setuid
       syscall: false
@@ -186,6 +195,7 @@ spec:
   podSelector:
     matchExpressions:
       - {key: "k8s:io.kubernetes.pod.namespace", operator: NotIn, values: [kube-system, kubevirt, openebs, telemetry]}
+      - {key: kubevirt.io, operator: NotIn, values: [virt-launcher]}
   kprobes:
     - call: tcp_connect
       syscall: false
