@@ -12,7 +12,7 @@ alloy:
     seccompProfile: {type: RuntimeDefault}
   mounts:
     extra: [{name: storage, mountPath: /tmp/alloy}]
-  resources: {requests: {cpu: 100m, memory: 512Mi}, limits: {memory: 2Gi}}
+  resources: {requests: {cpu: 100m, memory: 1Gi}, limits: {memory: 3Gi}}
   enableReporting: false
 rbac: {create: false}
 controller: {type: statefulset, volumes: {extra: [{name: storage, emptyDir: {}}]}}

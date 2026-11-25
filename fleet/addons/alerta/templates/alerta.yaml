@@ -83,7 +83,7 @@ spec:
               port: http
           resources:
             requests: {cpu: 50m, memory: 256Mi}
-            limits: {memory: 512Mi}
+            limits: {memory: 1Gi}
           # not readOnlyRootFilesystem: the entrypoint renders its configs into /app and /web on every start
           securityContext:
             allowPrivilegeEscalation: false
