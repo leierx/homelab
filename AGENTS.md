@@ -30,8 +30,10 @@ the k3s state and every PVC except metrics, logs, caches and the private apps'
 to rsync.net, but a restore is manual and loses up to a day. Do not tear it
 down, and delete nothing stateful without explicit instruction.
 
-There is no out-of-cluster dead man's switch yet, so a total outage of
-`loft01` alerts nobody. The owner tracks this; don't report it as a finding.
+Known and accepted, so don't report them as findings: there is no
+out-of-cluster dead man's switch yet (the owner tracks it), and the USB
+installer copies `secrets.yaml` into the build machine's Nix store and onto
+the ISO for a one-image install (`nixos/installer.nix`).
 
 ## Private Repository
 

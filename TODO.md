@@ -2,6 +2,7 @@
 - [ ] Database passwords: replace the ESO/Reloader rotation with CNPG `DatabaseRole.password` once 1.31 ships; use dedicated roles, not the bootstrap owner.
 - [ ] Tetragon: once a tripwire policy has stayed quiet for a couple of weeks, set its `policy-mode` to `enforce` (fleet/addons/tetragon/manifests/tracing-policies.yaml).
 - [ ] Alerting: verify skinke.net in Resend (its DKIM, MX and SPF records at 1984 Hosting) so critical alerts actually mail; until then Alerta is the only channel.
+- [ ] k3s 1.37: upgrade once NixOS 26.11 is adopted (it ships `k3s_1_37`) and Cilium (1.21), cert-manager (1.22) and CloudNativePG (1.31) releases supporting Kubernetes 1.37 are deployed; add `gateway-api-crd` to `--disable` in `nixos/k3s.nix` in the same change, or k3s takes the Gateway API CRDs from Envoy Gateway. Snapshot `state.db` first.
 - [ ] Images: get images onto the node without a registry at boot (e.g. k3s airgap images after a k3s bump), and decide which to keep and which to prune.
 - [ ] Backups: manual restore drill of one volume plus a short runbook in docs/.
 - [ ] Paperless-ngx AI: try its optional AI features (suggestions, document chat) with a small local model; slow is fine, heavy is not.

@@ -21,6 +21,8 @@ in
     toplevel
     destroyFormatMount
   ];
+  # accepted risk for a one-image install: the plaintext file lands in the build machine's /nix/store and on the ISO;
+  # wipe the stick afterwards
   isoImage.contents = [
     {
       source =
