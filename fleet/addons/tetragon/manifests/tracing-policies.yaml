@@ -13,16 +13,25 @@ spec:
       - {key: kubevirt.io, operator: NotIn, values: [virt-launcher]}
   lsmhooks:
     - hook: bprm_check_security
-      message: Exec from a writable scratch path or memory
+      message: Exec of a file that isn't in the image
       args:
         - {index: 0, type: linux_binprm}
+        - {index: 0, type: uint64, resolve: file.f_inode.i_sb.s_magic}
       selectors:
+        # the image is overlayfs; a volume, tmpfs or memfd is not. CNPG and Argo Workflows run a binary they copied into an emptyDir
         - matchBinaries:
             - {operator: NotPrefix, values: [/nix/store/]}
           matchArgs:
-            - index: 0
-              operator: Prefix
-              values: [/tmp/, /var/tmp/, /dev/shm/, /run/, "/memfd:"]
+            - {args: [1], operator: NotEqual, values: ["2035054128"]}
+            - {args: [0], operator: NotEqual, values: [/controller/manager, /var/run/argo/argoexec]}
+          matchActions:
+            - {action: Override, argError: -1}
+            - {action: Post, imaHash: true}
+        # the image's own writable layer, where a pod without a read-only root can drop one
+        - matchBinaries:
+            - {operator: NotPrefix, values: [/nix/store/]}
+          matchArgs:
+            - {args: [0], operator: Prefix, values: [/tmp/, /var/tmp/, /dev/shm/, /run/]}
           matchActions:
             - {action: Override, argError: -1}
             - {action: Post, imaHash: true}
