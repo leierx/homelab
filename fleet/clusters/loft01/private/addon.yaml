@@ -1,6 +1,8 @@
 namespace: argocd
 dependencies:
   - argocd
+  # the Keycloak addon pushes the OIDC client secrets the private apps read
+  - keycloak
 sources:
   - repoURL: https://github.com/leierx/homelab-private.git
     targetRevision: main
