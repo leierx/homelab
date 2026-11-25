@@ -5,8 +5,20 @@ containerSecurityContext:
   manager:
     runAsNonRoot: true
     allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
     capabilities: {drop: [ALL]}
     seccompProfile: {type: RuntimeDefault}
+# clusterctl's config client MkdirAlls $XDG_CONFIG_HOME/cluster-api on every reconcile, though it writes nothing there
+env:
+  manager: [{name: XDG_CONFIG_HOME, value: /home/nonroot/.config}]
+# volumes replaces the chart's list, so its webhook cert is repeated
+volumes:
+  - {name: cert, secret: {defaultMode: 420, secretName: capi-operator-webhook-service-cert}}
+  - {name: xdg-config, emptyDir: {sizeLimit: 1Mi}}
+volumeMounts:
+  manager:
+    - {mountPath: /tmp/k8s-webhook-server/serving-certs, name: cert, readOnly: true}
+    - {mountPath: /home/nonroot/.config, name: xdg-config}
 core:
   cluster-api:
     createNamespace: false
