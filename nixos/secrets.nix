@@ -206,6 +206,11 @@ let
           ''
         ) templateList}
 
+        # on a switch the previous generation keeps serving; only a boot, with nothing to keep, publishes a partial one
+        if [ "$missing" != 0 ] && [ -L "$symlinkPath" ]; then
+          rm -rf "$dir"
+          exit 1
+        fi
         ln -sfn "$dir" "$symlinkPath.tmp"
         mv -Tf "$symlinkPath.tmp" "$symlinkPath"
 
