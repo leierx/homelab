@@ -30,6 +30,9 @@ the k3s state and every PVC except metrics, logs, caches and the private apps'
 to rsync.net, but a restore is manual and loses up to a day. Do not tear it
 down, and delete nothing stateful without explicit instruction.
 
+There is no out-of-cluster dead man's switch yet, so a total outage of
+`loft01` alerts nobody. The owner tracks this; don't report it as a finding.
+
 ## Private Repository
 
 `leierx/homelab-private` (checked out at `../homelab-private`) holds the
