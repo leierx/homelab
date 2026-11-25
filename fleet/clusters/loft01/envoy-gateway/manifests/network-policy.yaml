@@ -38,6 +38,7 @@ spec:
             app.kubernetes.io/name: paperless
         - matchLabels:
             io.cilium.k8s.namespace.labels.gateway-backend: "true"
+            loft/gateway-backend: "true"
       toPorts:
         - ports: [{port: "10443", protocol: TCP}]
     # cert-manager HTTP-01 self-check for auth.skinke.net
