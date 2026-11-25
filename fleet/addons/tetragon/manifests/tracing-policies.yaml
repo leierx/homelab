@@ -11,6 +11,7 @@ spec:
     matchExpressions:
       - {key: "k8s:io.kubernetes.pod.namespace", operator: NotIn, values: [kube-system, kubevirt, openebs, telemetry]}
       - {key: kubevirt.io, operator: NotIn, values: [virt-launcher]}
+      - {key: app.kubernetes.io/name, operator: NotIn, values: [paperless]}
   lsmhooks:
     - hook: bprm_check_security
       message: Exec of a file that isn't in the image
@@ -18,24 +19,61 @@ spec:
         - {index: 0, type: linux_binprm}
         - {index: 0, type: uint64, resolve: file.f_inode.i_sb.s_magic}
       selectors:
-        # paperless-ngx's s6-overlay runs the scripts it compiles into /run; only in its pod, as any s6 chainloader passes a planted file
-        - matchWorkloads:
-            podSelector:
-              matchLabels:
-                "k8s:io.kubernetes.pod.namespace": paperless
-                app.kubernetes.io/name: paperless
-          matchBinaries:
+        # the image is overlayfs; a volume, tmpfs or memfd is not. CNPG and Argo Workflows run a binary they copied into an emptyDir,
+        # and the tofu workflow the providers it downloads
+        - matchBinaries:
+            - {operator: NotPrefix, values: [/nix/store/]}
+          matchArgs:
+            - {args: [1], operator: NotEqual, values: ["2035054128"]}
+            - {args: [0], operator: NotEqual, values: [/controller/manager, /var/run/argo/argoexec]}
+            - {args: [0], operator: NotPrefix, values: [/work/.terraform/providers/]}
+          matchActions:
+            - {action: Override, argError: -1}
+            - {action: Post, imaHash: true}
+        # a memfd has no path for the selector above to compare; tmpfs, ramfs and hugetlbfs
+        - matchBinaries:
+            - {operator: NotPrefix, values: [/nix/store/]}
+          matchArgs:
+            - {args: [1], operator: Equal, values: ["16914836", "2240043254", "2508478710"]}
+          matchActions:
+            - {action: Override, argError: -1}
+            - {action: Post, imaHash: true}
+        # the image's own writable layer, where a pod without a read-only root can drop one
+        - matchBinaries:
+            - {operator: NotPrefix, values: [/nix/store/]}
+          matchArgs:
+            - {args: [0], operator: Prefix, values: [/tmp/, /var/tmp/, /dev/shm/, /run/]}
+          matchActions:
+            - {action: Override, argError: -1}
+            - {action: Post, imaHash: true}
+---
+# tripwire-exec for paperless-ngx, whose s6-overlay runs the scripts it compiles into /run; its own policy because any s6
+# chainloader passes a planted file, and Tetragon 1.8 can't load matchWorkloads next to imaHash
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: tripwire-exec-paperless
+spec:
+  options:
+    - {name: policy-mode, value: monitor}
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: paperless
+  lsmhooks:
+    - hook: bprm_check_security
+      message: Exec of a file that isn't in the image
+      args:
+        - {index: 0, type: linux_binprm}
+        - {index: 0, type: uint64, resolve: file.f_inode.i_sb.s_magic}
+      selectors:
+        - matchBinaries:
             - {operator: Prefix, values: [/package/admin/s6]}
           matchArgs:
             - {args: [0], operator: Prefix, values: [/run/s6/, /run/s6-rc, /run/service/]}
           matchActions:
             - {action: NoPost}
-        - matchWorkloads:
-            podSelector:
-              matchLabels:
-                "k8s:io.kubernetes.pod.namespace": paperless
-                app.kubernetes.io/name: paperless
-          matchBinaries:
+        # stage0 is a /bin/sh script
+        - matchBinaries:
             - {operator: In, values: [/usr/bin/dash]}
           matchArgs:
             - {args: [0], operator: Equal, values: [/run/s6/basedir/bin/init]}
