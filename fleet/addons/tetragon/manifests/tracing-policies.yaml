@@ -18,6 +18,13 @@ spec:
         - {index: 0, type: linux_binprm}
         - {index: 0, type: uint64, resolve: file.f_inode.i_sb.s_magic}
       selectors:
+        # s6-overlay (paperless-ngx) runs the service scripts it compiles into /run on every start
+        - matchBinaries:
+            - {operator: Prefix, values: [/package/admin/s6]}
+          matchArgs:
+            - {args: [0], operator: Prefix, values: [/run/s6/, /run/s6-rc, /run/service/]}
+          matchActions:
+            - {action: NoPost}
         # the image is overlayfs; a volume, tmpfs or memfd is not. CNPG and Argo Workflows run a binary they copied into an emptyDir,
         # and the tofu workflow the providers it downloads
         - matchBinaries:
@@ -82,6 +89,20 @@ spec:
         # PTRACE_MODE_NOAUDIT: ps and top reading /proc/<pid>/stat
         - matchArgs:
             - {index: 1, operator: Mask, values: ["4"]}
+          matchActions:
+            - {action: NoPost}
+        # the OpenBao chart's preStop runs `kill $(pidof bao)`, and pidof reads every /proc/<pid>/exe (PTRACE_MODE_READ_FSCREDS)
+        - matchWorkloads:
+            podSelector:
+              matchLabels:
+                "k8s:io.kubernetes.pod.namespace": openbao
+                app.kubernetes.io/name: openbao
+          matchBinaries:
+            - {operator: In, values: [/bin/busybox, /bin/pidof]}
+          matchCmdArgs:
+            - {index: 0, operator: Equal, values: [bao]}
+          matchArgs:
+            - {index: 1, operator: Equal, values: ["9"]}
           matchActions:
             - {action: NoPost}
         - matchBinaries:
