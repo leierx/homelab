@@ -81,10 +81,12 @@
     };
     script = ''
       out=/var/lib/node-exporter/zpool.prom
-      zpool list -Hp -o name,size,allocated | while read -r name size allocated; do
+      # captured first, so a failing zpool fails the unit instead of writing an empty file
+      pools=$(zpool list -Hp -o name,size,allocated)
+      while read -r name size allocated; do
         echo "zpool_size_bytes{zpool=\"$name\"} $size"
         echo "zpool_allocated_bytes{zpool=\"$name\"} $allocated"
-      done > "$out.tmp"
+      done <<<"$pools" > "$out.tmp"
       mv "$out.tmp" "$out"
     '';
   };
