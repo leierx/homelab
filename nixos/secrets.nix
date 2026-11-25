@@ -154,6 +154,8 @@ let
 
         umask 0077
         json=$(${pkgs.yq-go}/bin/yq -o=json "$file")
+        # a missing key fails only what uses it: at boot, stopping here would leave WireGuard and sshd without keys
+        missing=0
 
         ${lib.concatMapStringsSep "\n" (
           s:
@@ -163,12 +165,14 @@ let
             f = ''"$dir"/${lib.escapeShellArg s.name}'';
           in
           ''
-            printf '%s\n' "$json" | ${pkgs.jq}/bin/jq -j -e 'getpath(${keyPath}) | select(type == "string")' > ${f} || {
+            if printf '%s\n' "$json" | ${pkgs.jq}/bin/jq -j -e 'getpath(${keyPath}) | select(type == "string")' > ${f}; then
+              chown ${lib.escapeShellArg ownerGroup} ${f}
+              chmod ${lib.escapeShellArg s.mode} ${f}
+            else
               printf "secrets: missing or non-string key '%s' in %s\n" ${lib.escapeShellArg s.key} "$file" >&2
-              exit 1
-            }
-            chown ${lib.escapeShellArg ownerGroup} ${f}
-            chmod ${lib.escapeShellArg s.mode} ${f}
+              rm -f ${f}
+              missing=1
+            fi
           ''
         ) secretList}
 
@@ -182,7 +186,7 @@ let
             f = ''"$dir"/rendered/${lib.escapeShellArg t.name}'';
           in
           ''
-            printf '%s\n' "$json" | ${pkgs.jq}/bin/jq -j -e \
+            if printf '%s\n' "$json" | ${pkgs.jq}/bin/jq -j -e \
               --rawfile tmpl ${pkgs.writeText t.name t.content} \
               --argjson map ${lib.escapeShellArg placeholderMap} \
               '. as $root | reduce ($map | to_entries[]) as $e ($tmpl;
@@ -192,9 +196,13 @@ let
                 else
                   split($e.key) | join($val)
                 end
-              )' > ${f}
-            chown ${lib.escapeShellArg "${t.owner}:${t.group}"} ${f}
-            chmod ${lib.escapeShellArg t.mode} ${f}
+              )' > ${f}; then
+              chown ${lib.escapeShellArg "${t.owner}:${t.group}"} ${f}
+              chmod ${lib.escapeShellArg t.mode} ${f}
+            else
+              rm -f ${f}
+              missing=1
+            fi
           ''
         ) templateList}
 
@@ -233,6 +241,8 @@ let
           [ "$old" = "$dir" ] && continue
           rm -rf "$old"
         done
+
+        [ "$missing" = 0 ]
       '';
     in
     script;
