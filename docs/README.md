@@ -249,3 +249,7 @@ rm -rf /var/tmp/restore                                # on loft01
   kubectl -n paperless exec -it paperless-0 -c paperless -- python3 manage.py shell \
     -c "from django.contrib.auth.models import User; User.objects.filter(username='admin').update(is_active=True)"
   ```
+- **Tetragon policies outliving the agent:** with `keep-sensors-on-exit`, an
+  enforcing policy stays pinned in BPF after the agent stops, the addon
+  included. With the agent gone, `rm -rf /sys/fs/bpf/tetragon*` as root on
+  `loft01` (or a reboot) unloads it.
