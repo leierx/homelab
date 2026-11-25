@@ -28,6 +28,8 @@
     "randomize_kstack_offset=on"
     "vsyscall=none"
     "debugfs=off"
+    # the file hashes in Tetragon's exec tripwire events; the kernel defaults to sha1
+    "ima_hash=sha256"
     # kubelet doesn't count ARC as reclaimable, so an uncapped ARC triggers pod evictions
     "zfs.zfs_arc_max=68719476736"
   ];
