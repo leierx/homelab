@@ -18,12 +18,14 @@ spec:
         - {index: 0, type: linux_binprm}
         - {index: 0, type: uint64, resolve: file.f_inode.i_sb.s_magic}
       selectors:
-        # the image is overlayfs; a volume, tmpfs or memfd is not. CNPG and Argo Workflows run a binary they copied into an emptyDir
+        # the image is overlayfs; a volume, tmpfs or memfd is not. CNPG and Argo Workflows run a binary they copied into an emptyDir,
+        # and the tofu workflow the providers it downloads
         - matchBinaries:
             - {operator: NotPrefix, values: [/nix/store/]}
           matchArgs:
             - {args: [1], operator: NotEqual, values: ["2035054128"]}
             - {args: [0], operator: NotEqual, values: [/controller/manager, /var/run/argo/argoexec]}
+            - {args: [0], operator: NotPrefix, values: [/work/.terraform/providers/]}
           matchActions:
             - {action: Override, argError: -1}
             - {action: Post, imaHash: true}
