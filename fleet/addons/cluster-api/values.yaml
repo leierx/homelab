@@ -39,3 +39,16 @@ infrastructure:
     version: v0.11.2
     deployment:
       containers: [{name: manager, resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}}]
+    # upstream ships imagePullPolicy Always, which needs quay.io at every start, and no container securityContext
+    patches:
+      - target: {group: apps, kind: Deployment, name: capk-controller-manager}
+        patch: |
+          - {op: replace, path: /spec/template/spec/containers/0/imagePullPolicy, value: IfNotPresent}
+          - op: add
+            path: /spec/template/spec/containers/0/securityContext
+            value:
+              runAsNonRoot: true
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: {drop: [ALL]}
+              seccompProfile: {type: RuntimeDefault}
