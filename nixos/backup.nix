@@ -183,7 +183,10 @@ in
     wants = [ "network-online.target" ];
     serviceConfig = {
       Type = "oneshot";
+      # only a run that finished clears it, so a boot can tell whether the last one was cut off
+      ExecStartPre = "${pkgs.coreutils}/bin/touch ${stateDir}/unfinished";
       ExecStart = lib.getExe backup;
+      ExecStartPost = "${pkgs.coreutils}/bin/rm -f ${stateDir}/unfinished";
       StateDirectory = "offsite-backup";
       # a fresh, empty root each run; the snapshot mounts live in the unit's own namespace and go with it
       RuntimeDirectory = "offsite-backup";
@@ -238,13 +241,26 @@ in
     }
   ];
 
-  # after autoUpgrade's 02:00-04:00 reboot window; OnBootSec reruns one cut off by any other reboot
+  # after autoUpgrade's 02:00-04:00 reboot window
   systemd.timers."offsite-backup" = {
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnCalendar = "04:30";
-      OnBootSec = "15min";
       Persistent = true;
     };
+  };
+
+  # a boot reruns a backup that a reboot cut off or that failed, not every night's again
+  systemd.services."offsite-backup-resume" = {
+    description = "Rerun an off-site backup that did not finish";
+    unitConfig.ConditionPathExists = "${stateDir}/unfinished";
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${config.systemd.package}/bin/systemctl start --no-block offsite-backup.service";
+    };
+  };
+  systemd.timers."offsite-backup-resume" = {
+    wantedBy = [ "timers.target" ];
+    timerConfig.OnBootSec = "15min";
   };
 }
