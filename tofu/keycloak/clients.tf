@@ -100,7 +100,7 @@ resource "keycloak_openid_client" "argocd" {
 
   access_type                  = "CONFIDENTIAL"
   client_secret_wo             = var.argocd_client_secret
-  client_secret_wo_version     = "1"
+  client_secret_wo_version     = "2"
   standard_flow_enabled        = true
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
@@ -137,7 +137,7 @@ resource "keycloak_openid_client" "grafana" {
 
   access_type                  = "CONFIDENTIAL"
   client_secret_wo             = var.grafana_client_secret
-  client_secret_wo_version     = "1"
+  client_secret_wo_version     = "2"
   standard_flow_enabled        = true
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
@@ -159,7 +159,7 @@ resource "keycloak_openid_client" "immich" {
 
   access_type                  = "CONFIDENTIAL"
   client_secret_wo             = var.immich_client_secret
-  client_secret_wo_version     = "1"
+  client_secret_wo_version     = "2"
   standard_flow_enabled        = true
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
@@ -182,7 +182,7 @@ resource "keycloak_openid_client" "alerta" {
 
   access_type                  = "CONFIDENTIAL"
   client_secret_wo             = var.alerta_client_secret
-  client_secret_wo_version     = "1"
+  client_secret_wo_version     = "2"
   standard_flow_enabled        = true
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
@@ -202,7 +202,7 @@ resource "keycloak_openid_client" "edge" {
 
   access_type                  = "CONFIDENTIAL"
   client_secret_wo             = var.edge_client_secret
-  client_secret_wo_version     = "1"
+  client_secret_wo_version     = "2"
   standard_flow_enabled        = true
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
@@ -252,7 +252,7 @@ resource "keycloak_openid_client" "argo_workflows" {
 
   access_type                  = "CONFIDENTIAL"
   client_secret_wo             = var.argo_workflows_client_secret
-  client_secret_wo_version     = "1"
+  client_secret_wo_version     = "2"
   standard_flow_enabled        = true
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
@@ -271,7 +271,7 @@ resource "keycloak_openid_client" "miniflux" {
 
   access_type                  = "CONFIDENTIAL"
   client_secret_wo             = var.miniflux_client_secret
-  client_secret_wo_version     = "1"
+  client_secret_wo_version     = "2"
   standard_flow_enabled        = true
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
@@ -291,7 +291,7 @@ resource "keycloak_openid_client" "paperless" {
 
   access_type                  = "CONFIDENTIAL"
   client_secret_wo             = var.paperless_client_secret
-  client_secret_wo_version     = "1"
+  client_secret_wo_version     = "2"
   standard_flow_enabled        = true
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
@@ -311,7 +311,7 @@ resource "keycloak_openid_client" "jellyfin" {
 
   access_type                  = "CONFIDENTIAL"
   client_secret_wo             = var.jellyfin_client_secret
-  client_secret_wo_version     = "1"
+  client_secret_wo_version     = "2"
   standard_flow_enabled        = true
   direct_access_grants_enabled = false
   implicit_flow_enabled        = false
