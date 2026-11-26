@@ -182,8 +182,8 @@ zrepl keeps local snapshots (24 hourly, 14 daily, 3 monthly);
 to rsync.net nightly at 04:30 (restic: 7 daily, 4 weekly, 6 monthly).
 Disposable volumes (Mimir, Loki, Alertmanager, the Renovate cache, Immich's
 model cache and the private apps' volumes) live under `tank/ephemeral`, from
-the `zfs-ephemeral` StorageClasses: neither zrepl nor the off-site backup
-touches them, so deleting their data frees space at once. Example: Immich
+the `zfs-ephemeral` StorageClasses: zrepl skips them and the off-site backup
+drops their snapshot at once, so deleting their data frees space at once. Example: Immich
 originals live in claim `immich/library` under `library/`. Run everything as
 root on `loft01` (`doas -s`).
 

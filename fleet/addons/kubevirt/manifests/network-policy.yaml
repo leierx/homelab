@@ -175,14 +175,41 @@ spec:
     matchLabels:
       app.kubernetes.io/name: virt-template
   ingress:
-    - fromEntities: [host]
-      toPorts:
-        - ports:
-            - {port: "8081", protocol: TCP}
-            - {port: "9443", protocol: TCP}
     - fromEntities: [kube-apiserver]
       toPorts:
         - ports:
             - {port: "9443", protocol: TCP}
   egress:
     - toEntities: [kube-apiserver]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: virt-template-apiserver-probes
+  namespace: kubevirt
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: virt-template
+      control-plane: apiserver
+  ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "9443", protocol: TCP}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: virt-template-controller-probes
+  namespace: kubevirt
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: virt-template
+      control-plane: controller-manager
+  ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8081", protocol: TCP}

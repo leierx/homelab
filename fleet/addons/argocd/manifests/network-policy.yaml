@@ -182,15 +182,21 @@ spec:
     # Git, Helm and OCI chart repositories and Kustomize remote resources; a chart from a new host needs it here
     - toFQDNs:
         - matchName: github.com
-        - matchPattern: "*.githubusercontent.com"
-        - matchPattern: "*.github.io"
+        - matchName: raw.githubusercontent.com
+        - matchName: objects.githubusercontent.com
+        - matchName: release-assets.githubusercontent.com
+        - matchName: grafana.github.io
+        - matchName: kubernetes-sigs.github.io
+        - matchName: stakater.github.io
         - matchName: helm.cilium.io
         - matchName: ghcr.io
+        - matchName: pkg-containers.githubusercontent.com
         - matchName: quay.io
-        - matchPattern: "*.quay.io"
+        - matchPattern: "cdn*.quay.io"
         - matchName: registry-1.docker.io
         - matchName: auth.docker.io
-        - matchPattern: "**.docker.com"
+        - matchName: production.cloudflare.docker.com
+        - matchName: production.cloudfront.docker.com
       toPorts:
         - ports:
             - {port: "443", protocol: TCP}

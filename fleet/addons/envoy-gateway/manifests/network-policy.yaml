@@ -61,6 +61,7 @@ spec:
         - ports:
             - {port: "19002", protocol: TCP}
             - {port: "19003", protocol: TCP}
+    # the sites: the port forward arrives as world, loft01's own requests as host
     - fromEntities: [world, host]
       toPorts:
         - ports:

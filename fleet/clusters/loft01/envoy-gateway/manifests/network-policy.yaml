@@ -111,6 +111,7 @@ spec:
         - ports:
             - {port: "10080", protocol: TCP}
             - {port: "10443", protocol: TCP}
+    # loft01's own requests to the wg sites
     - fromEntities: [host]
       toPorts:
         - ports:

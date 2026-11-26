@@ -275,7 +275,7 @@ dashboards, with the variables resolved. Panels that stay empty here are mostly
 not applicable to this cluster, not broken:
 
 - **Not applicable:** Windows panels, kvstore,
-  Hubble DNS/HTTP/L7 (needs L7 visibility on the policies), L2ARC, hardware fans
+  Hubble HTTP/L7 (DNS shows only the pods with `toFQDNs` pins), L2ARC, hardware fans
   and PSUs, and SATA SMART attributes (the disks are SAS and NVMe).
 - **Nothing to show:** failures, OOMs, restarts, throttling (the admission policy
   keeps CPU limits off), expiring certificates, paused applications.
