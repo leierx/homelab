@@ -7,6 +7,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: opencloud
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "9124", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: envoy-gateway-system

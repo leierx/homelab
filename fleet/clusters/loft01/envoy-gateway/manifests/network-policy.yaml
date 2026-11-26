@@ -101,6 +101,11 @@ spec:
       app.kubernetes.io/name: envoy
       gateway.envoyproxy.io/owning-gateway-name: wg
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "19002", protocol: TCP}
+            - {port: "19003", protocol: TCP}
     - fromCIDR: [10.0.0.0/24]
       toPorts:
         - ports:

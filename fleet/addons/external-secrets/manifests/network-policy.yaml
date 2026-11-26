@@ -46,6 +46,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: external-secrets-cert-controller
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8081", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: telemetry
@@ -66,6 +70,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: external-secrets-webhook
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8081", protocol: TCP}
     - fromEntities: [kube-apiserver]
       toPorts:
         - ports:

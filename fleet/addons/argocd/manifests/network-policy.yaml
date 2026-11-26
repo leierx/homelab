@@ -7,6 +7,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: argocd-server
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8080", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: envoy-gateway-system
@@ -64,6 +68,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: argocd-application-controller
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8082", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: telemetry
@@ -130,6 +138,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: argocd-repo-server
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8084", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             app.kubernetes.io/name: argocd-server

@@ -8,6 +8,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: gateway-helm
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8081", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             app.kubernetes.io/name: envoy
@@ -52,6 +56,11 @@ spec:
       app.kubernetes.io/name: envoy
       gateway.envoyproxy.io/owning-gateway-name: edge
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "19002", protocol: TCP}
+            - {port: "19003", protocol: TCP}
     - fromEntities: [world, host]
       toPorts:
         - ports:

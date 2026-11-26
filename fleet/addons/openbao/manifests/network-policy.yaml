@@ -45,6 +45,10 @@ spec:
     matchLabels:
       cnpg.io/cluster: openbao-db
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8000", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             app.kubernetes.io/name: openbao

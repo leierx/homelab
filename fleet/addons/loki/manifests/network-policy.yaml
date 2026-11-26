@@ -7,6 +7,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: loki
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "3100", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             app.kubernetes.io/name: grafana

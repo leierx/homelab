@@ -6,5 +6,10 @@ spec:
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: reloader
+  ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "9090", protocol: TCP}
   egress:
     - toEntities: [kube-apiserver]

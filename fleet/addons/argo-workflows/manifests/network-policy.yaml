@@ -7,6 +7,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: argo-workflows-server
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "2746", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: envoy-gateway-system
@@ -36,6 +40,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: argo-workflows-workflow-controller
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "6060", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: telemetry

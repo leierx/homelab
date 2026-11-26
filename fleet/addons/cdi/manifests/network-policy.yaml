@@ -8,6 +8,10 @@ spec:
     matchLabels:
       cdi.kubevirt.io: cdi-operator
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8444", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: telemetry
@@ -29,6 +33,10 @@ spec:
     matchLabels:
       cdi.kubevirt.io: cdi-apiserver
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
     - fromEntities: [kube-apiserver]
       toPorts:
         - ports:
@@ -73,6 +81,10 @@ spec:
     matchLabels:
       cdi.kubevirt.io: cdi-uploadproxy
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             cdi.kubevirt.io: cdi-deployment

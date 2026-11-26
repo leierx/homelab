@@ -7,6 +7,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: paperless
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8000", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: envoy-gateway-system
@@ -44,6 +48,10 @@ spec:
     matchLabels:
       cnpg.io/cluster: paperless-db
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8000", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             app.kubernetes.io/name: paperless

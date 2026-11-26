@@ -7,6 +7,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: cloudnative-pg
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "9443", protocol: TCP}
     - fromEntities: [kube-apiserver]
       toPorts:
         - ports:

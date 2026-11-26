@@ -35,6 +35,11 @@ spec:
     matchLabels:
       k8s-app: kube-dns
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8080", protocol: TCP}
+            - {port: "8181", protocol: TCP}
     - fromEntities: [cluster]
       toPorts:
         - ports:

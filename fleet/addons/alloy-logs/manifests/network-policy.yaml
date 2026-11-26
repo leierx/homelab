@@ -8,6 +8,10 @@ spec:
       app.kubernetes.io/name: alloy
       app.kubernetes.io/instance: alloy-logs
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "12345", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             app.kubernetes.io/name: alloy

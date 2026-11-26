@@ -8,6 +8,10 @@ spec:
     matchLabels:
       kubevirt.io: virt-operator
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
     - fromEntities: [kube-apiserver]
       toPorts:
         - ports:
@@ -33,6 +37,10 @@ spec:
     matchLabels:
       kubevirt.io: virt-api
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
     - fromEntities: [kube-apiserver]
       toPorts:
         - ports:
@@ -64,6 +72,10 @@ spec:
     matchLabels:
       kubevirt.io: virt-controller
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: telemetry
@@ -91,6 +103,10 @@ spec:
     matchLabels:
       kubevirt.io: virt-handler
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             kubevirt.io: virt-api
@@ -116,6 +132,10 @@ spec:
     matchLabels:
       kubevirt.io: virt-exportproxy
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8443", protocol: TCP}
     - fromEntities: [kube-apiserver]
       toPorts:
         - ports:
@@ -155,6 +175,11 @@ spec:
     matchLabels:
       app.kubernetes.io/name: virt-template
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "8081", protocol: TCP}
+            - {port: "9443", protocol: TCP}
     - fromEntities: [kube-apiserver]
       toPorts:
         - ports:

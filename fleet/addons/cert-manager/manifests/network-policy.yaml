@@ -7,6 +7,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: cert-manager
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "9403", protocol: TCP}
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: telemetry
@@ -69,6 +73,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: webhook
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "6080", protocol: TCP}
     - fromEntities: [kube-apiserver]
       toPorts:
         - ports:

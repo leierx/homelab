@@ -8,6 +8,10 @@ spec:
     matchLabels:
       control-plane: controller-manager
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "9440", protocol: TCP}
     - fromEntities: [kube-apiserver]
       toPorts:
         - ports:
@@ -37,6 +41,10 @@ spec:
     matchLabels:
       control-plane: controller-manager
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "9440", protocol: TCP}
     - fromEntities: [kube-apiserver]
       toPorts:
         - ports:
@@ -62,6 +70,10 @@ spec:
     matchLabels:
       control-plane: controller-manager
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "9440", protocol: TCP}
     - fromEntities: [kube-apiserver]
       toPorts:
         - ports:
@@ -87,6 +99,10 @@ spec:
     matchLabels:
       control-plane: controller-manager
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "9440", protocol: TCP}
     - fromEntities: [kube-apiserver]
       toPorts:
         - ports:
@@ -112,6 +128,10 @@ spec:
     matchLabels:
       control-plane: controller-manager
   ingress:
+    - fromEntities: [host]
+      toPorts:
+        - ports:
+            - {port: "9440", protocol: TCP}
     - fromEntities: [kube-apiserver]
       toPorts:
         - ports:
