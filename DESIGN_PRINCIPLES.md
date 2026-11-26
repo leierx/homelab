@@ -7,5 +7,5 @@
 - **No comment is the best comment.** If one is needed, it's one line for the operator: why it's done this way, never what the code does. Longer only for a hard reason.
 - **Postgres for state.** An app that needs a database gets PostgreSQL from CloudNativePG, one cluster per app.
 - **Zero trust, hardened by default.** Nothing is trusted for being in the cluster or on the network. Every app gets the hardening it takes without fighting upstream (non-root, read-only root, no capabilities, no service account token), not more.
-- **Network policies everywhere.** Every pod is default-deny and opens only the flows it needs, on both ends.
+- **Network policies everywhere.** Every pod is default-deny and opens only the flows it needs, on both ends. Internet egress names its hostnames (`toFQDNs`), so a new destination is a reviewed change; only workloads that reach arbitrary hosts (feeds, Renovate, VMs) get the open CIDR rule.
 - **Local accounts are break-glass.** People log in through Keycloak. Local accounts, admin included, are disabled, with a long random password in OpenBao readable only by what needs it, and their use alerts where the app makes it visible.
