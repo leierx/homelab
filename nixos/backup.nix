@@ -51,9 +51,11 @@ let
       r unlock --remove-all
 
       # one point in time for every volume; always unmount and destroy even if the run fails
-      trap 'umount -R ${root}/volumes >/dev/null 2>&1 || true; zfs destroy -r tank@restic >/dev/null 2>&1 || true' EXIT
+      trap 'umount -R ${root}/volumes 2>/dev/null || true; zfs destroy -r tank@restic || true' EXIT
       if zfs list tank@restic >/dev/null 2>&1; then zfs destroy -r tank@restic; fi
       zfs snapshot -r tank@restic
+      # disposable volumes aren't backed up, so their snapshot would only pin freed blocks until the next run
+      zfs destroy -r tank/ephemeral@restic
       time=$(date -d "@$(zfs get -Hp -o value creation tank@restic)" '+%F %T')
 
       # k3s state: restoring a PVC needs its k8s objects too
@@ -87,6 +89,9 @@ let
         [ -n "$pv" ] && claims[$pv]=$claim
       done <<<"$bound"
 
+      # its own mount, so umount -R can take every snapshot mount down again (it refuses a plain directory)
+      mkdir ${root}/volumes
+      mount -t tmpfs -o mode=0700 tmpfs ${root}/volumes
       for dataset in $(zfs list -H -o name -d 1 tank); do
         [ "$dataset" = tank ] && continue
         [ "$dataset" = tank/ephemeral ] && continue
