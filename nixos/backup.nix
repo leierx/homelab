@@ -27,7 +27,8 @@ let
       target=$(cat ${config.secrets.secrets."restic/host".path})
       key=${config.secrets.secrets."restic/ssh_key".path}
       export RESTIC_REPOSITORY="sftp:$target:homelab-restic"
-      export RESTIC_PASSWORD_COMMAND="cat ${config.secrets.secrets."restic/password".path}"
+      # restic opens it itself, so fim-host sees the backup and not a bare cat
+      export RESTIC_PASSWORD_FILE=${config.secrets.secrets."restic/password".path}
       export RESTIC_CACHE_DIR=${stateDir}/cache
 
       # rsync.net only speaks sftp, and restic has to be told which key to use; keepalives turn a dead link into an error, not a hang
@@ -38,8 +39,8 @@ let
       # a zvol or nested dataset would be silently left out below; tank/ephemeral holds what is never backed up
       while read -r name type; do
         [ "$name" = tank ] && continue
-        [ "$type" = filesystem ] || { echo "$name is a $type, not a dataset" >&2; exit 1; }
         case "$name" in tank/ephemeral | tank/ephemeral/*) continue ;; esac
+        [ "$type" = filesystem ] || { echo "$name is a $type, not a dataset" >&2; exit 1; }
         [ "''${name%/*}" = tank ] || { echo "$name is nested below tank/<pv>" >&2; exit 1; }
       done < <(zfs list -H -o name,type -r tank)
 
@@ -56,7 +57,8 @@ let
       zfs snapshot -r tank@restic
       # disposable volumes aren't backed up, so their snapshot would only pin freed blocks until the next run
       zfs destroy -r tank/ephemeral@restic
-      time=$(date -d "@$(zfs get -Hp -o value creation tank@restic)" '+%F %T')
+      created=$(zfs get -Hp -o value creation tank@restic)
+      time=$(date -d "@$created" '+%F %T')
 
       # k3s state: restoring a PVC needs its k8s objects too
       mkdir ${root}/k3s
@@ -81,8 +83,10 @@ let
           --certificate-authority=$tls/server-ca.crt \
           --client-certificate="$kube/cert.pem" --client-key="$kube/key.pem" "$@"
       }
-      bound=$(k get pv -o json \
-        | jq -r '.items[] | select(.status.phase == "Bound") | "\(.metadata.name) \(.spec.claimRef.namespace)/\(.spec.claimRef.name)"')
+      # a volume created after the snapshot waits for the next run
+      bound=$(k get pv -o json | jq -r --arg before "$(date -u -d "@$created" +%FT%TZ)" '.items[]
+          | select(.status.phase == "Bound" and .spec.csi.volumeAttributes["openebs.io/poolname"] == "tank" and .metadata.creationTimestamp < $before)
+          | "\(.metadata.name) \(.spec.claimRef.namespace)/\(.spec.claimRef.name)"')
 
       declare -A claims=()
       while read -r pv claim; do
@@ -92,19 +96,23 @@ let
       # its own mount, so umount -R can take every snapshot mount down again (it refuses a plain directory)
       mkdir ${root}/volumes
       mount -t tmpfs -o mode=0700 tmpfs ${root}/volumes
-      for dataset in $(zfs list -H -o name -d 1 tank); do
-        [ "$dataset" = tank ] && continue
-        [ "$dataset" = tank/ephemeral ] && continue
-        pv=''${dataset#tank/}
+      for snapshot in $(zfs list -H -t snapshot -o name -r tank | grep -E '^tank/[^/]+@restic$'); do
+        pv=''${snapshot#tank/}
+        pv=''${pv%@restic}
         claim=''${claims[$pv]:-unbound/$pv}
+        unset "claims[$pv]"
         dir=${root}/volumes/$claim
         mkdir -p "$dir"
-        mount -t zfs -o ro "$dataset@restic" "$dir"
+        mount -t zfs -o ro "$snapshot" "$dir"
+      done
+      for pv in "''${!claims[@]}"; do
+        echo "bound PV $pv (''${claims[$pv]}) on tank has no tank/$pv@restic" >&2
+        exit 1
       done
 
       added=$(r backup --host loft01 --time "$time" --json ${root} | jq -r 'select(.message_type == "summary") | .data_added')
       # unmount before destroying @restic in the EXIT trap
-      umount -R ${root}/volumes 2>/dev/null || true
+      umount -R ${root}/volumes
       r forget --host loft01 --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
       # reads back a different 1/28 of the stored data each night, so all of it every 4 weeks
       r check --read-data-subset="$(($(date +%s) / 86400 % 28 + 1))/28"

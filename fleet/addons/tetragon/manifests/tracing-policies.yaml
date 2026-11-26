@@ -379,3 +379,5 @@ spec:
                 - /argocd/private_repo_pat
                 - /rendered/openbao-seal-key.yaml
                 - /rendered/argocd-private-repo.yaml
+                - /restic/password
+                - /restic/ssh_key
