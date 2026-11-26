@@ -6,14 +6,14 @@ alloy:
     readOnlyRootFilesystem: true
     capabilities: {drop: [ALL]}
     seccompProfile: {type: RuntimeDefault}
-  # the storage path holds the read positions, which then survive a container restart too
+  # the read positions live on the host, so a new pod or a reboot resumes instead of replaying 7 days; Alloy drops entries for deleted files
   mounts:
     varlog: true
     extra: [{name: storage, mountPath: /tmp/alloy}]
   resources: {requests: {cpu: 50m, memory: 256Mi}, limits: {memory: 1Gi}}
   enableReporting: false
 rbac: {create: false}
-controller: {volumes: {extra: [{name: storage, emptyDir: {}}]}}
+controller: {volumes: {extra: [{name: storage, hostPath: {path: /var/lib/alloy-logs, type: DirectoryOrCreate}}]}}
 configReloader:
   resources: {requests: {memory: 16Mi}, limits: {memory: 64Mi}}
 crds: {create: false}

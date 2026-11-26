@@ -178,12 +178,15 @@ To read another host unit, add it to `JOURNAL_UNITS` and restart `alloy-logs`.
 
 ### Quirks
 
-- Alloy keeps its read positions in an emptyDir, so a new `alloy-logs` pod
-  re-reads the audit log and the journal. Loki's ingestion limits are raised
-  for that burst; identical lines are de-duplicated.
+- `alloy-logs` keeps its read positions in `/var/lib/alloy-logs` on the host
+  (a few KB; Alloy drops entries for deleted files), so a new pod or a reboot
+  resumes where it stopped. Only a fresh node re-reads the audit log and the
+  journal; Loki's ingestion limits are raised for that burst, and identical
+  lines are de-duplicated.
 - The `*-env` ConfigMaps are read at start. After changing one, delete the
   pod. A changed config file reloads by itself.
-- Loki rejects samples older than 7 days, which caps the journal replay.
+- Loki rejects samples older than 7 days, which caps the journal replay on a
+  fresh node.
 
 ## Dashboards
 
