@@ -282,6 +282,8 @@ in
       "--secrets-encryption"
       "--kubelet-arg=system-reserved=cpu=2,memory=16Gi"
       "--kubelet-arg=kube-reserved=cpu=2,memory=16Gi"
+      # k3s's own eviction-hard lists only the filesystems, which drops the kubelet's memory threshold (%% is systemd's escape); the ARC is capped at 64 GiB (hardware.nix)
+      "--kubelet-arg=eviction-hard=memory.available<2Gi,nodefs.available<5%%,imagefs.available<5%%"
       # RuntimeDefault for every container that doesn't ask for another profile
       "--kubelet-arg=seccomp-default=true"
       # k3s defaults both to the safe value; spelled out so a default change is a diff
