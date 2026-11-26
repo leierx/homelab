@@ -33,6 +33,22 @@ allowVolumeExpansion: true
 reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer
 ---
+# zfs-ephemeral: zfs for disposable data (metrics, logs, caches); under tank/ephemeral, which zrepl and the off-site backup skip
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: zfs-ephemeral
+provisioner: zfs.csi.openebs.io
+parameters:
+  poolname: tank/ephemeral
+  fstype: zfs
+  recordsize: 128k
+  quotatype: refquota
+  thinprovision: "yes"
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+---
 # zfs-scratch: CDI's import scratch space (fleet/addons/cdi); throwaway, so it goes with its claim
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -40,7 +56,7 @@ metadata:
   name: zfs-scratch
 provisioner: zfs.csi.openebs.io
 parameters:
-  poolname: tank
+  poolname: tank/ephemeral
   fstype: zfs
   quotatype: refquota
   thinprovision: "yes"
