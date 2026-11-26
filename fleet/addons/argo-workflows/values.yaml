@@ -7,6 +7,8 @@ controller:
   workflowNamespaces: [argo, keycloak]
   podSecurityContext: {seccompProfile: {type: RuntimeDefault}}
   retentionPolicy: {completed: 5, failed: 3, errored: 3}
+  # Loki keeps their logs; failed pods stay for debugging until retentionPolicy drops the workflow
+  workflowDefaults: {spec: {podGC: {strategy: OnPodSuccess}}}
   metricsConfig: {enabled: true}
   serviceMonitor: {enabled: true}
   resources: {requests: {cpu: 100m, memory: 256Mi}, limits: {memory: 1Gi}}
