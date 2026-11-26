@@ -150,6 +150,11 @@ appends to `/etc/hosts`.
     and receives standard security headers automatically. New web apps only need
     their `Certificate`, `ListenerSet`, `HTTPRoute`, and `https://<host>/_envoy/callback`
     in `keycloak_openid_client.edge.valid_redirect_uris` (`tofu/keycloak/clients.tf`).
+  - The private apps on `wg` attach their own OIDC `SecurityPolicy` against the
+    `jellyfin` client and gate on its `jellyfin-admin`/`jellyfin-user` groups.
+    Their hostnames reach tofu as `private_wg_hosts` through a
+    `keycloak-tofu-vars` ConfigMap the private repo ships, so they never appear
+    here.
   - `edge` drops clients listed in Spamhaus DROP and EmergingThreats:
     `edge-blocklist.timer` (`nixos/k3s.nix`) refreshes them every 6 h into
     `CiliumClusterwideNetworkPolicy/edge-blocklist` through k3s's auto-deploy

@@ -319,8 +319,12 @@ resource "keycloak_openid_client" "jellyfin" {
   full_scope_allowed           = false
   pkce_code_challenge_method   = "S256"
 
-  valid_redirect_uris = ["https://jellyfin.skinke.net/sso/OID/redirect/keycloak"]
-  web_origins         = ["https://jellyfin.skinke.net"]
+  valid_redirect_uris = concat(
+    ["https://jellyfin.skinke.net/sso/OID/redirect/keycloak"],
+    [for host in var.private_wg_hosts : "https://${host}/_envoy/callback"],
+  )
+  valid_post_logout_redirect_uris = [for host in var.private_wg_hosts : "https://${host}/*"]
+  web_origins                     = ["https://jellyfin.skinke.net"]
 }
 
 # OpenCloud's web app

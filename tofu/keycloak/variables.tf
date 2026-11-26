@@ -52,3 +52,9 @@ variable "jellyfin_client_secret" {
   type      = string
   sensitive = true
 }
+
+# WireGuard-only hosts whose Envoy login uses the jellyfin client; from the private repo, so their names stay out of this one
+variable "private_wg_hosts" {
+  type    = list(string)
+  default = []
+}
