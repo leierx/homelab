@@ -167,15 +167,30 @@ spec:
       toPorts:
         - ports:
             - {port: "6379", protocol: TCP}
-    # Git repositories, Helm chart repositories, and Kustomize remote resources
-    - toCIDRSet:
-        - cidr: 0.0.0.0/0
-          except:
-            - 10.0.0.0/8
-            - 172.16.0.0/12
-            - 192.168.0.0/16
-            - 169.254.0.0/16
-            - 100.64.0.0/10
+    # lookups through Cilium's DNS proxy, which learns the addresses the toFQDNs rule allows
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - {port: "53", protocol: UDP}
+            - {port: "53", protocol: TCP}
+          rules:
+            dns:
+              - matchPattern: "*"
+    # Git, Helm and OCI chart repositories and Kustomize remote resources; a chart from a new host needs it here
+    - toFQDNs:
+        - matchName: github.com
+        - matchPattern: "*.githubusercontent.com"
+        - matchPattern: "*.github.io"
+        - matchName: helm.cilium.io
+        - matchName: ghcr.io
+        - matchName: quay.io
+        - matchPattern: "*.quay.io"
+        - matchName: registry-1.docker.io
+        - matchName: auth.docker.io
+        - matchPattern: "**.docker.com"
       toPorts:
         - ports:
             - {port: "443", protocol: TCP}
