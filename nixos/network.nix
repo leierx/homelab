@@ -30,6 +30,10 @@
       allowPing = false;
       # strict drops pod->host packets: they arrive on lxc* but the pod CIDR routes via cilium_host
       checkReversePath = "loose";
+      # Cilium's proxy mark routes to a local-only table, which the fib check reads as no route (Cilium drops spoofed pod IPs)
+      extraReversePathFilterRules = ''
+        iifname "lxc*" meta mark & 0x00000f00 == 0x00000200 accept comment "Cilium proxy redirect"
+      '';
       trustedInterfaces = [
         "wg0"
         "cilium_host"
