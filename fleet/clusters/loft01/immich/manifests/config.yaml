@@ -9,7 +9,7 @@ spec:
   refreshInterval: 1h
   secretStoreRef:
     kind: ClusterSecretStore
-    name: fleet-secrets
+    name: openbao
   target:
     template:
       engineVersion: v2
@@ -39,4 +39,12 @@ spec:
             enabled: false
   data:
     - secretKey: oidc_client_secret
-      remoteRef: {key: loft01/immich, property: oidc_client_secret}
+      remoteRef: {key: homelab/keycloak/for/immich/immich, property: oidc_client_secret}
+---
+# ESO logs in to OpenBao as this namespace's openbao-client (ClusterSecretStores openbao, openbao-push)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openbao-client
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
