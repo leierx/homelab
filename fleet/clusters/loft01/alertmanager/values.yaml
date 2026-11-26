@@ -1,5 +1,5 @@
 persistence: {storageClass: zfs-ephemeral}
-# free SMTP relay on port 587 (ISP blocks port 25); credentials live in OpenBao kv/loft01/alertmanager
+# free SMTP relay on port 587 (ISP blocks port 25); credentials live in OpenBao kv/homelab/monitoring/alertmanager
 config:
   global:
     smtp_smarthost: smtp.resend.com:587

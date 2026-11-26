@@ -27,7 +27,7 @@ kubeconfig:
     [ -z "$current" ] || kubectl config use-context "$current" --kubeconfig "$merged" > /dev/null
     mv "$merged" ~/.kube/config
 
-# bao CLI as OpenBao admin via a short-lived openbao-admin token, e.g. `just bao kv get kv/loft01/grafana`
+# bao CLI as OpenBao admin via a short-lived openbao-admin token, e.g. `just bao kv get kv/homelab/monitoring/grafana`
 [positional-arguments]
 bao *args:
     #!/usr/bin/env bash

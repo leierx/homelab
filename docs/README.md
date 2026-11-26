@@ -38,11 +38,18 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   `Secret/openbao-seal-key` (provisioned by `nixos/k3s.nix` through k3s's
   auto-deploy manifests, from the host-only `/var/lib/secrets.yaml`).
 - On first startup against empty storage, OpenBao initializes the `kv` v2
-  mount, Kubernetes auth, and the `external-secrets`, `external-secrets-push`,
-  and `admin` roles from `fleet/addons/openbao/values.yaml`.
-- **External Secrets Operator** provides `ClusterSecretStore/fleet-secrets`
-  (read) and `ClusterSecretStore/fleet-secrets-push` (write). Secret paths are
-  `kv/<cluster>/<app>`.
+  mount, Kubernetes auth, the `openbao-client` and `openbao-client-push` roles
+  and policies, and the `admin` role from `fleet/addons/openbao/values.yaml`.
+  Those blocks never run again, so a later policy change also needs a one-off
+  `just bao` write on the running OpenBao.
+- **External Secrets Operator** provides `ClusterSecretStore/openbao` (read)
+  and `ClusterSecretStore/openbao-push` (write). Both log in as the
+  `openbao-client` ServiceAccount of the ExternalSecret's or PushSecret's own
+  namespace, so a namespace needs that ServiceAccount, and it sees only its own
+  `kv/homelab/<namespace>/**` plus what another namespace shares with it under
+  `kv/homelab/<writer>/for/<namespace>/**` (e.g. Keycloak's OIDC client secrets
+  at `kv/homelab/keycloak/for/<namespace>/<client>`); it writes only its own
+  subtree. Paths are `kv/homelab/<namespace>/<name>`.
 - Random application secrets (OIDC client secrets, Grafana admin password, initial
   Keycloak credentials) are generated once via ESO `Password` generators and
   pushed with `PushSecret` (`updatePolicy: IfNotExists`).
@@ -55,16 +62,16 @@ kubectl -n argocd annotate app loft01-<addon> argocd.argoproj.io/refresh=normal 
   `smtp.resend.com:587`) is set by hand:
 
   ```sh
-  printf %s "$SMTP_PASSWORD" | just bao kv put kv/loft01/alertmanager smtp_password=-
+  printf %s "$SMTP_PASSWORD" | just bao kv put kv/homelab/monitoring/alertmanager smtp_password=-
   ```
 
 - **Renovate GitHub App credentials** (`app_id`, `installation_id`,
   `private_key`) are set by hand:
 
   ```sh
-  printf %s "$APP_ID" | just bao kv put kv/loft01/renovate app_id=-
-  printf %s "$INSTALLATION_ID" | just bao kv patch kv/loft01/renovate installation_id=-
-  just bao kv patch kv/loft01/renovate private_key=- < path/to/private-key.pem
+  printf %s "$APP_ID" | just bao kv put kv/homelab/renovate/renovate app_id=-
+  printf %s "$INSTALLATION_ID" | just bao kv patch kv/homelab/renovate/renovate installation_id=-
+  just bao kv patch kv/homelab/renovate/renovate private_key=- < path/to/private-key.pem
   ```
 
 - Use `just bao <args>` to run the `bao` CLI as admin via a short-lived
@@ -163,7 +170,7 @@ appends to `/etc/hosts`.
     can't block edge traffic.
 - **First login after a fresh cluster build:**
   1. Fetch `leier`'s initial password:
-     `just bao kv get -field=leier_password kv/loft01/keycloak`
+     `just bao kv get -field=leier_password kv/homelab/keycloak/keycloak`
   2. Sign in to any app (e.g. `https://metrics.skinke.net`); Keycloak makes you
      set a permanent password and register a passkey.
   3. Refresh workstation kubeconfig: `just kubeconfig`.
@@ -251,7 +258,7 @@ rm -rf /var/tmp/restore                                # on loft01
   ```
 - **Paperless-ngx:** `manage.py` in the pod needs no login. For the API as
   `admin`, enable it (the next restart disables it again) and use the password
-  from `just bao kv get -field=admin_password kv/loft01/paperless`:
+  from `just bao kv get -field=admin_password kv/homelab/paperless/paperless`:
   ```sh
   kubectl -n paperless exec -it paperless-0 -c paperless -- python3 manage.py shell \
     -c "from django.contrib.auth.models import User; User.objects.filter(username='admin').update(is_active=True)"

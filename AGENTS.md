@@ -144,8 +144,10 @@ nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
   the off-site backup skips it. Everything else gets both. Never add claim
   names to `nixos/backup.nix`.
 - **Secrets:** Never commit plaintext or encrypted Kubernetes Secrets to git.
-  Use `ExternalSecret` and `PushSecret` against `fleet-secrets` and
-  `fleet-secrets-push` (OpenBao `kv/<cluster>/<app>`). Host-only bootstrap
+  Use `ExternalSecret` and `PushSecret` against `openbao` and `openbao-push`
+  (OpenBao `kv/homelab/<namespace>/<name>`; the namespace needs an
+  `openbao-client` ServiceAccount, and a cross-namespace read is a share the
+  writer pushes to `kv/homelab/<writer>/for/<reader>/`). Host-only bootstrap
   secrets live in `/var/lib/secrets.yaml` on the host, never in git
   (`nixos/secrets.nix`). Argo CD's private repo credential is the host-only
   `argocd/private_repo_pat` secret (`nixos/k3s.nix`), not OpenBao.
