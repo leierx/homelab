@@ -7,7 +7,6 @@
 - [ ] Backups: manual restore drill of one volume plus a short runbook in docs/.
 - [ ] Paperless-ngx AI: try its optional AI features (suggestions, document chat) with a small local model; slow is fine, heavy is not.
 - [ ] OpenBao: switch to the distroless image once the chart can run it without a shell (openbao/openbao-helm#205, #248). `just bao` and the break-glass steps in docs/README.md run `sh` in the pod; move them to a port-forward and a local `bao`.
-- [ ] OpenCloud: delete the groups it synced from the old Keycloak groups claim (Admin settings → Groups); tokens no longer recreate them.
 
 ## Upstream
 
