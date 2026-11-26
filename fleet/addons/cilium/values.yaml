@@ -12,7 +12,8 @@ hubble:
   tls: {enabled: false}
   metrics:
     enabled:
-      - dns:query;ignoreAAAA
+      # which workload asked for which name, to check the toFQDNs pins against
+      - dns:query;ignoreAAAA;sourceContext=workload-name|reserved-identity
       - drop:sourceContext=workload-name|reserved-identity;destinationContext=workload-name|reserved-identity
       - flow:sourceContext=workload-name|reserved-identity;destinationContext=workload-name|reserved-identity
       - tcp
