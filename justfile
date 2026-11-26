@@ -32,7 +32,7 @@ kubeconfig:
 bao *args:
     #!/usr/bin/env bash
     set -euo pipefail
-    jwt=$(kubectl -n openbao create token openbao-admin --duration=10m)
+    jwt=$(kubectl -n openbao create token openbao-admin --audience openbao --duration=10m)
     kubectl -n openbao exec -i openbao-0 -c openbao -- sh -c \
       'export BAO_TOKEN=$(bao write -field=token auth/kubernetes/login role=admin jwt="$0") && exec bao "$@"' \
       "$jwt" "$@"

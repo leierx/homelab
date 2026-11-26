@@ -184,6 +184,7 @@ server:
           data = {
             bound_service_account_names = ["openbao-admin"]
             bound_service_account_namespaces = ["openbao"]
+            audience = "openbao"
             token_policies = ["admin"]
             token_ttl = "15m"
           }
