@@ -128,7 +128,10 @@ nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
   a hook Job's policy the same hook (`argocd.argoproj.io/hook: PreSync` and an
   earlier `sync-wave`), and an early-wave resource's policy the same wave
   (e.g. a CNPG `Cluster` in wave `-1` and its `postgres` policy). Otherwise a
-  fresh cluster's first sync times out.
+  fresh cluster's first sync times out. Internet egress to known hosts uses
+  `toFQDNs` plus the kube-dns rule with `rules.dns` (e.g. `alertmanager`); only
+  pods reaching arbitrary hosts (feeds, Renovate, VMs) keep the `0.0.0.0/0`
+  CIDR rule. A pinned workload that gains a host needs it added.
 - **Pod security:** Every addon sets the `pod-security.kubernetes.io/{enforce,warn,audit}`
   labels under `managedNamespaceMetadata.labels` in `addon.yaml`. Addons
   sharing a namespace (e.g. `telemetry`, `monitoring`, `argocd`,

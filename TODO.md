@@ -4,7 +4,6 @@
 - [ ] Alerting: verify skinke.net in Resend (its DKIM, MX and SPF records at 1984 Hosting) so critical alerts actually mail; until then Alerta is the only channel.
 - [ ] k3s 1.37: https://github.com/leierx/homelab/issues/270 (waits on NixOS 26.11, Cilium 1.21, cert-manager 1.22, CloudNativePG 1.31).
 - [ ] Images: get images onto the node without a registry at boot (e.g. k3s airgap images after a k3s bump), and decide which to keep and which to prune.
-- [ ] Egress pinning (toFQDNs): an L7 DNS rule in the baseline (`rules.dns: [{matchPattern: "*"}]`, reverted in 0bafde3) sent every pod's DNS to Cilium's transparent DNS proxy, which then never reached CoreDNS (hubble: `to-proxy FORWARDED`, no onward packet, no drop), so pod DNS was down for 7 minutes on 2026-11-26. Reproducible in a scratch namespace with a namespaced CNP; suspect the proxy in the host netns versus `hostFirewall` + `policyEnforcementMode: always` + `allow-localhost: policy`. Find the cause there before pinning Alertmanager, cert-manager, ESO, capi-operator, keycloak-tofu, Immich ML and the Argo CD repo-server to their hostnames.
 - [ ] Backups: manual restore drill of one volume plus a short runbook in docs/.
 - [ ] Paperless-ngx AI: try its optional AI features (suggestions, document chat) with a small local model; slow is fine, heavy is not.
 - [ ] OpenBao: switch to the distroless image once the chart can run it without a shell (openbao/openbao-helm#205, #248). `just bao` and the break-glass steps in docs/README.md run `sh` in the pod; move them to a port-forward and a local `bao`.
