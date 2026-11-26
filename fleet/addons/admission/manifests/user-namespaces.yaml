@@ -1,4 +1,5 @@
-# root in a container, or an escape from it, is an unprivileged user on the host; never for host-namespace pods
+# root in a container, or an escape from it, is an unprivileged user on the host; never for pods that need the host's own:
+# host namespaces, privileged mode or host paths
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingAdmissionPolicy
 metadata:
@@ -20,6 +21,12 @@ spec:
         !(has(object.spec.hostNetwork) && object.spec.hostNetwork)
         && !(has(object.spec.hostPID) && object.spec.hostPID)
         && !(has(object.spec.hostIPC) && object.spec.hostIPC)
+    - name: not-privileged
+      expression: >-
+        !(object.spec.containers + (has(object.spec.initContainers) ? object.spec.initContainers : []))
+        .exists(c, has(c.securityContext) && has(c.securityContext.privileged) && c.securityContext.privileged)
+    - name: no-host-path
+      expression: "!has(object.spec.volumes) || !object.spec.volumes.exists(v, has(v.hostPath))"
     # virt-launcher opens /dev/kvm and host devices
     - name: not-virt-launcher
       expression: >-
@@ -41,4 +48,4 @@ spec:
       matchExpressions:
         - key: kubernetes.io/metadata.name
           operator: NotIn
-          values: [kube-system, kubevirt, openebs, telemetry]
+          values: [kube-system]
