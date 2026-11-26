@@ -10,7 +10,7 @@ valkey:
 tika:
   image:
     repository: docker.io/apache/tika
-    tag: 3.3.3.0
+    tag: 3.3.3.1
 gotenberg:
   image:
     repository: docker.io/gotenberg/gotenberg
