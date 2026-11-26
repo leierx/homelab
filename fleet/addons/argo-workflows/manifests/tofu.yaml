@@ -62,12 +62,12 @@ spec:
           - {name: HOME, value: /tmp}
           - {name: WAIT_URL, value: "{{inputs.parameters.waitUrl}}"}
         envFrom:
-          - secretRef:
-              name: "{{inputs.parameters.secret}}"
-          # more TF_VAR_s that another repo provides, e.g. the private apps' hostnames
+          # more TF_VAR_s that another repo provides, e.g. the private apps' hostnames; first, so the Secret wins a clash
           - configMapRef:
               name: "{{inputs.parameters.secret}}-vars"
               optional: true
+          - secretRef:
+              name: "{{inputs.parameters.secret}}"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true

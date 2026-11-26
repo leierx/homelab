@@ -139,7 +139,7 @@ nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
 - **Stateful resources:** Keep `argocd.argoproj.io/sync-options: Delete=false,Prune=false`
   on PVCs, CNPG `Cluster`/`Database` CRs, and persistent namespaces.
 - **Disposable data:** Put a volume whose loss costs nothing worth keeping
-  (metrics, logs, caches, the private apps' media) on `zfs-ephemeral`, or a
+  (metrics, logs, caches, the private apps' data) on `zfs-ephemeral`, or a
   StorageClass with `poolname: tank/ephemeral`: zrepl doesn't snapshot it and
   the off-site backup skips it. Everything else gets both. Never add claim
   names to `nixos/backup.nix`.

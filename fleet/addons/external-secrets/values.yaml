@@ -1,5 +1,5 @@
 serviceMonitor: {enabled: true}
-# manifests/token-rbac.yaml grants it to the two store ServiceAccounts only
+# manifests/token-rbac.yaml grants it for each namespace's openbao-client only
 rbac: {serviceAccountTokenCreate: false}
 resources: {requests: {cpu: 10m, memory: 64Mi}, limits: {memory: 256Mi}}
 webhook:

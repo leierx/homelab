@@ -120,9 +120,7 @@ server:
         }
       }
 
-      # every namespace's openbao-client ServiceAccount reads kv/homelab/<namespace>/** and what other namespaces share with
-      # it under kv/homelab/<writer>/for/<namespace>/**, and writes only its own subtree; the policy keys on the namespace
-      # Kubernetes auth puts in the token's alias metadata, which needs the mount accessor read above
+      # the policies key on the namespace in the Kubernetes auth alias metadata, which needs the mount accessor read above
       initialize "openbao-client" {
         request "policy" {
           operation = "update"
