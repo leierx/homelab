@@ -1,6 +1,6 @@
 image:
   repository: docker.io/opencloudeu/opencloud-rolling
-  tag: 9.1.0
+  tag: 9.2.0
 url: ""
 oidc:
   issuer: ""
