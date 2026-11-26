@@ -9,7 +9,7 @@ helm:
   repoURL: ghcr.io/prometheus-community/charts
   chart: alertmanager
   # renovate: datasource=docker depName=ghcr.io/prometheus-community/charts/alertmanager
-  targetRevision: 2.5.1
+  targetRevision: 2.5.2
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted
