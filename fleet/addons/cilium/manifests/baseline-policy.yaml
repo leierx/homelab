@@ -10,9 +10,6 @@ spec:
   enableDefaultDeny:
     ingress: true
     egress: true
-  # AllowLocalhost only covers endpoints with an ingress rule; without this kubelet probes to them are dropped
-  ingress:
-    - fromEntities: [host]
   egress:
     - toEndpoints:
         - matchLabels:
