@@ -23,6 +23,27 @@ spec:
             - {port: "53", protocol: UDP}
             - {port: "53", protocol: TCP}
 ---
+# cilium-health answers the agent's connectivity probes; it has no pod to carry a probe rule
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: cilium-health
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  endpointSelector:
+    matchLabels:
+      "reserved:health": ""
+  ingress:
+    - fromEntities: [host, remote-node]
+      toPorts:
+        - ports:
+            - {port: "4240", protocol: TCP}
+    - fromEntities: [host, remote-node]
+      icmps:
+        - fields:
+            - {family: IPv4, type: EchoRequest}
+---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:

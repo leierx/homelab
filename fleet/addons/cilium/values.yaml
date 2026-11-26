@@ -5,6 +5,8 @@ secretsNamespaceAnnotations:
   argocd.argoproj.io/sync-options: Delete=false,Prune=false
 bpf: {masquerade: true}
 hostFirewall: {enabled: true}
+# the host reaches a pod only where a policy opens it (probe ports), not every port of every pod with an ingress rule
+extraConfig: {allow-localhost: policy}
 hubble:
   listenAddress: ''
   tls: {enabled: false}
