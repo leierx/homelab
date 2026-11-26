@@ -101,6 +101,14 @@ in
         canmount = "off";
         mountpoint = "none";
       };
+      # disposable volumes (the zfs-ephemeral StorageClasses): no zrepl snapshots, no off-site backup (nixos/backup.nix)
+      datasets.ephemeral = {
+        type = "zfs_fs";
+        options = {
+          canmount = "off";
+          mountpoint = "none";
+        };
+      };
     };
   };
 }

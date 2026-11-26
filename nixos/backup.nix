@@ -35,10 +35,11 @@ let
         restic -o "sftp.command=ssh -i $key -o HostKeyAlias=rsync.net -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/dev/null -o ServerAliveInterval=60 -o ServerAliveCountMax=5 $target -s sftp" "$@"
       }
 
-      # a zvol or nested dataset would be silently left out below
+      # a zvol or nested dataset would be silently left out below; tank/ephemeral holds what is never backed up
       while read -r name type; do
         [ "$name" = tank ] && continue
         [ "$type" = filesystem ] || { echo "$name is a $type, not a dataset" >&2; exit 1; }
+        case "$name" in tank/ephemeral | tank/ephemeral/*) continue ;; esac
         [ "''${name%/*}" = tank ] || { echo "$name is nested below tank/<pv>" >&2; exit 1; }
       done < <(zfs list -H -o name,type -r tank)
 
@@ -81,34 +82,16 @@ let
       bound=$(k get pv -o json \
         | jq -r '.items[] | select(.status.phase == "Bound") | "\(.metadata.name) \(.spec.claimRef.namespace)/\(.spec.claimRef.name)"')
 
-      # loft/backup: "false" on a PVC or namespace opts out; the PVC label wins
-      declare -A claims=() claimOptOut=() namespaceOptOut=()
+      declare -A claims=()
       while read -r pv claim; do
         [ -n "$pv" ] && claims[$pv]=$claim
       done <<<"$bound"
-      while read -r claim value; do
-        [ -n "$claim" ] && claimOptOut[$claim]=$value
-      done < <(
-        k get pvc -A -o json | jq -r '.items[]
-          | select(.metadata.labels["loft/backup"] != null)
-          | "\(.metadata.namespace)/\(.metadata.name) \(.metadata.labels["loft/backup"])"'
-      )
-      while read -r namespace value; do
-        [ -n "$namespace" ] && namespaceOptOut[$namespace]=$value
-      done < <(
-        k get ns -o json | jq -r '.items[]
-          | select(.metadata.labels["loft/backup"] != null)
-          | "\(.metadata.name) \(.metadata.labels["loft/backup"])"'
-      )
 
       for dataset in $(zfs list -H -o name -d 1 tank); do
         [ "$dataset" = tank ] && continue
+        [ "$dataset" = tank/ephemeral ] && continue
         pv=''${dataset#tank/}
         claim=''${claims[$pv]:-unbound/$pv}
-        namespace=''${claim%%/*}
-        skip=''${claimOptOut[$claim]:-}
-        if [ -z "$skip" ]; then skip=''${namespaceOptOut[$namespace]:-}; fi
-        [ "$skip" = "false" ] && continue
         dir=${root}/volumes/$claim
         mkdir -p "$dir"
         mount -t zfs -o ro "$dataset@restic" "$dir"
@@ -142,7 +125,11 @@ in
         {
           name = "tank";
           type = "snap";
-          filesystems."tank<" = true;
+          filesystems = {
+            "tank<" = true;
+            # disposable volumes; their data isn't worth a snapshot
+            "tank/ephemeral<" = false;
+          };
           snapshotting = {
             type = "cron";
             cron = "0 * * * *";
@@ -204,7 +191,7 @@ in
   programs.ssh.knownHosts."rsync.net".publicKey =
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJtclizeBy1Uo3D86HpgD3LONGVH0CJ0NT+YfZlldAJd";
 
-  # all the backup may do in the API: name volumes by claim and read the opt-out labels
+  # all the backup may do in the API: name volumes by claim
   services.k3s.manifests.offsite-backup-rbac.content = [
     {
       apiVersion = "rbac.authorization.k8s.io/v1";
@@ -213,11 +200,7 @@ in
       rules = [
         {
           apiGroups = [ "" ];
-          resources = [
-            "persistentvolumes"
-            "persistentvolumeclaims"
-            "namespaces"
-          ];
+          resources = [ "persistentvolumes" ];
           verbs = [ "list" ];
         }
       ];
