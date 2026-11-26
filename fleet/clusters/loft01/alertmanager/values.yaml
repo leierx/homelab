@@ -1,4 +1,4 @@
-persistence: {storageClass: zfs}
+persistence: {storageClass: zfs-ephemeral}
 # free SMTP relay on port 587 (ISP blocks port 25); credentials live in OpenBao kv/loft01/alertmanager
 config:
   global:

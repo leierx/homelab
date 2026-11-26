@@ -7,4 +7,4 @@ persistence:
     storageClass: zfs-bulk
     size: 770Gi
   modelCache:
-    storageClass: zfs
+    storageClass: zfs-ephemeral

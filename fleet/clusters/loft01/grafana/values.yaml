@@ -6,4 +6,4 @@ grafana.ini:
     auth_url: https://auth.skinke.net/realms/homelab/protocol/openid-connect/auth
     token_url: https://auth.skinke.net/realms/homelab/protocol/openid-connect/token
     api_url: https://auth.skinke.net/realms/homelab/protocol/openid-connect/userinfo
-persistence: {storageClassName: zfs, size: 5Gi, extraPvcLabels: {loft/backup: "true"}}
+persistence: {storageClassName: zfs, size: 5Gi}

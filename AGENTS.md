@@ -26,8 +26,8 @@ Instructions for coding agents working in this repository. Follow
 
 `loft01` is production: it holds real data (Immich photo library, Mimir
 metrics, OpenBao secrets). `nixos/backup.nix` runs a nightly restic backup of
-the k3s state and every PVC except metrics, logs, caches and the private apps'
-to rsync.net, but a restore is manual and loses up to a day. Do not tear it
+the k3s state and every PVC except disposable ones (`tank/ephemeral`) to
+rsync.net, but a restore is manual and loses up to a day. Do not tear it
 down, and delete nothing stateful without explicit instruction.
 
 Known and accepted, so don't report them as findings: there is no
@@ -138,10 +138,11 @@ nix build --no-link .#nixosConfigurations.loft01.config.system.build.toplevel
   own levels.
 - **Stateful resources:** Keep `argocd.argoproj.io/sync-options: Delete=false,Prune=false`
   on PVCs, CNPG `Cluster`/`Database` CRs, and persistent namespaces.
-- **Backup exclusions:** Label the PVC or its Namespace
-  `loft/backup: "false"`; a PVC label wins over the namespace.
-  Never add claim names to `nixos/backup.nix`. zrepl still snapshots every
-  dataset.
+- **Disposable data:** Put a volume whose loss costs nothing worth keeping
+  (metrics, logs, caches, the private apps' media) on `zfs-ephemeral`, or a
+  StorageClass with `poolname: tank/ephemeral`: zrepl doesn't snapshot it and
+  the off-site backup skips it. Everything else gets both. Never add claim
+  names to `nixos/backup.nix`.
 - **Secrets:** Never commit plaintext or encrypted Kubernetes Secrets to git.
   Use `ExternalSecret` and `PushSecret` against `fleet-secrets` and
   `fleet-secrets-push` (OpenBao `kv/<cluster>/<app>`). Host-only bootstrap

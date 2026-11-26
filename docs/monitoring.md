@@ -252,14 +252,13 @@ If a rule doesn't show up there, the sync is in the Alloy log
 (`kubectl -n telemetry logs alloy-metrics-0 -c alloy`, or the `alloy-events`
 Deployment for Loki).
 
-**Data.** Mimir, Loki, Grafana and Alertmanager each have a `zfs` PVC.
+**Data.** Mimir, Loki, Grafana and Alertmanager each have a PVC.
 Grafana's and Alertmanager's are marked `Delete=false,Prune=false`; Mimir's and
 Loki's come from StatefulSet volume claim templates, which Argo CD doesn't own
-and so never prunes. Alerta's database is a CloudNativePG volume. The metrics
-and logs can be rebuilt, so losing them costs history only, and the nightly
-restic backup skips Mimir's, Loki's and Alertmanager's volumes: `monitoring`
-opts out and only Grafana's PVC opts back in (zrepl still snapshots them
-locally).
+and so never prunes. Alerta's database is a CloudNativePG volume. The metrics,
+logs and silences can be rebuilt, so losing them costs history only: Mimir,
+Loki and Alertmanager are on `zfs-ephemeral` (no zrepl snapshots, no off-site
+backup), Grafana on `zfs`, which gets both.
 
 **Wiping a volume.** Delete the PVC and the pod, then the old `ZFSVolume` and
 PV: the storage class retains, so the dataset survives until then.

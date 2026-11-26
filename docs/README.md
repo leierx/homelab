@@ -10,9 +10,9 @@ and alerts, see [monitoring.md](monitoring.md).
 `loft01` is a single-node NixOS + k3s cluster and
 the **production** cluster: it holds real data (Immich photo library, Mimir
 metrics, OpenBao secrets). `nixos/backup.nix` backs up the k3s state and every
-PVC except metrics, logs, caches and the private apps' to rsync.net nightly
-with restic, but restoring is manual and loses up to a day. Treat deleting PVCs
-or stateful CRs as data loss; they carry
+PVC except disposable ones (`tank/ephemeral`) to rsync.net nightly with restic,
+but restoring is manual and loses up to a day. Treat deleting PVCs or stateful
+CRs as data loss; they carry
 `argocd.argoproj.io/sync-options: Delete=false,Prune=false` for that reason.
 
 Git (`main`) is the single source of truth:
@@ -165,15 +165,14 @@ appends to `/etc/hosts`.
 
 ## Backup & Restore
 
-Each PVC is a dataset `tank/<pv>`. zrepl keeps local snapshots (24 hourly,
-14 daily, 3 monthly); `offsite-backup.service` copies a snapshot of every
-volume plus the k3s state to rsync.net nightly at 04:30 (restic: 7 daily,
-4 weekly, 6 monthly), except claims labeled `loft/backup: "false"` (today
-Mimir, Loki, Alertmanager, the Renovate cache, Immich's model cache and the
-private apps' volumes).
-Set the label on a PVC or Namespace; a PVC label (`"false"` or `"true"`) wins,
-so `monitoring` opts out by default and Grafana's PVC opts back in. zrepl still
-snapshots every dataset; this only controls the offsite copy. Example: Immich
+Each PVC is a dataset `tank/<pv>`, or `tank/ephemeral/<pv>` if disposable.
+zrepl keeps local snapshots (24 hourly, 14 daily, 3 monthly);
+`offsite-backup.service` copies a snapshot of every volume plus the k3s state
+to rsync.net nightly at 04:30 (restic: 7 daily, 4 weekly, 6 monthly).
+Disposable volumes (Mimir, Loki, Alertmanager, the Renovate cache, Immich's
+model cache and the private apps' volumes) live under `tank/ephemeral`, from
+the `zfs-ephemeral` StorageClasses: neither zrepl nor the off-site backup
+touches them, so deleting their data frees space at once. Example: Immich
 originals live in claim `immich/library` under `library/`. Run everything as
 root on `loft01` (`doas -s`).
 

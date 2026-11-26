@@ -1,1 +1,1 @@
-renovate: {persistence: {cache: {storageClass: zfs, storageSize: 5Gi}}}
+renovate: {persistence: {cache: {storageClass: zfs-ephemeral, storageSize: 5Gi}}}

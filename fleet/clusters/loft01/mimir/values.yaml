@@ -1,4 +1,4 @@
 persistence:
   data:
-    storageClass: zfs
+    storageClass: zfs-ephemeral
     size: 100Gi
