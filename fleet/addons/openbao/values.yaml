@@ -1,5 +1,3 @@
-# the cluster's path under kv/
-kvPrefix: ""
 global: {tlsDisable: false}
 serverTelemetry: {serviceMonitor: {enabled: true, port: metrics}}
 injector: {enabled: false}
@@ -116,43 +114,59 @@ server:
           path = "auth/kubernetes/config"
           data = { kubernetes_host = "https://kubernetes.default.svc" }
         }
+        request "read" {
+          operation = "read"
+          path = "sys/auth/kubernetes"
+        }
       }
 
-      initialize "external-secrets" {
+      # every namespace's openbao-client ServiceAccount reads kv/homelab/<namespace>/** and what other namespaces share with
+      # it under kv/homelab/<writer>/for/<namespace>/**, and writes only its own subtree; the policy keys on the namespace
+      # Kubernetes auth puts in the token's alias metadata, which needs the mount accessor read above
+      initialize "openbao-client" {
         request "policy" {
           operation = "update"
-          path = "sys/policies/acl/external-secrets"
+          path = "sys/policies/acl/openbao-client"
           data = {
-            policy = "path \"kv/data/{{ required "kvPrefix is per cluster" .Values.kvPrefix }}/*\" { capabilities = [\"read\"] }\npath \"kv/metadata/{{ .Values.kvPrefix }}/*\" { capabilities = [\"read\", \"list\"] }"
+            policy = {
+              eval_type = "string"
+              eval_source = "cel"
+              variables = [{ name = "ns", expression = "'{{ "{{" }}identity.entity.aliases.' + responses['kubernetes-auth']['read']['data']['accessor'] + '.metadata.service_account_namespace{{ "}}" }}'" }]
+              expression = "'path \"kv/data/homelab/' + ns + '/*\" { capabilities = [\"read\"] }\\npath \"kv/metadata/homelab/' + ns + '/*\" { capabilities = [\"read\", \"list\"] }\\npath \"kv/data/homelab/+/for/' + ns + '/*\" { capabilities = [\"read\"] }'"
+            }
+          }
+        }
+        request "push-policy" {
+          operation = "update"
+          path = "sys/policies/acl/openbao-client-push"
+          data = {
+            policy = {
+              eval_type = "string"
+              eval_source = "cel"
+              variables = [{ name = "ns", expression = "'{{ "{{" }}identity.entity.aliases.' + responses['kubernetes-auth']['read']['data']['accessor'] + '.metadata.service_account_namespace{{ "}}" }}'" }]
+              expression = "'path \"kv/data/homelab/' + ns + '/*\" { capabilities = [\"create\", \"read\", \"update\"] }\\npath \"kv/metadata/homelab/' + ns + '/*\" { capabilities = [\"create\", \"read\", \"update\"] }'"
+            }
           }
         }
         request "role" {
           operation = "update"
-          path = "auth/kubernetes/role/external-secrets"
+          path = "auth/kubernetes/role/openbao-client"
           data = {
-            bound_service_account_names = ["external-secrets"]
-            bound_service_account_namespaces = ["external-secrets"]
-            token_policies = ["external-secrets"]
+            bound_service_account_names = ["openbao-client"]
+            bound_service_account_namespaces = ["*"]
+            audience = "openbao"
+            token_policies = ["openbao-client"]
             token_ttl = "1h"
           }
         }
-      }
-
-      initialize "external-secrets-push" {
-        request "policy" {
+        request "push-role" {
           operation = "update"
-          path = "sys/policies/acl/external-secrets-push"
+          path = "auth/kubernetes/role/openbao-client-push"
           data = {
-            policy = "path \"kv/data/{{ required "kvPrefix is per cluster" .Values.kvPrefix }}/*\" { capabilities = [\"create\", \"read\", \"update\"] }\npath \"kv/metadata/{{ .Values.kvPrefix }}/*\" { capabilities = [\"create\", \"read\", \"update\"] }"
-          }
-        }
-        request "role" {
-          operation = "update"
-          path = "auth/kubernetes/role/external-secrets-push"
-          data = {
-            bound_service_account_names = ["external-secrets-push"]
-            bound_service_account_namespaces = ["external-secrets"]
-            token_policies = ["external-secrets-push"]
+            bound_service_account_names = ["openbao-client"]
+            bound_service_account_namespaces = ["*"]
+            audience = "openbao"
+            token_policies = ["openbao-client-push"]
             token_ttl = "1h"
           }
         }
