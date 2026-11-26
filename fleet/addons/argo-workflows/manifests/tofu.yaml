@@ -34,7 +34,7 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       container:
-        image: ghcr.io/opentofu/opentofu:1.13.9
+        image: ghcr.io/opentofu/opentofu:1.13.10
         workingDir: /work
         volumeMounts:
           - {name: tofu, mountPath: /tofu, readOnly: true}
