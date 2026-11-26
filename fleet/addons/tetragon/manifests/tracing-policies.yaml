@@ -156,6 +156,13 @@ spec:
             - {index: 1, operator: Equal, values: ["9"]}
           matchActions:
             - {action: NoPost}
+        # a headless Chromium reads its own renderers' /proc entries the same way
+        - matchBinaries:
+            - {operator: In, values: [/usr/lib/chromium/chromium]}
+          matchArgs:
+            - {index: 1, operator: Equal, values: ["9"]}
+          matchActions:
+            - {action: NoPost}
         - matchBinaries:
             - {operator: NotPrefix, values: [/nix/store/]}
           matchActions:
@@ -268,6 +275,15 @@ spec:
         - {index: 1, type: int}
         - {index: 2, type: int}
       selectors:
+        # Xvfb asks for euid 0 at start and runs on when it's refused, as it is without CAP_SETUID
+        - matchBinaries:
+            - {operator: In, values: [/usr/bin/Xvfb]}
+          matchArgs:
+            - {index: 0, operator: Equal, values: ["-1"]}
+            - {index: 1, operator: Equal, values: ["0"]}
+            - {index: 2, operator: Equal, values: ["-1"]}
+          matchActions:
+            - {action: NoPost}
         - matchBinaries:
             - {operator: NotPrefix, values: [/nix/store/]}
           matchArgs:
