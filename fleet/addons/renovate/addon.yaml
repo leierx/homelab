@@ -7,7 +7,7 @@ helm:
   repoURL: ghcr.io/renovatebot/charts
   chart: renovate
   # renovate: datasource=docker depName=ghcr.io/renovatebot/charts/renovate
-  targetRevision: 46.445.0
+  targetRevision: 47.1.2
 managedNamespaceMetadata:
   labels:
     pod-security.kubernetes.io/enforce: restricted
